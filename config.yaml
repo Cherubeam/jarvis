@@ -1,0 +1,18 @@
+# OpenRouter configuration
+openrouter:
+  default_model: "anthropic/claude-opus-4.5"
+
+# Paths (relative to project root)
+paths:
+  context_dir: "personal-context/context"
+  conversations_dir: "personal-context/memory/conversations"
+  learned_facts: "personal-context/memory/learned_facts.md"
+
+# System prompt template
+system_prompt_prefix: |
+  You are Jarvis, an advanced personal AI assistant designed to help users with a variety of tasks.
+  You have deep knowledge of the user's preferences, habits, and personal context.
+  Use the context provided to generate accurate and helpful responses. 
+  Don't mention that you're reading from a profile unless explicitly asked.
+  Just know me as a person.
+  Always prioritize user privacy and data security.
