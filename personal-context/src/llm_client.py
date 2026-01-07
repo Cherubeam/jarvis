@@ -5,7 +5,39 @@ Uses the standard OpenAI-compatible interface.
 
 import json
 import requests
+from dataclasses import dataclass
 from typing import Generator
+
+
+@dataclass
+class TokenUsage:
+    """Token usage statistics from a single API call."""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class StreamingResponse:
+    """Wrapper for streaming that captures both content and usage."""
+
+    def __init__(self, generator: Generator[str, None, TokenUsage]):
+        self._generator = generator
+        self._usage: TokenUsage | None = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> str:
+        try:
+            return next(self._generator)
+        except StopIteration as e:
+            self._usage = e.value
+            raise
+
+    @property
+    def usage(self) -> TokenUsage:
+        """Get token usage. Only available after iteration completes."""
+        return self._usage or TokenUsage()
 
 
 class LLMClient:
@@ -21,36 +53,30 @@ class LLMClient:
             "Content-Type": "application/json",
         }
     
-    def chat(
-        self, 
-        messages: list[dict], 
+    def chat_stream(
+        self,
+        messages: list[dict],
         model: str | None = None,
-        stream: bool = True
-    ) -> Generator[str, None, None] | str:
+    ) -> StreamingResponse:
         """
-        Send messages to the LLM and get a response.
-        
+        Stream a chat response, yielding chunks as they arrive.
+
         Args:
             messages: List of {"role": "...", "content": "..."} dicts
             model: Override default model if needed
-            stream: If True, yields chunks as they arrive
-        
+
         Returns:
-            Generator of text chunks if streaming, else complete response
+            StreamingResponse that yields text chunks and provides usage stats after completion
         """
         payload = {
             "model": model or self.default_model,
             "messages": messages,
-            "stream": stream,
+            "stream": True,
         }
-        
-        if stream:
-            return self._stream_response(payload)
-        else:
-            return self._get_response(payload)
+        return StreamingResponse(self._stream_response(payload))
     
-    def _stream_response(self, payload: dict) -> Generator[str, None, None]:
-        """Stream the response chunk by chunk."""
+    def _stream_response(self, payload: dict) -> Generator[str, None, TokenUsage]:
+        """Stream the response chunk by chunk, returning usage stats at the end."""
         response = requests.post(
             self.BASE_URL,
             headers=self.headers,
@@ -58,7 +84,9 @@ class LLMClient:
             stream=True
         )
         response.raise_for_status()
-        
+
+        usage = TokenUsage()
+
         for line in response.iter_lines():
             if line:
                 line = line.decode("utf-8")
@@ -68,18 +96,17 @@ class LLMClient:
                         break
                     try:
                         chunk = json.loads(data)
+                        # Yield content chunks
                         if content := chunk["choices"][0]["delta"].get("content"):
                             yield content
+                        # Capture usage from final chunk (OpenRouter includes this)
+                        if "usage" in chunk:
+                            usage = TokenUsage(
+                                prompt_tokens=chunk["usage"].get("prompt_tokens", 0),
+                                completion_tokens=chunk["usage"].get("completion_tokens", 0),
+                                total_tokens=chunk["usage"].get("total_tokens", 0),
+                            )
                     except (json.JSONDecodeError, KeyError, IndexError):
                         continue
-    
-    def _get_response(self, payload: dict) -> str:
-        """Get complete response at once."""
-        payload["stream"] = False
-        response = requests.post(
-            self.BASE_URL,
-            headers=self.headers,
-            json=payload
-        )
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+
+        return usage

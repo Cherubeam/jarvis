@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from context_builder import build_system_prompt
 from llm_client import LLMClient
 from memory import ConversationLogger
+from pricing import get_model_pricing, format_cost
 
 
 def load_config() -> dict:
@@ -48,28 +49,36 @@ def load_config() -> dict:
 
 def main():
     config = load_config()
-    
+
     jarvis_dir = config["_paths"]["jarvis_dir"]
-    
+    model_id = config["openrouter"]["default_model"]
+
     # Initialize components — paths now relative to jarvis root
     context_dir = jarvis_dir / config["paths"]["context_dir"]
     conversations_dir = jarvis_dir / config["paths"]["conversations_dir"]
-    
+
     system_prompt = build_system_prompt(
-        context_dir, 
+        context_dir,
         config["system_prompt_prefix"]
     )
-    
+
     client = LLMClient(
         api_key=config["openrouter"]["api_key"],
-        default_model=config["openrouter"]["default_model"]
+        default_model=model_id
     )
-    
+
     logger = ConversationLogger(conversations_dir)
-    
+
+    # Fetch pricing for the model
+    pricing = get_model_pricing(model_id)
+    if pricing:
+        price_info = f"(${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens)"
+    else:
+        price_info = "(pricing unavailable)"
+
     # Print startup info
     print("Personal Assistant")
-    print(f"Model: {config['openrouter']['default_model']}")
+    print(f"Model: {model_id} {price_info}")
     print("Type 'quit' or 'exit' to end. Ctrl+C also works.\n")
     
     # Main chat loop
@@ -86,22 +95,38 @@ def main():
                 break
             
             logger.add_message("user", user_input)
-            
+
             messages = [
                 {"role": "system", "content": system_prompt},
                 *logger.get_messages_for_api()
             ]
-            
+
             print("\nAssistant: ", end="", flush=True)
             full_response = []
-            
-            for chunk in client.chat(messages):
+
+            stream = client.chat_stream(messages)
+            for chunk in stream:
                 print(chunk, end="", flush=True)
                 full_response.append(chunk)
-            
+
             print("\n")
-            
-            logger.add_message("assistant", "".join(full_response))
+
+            usage = stream.usage
+
+            # Calculate cost if pricing is available
+            cost_usd = 0.0
+            if pricing:
+                cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+                print(f"[{usage.total_tokens:,} tokens | {format_cost(cost_usd)}]")
+
+            logger.add_message(
+                "assistant",
+                "".join(full_response),
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cost_usd=cost_usd,
+            )
     
     except KeyboardInterrupt:
         print("\n")
