@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from context_builder import build_system_prompt
 from llm_client import LLMClient
 from memory import ConversationLogger
-from pricing import get_model_pricing, format_cost
+from pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
 
 
 def load_config() -> dict:
@@ -64,7 +64,8 @@ def main():
 
     client = LLMClient(
         api_key=config["openrouter"]["api_key"],
-        default_model=model_id
+        default_model=model_id,
+        provider="openrouter"
     )
 
     logger = ConversationLogger(conversations_dir)
@@ -116,8 +117,16 @@ def main():
             # Calculate cost if pricing is available
             cost_usd = 0.0
             if pricing:
+                # Primary: Use OpenRouter pricing
                 cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            elif stream.raw_response:
+                # Fallback: Use LiteLLM's built-in cost calculation
+                cost_usd = calculate_cost_from_litellm(stream.raw_response)
+
+            if cost_usd > 0:
                 print(f"[{usage.total_tokens:,} tokens | {format_cost(cost_usd)}]")
+            else:
+                print(f"[{usage.total_tokens:,} tokens]")
 
             logger.add_message(
                 "assistant",

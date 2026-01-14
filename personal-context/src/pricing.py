@@ -1,9 +1,11 @@
 """
 Handles model pricing and cost calculation.
-Fetches pricing from OpenRouter API and calculates costs per request.
+Fetches pricing from OpenRouter API for upfront display.
+Can also use LiteLLM's built-in cost tracking as fallback.
 """
 
 import requests
+import litellm
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -54,9 +56,38 @@ def fetch_all_pricing() -> dict[str, ModelPricing]:
 
 
 def get_model_pricing(model_id: str) -> ModelPricing | None:
-    """Get pricing for a specific model."""
+    """
+    Get pricing for a specific model.
+
+    Args:
+        model_id: Model identifier (without provider prefix)
+
+    Returns:
+        ModelPricing object or None if not found
+    """
+    # Strip "openrouter/" prefix if present for OpenRouter API lookup
+    clean_model_id = model_id.replace("openrouter/", "")
+
     pricing_map = fetch_all_pricing()
-    return pricing_map.get(model_id)
+    return pricing_map.get(clean_model_id)
+
+
+def calculate_cost_from_litellm(response) -> float:
+    """
+    Calculate cost using LiteLLM's built-in cost tracking.
+    Useful as a fallback or for non-OpenRouter providers.
+
+    Args:
+        response: LiteLLM response object
+
+    Returns:
+        Cost in USD, or 0.0 if unable to calculate
+    """
+    try:
+        return litellm.completion_cost(completion_response=response)
+    except Exception as e:
+        print(f"Warning: Could not calculate cost via LiteLLM: {e}")
+        return 0.0
 
 
 def format_cost(cost_usd: float) -> str:
