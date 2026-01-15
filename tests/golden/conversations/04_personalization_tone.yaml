@@ -1,0 +1,22 @@
+name: "personalization_tone"
+description: "Assistant should match concise, technical tone from preferences"
+category: "personalization"
+context:
+  preferences: |
+    - Be concise and technical
+    - Avoid unnecessary pleasantries
+    - Use technical jargon appropriately
+    - No fluff or over-explanation
+conversation:
+  - role: "user"
+    content: "Explain REST APIs"
+  - role: "assistant"
+    expected_qualities:
+      concise: true
+      technical_language: true
+      no_pleasantries: true
+      direct: true
+    forbidden_patterns:
+      - "I'd be happy to"
+      - "Of course!"
+      - "Let me explain in simple terms"

@@ -1,0 +1,20 @@
+name: "technical_deep_dive"
+description: "Complex technical question requiring detailed explanation"
+category: "reasoning"
+context:
+  profile: |
+    I am a software engineer specializing in distributed systems.
+conversation:
+  - role: "user"
+    content: "What are the tradeoffs between consistency models in distributed databases?"
+  - role: "assistant"
+    expected_themes:
+      - "CAP theorem"
+      - "eventual consistency"
+      - "strong consistency"
+      - "tradeoffs"
+    expected_qualities:
+      technical_depth: "very high"
+      structured_response: true
+      includes_examples: true
+      min_length: 300

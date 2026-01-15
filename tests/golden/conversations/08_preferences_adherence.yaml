@@ -1,0 +1,21 @@
+name: "preferences_adherence"
+description: "Assistant should follow multiple preference guidelines at once"
+category: "personalization"
+context:
+  profile: |
+    I am a busy startup founder.
+  preferences: |
+    - Be extremely concise (max 3 sentences per response unless I ask for more)
+    - Use bullet points when listing things
+    - Skip greetings and sign-offs
+    - Be direct and actionable
+conversation:
+  - role: "user"
+    content: "What are the key metrics for SaaS startups?"
+  - role: "assistant"
+    expected_qualities:
+      max_sentences: 3
+      uses_bullet_points: true
+      no_greeting: true
+      no_sign_off: true
+      actionable: true

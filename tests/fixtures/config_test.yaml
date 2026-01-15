@@ -1,0 +1,13 @@
+# Test configuration file
+
+openrouter:
+  default_model: "anthropic/claude-sonnet-4.5"
+
+paths:
+  context_dir: "tests/fixtures/context"
+  conversations_dir: "tests/fixtures/conversations"
+  learned_facts: "tests/fixtures/learned_facts.md"
+
+system_prompt_prefix: |
+  You are Jarvis, an advanced personal AI assistant for testing.
+  This is a test configuration.

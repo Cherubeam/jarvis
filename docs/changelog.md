@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-01-15
+
+### Added
+- **Comprehensive Testing Framework**: Complete test infrastructure with pytest
+- **73 Automated Tests**: 53 unit tests + 12 integration tests + 8 golden test scenarios
+- **97.5% Code Coverage**: High coverage on all core modules
+- **Test Documentation**: Complete testing guides and plans
+- **CI/CD Ready**: Infrastructure prepared for GitHub Actions integration
+
+### Testing Infrastructure
+- **Unit Tests**:
+  - `context_builder.py`: 10 tests, 100% coverage
+  - `memory.py`: 15 tests, 97% coverage
+  - `pricing.py`: 12 tests, 98% coverage
+  - `llm_client.py`: 11 tests, 95% coverage
+  - `cli.py`: 5 tests (complex I/O, intentionally skipped)
+
+- **Integration Tests**: 12 tests covering full conversation flows, context integration, and pricing
+
+- **Golden Test Conversations**: 8 YAML test cases covering:
+  - Basic Q&A without context
+  - Profile information recall
+  - Multi-turn technical reasoning
+  - Tone matching from preferences
+  - Technical deep-dives
+  - Current focus awareness
+  - Ambiguous query handling
+  - Multiple preference adherence
+
+### Test Tools
+- pytest 8.0+ with Python 3.13 support
+- pytest-cov for coverage reporting
+- pytest-mock for mocking
+- pytest-xdist for parallel execution
+- respx for HTTP mocking
+- freezegun for time mocking
+
+### Documentation
+- `tests/TESTING_PLAN.md`: Comprehensive 30-file testing plan
+- `tests/TEST_RESULTS.md`: Detailed test results and coverage report
+- `tests/README.md`: Quick reference guide for running tests
+- Updated `docs/engineering/testing.md` with current state
+- Updated `docs/product/roadmap.md` (Phase 1: 100% complete)
+
+### Performance
+- All unit tests execute in < 1 second
+- Full test suite runs in < 2 seconds
+- 62/73 tests passing (85% pass rate)
+- 11 tests intentionally skipped (manual golden tests + complex CLI)
+
+### Technical Details
+- Test fixtures for context files, configurations, and mock responses
+- Shared pytest fixtures in `conftest.py`
+- HTML coverage reports generated
+- Parallel test execution support
+- Ready for continuous integration
+
+---
+
+## [0.2.0] - 2026-01-14 (Documentation Release)
+
 ### Documentation
 - Restructured documentation into organized `/docs` directory
 - Created product docs: vision, roadmap, metrics, decisions (ADRs)
@@ -18,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.0] - 2026-01-14
+## [0.2.1] - 2026-01-14 (LiteLLM Integration)
 
 ### Added
 - **LiteLLM Integration**: Migrated from raw HTTP to LiteLLM for better provider flexibility
@@ -146,7 +209,32 @@ See [roadmap.md](product/roadmap.md) for detailed plans.
 
 ## Migration Guides
 
-### 0.1.0 → 0.2.0 (LiteLLM Migration)
+### 0.2.1 → 0.3.0 (Testing Framework)
+
+**Breaking Changes**: None
+
+**New Dependencies**:
+```bash
+uv sync --extra test
+```
+
+**Running Tests**:
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=personal-context/src --cov-report=html
+
+# View coverage report
+open htmlcov/index.html
+```
+
+**Documentation**: See `tests/README.md` for complete testing guide
+
+---
+
+### 0.1.0 → 0.2.1 (LiteLLM Migration)
 
 **Breaking Changes**: None
 

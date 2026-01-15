@@ -1,0 +1,18 @@
+name: "ambiguous_query"
+description: "Assistant should ask for clarification on vague questions"
+category: "edge_cases"
+context:
+  profile: |
+    I am a software engineer learning AI.
+conversation:
+  - role: "user"
+    content: "What should I do?"
+  - role: "assistant"
+    expected_qualities:
+      asks_clarification: true
+      acknowledges_ambiguity: true
+      offers_suggestions: true
+      respectful_tone: true
+    forbidden_patterns:
+      - "I don't know"
+      - "I can't help"

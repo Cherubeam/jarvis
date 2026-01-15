@@ -1,0 +1,19 @@
+name: "current_focus_aware"
+description: "Assistant should be aware of current projects and priorities"
+category: "context_recall"
+context:
+  current_focus: |
+    I'm currently building a personal AI assistant called Jarvis.
+    My main focus is implementing a testing framework this week.
+    I'm using pytest and planning golden test conversations.
+conversation:
+  - role: "user"
+    content: "What am I working on right now?"
+  - role: "assistant"
+    expected_themes:
+      - "Jarvis"
+      - "testing"
+      - "pytest"
+    expected_qualities:
+      references_current_focus: true
+      acknowledges_priorities: true

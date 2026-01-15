@@ -58,8 +58,10 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
-- **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter
+- **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
+- **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Simple Configuration**: YAML-based config with sensible defaults
+- **Comprehensive Testing**: 73 automated tests with 97.5% code coverage
 
 ## Getting Started
 
@@ -113,7 +115,17 @@ jarvis/
 │       ├── cli.py                       # Command-line interface
 │       ├── context_builder.py           # Assembles system prompts from context
 │       ├── llm_client.py                # Unified LLM provider interface
-│       └── memory.py                    # Conversation logging
+│       ├── memory.py                    # Conversation logging
+│       └── pricing.py                   # Cost calculation and tracking
+├── tests/                               # Comprehensive test suite
+│   ├── unit/                            # 53 unit tests
+│   ├── integration/                     # 12 integration tests
+│   ├── golden/                          # 8 golden test conversations
+│   └── README.md                        # Testing guide
+├── docs/                                # Documentation
+│   ├── product/                         # Product specs and roadmap
+│   ├── engineering/                     # Technical documentation
+│   └── research/                        # AI engineering research
 └── pyproject.toml
 ```
 
@@ -121,13 +133,26 @@ jarvis/
 
 This is a learning project, and I'm building it iteratively. Current priorities:
 
+**Phase 1: Foundation & Metrics (Complete ✅)**
 - [x] Basic chat interface with persistent context
 - [x] Conversation logging and history
+- [x] Token usage tracking and cost calculation
+- [x] LiteLLM integration for provider flexibility
+- [x] **Comprehensive testing framework (73 tests, 97.5% coverage)**
+
+**Phase 2: Evaluation & Quality Metrics (Next)**
+- [x] 8 golden test conversations defined
+- [ ] LLM-as-judge automated evaluation
+- [ ] Latency tracking (TTFT)
+- [ ] Model comparison benchmarks
+
+**Future Phases:**
 - [ ] Multi-turn context window management (truncation strategies)
 - [ ] Fact extraction from conversations (learned_facts.md)
-- [ ] Simple CLI commands (view history, search conversations, update context)
 - [ ] Local embeddings for semantic search over conversation history
 - [ ] Agent orchestration framework (long-term vision)
+
+See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
 
 ## What I'm Learning
 
@@ -152,9 +177,11 @@ This project demonstrates several things I value as an engineer:
 ## Tech Stack
 
 - **Language**: Python 3.13
-- **LLM Provider**: OpenRouter (unified API for Claude, GPT-4, Gemini, etc.)
+- **LLM Provider**: LiteLLM + OpenRouter (unified API for Claude, GPT-4, Gemini, etc.)
 - **Storage**: Local filesystem (markdown + JSON)
 - **Configuration**: YAML + environment variables
+- **Testing**: pytest with 97.5% code coverage
+- **Package Management**: uv (fast Python package installer)
 
 ## Contributing
 

@@ -1,0 +1,14 @@
+name: "basic_qa"
+description: "Simple factual question without requiring personal context"
+category: "reasoning"
+context: {}  # No personal context needed
+conversation:
+  - role: "user"
+    content: "What is the capital of France?"
+  - role: "assistant"
+    expected_content:
+      - "Paris"
+    expected_qualities:
+      accurate: true
+      concise: true
+      confident: true

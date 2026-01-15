@@ -1,0 +1,19 @@
+name: "context_recall_profile"
+description: "Assistant should reference user's profession from profile"
+category: "context_recall"
+context:
+  profile: |
+    I am a software engineer with 10 years of experience.
+    I specialize in Python and machine learning.
+    I'm currently learning about LLM applications.
+conversation:
+  - role: "user"
+    content: "What do I do for work?"
+  - role: "assistant"
+    expected_themes:
+      - "software engineer"
+      - "Python"
+      - "machine learning"
+    expected_qualities:
+      references_profile: true
+      natural_tone: true  # Shouldn't say "according to your profile"

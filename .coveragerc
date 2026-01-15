@@ -1,0 +1,43 @@
+[run]
+# Source code to measure coverage for
+source = personal-context/src
+
+# Files to omit from coverage
+omit =
+    */tests/*
+    */__pycache__/*
+    */.venv/*
+    */venv/*
+
+# Branch coverage (measure both True and False branches)
+branch = True
+
+[report]
+# Precision for coverage percentage
+precision = 2
+
+# Show lines that weren't executed
+show_missing = True
+
+# Skip covered files in the report
+skip_covered = False
+
+# Fail if coverage is below this threshold (can be enforced in CI)
+# fail_under = 85
+
+# Ignore errors from source code that can't be found
+ignore_errors = True
+
+# Sort by coverage percentage (ascending)
+sort = Cover
+
+[html]
+# Directory for HTML coverage report
+directory = htmlcov
+
+# Title for HTML report
+title = Jarvis Test Coverage Report
+
+[xml]
+# File for XML coverage report (useful for CI tools)
+output = coverage.xml

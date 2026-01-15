@@ -18,31 +18,48 @@ Jarvis is a personal AI assistant built to solve the vendor lock-in problem in c
 
 ## Critical: Dependency Management
 
-### ⚠️ ALWAYS use `uv add`, NEVER use `pip install` or `uv pip install`
+### ⚠️ ALWAYS use `uv`, NEVER use `pip`
+
+**This project uses `uv` exclusively. AI agents often default to `pip` - DO NOT DO THIS.**
 
 **❌ WRONG:**
 ```bash
-pip install package
-uv pip install package
+pip install package          # NEVER use pip
+uv pip install package       # NEVER use uv pip install
+pip install -e ".[test]"     # NEVER use pip for test dependencies
 ```
 
 **✅ CORRECT:**
 ```bash
-uv add package
+uv add package               # Add runtime dependency
+uv add --dev package         # Add dev dependency
+uv sync --extra test         # Install with test dependencies
+uv run pytest                # Run commands in uv environment
 ```
 
 **Why this matters:**
 - `uv add` updates both `pyproject.toml` AND `uv.lock`
-- `uv pip install` only installs to `.venv` (not tracked)
+- `pip` or `uv pip install` only installs to `.venv` (not tracked in lock file)
 - Missing from `pyproject.toml` = project breaks on fresh setup
+- **All documentation and examples in this project use `uv` syntax**
 
-### Other Dependency Commands
+### Common uv Commands
 
 ```bash
+# Dependencies
+uv add package              # Add runtime dependency
+uv add --dev package        # Add development dependency
 uv remove package           # Remove dependency
-uv add package --upgrade    # Update specific package
 uv sync                     # Install from lock file
-uv sync --upgrade          # Update all dependencies
+uv sync --extra test        # Install with optional test dependencies
+uv sync --upgrade           # Update all dependencies
+
+# Running code
+uv run python script.py     # Run Python script
+uv run pytest               # Run tests
+
+# Environment
+uv venv                     # Create virtual environment (auto-created by uv sync)
 ```
 
 ---
@@ -61,11 +78,33 @@ uv run python personal-context/src/cli.py
 mypy personal-context/src/
 ```
 
-### Tests (Planned, not yet implemented)
+### Testing (Implemented ✅)
 
 ```bash
-pytest tests/
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=personal-context/src --cov-report=html
+
+# Run specific test categories
+uv run pytest tests/unit/ -v              # Unit tests only
+uv run pytest tests/integration/ -v       # Integration tests only
+uv run pytest tests/golden/ -v            # Golden test structure validation
+
+# Run tests in parallel (faster)
+uv run pytest -n auto
+
+# View coverage report
+open htmlcov/index.html
 ```
+
+**Test Statistics:**
+- 73 total tests (53 unit + 12 integration + 8 golden)
+- 97.5% code coverage on core modules
+- Full suite runs in < 2 seconds
+
+See [tests/README.md](tests/README.md) for complete testing guide.
 
 ### Clean Setup Verification
 
@@ -132,6 +171,15 @@ jarvis/
 │       ├── context_builder.py      # System prompt assembly
 │       ├── memory.py               # Conversation logging
 │       └── pricing.py              # Cost tracking
+├── tests/                          # Comprehensive test suite
+│   ├── unit/                       # 53 unit tests
+│   ├── integration/                # 12 integration tests
+│   ├── golden/                     # 8 golden test conversations
+│   ├── fixtures/                   # Test data
+│   ├── conftest.py                 # Shared pytest fixtures
+│   ├── TESTING_PLAN.md             # Testing plan
+│   ├── TEST_RESULTS.md             # Test results
+│   └── README.md                   # Testing guide
 └── docs/                           # Documentation
     ├── product/                    # Product docs (vision, roadmap, metrics, ADRs)
     ├── engineering/                # Technical docs (architecture, API, testing)
@@ -142,19 +190,53 @@ jarvis/
 
 ## Testing Guidelines
 
-### Manual Testing (Current)
+### Automated Testing (Implemented ✅)
+
+**Test Framework:** pytest with 97.5% code coverage
+
+**Test Categories:**
+- **Unit Tests** (53 tests): Fast, isolated tests for each module
+- **Integration Tests** (12 tests): Full flow with mocked dependencies
+- **Golden Tests** (8 scenarios): Real conversation test cases for quality evaluation
+
+### Before Committing Code
+
+Always run tests to ensure nothing broke:
+
+```bash
+# Quick check (unit tests only, < 1 second)
+uv run pytest tests/unit/
+
+# Full test suite (< 2 seconds)
+uv run pytest
+
+# With coverage report
+uv run pytest --cov=personal-context/src --cov-report=term
+```
+
+### Writing New Tests
+
+When adding features, add corresponding tests:
+
+```bash
+# Unit test template location
+tests/unit/test_your_module.py
+
+# Integration test location
+tests/integration/test_your_feature.py
+```
+
+See [tests/TESTING_PLAN.md](tests/TESTING_PLAN.md) for detailed testing guidelines.
+
+### Manual Testing
+
+For end-to-end verification:
 
 1. Start CLI: `uv run python personal-context/src/cli.py`
 2. Verify context loading (check system prompt includes profile.md)
 3. Test streaming responses
 4. Verify token/cost tracking
 5. Check conversation logs saved
-
-### Automated Testing (Planned Phase 2)
-
-- **Golden test suite**: 5-10 representative conversations
-- **Unit tests**: Each module tested in isolation
-- **Integration tests**: Full request flow
 
 ---
 
@@ -290,11 +372,12 @@ echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 
 ### Before Committing
 
-1. ✅ Dependencies added via `uv add`
-2. ✅ Code works after clean setup (`rm -rf .venv && uv sync`)
-3. ✅ Type checking passes (if applicable)
-4. ✅ Documentation updated
-5. ✅ No API keys or secrets in code
+1. ✅ Dependencies added via `uv add` (NEVER pip)
+2. ✅ Tests pass: `uv run pytest`
+3. ✅ Code works after clean setup: `rm -rf .venv && uv sync`
+4. ✅ Type checking passes (if applicable)
+5. ✅ Documentation updated
+6. ✅ No API keys or secrets in code
 
 ---
 
@@ -335,4 +418,40 @@ docs: restructure documentation into organized /docs directory
 
 ---
 
-*Last updated: 2026-01-14*
+---
+
+## Quick Reference for AI Agents
+
+### Critical Reminders
+
+1. **Use `uv`, not `pip`** - This is the #1 mistake AI agents make
+2. **Run tests before committing** - `uv run pytest`
+3. **Check documentation** - Read `docs/` before making changes
+4. **Keep it simple** - No premature optimization
+5. **Test dependencies** - Use `uv sync --extra test` for test setup
+
+### Most Common Commands
+
+```bash
+# Add dependency (runtime)
+uv add package-name
+
+# Add test dependency
+uv add --dev pytest-something
+
+# Install everything including tests
+uv sync --extra test
+
+# Run the app
+uv run python personal-context/src/cli.py
+
+# Run all tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=personal-context/src --cov-report=html
+```
+
+---
+
+*Last updated: 2026-01-15*

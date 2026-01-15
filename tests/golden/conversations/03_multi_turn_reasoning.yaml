@@ -1,0 +1,20 @@
+name: "multi_turn_reasoning"
+description: "Technical explanation followed by clarification questions"
+category: "reasoning"
+context: {}
+conversation:
+  - role: "user"
+    content: "Explain how transformer models work in AI"
+  - role: "assistant"
+    expected_qualities:
+      technical_depth: "high"
+      includes_examples: true
+      min_length: 200
+      max_length: 600
+  - role: "user"
+    content: "How does attention differ from previous approaches?"
+  - role: "assistant"
+    expected_qualities:
+      builds_on_previous: true
+      specific_comparison: true
+      references_earlier_explanation: true
