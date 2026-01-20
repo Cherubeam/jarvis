@@ -155,18 +155,26 @@ class TestLLMClient:
         messages = [{"role": "user", "content": "Hello"}]
 
         with patch('litellm.completion') as mock_completion:
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock()]
-            mock_chunk.choices[0].delta = Mock()
-            mock_chunk.choices[0].delta.content = "Response"
+            # Create content chunk
+            mock_content_chunk = Mock()
+            mock_content_chunk.choices = [Mock()]
+            mock_content_chunk.choices[0].delta = Mock()
+            mock_content_chunk.choices[0].delta.content = "Response"
+            mock_content_chunk.usage = None  # Content chunks don't have usage
 
-            mock_stream_obj = Mock()
-            mock_stream_obj.__iter__ = Mock(return_value=iter([mock_chunk]))
-            mock_stream_obj.usage = Mock(
+            # Create final chunk with usage
+            mock_usage_chunk = Mock()
+            mock_usage_chunk.choices = [Mock()]
+            mock_usage_chunk.choices[0].delta = Mock()
+            mock_usage_chunk.choices[0].delta.content = None  # Final chunk has no content
+            mock_usage_chunk.usage = Mock(
                 prompt_tokens=100,
                 completion_tokens=50,
                 total_tokens=150
             )
+
+            mock_stream_obj = Mock()
+            mock_stream_obj.__iter__ = Mock(return_value=iter([mock_content_chunk, mock_usage_chunk]))
 
             mock_completion.return_value = mock_stream_obj
 

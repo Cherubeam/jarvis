@@ -466,6 +466,133 @@ All data lives locally on user's machine:
 
 ---
 
+## ADR-008: Things 3 Integration via Direct AppleScript
+
+**Date**: 2026-01-20
+**Status**: ✅ Accepted
+
+### Context
+
+Jarvis needs access to the user's task list from Things 3 to provide context-aware assistance. The integration needs to:
+- Automatically sync tasks on startup (Phase A: read-only context)
+- Support localized Things 3 installations (German, French, Spanish, Italian, English)
+- Lay groundwork for future interactive task management (Phase B: write operations)
+
+Initial plan was to use [mcp-server-things3](https://github.com/jonagill/mcp-server-things3) directly. However, Things 3 localizes internal list names based on system language (e.g., "Inbox" → "Eingang" in German), and the MCP server uses hardcoded English list names, causing it to fail on non-English installations.
+
+### Decision
+
+**Phase A (Current)**: Use direct AppleScript with automatic language detection
+- Implement `task_sync.py` module (~520 lines) with AppleScript interface
+- Auto-detect Things 3 language by querying list names on first run
+- Sync tasks to `personal-context/context/tasks.md` on startup
+- Cache results for 5 minutes to avoid repeated queries
+- Preserve `MCPThings3Client` class structure for Phase B compatibility
+
+**Phase B (Future - Phase 5)**: Migrate to mcp-server-things3 for interactive features
+- Add, complete, update, and search tasks
+- Wait for upstream MCP server to add localization support OR
+- Implement localization wrapper on our side
+- Use existing MCP infrastructure already planned
+
+### Alternatives Considered
+
+1. **Use mcp-server-things3 directly (Phase A)**
+   - ✅ Clean MCP integration
+   - ✅ Maintained upstream
+   - ❌ **Fails on non-English systems** (hardcoded "Inbox", "Today", etc.)
+   - ❌ Not suitable for read-only sync
+
+2. **Build full MCP wrapper with localization**
+   - ✅ Would work for all languages
+   - ❌ Premature for Phase A (read-only)
+   - ❌ Complex for simple task sync
+   - ⚠️ Better suited for Phase B (interactive features)
+
+3. **Use Things URL scheme**
+   - ✅ Official supported interface
+   - ❌ Limited to creating/showing tasks
+   - ❌ Cannot read task data
+   - ❌ Not suitable for context sync
+
+4. **Direct AppleScript (chosen for Phase A)**
+   - ✅ Works with all localized Things 3 installations
+   - ✅ Can auto-detect language
+   - ✅ Full read access to task database
+   - ✅ Matches Phase A scope (read-only)
+   - ⚠️ macOS-only (acceptable for personal tool)
+   - ⚠️ Fragile if Things 3 changes AppleScript API
+
+### Implementation Details
+
+**Language Detection:**
+```applescript
+tell application "Things3"
+    set listNames to name of every list
+end tell
+```
+Maps detected names to canonical keys (inbox, today, anytime, upcoming, etc.)
+
+**Task Fetching:**
+```applescript
+tell application "Things3"
+    set todayTasks to to dos of list "Today"
+    -- (or localized equivalent: "Heute", "Aujourd'hui", etc.)
+end tell
+```
+
+**Supported Languages:**
+- English: Inbox, Today, Anytime, Upcoming, Someday, Logbook
+- German: Eingang, Heute, Irgendwann, Bevorstehend, Irgendwann, Logbuch
+- French: Boîte de réception, Aujourd'hui, À un moment donné, À venir, Un jour, Journal
+- Spanish: Bandeja de entrada, Hoy, En cualquier momento, Próximos, Algún día, Registro
+- Italian: Casella in arrivo, Oggi, In qualsiasi momento, Prossimi, Un giorno, Registro
+
+### Consequences
+
+**Benefits:**
+- ✅ Works on all localized Things 3 installations
+- ✅ Automatic language detection (no user configuration)
+- ✅ Simple, focused implementation for Phase A
+- ✅ MCP architecture preserved for Phase B
+- ✅ Clear separation: AppleScript for reads, MCP for writes
+- ✅ Fast startup sync with caching
+
+**Drawbacks:**
+- ⚠️ macOS-only (by design - Things 3 is macOS/iOS only)
+- ⚠️ Two different interfaces for read/write (Phase A/B)
+- ⚠️ AppleScript fragility (could break with Things updates)
+- ⚠️ Requires Things 3 running in background
+
+**Mitigation:**
+- AppleScript is official Things 3 API (stable)
+- Error handling with graceful degradation (CLI works without Tasks)
+- Can switch to MCP server for all operations in Phase B once localization solved
+- Cache prevents performance impact from repeated queries
+
+### Testing
+
+Added comprehensive test coverage:
+- 26 unit tests: Language detection, AppleScript generation, task parsing
+- 8 integration tests: End-to-end task sync with mocked AppleScript
+- Covers all 5 supported languages
+- Tests cache behavior and error handling
+
+### Future Migration (Phase B)
+
+When implementing interactive task management:
+1. **If MCP server adds localization**: Switch entirely to MCP
+2. **If not**: Wrap MCP calls with language translation layer
+3. Continue using direct AppleScript as fallback
+
+### Related ADRs
+- Complements: ADR-001 (provider flexibility philosophy)
+- Relates to: Phase 5 roadmap (Agent Capabilities)
+
+**Current Status**: Phase A implemented and tested. Phase B planned for Phase 5.
+
+---
+
 ## Template for Future ADRs
 
 ```markdown

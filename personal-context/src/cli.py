@@ -14,6 +14,7 @@ from context_builder import build_system_prompt
 from llm_client import LLMClient
 from memory import ConversationLogger
 from pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
+from task_sync import sync_tasks_to_file
 
 
 def load_config() -> dict:
@@ -56,6 +57,9 @@ def main():
     # Initialize components — paths now relative to jarvis root
     context_dir = jarvis_dir / config["paths"]["context_dir"]
     conversations_dir = jarvis_dir / config["paths"]["conversations_dir"]
+
+    # Sync tasks from Things 3 (if enabled)
+    sync_tasks_to_file(context_dir / "tasks.md", config)
 
     system_prompt = build_system_prompt(
         context_dir,
@@ -119,8 +123,9 @@ def main():
             if pricing:
                 # Primary: Use OpenRouter pricing
                 cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
-            elif stream.raw_response:
+            else:
                 # Fallback: Use LiteLLM's built-in cost calculation
+                # Note: Suppresses Pydantic warnings for streaming responses
                 cost_usd = calculate_cost_from_litellm(stream.raw_response)
 
             if cost_usd > 0:

@@ -4,10 +4,16 @@ Fetches pricing from OpenRouter API for upfront display.
 Can also use LiteLLM's built-in cost tracking as fallback.
 """
 
+import warnings
 import requests
 import litellm
 from dataclasses import dataclass
 from functools import lru_cache
+
+# Suppress Pydantic serialization warnings from LiteLLM streaming responses
+# These occur when LiteLLM tries to serialize streaming response objects during cleanup
+# The warnings are harmless but appear during program exit
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic.main")
 
 
 @dataclass
@@ -84,9 +90,13 @@ def calculate_cost_from_litellm(response) -> float:
         Cost in USD, or 0.0 if unable to calculate
     """
     try:
-        return litellm.completion_cost(completion_response=response)
-    except Exception as e:
-        print(f"Warning: Could not calculate cost via LiteLLM: {e}")
+        import warnings
+        # Suppress Pydantic serialization warnings from incomplete streaming responses
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return litellm.completion_cost(completion_response=response)
+    except Exception:
+        # Silently fail - fallback cost calculation not critical
         return 0.0
 
 

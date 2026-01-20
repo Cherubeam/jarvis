@@ -101,23 +101,24 @@ class LLMClient:
             model=model_to_use,
             messages=messages,
             stream=True,
+            stream_options={"include_usage": True},  # Request usage in streaming
             api_key=self.api_key,
             # fallbacks=[],  # Could specify fallbacks if desired
         )
 
-        # Stream content chunks
+        # Stream content chunks and extract usage from chunks
+        usage = TokenUsage()
+
         for chunk in response:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-        # Extract usage from the response object
-        # LiteLLM aggregates usage across all chunks
-        usage = TokenUsage()
-        if hasattr(response, 'usage') and response.usage:
-            usage = TokenUsage(
-                prompt_tokens=response.usage.prompt_tokens or 0,
-                completion_tokens=response.usage.completion_tokens or 0,
-                total_tokens=response.usage.total_tokens or 0,
-            )
+            # Check if this chunk contains usage info (usually the last chunk)
+            if hasattr(chunk, 'usage') and chunk.usage:
+                usage = TokenUsage(
+                    prompt_tokens=chunk.usage.prompt_tokens or 0,
+                    completion_tokens=chunk.usage.completion_tokens or 0,
+                    total_tokens=chunk.usage.total_tokens or 0,
+                )
 
         return usage, response

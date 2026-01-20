@@ -39,6 +39,14 @@ None currently.
 - [ ] Add LLM-as-judge for automated quality evaluation
 - [ ] Baseline quality metrics across different models
 
+#### Things 3 Integration (Phase A - Context Awareness)
+- [x] Task sync module with AppleScript integration ✅
+- [x] Automatic language detection (German, French, Spanish, Italian, English) ✅
+- [x] Auto-sync tasks to tasks.md on startup ✅
+- [x] 5-minute task cache to optimize performance ✅
+- [x] 43 tests for task sync (33 unit + 8 integration + 2 golden) ✅
+- [ ] Phase B (Interactive management) - Moved to Phase 5
+
 #### Metrics Implementation
 - [ ] Latency tracking (Time to First Token - TTFT)
 - [ ] Response quality scoring (manual → automated)
@@ -137,7 +145,13 @@ None currently.
 - [ ] Web search integration
 - [ ] Code execution sandbox
 - [ ] File system operations
-- [ ] Calendar and task management integration
+
+#### Things 3 Integration (Phase B - Interactive Management)
+- [ ] Add MCP server integration for task creation
+- [ ] Implement task completion via MCP
+- [ ] Task search and filtering
+- [ ] Task updates and modifications
+- [ ] Localization support in MCP wrapper (if needed)
 
 #### Agent Orchestration
 - [ ] Multi-agent architecture design
@@ -275,6 +289,13 @@ None currently.
 ---
 
 ## Recently Completed
+
+### January 20, 2026
+- ✅ **Things 3 Integration Phase A complete**
+- ✅ **Task sync module with AppleScript (~520 lines)**
+- ✅ **Automatic language detection (5 languages supported)**
+- ✅ **43 additional tests (33 unit + 8 integration + 2 golden)**
+- ✅ **Total: 116 tests with 97.5% coverage**
 
 ### January 15, 2026
 - ✅ **Complete testing framework implementation**

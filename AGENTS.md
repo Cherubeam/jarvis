@@ -100,7 +100,7 @@ open htmlcov/index.html
 ```
 
 **Test Statistics:**
-- 73 total tests (53 unit + 12 integration + 8 golden)
+- 116 total tests (86 unit + 20 integration + 10 golden)
 - 97.5% code coverage on core modules
 - Full suite runs in < 2 seconds
 
@@ -164,17 +164,19 @@ jarvis/
 ├── .env                            # API keys (gitignored)
 ├── personal-context/
 │   ├── context/                    # User context (markdown)
+│   │   └── tasks.md                # Auto-synced Things 3 tasks
 │   ├── memory/conversations/       # Session logs (gitignored)
 │   └── src/                        # Source code
 │       ├── cli.py                  # Entry point
 │       ├── llm_client.py           # LLM abstraction (LiteLLM)
 │       ├── context_builder.py      # System prompt assembly
 │       ├── memory.py               # Conversation logging
-│       └── pricing.py              # Cost tracking
+│       ├── pricing.py              # Cost tracking
+│       └── task_sync.py            # Things 3 integration (~520 lines)
 ├── tests/                          # Comprehensive test suite
-│   ├── unit/                       # 53 unit tests
-│   ├── integration/                # 12 integration tests
-│   ├── golden/                     # 8 golden test conversations
+│   ├── unit/                       # 86 unit tests
+│   ├── integration/                # 20 integration tests
+│   ├── golden/                     # 10 golden test conversations
 │   ├── fixtures/                   # Test data
 │   ├── conftest.py                 # Shared pytest fixtures
 │   ├── TESTING_PLAN.md             # Testing plan
@@ -195,9 +197,9 @@ jarvis/
 **Test Framework:** pytest with 97.5% code coverage
 
 **Test Categories:**
-- **Unit Tests** (53 tests): Fast, isolated tests for each module
-- **Integration Tests** (12 tests): Full flow with mocked dependencies
-- **Golden Tests** (8 scenarios): Real conversation test cases for quality evaluation
+- **Unit Tests** (86 tests): Fast, isolated tests for each module
+- **Integration Tests** (20 tests): Full flow with mocked dependencies
+- **Golden Tests** (10 scenarios): Real conversation test cases for quality evaluation
 
 ### Before Committing Code
 
@@ -245,7 +247,7 @@ For end-to-end verification:
 ### Never Modify Without Explicit Request
 
 - `config.yaml` - User configuration
-- `personal-context/context/*.md` - User's personal context
+- `personal-context/context/*.md` - User's personal context (except tasks.md which is auto-generated)
 - `.env` - API keys (never commit)
 
 ### Read-Only Unless Fixing Bugs
@@ -257,12 +259,45 @@ For end-to-end verification:
 
 ## Documentation Updates
 
+### ⚠️ CRITICAL: Always Check ALL Documentation Files
+
+**After ANY implementation, you MUST read and update ALL relevant files in the `docs/` folder.**
+
+This is a mandatory step - do not skip it. Many files reference each other and need to stay consistent.
+
 ### When Making Changes
 
 1. **Code changes** → Update [docs/engineering/architecture.md](docs/engineering/architecture.md) or [api.md](docs/engineering/api.md)
-2. **New features** → Update [docs/product/roadmap.md](docs/product/roadmap.md)
+2. **New features** → Update [docs/product/roadmap.md](docs/product/roadmap.md) AND [docs/changelog.md](docs/changelog.md)
 3. **Architecture decisions** → Add new ADR to [docs/product/decisions.md](docs/product/decisions.md)
 4. **Version releases** → Update [docs/changelog.md](docs/changelog.md)
+5. **Test changes** → Update [docs/engineering/testing.md](docs/engineering/testing.md)
+
+### Documentation Review Checklist
+
+After implementing a feature, check and update these files if relevant:
+
+**Product Documentation:**
+- [ ] [docs/product/vision.md](docs/product/vision.md) - Does this change the vision or principles?
+- [ ] [docs/product/roadmap.md](docs/product/roadmap.md) - Mark features as complete, update phases
+- [ ] [docs/product/metrics.md](docs/product/metrics.md) - Are there new metrics to track?
+- [ ] [docs/product/decisions.md](docs/product/decisions.md) - Add ADR for architectural decisions
+- [ ] [docs/changelog.md](docs/changelog.md) - **ALWAYS UPDATE** - Document all changes here
+
+**Engineering Documentation:**
+- [ ] [docs/engineering/architecture.md](docs/engineering/architecture.md) - New modules or data flows?
+- [ ] [docs/engineering/api.md](docs/engineering/api.md) - New APIs or interfaces?
+- [ ] [docs/engineering/testing.md](docs/engineering/testing.md) - Test strategy changes?
+- [ ] [docs/engineering/deployment.md](docs/engineering/deployment.md) - Setup changes?
+
+**Research Documentation:**
+- [ ] [docs/research/framework.md](docs/research/framework.md) - New AI engineering patterns?
+- [ ] [docs/research/models.md](docs/research/models.md) - Model comparison updates?
+- [ ] [docs/research/prompts.md](docs/research/prompts.md) - Prompt engineering insights?
+
+**Root Documentation:**
+- [ ] [AGENTS.md](AGENTS.md) - Changes to development workflow or structure?
+- [ ] [README.md](README.md) - User-facing changes?
 
 ### ADR Format
 
@@ -418,8 +453,6 @@ docs: restructure documentation into organized /docs directory
 
 ---
 
----
-
 ## Quick Reference for AI Agents
 
 ### Critical Reminders
@@ -454,4 +487,4 @@ uv run pytest --cov=personal-context/src --cov-report=html
 
 ---
 
-*Last updated: 2026-01-15*
+*Last updated: 2026-01-20*

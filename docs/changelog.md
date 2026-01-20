@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Things 3 Integration (Phase A)**: Context awareness from Things 3 task manager
+- **Automatic Language Detection**: Supports German, French, Spanish, Italian, English Things 3 installations
+- **Task Sync Module**: `task_sync.py` (~520 lines) with AppleScript integration
+- **Context File**: Auto-generated `tasks.md` included in system prompt
+- **Task Caching**: 5-minute TTL cache to optimize performance
+- **43 Additional Tests**: 33 unit tests + 8 integration tests + 2 golden tests for task sync
+- **MCP Architecture**: Preserved MCPThings3Client class for Phase B (interactive features)
+
+### Changed
+- **Test Suite**: Expanded from 73 to 116 tests total
+- **Context Builder**: Now loads `tasks.md` as 4th context file
+- **CLI Startup**: Added task sync before building system prompt
+- **Documentation**: Updated all docs with Things 3 integration details
+
+### Fixed
+- **Token Usage Tracking**: Fixed streaming responses not reporting token counts
+  - Added `stream_options={"include_usage": True}` to LiteLLM completion calls
+  - Modified usage extraction to read from streaming chunks instead of response iterator
+  - Suppressed harmless Pydantic serialization warnings in fallback cost calculation
+  - Token counts and costs now display correctly after each response
+
+### Technical Details
+- Direct AppleScript communication for Phase A (read-only)
+- Auto-detects localized Things 3 list names (e.g., "Eingang" vs "Inbox")
+- Graceful degradation if Things 3 not running
+- File-based cache at `~/.cache/jarvis/tasks_cache.json`
+- Custom delimiter (|||) for task titles containing commas
+
+### Documentation
+- Added ADR-008 to `docs/product/decisions.md`
+- Updated `docs/engineering/architecture.md` with task_sync module
+- Updated `docs/product/roadmap.md` with Phase A completion
+- Updated `AGENTS.md` with new test counts and structure
+
 ---
 
 ## [0.3.0] - 2026-01-15

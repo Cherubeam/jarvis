@@ -16,17 +16,19 @@ def load_context_file(filepath: Path) -> str:
 def build_system_prompt(context_dir: Path, prefix: str) -> str:
     """
     Assemble the full system prompt from context files.
-    
+
     The order matters — profile first (who they are), then preferences
-    (how to behave), then current focus (what's relevant now).
+    (how to behave), then current focus (what's relevant now), then tasks
+    (what they need to do).
     """
     sections = []
-    
+
     # Load each context file
     profile = load_context_file(context_dir / "profile.md")
     preferences = load_context_file(context_dir / "preferences.md")
     current_focus = load_context_file(context_dir / "current_focus.md")
-    
+    tasks = load_context_file(context_dir / "tasks.md")
+
     # Assemble with clear separation
     if profile:
         sections.append(f"## About this person\n\n{profile}")
@@ -34,7 +36,9 @@ def build_system_prompt(context_dir: Path, prefix: str) -> str:
         sections.append(f"## Their preferences\n\n{preferences}")
     if current_focus:
         sections.append(f"## Current focus\n\n{current_focus}")
-    
+    if tasks:
+        sections.append(f"## Their tasks\n\n{tasks}")
+
     context_block = "\n\n---\n\n".join(sections)
-    
+
     return f"{prefix.strip()}\n\n{context_block}"

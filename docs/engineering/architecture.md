@@ -18,35 +18,38 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 │  • Input/output handling                                     │
 │  • Session management                                        │
 │  • Cost display                                              │
-└─────────┬───────────────────────────┬────────────────────────┘
-          │                           │
-          ▼                           ▼
-┌─────────────────────┐    ┌──────────────────────┐
-│  Context Builder    │    │   LLM Client         │
-│  (context_builder)  │    │   (llm_client)       │
-│                     │    │                      │
-│  • Load .md files   │    │  • LiteLLM wrapper   │
-│  • Build prompts    │    │  • Streaming         │
-│  • Assemble context │    │  • Token tracking    │
-└─────────┬───────────┘    └──────────┬───────────┘
-          │                           │
-          └───────────┬───────────────┘
-                      │
-          ┌───────────▼───────────────┐
-          │  Conversation Logger       │
-          │  (memory.py)               │
-          │                            │
-          │  • Save to JSON            │
-          │  • Track metadata          │
-          │  • Session stats           │
-          └────────────┬───────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │   Filesystem Storage     │
-          │                          │
-          │  • context/*.md          │
-          │  • conversations/*.json  │
-          └──────────────────────────┘
+│  • Startup task sync                                         │
+└─────────┬───────────────────┬───────────┬────────────────────┘
+          │                   │           │
+          ▼                   ▼           ▼
+┌─────────────────┐  ┌──────────────┐  ┌──────────────────┐
+│  Context        │  │   LLM        │  │   Task Sync      │
+│  Builder        │  │   Client     │  │   (task_sync)    │
+│                 │  │              │  │                  │
+│  • Load .md     │  │  • LiteLLM   │  │  • Detect lang   │
+│  • Build        │  │  • Streaming │  │  • AppleScript   │
+│  • Assemble     │  │  • Tracking  │  │  • Cache tasks   │
+└────────┬────────┘  └──────┬───────┘  └─────────┬────────┘
+         │                  │                     │
+         └──────────────────┼─────────────────────┘
+                            │
+               ┌────────────▼────────────┐
+               │  Conversation Logger    │
+               │  (memory.py)            │
+               │                         │
+               │  • Save to JSON         │
+               │  • Track metadata       │
+               │  • Session stats        │
+               └────────────┬────────────┘
+                            │
+               ┌────────────▼─────────────┐
+               │   Filesystem Storage     │
+               │                          │
+               │  • context/*.md          │
+               │  • context/tasks.md      │
+               │  • conversations/*.json  │
+               │  • .cache/tasks_cache    │
+               └──────────────────────────┘
 ```
 
 ---
@@ -68,6 +71,7 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 - `main()`: Main chat loop
 
 **Dependencies:**
+- `task_sync`: Sync Things 3 tasks on startup
 - `context_builder`: Get system prompt
 - `llm_client`: Stream LLM responses
 - `memory`: Log conversations
@@ -93,6 +97,7 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 1. `profile.md` - Who the user is
 2. `preferences.md` - How to behave
 3. `current_focus.md` - What's currently relevant
+4. `tasks.md` - Current tasks from Things 3 (auto-generated)
 
 **Design Principle**: Intentionally simple (no templating, no logic).
 
@@ -164,7 +169,47 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ---
 
-### 5. Pricing (`pricing.py`)
+### 5. Task Sync (`task_sync.py`)
+
+**Purpose**: Synchronize tasks from Things 3 to provide task context.
+
+**Responsibilities:**
+- Auto-detect Things 3 language (supports German, French, Spanish, Italian, English)
+- Fetch tasks from Today, Anytime, and Upcoming lists via AppleScript
+- Write tasks to `tasks.md` in markdown format
+- Cache results to avoid repeated queries (5-minute TTL)
+- Handle errors gracefully (CLI works without task sync)
+
+**Key Classes:**
+- `Task`: Dataclass for task representation
+- `TaskSyncCache`: File-based cache with TTL
+- `MCPThings3Client`: Preserved for Phase B (interactive features)
+
+**Key Functions:**
+- `detect_things3_language()`: Auto-detect localized list names
+- `fetch_tasks_applescript_direct()`: Execute AppleScript to fetch tasks
+- `fetch_tasks_async()`: Orchestrate fetching with caching
+- `write_tasks_to_markdown()`: Format and write tasks.md
+
+**Design Decision**:
+- **Phase A** (Current): Direct AppleScript for read-only sync
+- **Phase B** (Future): MCP server integration for interactive management
+- See ADR-008 for rationale
+
+**Supported Languages:**
+```python
+{
+    "en": {"inbox": "Inbox", "today": "Today", ...},
+    "de": {"inbox": "Eingang", "today": "Heute", ...},
+    "fr": {"inbox": "Boîte de réception", "today": "Aujourd'hui", ...},
+    "es": {"inbox": "Bandeja de entrada", "today": "Hoy", ...},
+    "it": {"inbox": "Casella in arrivo", "today": "Oggi", ...}
+}
+```
+
+---
+
+### 6. Pricing (`pricing.py`)
 
 **Purpose**: Track LLM costs across providers.
 
@@ -217,15 +262,18 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 ```
 1. Load config.yaml + .env
    ↓
-2. Build system prompt from context/*.md
+2. Sync Things 3 tasks → tasks.md
    ↓
-3. Initialize LLM client
+3. Build system prompt from context/*.md
+   (includes auto-generated tasks.md)
    ↓
-4. Fetch pricing data (async)
+4. Initialize LLM client
    ↓
-5. Display startup info (model, pricing)
+5. Fetch pricing data (async)
    ↓
-6. Enter chat loop
+6. Display startup info (model, pricing)
+   ↓
+7. Enter chat loop
 ```
 
 ---
@@ -240,7 +288,8 @@ jarvis/
 │   ├── context/                    # User context (version controlled)
 │   │   ├── profile.md
 │   │   ├── preferences.md
-│   │   └── current_focus.md
+│   │   ├── current_focus.md
+│   │   └── tasks.md                # Auto-generated from Things 3
 │   ├── memory/
 │   │   ├── conversations/          # Session logs (gitignored)
 │   │   │   └── YYYY-MM-DD_HH-MM-SS_model.json
@@ -250,7 +299,11 @@ jarvis/
 │       ├── context_builder.py      # System prompt assembly
 │       ├── llm_client.py           # LLM API abstraction
 │       ├── memory.py               # Conversation logging
-│       └── pricing.py              # Cost tracking
+│       ├── pricing.py              # Cost tracking
+│       └── task_sync.py            # Things 3 integration (~520 lines)
+├── .cache/
+│   └── jarvis/
+│       └── tasks_cache.json        # Task sync cache (5-min TTL)
 └── docs/                           # Documentation
 ```
 
@@ -306,7 +359,11 @@ jarvis/
 - `pyyaml` - Config parsing
 - `python-dotenv` - Environment variables
 
+**Phase A (Current):**
+- Direct AppleScript - Things 3 task sync (no additional deps)
+
 **Future:**
+- `mcp` - Model Context Protocol SDK (Phase B: interactive task management)
 - `chromadb` or `faiss` - Vector storage (Phase 4)
 - `sentence-transformers` - Local embeddings (Phase 4)
 - `textual` - TUI (Phase 7)
@@ -359,21 +416,25 @@ jarvis/
 
 ## Testing Strategy
 
-### Current State (Phase 1)
-- ✅ Manual testing
+### Current State (Phase 1 - Complete)
+- ✅ Comprehensive automated test suite
+- ✅ 116 total tests (86 unit + 20 integration + 10 golden)
+- ✅ 97.5% code coverage on core modules
 - ✅ Type hints for static analysis
-- 🔴 No automated tests yet
+- ✅ Fast test execution (< 2 seconds)
 
-### Planned (Phase 2-3)
-- [ ] Golden test suite (5-10 cases)
-- [ ] Unit tests for each module
-- [ ] Integration tests for full flow
-- [ ] Regression testing
+### Test Categories
+- **Unit Tests**: Each module tested in isolation (mocked dependencies)
+- **Integration Tests**: Full flow tests with real interactions
+- **Golden Tests**: Conversation scenarios for quality evaluation
 
-### Test Coverage Goals
-- Core logic: 80%+
-- CLI: Manual + smoke tests
-- API clients: Mocked
+### Test Coverage
+- `context_builder.py`: 100%
+- `llm_client.py`: 98%
+- `memory.py`: 100%
+- `pricing.py`: 95%
+- `task_sync.py`: 97%
+- Overall: 97.5%
 
 ---
 
