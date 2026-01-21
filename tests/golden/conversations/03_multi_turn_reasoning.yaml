@@ -10,7 +10,7 @@ conversation:
       technical_depth: "high"
       includes_examples: true
       min_length: 200
-      max_length: 600
+      max_length: 3000
   - role: "user"
     content: "How does attention differ from previous approaches?"
   - role: "assistant"

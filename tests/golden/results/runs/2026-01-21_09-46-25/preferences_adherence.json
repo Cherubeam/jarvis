@@ -1,0 +1,53 @@
+{
+  "test_name": "preferences_adherence",
+  "timestamp": "2026-01-21T08:48:07.043555Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "profile": "I am a busy startup founder.\n",
+    "preferences": "- Be extremely concise (max 3 sentences per response unless I ask for more)\n- Use bullet points when listing things\n- Skip greetings and sign-offs\n- Be direct and actionable\n"
+  },
+  "user_message": "What are the key metrics for SaaS startups?",
+  "actual_response": "**Key SaaS Metrics:**\n\n- **MRR/ARR** - Monthly/Annual Recurring Revenue (growth rate matters most)\n- **CAC & LTV** - Customer Acquisition Cost vs Lifetime Value (aim for 3:1 ratio)\n- **Churn Rate** - Monthly customer/revenue loss (under 5% is healthy)\n- **Net Revenue Retention** - Revenue expansion from existing customers (110%+ is excellent)",
+  "evaluation": {
+    "overall_score": 0.78,
+    "dimension_scores": {
+      "max_sentences": 0.6,
+      "uses_bullet_points": 1.0,
+      "no_greeting": 1.0,
+      "no_sign_off": 1.0,
+      "actionable": 0.9
+    },
+    "reasoning": "The response effectively uses bullet points, avoids greetings and sign-offs, and provides actionable information with specific targets (3:1 ratio, under 5%, 110%+). However, the response exceeds the 3-sentence maximum preference. While formatted as bullets, there are 4 main bullet points each containing explanatory text, which collectively exceeds the brevity requested. The user explicitly wanted 'max 3 sentences per response unless I ask for more.' The content quality and formatting are excellent for a startup founder's needs, but the length constraint was not strictly followed. The parenthetical additions add value but contribute to exceeding the conciseness requirement.",
+    "passed_criteria": [
+      "uses_bullet_points",
+      "no_greeting",
+      "no_sign_off",
+      "actionable"
+    ],
+    "failed_criteria": [
+      "max_sentences"
+    ],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 4247.703075408936,
+  "judge_latency_ms": 7734.752178192139,
+  "response_tokens": {
+    "prompt": 81,
+    "completion": 90,
+    "total": 171
+  },
+  "judge_tokens": {
+    "prompt": 493,
+    "completion": 267,
+    "total": 760
+  }
+}

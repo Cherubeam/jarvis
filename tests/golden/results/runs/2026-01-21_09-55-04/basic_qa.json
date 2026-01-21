@@ -1,0 +1,45 @@
+{
+  "test_name": "basic_qa",
+  "timestamp": "2026-01-21T08:55:12.215407Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "What is the capital of France?",
+  "actual_response": "The capital of France is **Paris**.\n\nParis is not only the capital but also the largest city in France, known for its art, culture, fashion, and iconic landmarks like the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "accurate": 1.0,
+      "concise": 0.85,
+      "confident": 1.0
+    },
+    "reasoning": "The response is factually accurate - Paris is indeed the capital of France. The answer is delivered with full confidence, using direct declarative statements without hedging or uncertainty. Regarding conciseness, the response provides the direct answer immediately in the first line, which is excellent. However, it then adds supplementary information about Paris being the largest city and mentioning landmarks. While this additional context is relevant and potentially useful, it wasn't strictly required by the simple factual question. The extra information doesn't detract significantly from the response quality, but a maximally concise answer would have stopped after the first sentence. Overall, this is an excellent response that directly answers the question with accurate, confident information.",
+    "passed_criteria": [
+      "accurate",
+      "concise",
+      "confident"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 1892.322063446045,
+  "judge_latency_ms": 6319.727897644043,
+  "response_tokens": {
+    "prompt": 28,
+    "completion": 53,
+    "total": 81
+  },
+  "judge_tokens": {
+    "prompt": 368,
+    "completion": 221,
+    "total": 589
+  }
+}

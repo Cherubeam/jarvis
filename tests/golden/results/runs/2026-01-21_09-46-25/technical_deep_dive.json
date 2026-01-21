@@ -1,0 +1,49 @@
+{
+  "test_name": "technical_deep_dive",
+  "timestamp": "2026-01-21T08:47:32.239170Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {
+    "profile": "I am a software engineer specializing in distributed systems.\n"
+  },
+  "user_message": "What are the tradeoffs between consistency models in distributed databases?",
+  "actual_response": "# Consistency Models in Distributed Databases: Key Tradeoffs\n\n## The Fundamental Tension\n\nThe core tradeoff revolves around the **CAP theorem**: you can't simultaneously guarantee Consistency, Availability, and Partition tolerance. In practice, this manifests as:\n\n### **Strong Consistency**\n*Examples: Spanner, CockroachDB, etcd*\n\n**Pros:**\n- Simple mental model - reads always return latest write\n- Easier application logic (no stale data handling)\n- ACID guarantees possible\n\n**Cons:**\n- Higher latency (consensus protocols like Paxos/Raft)\n- Reduced availability during network partitions\n- Limited geographic scalability\n- Lower throughput under contention\n\n### **Eventual Consistency**\n*Examples: Cassandra, DynamoDB, Riak*\n\n**Pros:**\n- High availability and partition tolerance\n- Low latency reads/writes\n- Excellent geographic distribution\n- High throughput\n\n**Cons:**\n- Complex application logic (conflict resolution, stale reads)\n- Temporary inconsistencies\n- Harder to reason about system state\n\n### **Middle Ground: Causal/Session Consistency**\n*Examples: MongoDB, Cosmos DB (tunable)*\n\n**Tradeoffs:**\n- **Causal**: Preserves cause-effect but allows divergence on concurrent ops\n- **Read-your-writes**: Session guarantees, but global inconsistency possible\n- **Bounded staleness**: Configurable lag tolerance\n\n## Decision Factors\n\n- **Use strong** for: financial transactions, inventory, coordination\n- **Use eventual** for: social feeds, caching, analytics, user profiles\n- **Use tunable** for: mixed workloads with different requirements per operation\n\nWhat's your specific use case? I can dive deeper into particular models or implementation patterns.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "technical_depth": 0.9,
+      "structured_response": 1.0,
+      "includes_examples": 1.0,
+      "min_length": 1.0
+    },
+    "reasoning": "The response demonstrates excellent technical depth, covering the CAP theorem, specific consistency models (strong, eventual, causal/session), and concrete database examples (Spanner, CockroachDB, Cassandra, DynamoDB, etc.). It accurately explains consensus protocols (Paxos/Raft) and provides nuanced tradeoffs for each model. The structure is exemplary with clear headers, bullet points, and logical organization from fundamental concepts to practical decision factors. Examples are abundant and appropriate, including both database systems and use cases. The response is well over 300 characters (approximately 1,800+ characters). Minor deduction on technical depth only because it could have mentioned linearizability vs serializability distinctions or discussed PACELC theorem for additional depth, but this is a high bar. The closing engagement question adds practical value.",
+    "passed_criteria": [
+      "technical_depth",
+      "structured_response",
+      "includes_examples",
+      "min_length"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 10224.419832229614,
+  "judge_latency_ms": 7754.555702209473,
+  "response_tokens": {
+    "prompt": 45,
+    "completion": 354,
+    "total": 399
+  },
+  "judge_tokens": {
+    "prompt": 683,
+    "completion": 265,
+    "total": 948
+  }
+}

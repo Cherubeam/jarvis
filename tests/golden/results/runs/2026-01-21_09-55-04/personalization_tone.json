@@ -1,0 +1,49 @@
+{
+  "test_name": "personalization_tone",
+  "timestamp": "2026-01-21T08:56:13.254094Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "preferences": "- Be concise and technical\n- Avoid unnecessary pleasantries\n- Use technical jargon appropriately\n- No fluff or over-explanation\n"
+  },
+  "user_message": "Explain REST APIs",
+  "actual_response": "# REST APIs\n\n**Representational State Transfer** - architectural style for distributed systems.\n\n## Core Principles\n\n**Stateless**: Each request contains all necessary info; server maintains no client context\n\n**Resource-based**: Everything is a resource with unique URI\n- `/users/123`\n- `/orders/456/items`\n\n**HTTP Methods** (CRUD operations):\n- `GET` - Read\n- `POST` - Create\n- `PUT/PATCH` - Update\n- `DELETE` - Delete\n\n**Standard Response Codes**:\n- 2xx: Success\n- 4xx: Client error\n- 5xx: Server error\n\n## Key Constraints\n\n1. **Client-Server separation**: Independent evolution\n2. **Cacheable**: Responses explicitly state cacheability\n3. **Uniform interface**: Consistent resource manipulation\n4. **Layered system**: Client can't tell if connected to end server\n\n## Example\n\n```http\nGET /api/users/123 HTTP/1.1\nHost: example.com\nAccept: application/json\n\nResponse: 200 OK\n{\n  \"id\": 123,\n  \"name\": \"John\",\n  \"email\": \"john@example.com\"\n}\n```\n\n**vs RPC**: REST uses resources+verbs; RPC uses remote procedure calls\n**vs GraphQL**: REST multiple endpoints; GraphQL single endpoint with query language",
+  "evaluation": {
+    "overall_score": 0.96,
+    "dimension_scores": {
+      "concise": 0.95,
+      "technical_language": 0.95,
+      "no_pleasantries": 1.0,
+      "direct": 0.95
+    },
+    "reasoning": "The response exemplifies the requested technical, concise style. It immediately dives into the definition without any greeting or preamble. The structure uses headers and bullet points for scanability rather than verbose paragraphs. Technical jargon is used appropriately (stateless, URI, CRUD, HTTP methods, response codes, RPC, GraphQL) without over-explanation\u2014terms are presented with brief, accurate definitions. The HTTP example is practical and minimal. The comparison section at the end provides useful context in an extremely compact format. No pleasantries, no filler phrases, no unnecessary hedging. The response assumes technical competency from the reader and delivers information density efficiently.",
+    "passed_criteria": [
+      "concise",
+      "technical_language",
+      "no_pleasantries",
+      "direct"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 7944.922924041748,
+  "judge_latency_ms": 7502.299070358276,
+  "response_tokens": {
+    "prompt": 57,
+    "completion": 277,
+    "total": 334
+  },
+  "judge_tokens": {
+    "prompt": 680,
+    "completion": 245,
+    "total": 925
+  }
+}

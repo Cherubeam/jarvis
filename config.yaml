@@ -31,3 +31,22 @@ system_prompt_prefix: |
   Don't mention that you're reading from a profile unless explicitly asked.
   Just know me as a person.
   Always prioritize user privacy and data security.
+
+# LLM-as-judge evaluation settings
+evaluation:
+  judge_model: "anthropic/claude-opus-4.5"
+  quality_threshold: 0.70  # Minimum score to pass
+
+  # Category-specific thresholds (optional overrides)
+  category_thresholds:
+    reasoning: 0.75
+    context_recall: 0.70
+    personalization: 0.70
+    edge_cases: 0.65
+
+  # Results storage
+  results_dir: "tests/golden/results"
+
+  # Cost management
+  max_cost_per_run: 1.00  # USD, abort if exceeded
+  warn_cost_threshold: 0.50  # USD, warn but continue

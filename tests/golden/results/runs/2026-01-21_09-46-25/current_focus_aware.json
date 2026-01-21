@@ -1,0 +1,45 @@
+{
+  "test_name": "current_focus_aware",
+  "timestamp": "2026-01-21T08:47:42.923707Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "context_recall",
+  "context": {
+    "current_focus": "I'm currently building a personal AI assistant called Jarvis.\nMy main focus is implementing a testing framework this week.\nI'm using pytest and planning golden test conversations.\n"
+  },
+  "user_message": "What am I working on right now?",
+  "actual_response": "Based on your current focus, you're working on **Jarvis** - a personal AI assistant project.\n\nSpecifically, you're concented on:\n- **Implementing a testing framework** this week\n- Using **pytest** as your testing tool\n- Planning **golden test conversations** (storing expected conversation flows to test against)\n\nThis suggests you're in the quality assurance phase, setting up automated testing to ensure Jarvis behaves consistently and correctly across different scenarios. Golden tests are particularly useful for conversational AI since they let you verify that responses remain appropriate as you make changes to the system.\n\nIs there something specific about the testing implementation I can help you with?",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "references_current_focus": 1.0,
+      "acknowledges_priorities": 1.0
+    },
+    "reasoning": "The assistant demonstrates excellent use of the personal context provided. It accurately identifies all key elements: the Jarvis project name, the testing framework implementation focus, pytest as the chosen tool, and golden test conversations as the planned approach. The response goes beyond simple recall by adding helpful context about why golden tests are valuable for conversational AI, showing genuine understanding rather than mere regurgitation. The response also naturally offers further assistance, which is appropriate personalization. Minor note: there's a typo ('concented' instead of 'concentrated/focused'), but this doesn't affect the context usage quality.",
+    "passed_criteria": [
+      "references_current_focus",
+      "acknowledges_priorities"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 4857.6624393463135,
+  "judge_latency_ms": 5825.108051300049,
+  "response_tokens": {
+    "prompt": 64,
+    "completion": 133,
+    "total": 197
+  },
+  "judge_tokens": {
+    "prompt": 504,
+    "completion": 212,
+    "total": 716
+  }
+}

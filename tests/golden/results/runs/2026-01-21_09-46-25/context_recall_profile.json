@@ -1,0 +1,45 @@
+{
+  "test_name": "context_recall_profile",
+  "timestamp": "2026-01-21T08:46:44.488127Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "context_recall",
+  "context": {
+    "profile": "I am a software engineer with 10 years of experience.\nI specialize in Python and machine learning.\nI'm currently learning about LLM applications.\n"
+  },
+  "user_message": "What do I do for work?",
+  "actual_response": "Based on your profile, you are a **software engineer with 10 years of experience**. You specialize in **Python and machine learning**, and you're currently expanding your skills by learning about **LLM (Large Language Model) applications**.\n\nIs there anything specific about your work or career development you'd like to discuss?",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "references_profile": 1.0,
+      "natural_tone": 0.9
+    },
+    "reasoning": "The assistant's response demonstrates excellent use of the personal context provided. It accurately recalls all three key facts from the profile: (1) software engineer with 10 years of experience, (2) specialization in Python and machine learning, and (3) currently learning about LLM applications. The response uses bold formatting to highlight key information, making it easy to read. The tone is natural and conversational, ending with a helpful follow-up question that invites further engagement. The only minor consideration is that the response could be slightly more conversational rather than bullet-point style, but this is a very minor point and the formatting choice is still appropriate for the query.",
+    "passed_criteria": [
+      "references_profile",
+      "natural_tone"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 3275.085210800171,
+  "judge_latency_ms": 6202.469825744629,
+  "response_tokens": {
+    "prompt": 59,
+    "completion": 65,
+    "total": 124
+  },
+  "judge_tokens": {
+    "prompt": 430,
+    "completion": 212,
+    "total": 642
+  }
+}

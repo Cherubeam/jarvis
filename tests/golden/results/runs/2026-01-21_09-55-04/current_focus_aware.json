@@ -1,0 +1,45 @@
+{
+  "test_name": "current_focus_aware",
+  "timestamp": "2026-01-21T08:56:45.905002Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "context_recall",
+  "context": {
+    "current_focus": "I'm currently building a personal AI assistant called Jarvis.\nMy main focus is implementing a testing framework this week.\nI'm using pytest and planning golden test conversations.\n"
+  },
+  "user_message": "What am I working on right now?",
+  "actual_response": "Based on your current focus, you're working on **Jarvis**, a personal AI assistant project.\n\nSpecifically, you're concented on **implementing a testing framework** this week. Your approach includes:\n\n- Using **pytest** as your testing tool\n- Planning **golden test conversations** (likely reference conversations to validate the AI's responses remain consistent and high-quality)\n\nThis suggests you're in a quality assurance phase, making sure Jarvis behaves reliably and predictably through automated testing.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "references_current_focus": 1.0,
+      "acknowledges_priorities": 1.0
+    },
+    "reasoning": "The assistant response demonstrates excellent use of the personal context provided. It correctly identifies: (1) the project name 'Jarvis' as a personal AI assistant, (2) the current weekly focus on implementing a testing framework, (3) the specific tools being used (pytest), and (4) the planned approach (golden test conversations). The response goes beyond simple recall by adding helpful interpretation - explaining what golden test conversations likely mean and contextualizing the work as being in a 'quality assurance phase.' This shows both accurate context retrieval and thoughtful synthesis. The personalization feels natural and directly answers the user's question about what they're working on. The only minor note is a typo ('concented' instead of 'concentrated'), but this doesn't affect the evaluation of context usage.",
+    "passed_criteria": [
+      "references_current_focus",
+      "acknowledges_priorities"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 5450.453996658325,
+  "judge_latency_ms": 6309.201955795288,
+  "response_tokens": {
+    "prompt": 64,
+    "completion": 97,
+    "total": 161
+  },
+  "judge_tokens": {
+    "prompt": 468,
+    "completion": 251,
+    "total": 719
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "test_name": "ambiguous_query",
+  "timestamp": "2026-01-21T08:56:59.679387Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "edge_cases",
+  "context": {
+    "profile": "I am a software engineer learning AI.\n"
+  },
+  "user_message": "What should I do?",
+  "actual_response": "I'd be happy to help you figure out what to do! However, I need a bit more context. Could you tell me more about your situation?\n\nFor example:\n- **Right now**: Are you looking for something to work on this moment?\n- **Career-wise**: Are you seeking advice on your next career move as a software engineer?\n- **Learning AI**: Are you wondering what to study or build next in your AI journey?\n- **A specific problem**: Is there a particular challenge you're facing?\n\nGiven your profile as a software engineer learning AI, here are some general suggestions while you clarify:\n\n**For AI Learning:**\n- Build a small project (RAG system, fine-tune a model, or an AI agent)\n- Work through a course (fast.ai, deeplearning.ai, or Hugging Face tutorials)\n- Read recent papers from arxiv.org\n- Contribute to open-source AI projects\n\n**For immediate productivity:**\n- Take a short break if you've been working intensely\n- Review your task list and prioritize\n- Learn one new concept today\n\nWhat resonates with you? What's on your mind?",
+  "evaluation": {
+    "overall_score": 1.0,
+    "dimension_scores": {
+      "asks_clarification": 1.0,
+      "acknowledges_ambiguity": 1.0,
+      "offers_suggestions": 1.0,
+      "respectful_tone": 1.0
+    },
+    "reasoning": "The assistant handles this highly ambiguous query exceptionally well. It immediately acknowledges the lack of context ('I need a bit more context') and asks targeted clarifying questions organized into clear categories (right now, career-wise, learning AI, specific problem). Rather than simply asking for clarification and waiting, it proactively offers helpful suggestions tailored to the user's known profile as a software engineer learning AI. The response demonstrates excellent structure with bullet points and headers, maintains a warm and respectful tone throughout ('I'd be happy to help'), and ends with open-ended questions to continue the dialogue. This is a model response for handling vague user queries.",
+    "passed_criteria": [
+      "asks_clarification",
+      "acknowledges_ambiguity",
+      "offers_suggestions",
+      "respectful_tone"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 7622.781753540039,
+  "judge_latency_ms": 6149.940013885498,
+  "response_tokens": {
+    "prompt": 36,
+    "completion": 232,
+    "total": 268
+  },
+  "judge_tokens": {
+    "prompt": 574,
+    "completion": 259,
+    "total": 833
+  }
+}

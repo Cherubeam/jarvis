@@ -1,0 +1,46 @@
+{
+  "test_name": "multi_turn_reasoning",
+  "timestamp": "2026-01-21T08:34:19.343961Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "How does attention differ from previous approaches?",
+  "actual_response": "I'd be happy to explain how attention mechanisms differ from previous approaches in neural networks, particularly in sequence processing:\n\n## Previous Approaches (Pre-Attention)\n\n**Fixed-Length Context Vectors:**\n- In early encoder-decoder architectures (like seq2seq), the encoder compressed the entire input sequence into a single fixed-size vector\n- This created an information bottleneck, especially for long sequences\n- The decoder had to rely solely on this compressed representation\n\n**Recurrent Processing:**\n- RNNs/LSTMs processed sequences step-by-step sequentially\n- Information had to pass through many time steps, leading to vanishing/exploding gradients\n- Long-range dependencies were difficult to capture\n\n## Key Differences with Attention\n\n**1. Dynamic Context:**\n- Attention allows the model to focus on different parts of the input for each output step\n- No single bottleneck vector\u2014the model can \"look back\" at all input positions\n\n**2. Direct Connections:**\n- Creates direct paths between any input and output positions\n- Reduces the path length for information flow (O(1) instead of O(n))\n\n**3. Parallelization:**\n- Unlike RNNs, attention operations can be computed in parallel\n- Dramatically speeds up training\n\n**4. Interpretability:**\n- Attention weights show which inputs the model focuses on\n- Provides some insight into the model's decision-making\n\nThis fundamentally shifted how we handle sequential data and enabled models like Transformers that now power modern AI.",
+  "evaluation": {
+    "overall_score": 0.73,
+    "dimension_scores": {
+      "builds_on_previous": 0.85,
+      "specific_comparison": 0.95,
+      "references_earlier_explanation": 0.4
+    },
+    "reasoning": "The response demonstrates strong technical knowledge and provides an excellent structural comparison between attention mechanisms and previous approaches. For 'builds_on_previous': The response builds logically from foundational concepts (RNNs, seq2seq, information bottlenecks) to explain how attention addresses these limitations - score 0.85. For 'specific_comparison': The response excels here with concrete, specific comparisons including fixed-length vectors vs dynamic context, sequential vs parallel processing, path length complexity (O(1) vs O(n)), and information flow patterns - score 0.95. For 'references_earlier_explanation': This is where the response falls short. While it references general concepts in the field, there is no explicit reference to any earlier explanation that might have been provided in a conversation. The response reads as a standalone answer rather than one that connects to previously shared information with the user. Without conversation context showing an earlier explanation was given, this criterion cannot be fully met - score 0.40. The overall score of 0.73 reflects that while this is a high-quality technical explanation with excellent comparative analysis, it does not clearly demonstrate building on or referencing a specific earlier explanation from the conversation context.",
+    "passed_criteria": [
+      "builds_on_previous",
+      "specific_comparison"
+    ],
+    "failed_criteria": [
+      "references_earlier_explanation"
+    ],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 9886.895895004272,
+  "judge_latency_ms": 8645.982027053833,
+  "response_tokens": {
+    "prompt": 29,
+    "completion": 299,
+    "total": 328
+  },
+  "judge_tokens": {
+    "prompt": 623,
+    "completion": 334,
+    "total": 957
+  }
+}

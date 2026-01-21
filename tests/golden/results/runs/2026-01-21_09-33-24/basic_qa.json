@@ -1,0 +1,45 @@
+{
+  "test_name": "basic_qa",
+  "timestamp": "2026-01-21T08:33:33.309264Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "What is the capital of France?",
+  "actual_response": "The capital of France is **Paris**.\n\nParis is not only the capital but also the largest city in France, known for its iconic landmarks like the Eiffel Tower, the Louvre Museum, Notre-Dame Cathedral, and its rich history in art, culture, fashion, and cuisine.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "accurate": 1.0,
+      "concise": 0.85,
+      "confident": 1.0
+    },
+    "reasoning": "The response correctly identifies Paris as the capital of France, demonstrating complete accuracy. The answer is delivered with full confidence, using clear declarative statements without hedging or uncertainty. While the response goes slightly beyond the minimum needed to answer the question by including additional context about Paris's landmarks and cultural significance, this supplementary information is relevant and not excessive. The core answer is presented immediately and prominently in the first line, maintaining good conciseness for the primary response. The additional details enhance rather than detract from the answer quality.",
+    "passed_criteria": [
+      "accurate",
+      "concise",
+      "confident"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 2491.94598197937,
+  "judge_latency_ms": 5955.105781555176,
+  "response_tokens": {
+    "prompt": 28,
+    "completion": 59,
+    "total": 87
+  },
+  "judge_tokens": {
+    "prompt": 374,
+    "completion": 187,
+    "total": 561
+  }
+}

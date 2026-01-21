@@ -234,3 +234,91 @@ def reset_lru_cache():
         fetch_all_pricing.cache_clear()
     except ImportError:
         pass
+
+
+# ==================== LLM-as-Judge Evaluation ====================
+
+def pytest_addoption(parser):
+    """Add custom command line options for LLM-as-judge evaluation."""
+    parser.addoption(
+        "--evaluate",
+        action="store_true",
+        default=False,
+        help="Run actual LLM calls and judge evaluation for golden tests (incurs cost)"
+    )
+    parser.addoption(
+        "--judge-model",
+        action="store",
+        default="anthropic/claude-opus-4.5",
+        help="Model to use as judge (default: claude-opus-4.5)"
+    )
+    parser.addoption(
+        "--quality-threshold",
+        action="store",
+        type=float,
+        default=0.70,
+        help="Minimum quality score to pass (default: 0.70)"
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest with custom markers and evaluation config."""
+    config.addinivalue_line(
+        "markers",
+        "evaluate: Mark test as requiring LLM evaluation (auto-skipped without --evaluate)"
+    )
+
+    # Store evaluation config for access in tests
+    config.evaluation_enabled = config.getoption("--evaluate")
+    config.judge_model = config.getoption("--judge-model")
+    config.quality_threshold = config.getoption("--quality-threshold")
+
+
+@pytest.fixture(scope="class")
+def evaluation_config(request):
+    """Provide evaluation configuration to tests."""
+    return {
+        "enabled": request.config.evaluation_enabled,
+        "judge_model": request.config.judge_model,
+        "quality_threshold": request.config.quality_threshold,
+    }
+
+
+@pytest.fixture(scope="class")
+def evaluator(evaluation_config):
+    """Create JudgeEvaluator if evaluation is enabled."""
+    if not evaluation_config["enabled"]:
+        pytest.skip("Evaluation not enabled (use --evaluate flag)")
+
+    # Import here to avoid import errors if modules don't exist yet
+    import os
+    sys.path.insert(0, str(Path(__file__).parent / "golden"))
+    from evaluator import JudgeEvaluator
+    from llm_client import LLMClient
+
+    # Check for API key
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        pytest.skip("OPENROUTER_API_KEY environment variable not set")
+
+    # Create judge client
+    judge_client = LLMClient(
+        api_key=api_key,
+        default_model=evaluation_config["judge_model"],
+        provider="openrouter"
+    )
+
+    return JudgeEvaluator(
+        judge_client=judge_client,
+        config=evaluation_config,
+    )
+
+
+@pytest.fixture(scope="class")
+def result_storage():
+    """Provide ResultStorage instance for golden tests."""
+    sys.path.insert(0, str(Path(__file__).parent / "golden"))
+    from result_storage import ResultStorage
+
+    results_dir = Path(__file__).parent / "golden" / "results"
+    return ResultStorage(results_dir)

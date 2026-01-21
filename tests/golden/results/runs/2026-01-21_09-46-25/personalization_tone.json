@@ -1,0 +1,49 @@
+{
+  "test_name": "personalization_tone",
+  "timestamp": "2026-01-21T08:47:14.258544Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "preferences": "- Be concise and technical\n- Avoid unnecessary pleasantries\n- Use technical jargon appropriately\n- No fluff or over-explanation\n"
+  },
+  "user_message": "Explain REST APIs",
+  "actual_response": "# REST APIs\n\n**REST** (Representational State Transfer) - architectural style for distributed systems, primarily web services.\n\n## Core Principles\n\n1. **Stateless**: Each request contains all necessary information; server maintains no client context\n2. **Client-Server**: Separation of concerns; UI independent from data storage\n3. **Cacheable**: Responses explicitly indicate cacheability\n4. **Uniform Interface**: Standardized communication via HTTP methods\n5. **Layered System**: Client can't distinguish direct server connection from intermediaries\n\n## HTTP Methods (CRUD)\n\n- `GET` - Retrieve resource(s)\n- `POST` - Create resource\n- `PUT/PATCH` - Update resource (full/partial)\n- `DELETE` - Remove resource\n\n## Key Components\n\n**Endpoints**: URL paths identifying resources\n```\n/api/users\n/api/users/{id}\n/api/users/{id}/orders\n```\n\n**Status Codes**:\n- 2xx: Success (200 OK, 201 Created)\n- 3xx: Redirection\n- 4xx: Client errors (404 Not Found, 401 Unauthorized)\n- 5xx: Server errors\n\n**Representation**: Data format (typically JSON/XML)\n\n## Example\n```\nGET /api/users/123\nResponse: 200 OK\n{\n  \"id\": 123,\n  \"name\": \"John\"\n}\n```\n\nREST leverages existing HTTP infrastructure\u2014scalable, simple, widely adopted.",
+  "evaluation": {
+    "overall_score": 0.96,
+    "dimension_scores": {
+      "concise": 0.95,
+      "technical_language": 0.95,
+      "no_pleasantries": 1.0,
+      "direct": 0.95
+    },
+    "reasoning": "The response exemplifies technical writing that adheres strictly to the stated preferences. It opens immediately with a definition\u2014no greeting, no preamble. Technical jargon is used appropriately throughout (stateless, CRUD, endpoints, HTTP methods, status codes, representation). The structure uses bullet points, code blocks, and headers for maximum information density. Every sentence serves a purpose with no filler phrases like 'basically' or 'in other words.' The closing line is a factual summary rather than an invitation for follow-up questions. The response covers REST comprehensively while remaining remarkably compact.",
+    "passed_criteria": [
+      "concise",
+      "technical_language",
+      "no_pleasantries",
+      "direct"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 7603.45196723938,
+  "judge_latency_ms": 6723.8030433654785,
+  "response_tokens": {
+    "prompt": 57,
+    "completion": 297,
+    "total": 354
+  },
+  "judge_tokens": {
+    "prompt": 699,
+    "completion": 232,
+    "total": 931
+  }
+}

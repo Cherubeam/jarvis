@@ -1,0 +1,45 @@
+{
+  "test_name": "basic_qa",
+  "timestamp": "2026-01-21T08:46:35.007000Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "What is the capital of France?",
+  "actual_response": "The capital of France is **Paris**.\n\nParis is not only the capital but also the largest city in France, known for its art, culture, cuisine, and iconic landmarks like the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "accurate": 1.0,
+      "concise": 0.85,
+      "confident": 1.0
+    },
+    "reasoning": "The response correctly identifies Paris as the capital of France, demonstrating complete accuracy. The answer is delivered with full confidence, using bold formatting to emphasize the key answer and providing the information directly without hedging or qualifications. While the response is reasonably concise, it includes supplementary information about Paris (landmarks, being the largest city, cultural significance) that, while helpful, goes slightly beyond what was strictly asked. This additional context is relevant and not excessive, but a more concise response would have stopped after the first sentence. Overall, this is an excellent response that provides accurate, confident information with just a touch of helpful elaboration.",
+    "passed_criteria": [
+      "accurate",
+      "concise",
+      "confident"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 2926.10502243042,
+  "judge_latency_ms": 6922.13773727417,
+  "response_tokens": {
+    "prompt": 28,
+    "completion": 53,
+    "total": 81
+  },
+  "judge_tokens": {
+    "prompt": 368,
+    "completion": 207,
+    "total": 575
+  }
+}

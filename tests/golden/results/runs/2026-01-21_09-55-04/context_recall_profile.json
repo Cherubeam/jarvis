@@ -1,0 +1,45 @@
+{
+  "test_name": "context_recall_profile",
+  "timestamp": "2026-01-21T08:55:21.369421Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "context_recall",
+  "context": {
+    "profile": "I am a software engineer with 10 years of experience.\nI specialize in Python and machine learning.\nI'm currently learning about LLM applications.\n"
+  },
+  "user_message": "What do I do for work?",
+  "actual_response": "Based on your profile, you work as a software engineer with 10 years of experience. Your specialization is in Python and machine learning, and you're currently expanding your knowledge by learning about LLM (Large Language Model) applications.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "references_profile": 1.0,
+      "natural_tone": 0.9
+    },
+    "reasoning": "The assistant demonstrates excellent use of the personal context provided. It accurately identifies and recalls all key facts from the profile: (1) software engineer profession, (2) 10 years of experience, (3) Python and machine learning specialization, and (4) current learning focus on LLM applications. The response appropriately frames this information as coming from 'your profile,' showing transparency about the source. The tone is natural and conversational, though slightly formal with the structured presentation. The parenthetical expansion of 'LLM' to 'Large Language Model' shows helpful additional context without being condescending. The response directly and completely answers the user's question without unnecessary padding or omitting relevant details.",
+    "passed_criteria": [
+      "references_profile",
+      "natural_tone"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 2621.539831161499,
+  "judge_latency_ms": 6529.490947723389,
+  "response_tokens": {
+    "prompt": 59,
+    "completion": 46,
+    "total": 105
+  },
+  "judge_tokens": {
+    "prompt": 411,
+    "completion": 220,
+    "total": 631
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "test_name": "ambiguous_query",
+  "timestamp": "2026-01-21T09:01:41.620236Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "edge_cases",
+  "context": {
+    "profile": "I am a software engineer learning AI.\n"
+  },
+  "user_message": "What should I do?",
+  "actual_response": "I appreciate you reaching out! However, I need a bit more context to give you helpful guidance. \"What should I do?\" could mean many things:\n\n**Are you asking about:**\n- **Your AI learning path?** (study resources, projects, what to learn next?)\n- **A specific technical problem?** (debugging, architecture decisions?)\n- **Career direction?** (specialization areas, job opportunities?)\n- **A current project or task?** (next steps, best practices?)\n- **Something else entirely?**\n\nAs a software engineer learning AI, you're in an exciting position! But to give you targeted advice, could you share:\n- What you're currently working on or stuck with?\n- What aspect of AI interests you most (ML, NLP, computer vision, etc.)?\n- Your immediate goal or challenge?\n\nLet me know what's on your mind, and I'll provide much more useful guidance! \ud83c\udfaf",
+  "evaluation": {
+    "overall_score": 1.0,
+    "dimension_scores": {
+      "asks_clarification": 1.0,
+      "acknowledges_ambiguity": 1.0,
+      "offers_suggestions": 1.0,
+      "respectful_tone": 1.0
+    },
+    "reasoning": "The assistant handles this ambiguous query exceptionally well. It explicitly acknowledges the ambiguity ('I need a bit more context' and 'could mean many things'), then provides multiple clear categories of possible interpretations. It asks targeted clarifying questions to narrow down the user's intent. The response offers concrete suggestions for what information would help (current work, AI interests, immediate goals). The tone is warm, encouraging ('exciting position!'), and professional throughout, using friendly language and an emoji without being unprofessional. The response demonstrates best practices for handling vague queries: acknowledge the limitation, provide structured options, and invite further engagement without making the user feel criticized for the unclear question.",
+    "passed_criteria": [
+      "asks_clarification",
+      "acknowledges_ambiguity",
+      "offers_suggestions",
+      "respectful_tone"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 6791.015863418579,
+  "judge_latency_ms": 6561.136960983276,
+  "response_tokens": {
+    "prompt": 36,
+    "completion": 193,
+    "total": 229
+  },
+  "judge_tokens": {
+    "prompt": 536,
+    "completion": 266,
+    "total": 802
+  }
+}

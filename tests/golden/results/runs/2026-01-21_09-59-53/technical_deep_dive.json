@@ -1,0 +1,49 @@
+{
+  "test_name": "technical_deep_dive",
+  "timestamp": "2026-01-21T09:01:17.365075Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {
+    "profile": "I am a software engineer specializing in distributed systems.\n"
+  },
+  "user_message": "What are the tradeoffs between consistency models in distributed databases?",
+  "actual_response": "# Consistency Models in Distributed Databases\n\nGreat question! This is a fundamental concern in distributed systems design. Here are the key tradeoffs:\n\n## Strong Consistency (Linearizability)\n**Guarantees:**\n- All nodes see the same data at the same time\n- Reads always return the most recent write\n- System behaves like a single copy\n\n**Tradeoffs:**\n- \u274c Higher latency (coordination overhead)\n- \u274c Lower availability (CAP theorem constraints)\n- \u274c Reduced partition tolerance\n- \u2705 Simplest programming model\n\n**Use cases:** Financial transactions, inventory systems\n\n## Eventual Consistency\n**Guarantees:**\n- All replicas will converge to the same value *eventually*\n- No guarantees about *when*\n\n**Tradeoffs:**\n- \u2705 High availability\n- \u2705 Low latency\n- \u2705 Partition tolerant\n- \u274c Complex application logic (conflict resolution)\n- \u274c Temporary inconsistencies visible to users\n\n**Use cases:** DNS, caching, social media feeds\n\n## Causal Consistency\n**Guarantees:**\n- Causally related operations seen in order\n- Concurrent operations may be seen differently\n\n**Tradeoffs:**\n- \u2696\ufe0f Middle ground between strong and eventual\n- \u2705 Better performance than strong consistency\n- \u274c More complex than eventual consistency\n- \u274c Requires tracking causality (version vectors)\n\n**Use cases:** Collaborative editing, comment threads\n\n## Session/Read-Your-Writes Consistency\n**Guarantees:**\n- Clients see their own writes immediately\n- No guarantees for other clients' operations\n\n**Tradeoffs:**\n- \u2705 Good user experience\n- \u2705 Reasonable performance\n- \u274c Requires session affinity/sticky sessions\n\n**Use cases:** User profile updates, shopping carts\n\n## Key Decision Factors:\n1. **Latency requirements** - Can users tolerate coordination delays?\n2. **Availability needs** - Can you afford downtime during partitions?\n3. **Data semantics** - How critical is immediate consistency?\n4. **Geographic distribution** - Cross-region adds significant latency\n5. **Conflict frequency** - How often do concurrent writes happen?\n\nWhat's your specific use case? I can help you think through which model fits best.",
+  "evaluation": {
+    "overall_score": 0.94,
+    "dimension_scores": {
+      "technical_depth": 0.9,
+      "structured_response": 1.0,
+      "includes_examples": 0.85,
+      "min_length": 1.0
+    },
+    "reasoning": "The response demonstrates excellent technical depth, covering four distinct consistency models (strong, eventual, causal, and session-based) with accurate explanations of their guarantees, tradeoffs, and appropriate use cases. The CAP theorem is correctly referenced in context. The structure is exemplary, using clear headers, bullet points, and visual indicators (\u2705/\u274c/\u2696\ufe0f) to organize information logically. Each model follows a consistent format (Guarantees \u2192 Tradeoffs \u2192 Use cases), making comparison easy. Examples are provided for each model through concrete use cases (financial transactions, DNS, collaborative editing, shopping carts). The response could have been strengthened with more specific database implementations (e.g., mentioning Spanner for strong consistency, DynamoDB for eventual, etc.) or code-level examples. The response is well over 300 words, meeting the minimum length requirement comfortably. The closing question demonstrates good engagement while offering further assistance.",
+    "passed_criteria": [
+      "technical_depth",
+      "structured_response",
+      "includes_examples",
+      "min_length"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 11724.677801132202,
+  "judge_latency_ms": 7697.386980056763,
+  "response_tokens": {
+    "prompt": 45,
+    "completion": 467,
+    "total": 512
+  },
+  "judge_tokens": {
+    "prompt": 796,
+    "completion": 281,
+    "total": 1077
+  }
+}

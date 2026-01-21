@@ -6,11 +6,11 @@
 
 ## Current State
 
-**Phase**: 1 - Complete ✅
-**Status**: 🟢 Comprehensive automated testing implemented
+**Phase**: 1 Complete ✅ + Phase 2 (50% Complete) 🚀
+**Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 73 total (53 unit + 12 integration + 8 golden + 2 structure validation)
-**Documentation**: [tests/README.md](../../tests/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md), [tests/TEST_RESULTS.md](../../tests/TEST_RESULTS.md)
+**Tests**: 149 total (103 unit + 20 integration + 26 golden/evaluation)
+**Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
 
@@ -48,36 +48,50 @@
 **Test Structure:**
 ```
 tests/
-├── unit/              # 53 tests - Fast, isolated
-├── integration/       # 12 tests - With mocked dependencies
-├── golden/            # 8 test conversations + structure validation
+├── unit/              # 103 tests - Fast, isolated (includes evaluator tests)
+├── integration/       # 20 tests - With mocked dependencies
+├── golden/            # LLM-as-judge evaluation system
+│   ├── conversations/ # 8 YAML test cases
+│   ├── results/       # Evaluation results (JSON + markdown)
+│   ├── evaluator.py   # Core evaluation engine
+│   ├── judge_prompts.py  # Judge prompt templates
+│   ├── result_storage.py # Storage & reporting
+│   └── test_golden_conversations.py  # Test runner
 ├── fixtures/          # Test data and shared fixtures
-└── conftest.py        # Shared pytest fixtures
+└── conftest.py        # Shared pytest fixtures + --evaluate flag
 ```
 
 ### Automated Test Coverage
 
-**Unit Tests (53 tests, 97.5% coverage on core):**
+**Unit Tests (103 tests, 97.5% coverage on core):**
 - ✅ `context_builder.py` - 10 tests, 100% coverage
 - ✅ `memory.py` - 15 tests, 97% coverage
 - ✅ `pricing.py` - 12 tests, 98% coverage
 - ✅ `llm_client.py` - 11 tests, 95% coverage
+- ✅ `task_sync.py` - 33 tests, 98% coverage
+- ✅ `evaluator.py` - 16 tests, 100% coverage (LLM-as-judge)
+- ✅ `result_storage.py` - 17 tests, 100% coverage (evaluation results)
 - ⚠️ `cli.py` - 5 tests (skipped - complex I/O)
 
-**Integration Tests (12 tests):**
+**Integration Tests (20 tests):**
 - ✅ Full conversation flow (5 tests)
 - ✅ Context system integration (4 tests)
 - ✅ Pricing system integration (3 tests)
+- ✅ Task sync integration (8 tests)
 
-**Golden Test Cases (8 scenarios + 2 structure):**
-- ✅ Basic Q&A without context
-- ✅ Profile information recall
-- ✅ Multi-turn technical reasoning
-- ✅ Tone matching from preferences
-- ✅ Complex technical deep-dives
-- ✅ Current focus awareness
-- ✅ Ambiguous query handling
-- ✅ Multiple preference adherence
+**Golden Test Cases (26 tests):**
+- ✅ 8 conversation scenarios (YAML format):
+  - Basic Q&A without context
+  - Profile information recall
+  - Multi-turn technical reasoning
+  - Tone matching from preferences
+  - Complex technical deep-dives
+  - Current focus awareness
+  - Ambiguous query handling
+  - Multiple preference adherence
+- ✅ 2 structure validation tests (free, always run)
+- ✅ 8 LLM-as-judge evaluation tests (requires `--evaluate` flag)
+- ✅ 8 helper function tests
 
 ### Test Execution Performance
 
@@ -90,7 +104,7 @@ tests/
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (free, no LLM calls)
 uv run pytest
 
 # Run with coverage
@@ -99,16 +113,169 @@ uv run pytest --cov=personal-context/src --cov-report=html
 # Run specific category
 uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
+uv run pytest tests/golden/ -v  # Structure validation only (free)
+
+# Run golden tests WITH evaluation (costs ~$0.41, requires API key)
+export OPENROUTER_API_KEY="your-key"
+uv run pytest tests/golden/ --evaluate -v
 
 # View coverage
 open htmlcov/index.html
 ```
 
-See [tests/README.md](../../tests/README.md) for complete command reference.
+See [tests/README.md](../../tests/README.md) and [tests/golden/README.md](../../tests/golden/README.md) for complete guides.
 
 ---
 
-## Phase 2: Golden Test Suite (Next)
+## Phase 2: LLM-as-Judge Evaluation (Complete ✅)
+
+**Goal**: Automated quality assessment of golden test conversations
+**Status**: ✅ Implemented 2026-01-20
+**Cost**: ~$0.41 per full run (8 tests)
+
+### System Architecture
+
+The LLM-as-judge system uses Claude Opus 4.5 as an expert evaluator to assess response quality against defined criteria.
+
+**Components:**
+- **evaluator.py**: Core evaluation engine with `JudgeEvaluator` class
+- **judge_prompts.py**: Category-specific prompt templates
+- **result_storage.py**: JSON persistence + markdown report generation
+- **test_golden_conversations.py**: Pytest integration with `--evaluate` flag
+
+### Test Categories
+
+1. **Reasoning** (2 tests): Technical accuracy and clarity
+2. **Context Recall** (2 tests): Personal context awareness
+3. **Personalization** (2 tests): Tone and preference adherence
+4. **Edge Cases** (2 tests): Ambiguity handling
+
+### Evaluation Workflow
+
+```
+1. Load YAML test case
+   ↓
+2. Execute conversation with model under test (e.g., Sonnet 4.5)
+   ↓
+3. Send to judge (Opus 4.5) with evaluation criteria
+   ↓
+4. Judge returns structured JSON with scores + reasoning
+   ↓
+5. Basic checks (forbidden patterns, expected content)
+   ↓
+6. Store results (JSON + markdown report)
+   ↓
+7. Assert on quality threshold (default: 0.70)
+```
+
+### Usage
+
+**Run Without Evaluation (Free):**
+```bash
+pytest tests/golden/  # Structure validation only, tests skip
+```
+
+**Run With Evaluation (~$0.41):**
+```bash
+export OPENROUTER_API_KEY="your-key"
+pytest tests/golden/ --evaluate -v
+
+# With custom settings
+pytest tests/golden/ --evaluate \
+  --judge-model=anthropic/claude-opus-4.5 \
+  --quality-threshold=0.75 \
+  -v
+```
+
+### Results
+
+**JSON Results** (per test):
+```json
+{
+  "test_name": "basic_qa",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {"accurate": 1.0, "concise": 0.9},
+    "reasoning": "Perfect factual answer, slightly verbose",
+    "passed_criteria": ["accurate", "concise"],
+    "failed_criteria": []
+  },
+  "passed": true,
+  "costs": {
+    "response_cost_usd": 0.007,
+    "judge_cost_usd": 0.011,
+    "total_cost_usd": 0.018
+  }
+}
+```
+
+**Markdown Report** (generated per run):
+- Executive summary (pass rate, avg scores, costs)
+- Per-test results table
+- Failed tests detail with judge reasoning
+- Cost analysis
+- Performance metrics
+- Recommendations
+
+**Historical Tracking** (`tests/golden/results/history.json`):
+- Quality trends over time
+- Cost trends
+- Pass rate evolution
+- Comparison across runs
+
+### Cost Management
+
+**Budget Configuration** (in `config.yaml`):
+```yaml
+evaluation:
+  judge_model: "anthropic/claude-opus-4.5"
+  quality_threshold: 0.70
+  max_cost_per_run: 1.00  # Hard limit (aborts)
+  warn_cost_threshold: 0.50  # Soft limit (warns)
+```
+
+**Expected Costs per Run:**
+- Response generation (Sonnet 4.5): ~$0.05 (8 tests × $0.006)
+- Judge evaluation (Opus 4.5): ~$0.36 (8 tests × $0.045)
+- **Total**: ~$0.41 per full run
+
+### Quality Scoring
+
+- **1.0**: Excellent - Exceeds expectations
+- **0.8-0.9**: Good - Meets all criteria well
+- **0.6-0.7**: Acceptable - Meets minimum requirements
+- **0.4-0.5**: Poor - Missing key elements
+- **0.0-0.3**: Failing - Does not meet criteria
+
+**Default threshold**: 0.70 (acceptable minimum)
+
+### Adding New Golden Tests
+
+1. Create YAML in `tests/golden/conversations/`:
+```yaml
+name: "my_test"
+category: "reasoning"
+context:
+  profile: "Optional context"
+conversation:
+  - role: "user"
+    content: "User query"
+  - role: "assistant"
+    expected_qualities:
+      accurate: true
+    forbidden_patterns: ["bad phrase"]
+```
+
+2. Add test method to `test_golden_conversations.py`
+3. Run evaluation: `pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_my_test --evaluate`
+
+See [tests/golden/README.md](../../tests/golden/README.md) for complete documentation.
+
+---
+
+## Phase 3: Golden Test Suite (Legacy)
 
 **Goal**: Create 5-10 representative test conversations
 

@@ -1,0 +1,29 @@
+{
+  "run_id": "2026-01-21_09-33-33",
+  "timestamp": "2026-01-21T08:33:42.302638Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "total_tests": 1,
+  "passed_tests": 1,
+  "failed_tests": 0,
+  "pass_rate": 1.0,
+  "average_overall_score": 0.95,
+  "total_cost_usd": 0.0,
+  "total_response_cost_usd": 0.0,
+  "total_judge_cost_usd": 0.0,
+  "average_response_latency_ms": 2606.2588691711426,
+  "average_judge_latency_ms": 6325.486183166504,
+  "total_runtime_seconds": 0.0,
+  "total_response_tokens": 105,
+  "total_judge_tokens": 653,
+  "average_dimension_scores": {
+    "references_profile": 1.0,
+    "natural_tone": 0.9
+  },
+  "scores_by_category": {
+    "context_recall": 0.95
+  },
+  "test_results": [
+    "context_recall_profile.json"
+  ]
+}

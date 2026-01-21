@@ -1,16 +1,31 @@
 """
-Golden test conversations runner.
+Golden test conversations runner with LLM-as-judge evaluation.
 
 This module provides infrastructure for running and evaluating golden test conversations.
-For now, tests are marked as manual - they load and validate the YAML structure.
-
-In Phase 2, these will be automated with LLM-as-judge evaluation.
+Use --evaluate flag to run actual LLM calls with judge evaluation.
 """
 
 import pytest
 import yaml
+import os
+import time
+import sys
 from pathlib import Path
 from typing import Dict, Any, List
+
+# Add src to path for imports
+src_dir = Path(__file__).parent.parent.parent / "personal-context" / "src"
+sys.path.insert(0, str(src_dir))
+
+# Import evaluation modules (only when --evaluate is used)
+try:
+    from evaluator import JudgeEvaluator, EvaluationCriteria
+    from result_storage import ResultStorage
+    from llm_client import LLMClient
+    from context_builder import build_system_prompt
+    EVALUATION_AVAILABLE = True
+except ImportError:
+    EVALUATION_AVAILABLE = False
 
 
 @pytest.fixture
@@ -78,74 +93,200 @@ class TestGoldenConversationStructure:
 
 
 @pytest.mark.golden
-@pytest.mark.slow
+@pytest.mark.evaluate
 class TestGoldenConversations:
     """
-    Golden conversation tests.
+    Golden conversation tests with LLM-as-judge evaluation.
 
     These tests represent real-world usage scenarios and are used to:
     1. Validate response quality across different models
     2. Catch regressions in behavior
     3. Establish quality baselines
 
-    Currently marked as manual/slow as they require actual LLM calls.
-    In Phase 2, these will be automated with LLM-as-judge evaluation.
+    Run with: pytest tests/golden/ --evaluate
+    Optional: pytest tests/golden/ --evaluate --judge-model=anthropic/claude-opus-4.5
     """
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_01_basic_qa(self, load_golden_test):
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_evaluation(self, request, evaluation_config, result_storage):
+        """Setup evaluation run if enabled."""
+        if evaluation_config["enabled"]:
+            model_tested = os.getenv("DEFAULT_MODEL", "anthropic/claude-sonnet-4.5")
+            # Store on class object so all test methods can access via self
+            request.cls.run_id = result_storage.start_run(
+                model_tested=model_tested,
+                judge_model=evaluation_config["judge_model"],
+            )
+            request.cls.results = []
+            request.cls.model_tested = model_tested
+        yield
+        # Finalize run after all tests
+        if evaluation_config["enabled"] and hasattr(request.cls, "results") and request.cls.results:
+            result_storage.finalize_run(request.cls.run_id, request.cls.results)
+
+    def _run_golden_test(
+        self,
+        test_file: str,
+        evaluator,
+        evaluation_config,
+        result_storage,
+    ):
+        """
+        Execute a golden test with evaluation.
+
+        Steps:
+        1. Load YAML test case
+        2. Build context from YAML
+        3. Execute conversation with model under test
+        4. Evaluate response with judge
+        5. Store result
+        6. Assert on quality threshold
+        """
+        # Check if evaluation is enabled
+        if not evaluation_config["enabled"]:
+            pytest.skip("Use --evaluate flag to run golden tests")
+
+        # Load test case
+        test_path = Path(__file__).parent / "conversations" / test_file
+        with open(test_path) as f:
+            test_case = yaml.safe_load(f)
+
+        # Setup model under test
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            pytest.fail("OPENROUTER_API_KEY environment variable not set")
+
+        # Import modules here (already in path from conftest.py)
+        from llm_client import LLMClient
+        from evaluator import EvaluationCriteria
+
+        model_client = LLMClient(
+            api_key=api_key,
+            default_model=self.model_tested,
+            provider="openrouter"
+        )
+
+        # Extract context from test case
+        context = test_case.get("context", {})
+
+        # Build system prompt if context is provided
+        system_prompt = "You are Jarvis, an advanced personal AI assistant."
+        if context:
+            context_parts = []
+            for key, value in context.items():
+                context_parts.append(f"{key.upper()}:\n{value}")
+            if context_parts:
+                system_prompt += "\n\n" + "\n\n".join(context_parts)
+
+        # Execute conversation
+        for turn in test_case["conversation"]:
+            if turn["role"] == "user":
+                user_message = turn["content"]
+
+                # Build messages for LLM
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ]
+
+                # Call model
+                start_time = time.time()
+                stream = model_client.chat_stream(messages)
+
+                response_text = ""
+                for chunk in stream:
+                    response_text += chunk
+
+                response_latency = (time.time() - start_time) * 1000  # ms
+
+                # Get usage from stream
+                usage = stream.usage
+                raw_response = stream.raw_response
+
+                # Calculate cost
+                try:
+                    from pricing import calculate_cost_from_litellm
+                    response_cost = calculate_cost_from_litellm(raw_response)
+                except Exception:
+                    # Fallback cost calculation
+                    response_cost = (usage.prompt_tokens * 0.000003) + (
+                        usage.completion_tokens * 0.000015
+                    )
+
+            elif turn["role"] == "assistant":
+                # Extract evaluation criteria
+                criteria = EvaluationCriteria(
+                    qualities=turn.get("expected_qualities", {}),
+                    forbidden_patterns=turn.get("forbidden_patterns", []),
+                    expected_content=turn.get("expected_content", []),
+                    expected_themes=turn.get("expected_themes", []),
+                    min_length=turn.get("min_length"),
+                    max_length=turn.get("max_length"),
+                )
+
+                # Evaluate with judge
+                result = evaluator.evaluate_response(
+                    test_name=test_case["name"],
+                    test_category=test_case["category"],
+                    context=context,
+                    user_message=user_message,
+                    actual_response=response_text,
+                    criteria=criteria,
+                    model_tested=self.model_tested,
+                    response_metrics={
+                        "latency_ms": response_latency,
+                        "tokens": {
+                            "prompt": usage.prompt_tokens,
+                            "completion": usage.completion_tokens,
+                            "total": usage.total_tokens,
+                        },
+                        "cost_usd": response_cost,
+                    },
+                )
+
+                # Store result
+                result_storage.save_result(self.run_id, result)
+                self.results.append(result)
+
+                # Assert on quality threshold
+                assert result.passed, (
+                    f"Test {result.test_name} failed quality threshold "
+                    f"(score: {result.evaluation.overall_score:.2f}, "
+                    f"threshold: {evaluation_config['quality_threshold']})\n"
+                    f"Reason: {result.evaluation.reasoning}"
+                )
+
+    def test_01_basic_qa(self, evaluator, evaluation_config, result_storage):
         """Test basic factual question answering."""
-        test_case = load_golden_test("01_basic_qa.yaml")
+        self._run_golden_test("01_basic_qa.yaml", evaluator, evaluation_config, result_storage)
 
-        # TODO: Implement actual test execution
-        # 1. Load context (if any)
-        # 2. Send user message to LLM
-        # 3. Get response
-        # 4. Evaluate against expected_content and expected_qualities
-
-        pytest.skip("Golden test implementation pending - Phase 2")
-
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_02_context_recall(self, load_golden_test):
+    def test_02_context_recall(self, evaluator, evaluation_config, result_storage):
         """Test that assistant recalls information from profile."""
-        test_case = load_golden_test("02_context_recall.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("02_context_recall.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_03_multi_turn_reasoning(self, load_golden_test):
+    def test_03_multi_turn_reasoning(self, evaluator, evaluation_config, result_storage):
         """Test multi-turn technical conversation with context retention."""
-        test_case = load_golden_test("03_multi_turn_reasoning.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_04_personalization_tone(self, load_golden_test):
+    def test_04_personalization_tone(self, evaluator, evaluation_config, result_storage):
         """Test that assistant follows tone preferences."""
-        test_case = load_golden_test("04_personalization_tone.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("04_personalization_tone.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_05_technical_deep_dive(self, load_golden_test):
+    def test_05_technical_deep_dive(self, evaluator, evaluation_config, result_storage):
         """Test handling of complex technical questions."""
-        test_case = load_golden_test("05_technical_deep_dive.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("05_technical_deep_dive.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_06_current_focus_aware(self, load_golden_test):
+    def test_06_current_focus_aware(self, evaluator, evaluation_config, result_storage):
         """Test awareness of current priorities from current_focus.md."""
-        test_case = load_golden_test("06_current_focus_aware.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("06_current_focus_aware.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_07_ambiguous_query(self, load_golden_test):
+    def test_07_ambiguous_query(self, evaluator, evaluation_config, result_storage):
         """Test graceful handling of ambiguous questions."""
-        test_case = load_golden_test("07_ambiguous_query.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage)
 
-    @pytest.mark.skip(reason="Manual test - requires LLM call and manual evaluation")
-    def test_08_preferences_adherence(self, load_golden_test):
+    def test_08_preferences_adherence(self, evaluator, evaluation_config, result_storage):
         """Test following multiple preference guidelines simultaneously."""
-        test_case = load_golden_test("08_preferences_adherence.yaml")
-        pytest.skip("Golden test implementation pending - Phase 2")
+        self._run_golden_test("08_preferences_adherence.yaml", evaluator, evaluation_config, result_storage)
 
 
 # Helper function for manual golden test evaluation (to be used in Phase 2)

@@ -1,0 +1,49 @@
+{
+  "test_name": "personalization_tone",
+  "timestamp": "2026-01-21T09:00:57.941210Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "preferences": "- Be concise and technical\n- Avoid unnecessary pleasantries\n- Use technical jargon appropriately\n- No fluff or over-explanation\n"
+  },
+  "user_message": "Explain REST APIs",
+  "actual_response": "# REST APIs\n\n**Representational State Transfer** - architectural style for networked applications.\n\n## Core Principles\n\n1. **Stateless** - Each request contains all necessary info; server stores no client context\n2. **Client-Server** - Separation of concerns; independent evolution\n3. **Cacheable** - Responses must define themselves as cacheable or not\n4. **Uniform Interface** - Standardized communication via:\n   - Resource identification (URIs)\n   - Resource manipulation through representations (JSON/XML)\n   - Self-descriptive messages\n   - HATEOAS (Hypermedia as engine of application state)\n\n## HTTP Methods\n\n- `GET` - Retrieve resource\n- `POST` - Create resource\n- `PUT` - Update/replace resource\n- `PATCH` - Partial update\n- `DELETE` - Remove resource\n\n## Example\n\n```\nGET /api/users/123\nAccept: application/json\n\n200 OK\n{\n  \"id\": 123,\n  \"name\": \"John\",\n  \"email\": \"john@example.com\"\n}\n```\n\n## Status Codes\n- 2xx: Success\n- 3xx: Redirection\n- 4xx: Client error\n- 5xx: Server error\n\n## Benefits\n- Scalability (stateless)\n- Performance (caching)\n- Simplicity\n- Reliability\n- Platform-agnostic",
+  "evaluation": {
+    "overall_score": 0.96,
+    "dimension_scores": {
+      "concise": 0.95,
+      "technical_language": 0.95,
+      "no_pleasantries": 1.0,
+      "direct": 0.95
+    },
+    "reasoning": "The response exemplifies technical documentation style. It immediately defines REST without preamble, uses appropriate technical terminology (HATEOAS, stateless, URIs, HTTP methods), and presents information in a highly structured format with bullet points and code examples. No pleasantries or filler phrases appear anywhere\u2014the response starts directly with the topic header and maintains a reference-manual tone throughout. Technical jargon is used appropriately (e.g., 'separation of concerns', 'self-descriptive messages', 'hypermedia') assuming reader familiarity. The only minor deduction is that the 'Benefits' section could be considered slightly redundant given the Core Principles already imply these advantages, but it remains concise enough to be acceptable.",
+    "passed_criteria": [
+      "concise",
+      "technical_language",
+      "no_pleasantries",
+      "direct"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 6715.780973434448,
+  "judge_latency_ms": 7302.971839904785,
+  "response_tokens": {
+    "prompt": 57,
+    "completion": 284,
+    "total": 341
+  },
+  "judge_tokens": {
+    "prompt": 687,
+    "completion": 257,
+    "total": 944
+  }
+}

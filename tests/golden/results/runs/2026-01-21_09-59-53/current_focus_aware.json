@@ -1,0 +1,45 @@
+{
+  "test_name": "current_focus_aware",
+  "timestamp": "2026-01-21T09:01:28.266162Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "context_recall",
+  "context": {
+    "current_focus": "I'm currently building a personal AI assistant called Jarvis.\nMy main focus is implementing a testing framework this week.\nI'm using pytest and planning golden test conversations.\n"
+  },
+  "user_message": "What am I working on right now?",
+  "actual_response": "Based on your current focus, you're working on **Jarvis** - a personal AI assistant project.\n\nYour immediate priorities are:\n\n1. **Implementing a testing framework** - this is your main focus this week\n2. **Using pytest** as your testing tool\n3. **Planning golden test conversations** - likely reference test cases to validate AI interactions\n\nThis suggests you're in the development phase, focusing on quality assurance and establishing robust testing patterns for your AI assistant before expanding functionality further.\n\nIs there a specific aspect of the testing framework you'd like to discuss or need help with?",
+  "evaluation": {
+    "overall_score": 1.0,
+    "dimension_scores": {
+      "references_current_focus": 1.0,
+      "acknowledges_priorities": 1.0
+    },
+    "reasoning": "The assistant's response demonstrates excellent use of the provided personal context. It correctly identifies all three key elements from the CURRENT_FOCUS: (1) the Jarvis project name, (2) the testing framework implementation as the main focus this week, and (3) both pytest usage and golden test conversations planning. The response goes beyond simple recall by providing thoughtful interpretation (e.g., explaining what golden test conversations likely means, noting the user is in a quality assurance phase). The personalization feels natural and helpful, ending with an appropriate offer to assist further with the specific work. All facts from context are accurately recalled with no hallucinations or misrepresentations.",
+    "passed_criteria": [
+      "references_current_focus",
+      "acknowledges_priorities"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 4558.060884475708,
+  "judge_latency_ms": 6341.398000717163,
+  "response_tokens": {
+    "prompt": 64,
+    "completion": 119,
+    "total": 183
+  },
+  "judge_tokens": {
+    "prompt": 490,
+    "completion": 221,
+    "total": 711
+  }
+}

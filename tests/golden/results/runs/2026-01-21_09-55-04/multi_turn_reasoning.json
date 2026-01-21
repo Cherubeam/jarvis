@@ -1,0 +1,46 @@
+{
+  "test_name": "multi_turn_reasoning",
+  "timestamp": "2026-01-21T08:55:57.805143Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "How does attention differ from previous approaches?",
+  "actual_response": "I'd be happy to explain how attention mechanisms differ from previous approaches in neural networks, particularly in sequence processing:\n\n## Previous Approaches (Pre-Attention)\n\n**1. Fixed-Length Context Vectors**\n- RNNs/LSTMs encoded entire input sequences into a single fixed-size vector\n- Information bottleneck: all context compressed regardless of input length\n- Distant information often lost or degraded\n\n**2. Sequential Processing**\n- Information passed step-by-step through hidden states\n- Long-range dependencies difficult to capture\n- Gradient vanishing/exploding problems\n\n## Key Differences with Attention\n\n**1. Dynamic Focus**\n- **Before**: Equal treatment of all input elements\n- **After**: Model learns *where* to focus for each output step\n- Weighted access to all input positions simultaneously\n\n**2. Direct Connections**\n- **Before**: Information travels through many intermediate states\n- **After**: Direct paths between any input and output positions\n- Solves vanishing gradient for long sequences\n\n**3. Variable Context**\n- **Before**: Fixed context vector size\n- **After**: Flexible, weighted combination of all inputs\n- Context adapts based on what's relevant\n\n**4. Interpretability**\n- Attention weights show which inputs influenced each output\n- Previous models were more \"black box\"\n\n## Practical Impact\n\nThis enabled breakthroughs in machine translation, where the model can \"look back\" at relevant source words when generating each target word, rather than relying on a compressed representation of the entire sentence.\n\nWould you like me to explain any specific aspect in more detail?",
+  "evaluation": {
+    "overall_score": 0.7,
+    "dimension_scores": {
+      "builds_on_previous": 0.85,
+      "specific_comparison": 0.95,
+      "references_earlier_explanation": 0.3
+    },
+    "reasoning": "The response provides an excellent comparative analysis between attention mechanisms and previous approaches. For 'builds_on_previous', the response logically structures content by first explaining what came before (RNNs/LSTMs, sequential processing) and then contrasting with attention mechanisms - this builds conceptual understanding progressively (0.85). For 'specific_comparison', the response excels with clear before/after comparisons across four dimensions: dynamic focus, direct connections, variable context, and interpretability - each with concrete differences articulated (0.95). However, for 'references_earlier_explanation', the response does not explicitly reference any prior conversation or earlier explanation that was given to the user. The query 'How does attention differ from previous approaches?' suggests this may be a follow-up question in a conversation, but the response treats it as a standalone question without acknowledging or building upon any specific previous explanation provided in the conversation (0.3). The response is technically strong but fails to demonstrate conversational continuity if this was meant to be part of an ongoing dialogue.",
+    "passed_criteria": [
+      "builds_on_previous",
+      "specific_comparison"
+    ],
+    "failed_criteria": [
+      "references_earlier_explanation"
+    ],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 10494.01068687439,
+  "judge_latency_ms": 8019.891977310181,
+  "response_tokens": {
+    "prompt": 29,
+    "completion": 318,
+    "total": 347
+  },
+  "judge_tokens": {
+    "prompt": 642,
+    "completion": 300,
+    "total": 942
+  }
+}

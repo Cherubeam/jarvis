@@ -140,9 +140,9 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] LiteLLM integration for provider flexibility
 - [x] **Comprehensive testing framework (73 tests, 97.5% coverage)**
 
-**Phase 2: Evaluation & Quality Metrics (Next)**
+**Phase 2: Evaluation & Quality Metrics (In Progress)**
 - [x] 8 golden test conversations defined
-- [ ] LLM-as-judge automated evaluation
+- [x] **LLM-as-judge automated evaluation (33 tests, ~$0.41/run)**
 - [ ] Latency tracking (TTFT)
 - [ ] Model comparison benchmarks
 

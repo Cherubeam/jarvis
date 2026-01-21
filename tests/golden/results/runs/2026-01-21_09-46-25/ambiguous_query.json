@@ -1,0 +1,49 @@
+{
+  "test_name": "ambiguous_query",
+  "timestamp": "2026-01-21T08:47:55.059084Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "edge_cases",
+  "context": {
+    "profile": "I am a software engineer learning AI.\n"
+  },
+  "user_message": "What should I do?",
+  "actual_response": "I'd be happy to help you figure out what to do! However, I need a bit more context. Here are some directions we could go:\n\n**Learning & Career Development:**\n- Work on an AI project to build practical skills\n- Study a specific AI topic (ML fundamentals, LLMs, computer vision, etc.)\n- Contribute to open-source AI projects\n- Build a portfolio project\n\n**Right Now:**\n- Take a break if you've been working hard\n- Start that project you've been putting off\n- Learn something new today\n\n**General Direction:**\n- Career planning in AI/ML\n- Skill development priorities\n- Work-life balance\n\nCould you tell me more about:\n- What area of your life you're asking about?\n- What's on your mind right now?\n- Any specific challenge or decision you're facing?\n\nThis will help me give you more targeted and useful advice!",
+  "evaluation": {
+    "overall_score": 0.99,
+    "dimension_scores": {
+      "asks_clarification": 1.0,
+      "acknowledges_ambiguity": 0.95,
+      "offers_suggestions": 1.0,
+      "respectful_tone": 1.0
+    },
+    "reasoning": "The assistant handles this extremely ambiguous query exceptionally well. It explicitly acknowledges the ambiguity by stating 'I need a bit more context' and immediately pivots to being helpful despite the vagueness. The response offers a well-organized set of suggestions across multiple life domains (learning/career, immediate actions, general direction), demonstrating proactive helpfulness. The clarifying questions at the end are specific and actionable, guiding the user toward providing useful context. The tone throughout is warm, enthusiastic ('I'd be happy to help!'), and non-judgmental\u2014never making the user feel bad for asking a vague question. The structured format with headers makes the response easy to scan and engage with.",
+    "passed_criteria": [
+      "asks_clarification",
+      "acknowledges_ambiguity",
+      "offers_suggestions",
+      "respectful_tone"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 5821.035146713257,
+  "judge_latency_ms": 6308.985233306885,
+  "response_tokens": {
+    "prompt": 36,
+    "completion": 186,
+    "total": 222
+  },
+  "judge_tokens": {
+    "prompt": 528,
+    "completion": 273,
+    "total": 801
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "test_name": "technical_deep_dive",
+  "timestamp": "2026-01-21T08:56:34.143318Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {
+    "profile": "I am a software engineer specializing in distributed systems.\n"
+  },
+  "user_message": "What are the tradeoffs between consistency models in distributed databases?",
+  "actual_response": "# Consistency Models in Distributed Databases\n\nGreat question! This is a fundamental challenge in distributed systems. Let me break down the key tradeoffs:\n\n## The Core Tension: CAP Theorem\n\nYou're essentially navigating the **CAP theorem** constraints:\n- **Consistency**: All nodes see the same data\n- **Availability**: Every request gets a response\n- **Partition Tolerance**: System continues despite network failures\n\nYou can only guarantee 2 of 3 simultaneously.\n\n## Main Consistency Models\n\n### 1. **Strong Consistency (Linearizability)**\n- **What it means**: Reads always return the most recent write\n- **Pros**: Simplest mental model, ACID guarantees\n- **Cons**: Higher latency, reduced availability during partitions\n- **Examples**: Google Spanner, etcd, Zookeeper\n- **Use when**: Financial transactions, inventory management\n\n### 2. **Eventual Consistency**\n- **What it means**: All replicas converge eventually if writes stop\n- **Pros**: High availability, low latency, partition-tolerant\n- **Cons**: Temporary inconsistencies, complex application logic\n- **Examples**: DynamoDB, Cassandra (default), Riak\n- **Use when**: Social media feeds, caching, analytics\n\n### 3. **Causal Consistency**\n- **What it means**: Causally-related operations seen in order\n- **Pros**: Balance between strong and eventual\n- **Cons**: More complex implementation, overhead tracking causality\n- **Examples**: MongoDB (some configs), COPS\n- **Use when**: Collaborative applications, comment threads\n\n### 4. **Read-Your-Writes Consistency**\n- **What it means**: You always see your own updates\n- **Pros**: Better UX than eventual consistency\n- **Cons**: Still eventual for other users' writes\n- **Use when**: User profiles, personal dashboards\n\n## Practical Tradeoffs\n\n| Model | Latency | Availability | Complexity | Anomalies |\n|-------|---------|--------------|------------|-----------|\n| Strong | High | Lower | Low | None |\n| Causal | Medium | Medium | Medium | Few |\n| Eventual | Low | High | High | Many |\n\n## Real-World Considerations\n\n**Performance**: Strong consistency requires coordination (2PC, Paxos, Raft) \u2192 more network round-trips\n\n**Geo-distribution**: The farther apart your nodes, the more expensive strong consistency becomes\n\n**Conflict Resolution**: With eventual consistency, you need strategies:\n- Last-write-wins (LWW)\n- CRDTs (Conflict-free Replicated Data Types)\n- Application-level merge functions\n\n## My Recommendation\n\nChoose based on your **data criticality**:\n- **Money, inventory**: Strong consistency\n- **User preferences, settings**: Read-your-writes\n- **Analytics, logs**: Eventual consistency\n- **Social graphs**: Causal consistency\n\nMany systems use **hybrid approaches** - strong consistency for critical data, eventual for everything else (e.g., DynamoDB with transactions for some operations).\n\nWhat's your specific use case? I can provide more targeted guidance.",
+  "evaluation": {
+    "overall_score": 0.99,
+    "dimension_scores": {
+      "technical_depth": 0.95,
+      "structured_response": 1.0,
+      "includes_examples": 1.0,
+      "min_length": 1.0
+    },
+    "reasoning": "This response demonstrates exceptional technical depth covering the CAP theorem, four distinct consistency models with precise definitions, practical tradeoff analysis, and real-world implementation considerations including consensus protocols (Paxos, Raft, 2PC) and conflict resolution strategies (CRDTs, LWW). The structure is excellent with clear hierarchical headings, a comparison table, and logical flow from theory to practical application. Examples are abundant and accurate: Spanner/etcd for strong consistency, DynamoDB/Cassandra for eventual, MongoDB for causal. The response far exceeds the 300-word minimum at approximately 450+ words. The only minor deduction on technical_depth is that it could have included more detail on consistency guarantees like monotonic reads or session guarantees, but this is a very minor omission for an already comprehensive answer.",
+    "passed_criteria": [
+      "technical_depth",
+      "structured_response",
+      "includes_examples",
+      "min_length"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 13037.261009216309,
+  "judge_latency_ms": 7848.891973495483,
+  "response_tokens": {
+    "prompt": 45,
+    "completion": 641,
+    "total": 686
+  },
+  "judge_tokens": {
+    "prompt": 970,
+    "completion": 256,
+    "total": 1226
+  }
+}

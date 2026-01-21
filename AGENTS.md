@@ -81,16 +81,20 @@ mypy personal-context/src/
 ### Testing (Implemented ✅)
 
 ```bash
-# Run all tests
+# Run all tests (free, no LLM calls)
 uv run pytest
 
 # Run with coverage
 uv run pytest --cov=personal-context/src --cov-report=html
 
 # Run specific test categories
-uv run pytest tests/unit/ -v              # Unit tests only
+uv run pytest tests/unit/ -v              # Unit tests only (33 tests)
 uv run pytest tests/integration/ -v       # Integration tests only
-uv run pytest tests/golden/ -v            # Golden test structure validation
+uv run pytest tests/golden/ -v            # Golden test structure validation (free)
+
+# Run golden tests WITH evaluation (costs ~$0.41, requires API key)
+export OPENROUTER_API_KEY="your-key"
+uv run pytest tests/golden/ --evaluate -v
 
 # Run tests in parallel (faster)
 uv run pytest -n auto
@@ -100,11 +104,18 @@ open htmlcov/index.html
 ```
 
 **Test Statistics:**
-- 116 total tests (86 unit + 20 integration + 10 golden)
+- 149 total tests (103 unit + 20 integration + 26 golden/evaluation)
 - 97.5% code coverage on core modules
-- Full suite runs in < 2 seconds
+- Unit/integration suite runs in < 2 seconds
+- LLM-as-judge evaluation: 8 golden tests (~$0.41/run, optional)
 
-See [tests/README.md](tests/README.md) for complete testing guide.
+**LLM-as-Judge Evaluation:**
+- Automated quality assessment using Claude Opus 4.5 as judge
+- Generates detailed markdown reports with scores and recommendations
+- Tracks quality trends over time in `tests/golden/results/`
+- Only runs with `--evaluate` flag (no cost by default)
+
+See [tests/README.md](tests/README.md) and [tests/golden/README.md](tests/golden/README.md) for complete testing guides.
 
 ### Clean Setup Verification
 
@@ -174,11 +185,18 @@ jarvis/
 │       ├── pricing.py              # Cost tracking
 │       └── task_sync.py            # Things 3 integration (~520 lines)
 ├── tests/                          # Comprehensive test suite
-│   ├── unit/                       # 86 unit tests
+│   ├── unit/                       # 103 unit tests (includes evaluator tests)
 │   ├── integration/                # 20 integration tests
-│   ├── golden/                     # 10 golden test conversations
+│   ├── golden/                     # Golden test conversations + LLM-as-judge
+│   │   ├── conversations/          # 8 YAML test cases
+│   │   ├── results/                # Evaluation results (JSON + markdown reports)
+│   │   ├── evaluator.py            # Core evaluation engine (~400 lines)
+│   │   ├── judge_prompts.py        # Judge prompt templates (~200 lines)
+│   │   ├── result_storage.py       # Storage & reporting (~500 lines)
+│   │   ├── test_golden_conversations.py  # Test runner
+│   │   └── README.md               # Evaluation system guide
 │   ├── fixtures/                   # Test data
-│   ├── conftest.py                 # Shared pytest fixtures
+│   ├── conftest.py                 # Shared pytest fixtures + --evaluate flag
 │   ├── TESTING_PLAN.md             # Testing plan
 │   ├── TEST_RESULTS.md             # Test results
 │   └── README.md                   # Testing guide
@@ -197,9 +215,11 @@ jarvis/
 **Test Framework:** pytest with 97.5% code coverage
 
 **Test Categories:**
-- **Unit Tests** (86 tests): Fast, isolated tests for each module
+- **Unit Tests** (103 tests): Fast, isolated tests for each module including evaluator
 - **Integration Tests** (20 tests): Full flow with mocked dependencies
-- **Golden Tests** (10 scenarios): Real conversation test cases for quality evaluation
+- **Golden Tests** (8 tests): Real conversation test cases with LLM-as-judge evaluation
+  - Structure validation: Free, always runs
+  - Quality evaluation: Costs ~$0.41/run, requires `--evaluate` flag
 
 ### Before Committing Code
 

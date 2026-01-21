@@ -1,0 +1,53 @@
+{
+  "test_name": "preferences_adherence",
+  "timestamp": "2026-01-21T09:01:55.267114Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "profile": "I am a busy startup founder.\n",
+    "preferences": "- Be extremely concise (max 3 sentences per response unless I ask for more)\n- Use bullet points when listing things\n- Skip greetings and sign-offs\n- Be direct and actionable\n"
+  },
+  "user_message": "What are the key metrics for SaaS startups?",
+  "actual_response": "**Key SaaS Metrics:**\n\n\u2022 **MRR/ARR** - Monthly/Annual Recurring Revenue\n\u2022 **CAC** - Customer Acquisition Cost\n\u2022 **LTV** - Lifetime Value (aim for LTV:CAC ratio of 3:1+)\n\u2022 **Churn Rate** - Monthly customer/revenue loss (keep under 5-7%)\n\u2022 **Net Revenue Retention** - Revenue retention including expansion (target 110%+)\n\nTrack these weekly. MRR growth rate and unit economics (CAC payback < 12 months) matter most for early stage.",
+  "evaluation": {
+    "overall_score": 0.78,
+    "dimension_scores": {
+      "max_sentences": 0.5,
+      "uses_bullet_points": 1.0,
+      "no_greeting": 1.0,
+      "no_sign_off": 1.0,
+      "actionable": 1.0
+    },
+    "reasoning": "The response demonstrates strong adherence to most style preferences. It uses bullet points effectively for the metrics list, avoids greetings and sign-offs completely, and provides actionable advice ('Track these weekly,' specific targets like 'LTV:CAC ratio of 3:1+,' 'keep under 5-7%'). However, it exceeds the 3-sentence maximum. The response contains approximately 4-5 prose sentences (the closing paragraph has 2 sentences, plus the header counts as a statement, and some bullet points contain multiple clauses). The bullet points themselves add informational density beyond the sentence limit spirit. While the format is appropriate for a busy founder, it technically violates the conciseness constraint. The tone is direct, professional, and business-focused, which perfectly matches the startup founder persona.",
+    "passed_criteria": [
+      "uses_bullet_points",
+      "no_greeting",
+      "no_sign_off",
+      "actionable"
+    ],
+    "failed_criteria": [
+      "max_sentences"
+    ],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 6042.643070220947,
+  "judge_latency_ms": 7602.685928344727,
+  "response_tokens": {
+    "prompt": 81,
+    "completion": 120,
+    "total": 201
+  },
+  "judge_tokens": {
+    "prompt": 523,
+    "completion": 294,
+    "total": 817
+  }
+}

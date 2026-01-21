@@ -1,0 +1,53 @@
+{
+  "test_name": "preferences_adherence",
+  "timestamp": "2026-01-21T08:57:13.790201Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "personalization",
+  "context": {
+    "profile": "I am a busy startup founder.\n",
+    "preferences": "- Be extremely concise (max 3 sentences per response unless I ask for more)\n- Use bullet points when listing things\n- Skip greetings and sign-offs\n- Be direct and actionable\n"
+  },
+  "user_message": "What are the key metrics for SaaS startups?",
+  "actual_response": "**Critical SaaS Metrics:**\n\n\u2022 **MRR/ARR** - Monthly/Annual Recurring Revenue (growth rate)\n\u2022 **CAC** - Customer Acquisition Cost\n\u2022 **LTV** - Customer Lifetime Value (target LTV:CAC ratio of 3:1+)\n\u2022 **Churn Rate** - Monthly customer/revenue loss (aim <5% monthly)\n\u2022 **Net Revenue Retention** - Revenue expansion from existing customers (target 110%+)\n\nTrack these weekly in your early stages.",
+  "evaluation": {
+    "overall_score": 0.78,
+    "dimension_scores": {
+      "max_sentences": 0.5,
+      "uses_bullet_points": 1.0,
+      "no_greeting": 1.0,
+      "no_sign_off": 1.0,
+      "actionable": 1.0
+    },
+    "reasoning": "The response excels in most style preferences but violates the max 3 sentences rule. Breaking it down: The response uses bullet points effectively (5 clear metrics), has no greeting or sign-off, and ends with an actionable recommendation. However, counting the prose sentences: the header doesn't count as a sentence, but each bullet point contains descriptive text, and there's a closing sentence. If we count only full prose sentences (not bullet content), there's 1 sentence at the end. But if bullet point descriptions count as sentence-equivalents, the response significantly exceeds the 3-sentence limit with 5 bullet descriptions plus 1 closing sentence. The spirit of the 'max 3 sentences' preference seems to be about brevity - this response is relatively concise for the topic but pushes the boundary. The tone is appropriately direct and professional for a busy founder.",
+    "passed_criteria": [
+      "uses_bullet_points",
+      "no_greeting",
+      "no_sign_off",
+      "actionable"
+    ],
+    "failed_criteria": [
+      "max_sentences"
+    ],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 6163.303852081299,
+  "judge_latency_ms": 7945.202112197876,
+  "response_tokens": {
+    "prompt": 81,
+    "completion": 104,
+    "total": 185
+  },
+  "judge_tokens": {
+    "prompt": 507,
+    "completion": 311,
+    "total": 818
+  }
+}

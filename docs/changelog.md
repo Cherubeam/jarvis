@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added (2026-01-20 Evening)
+- **LLM-as-Judge Evaluation System** - Complete automated quality assessment
+  - Core evaluation engine with `JudgeEvaluator` class (~400 lines)
+  - Category-specific judge prompts for 4 test types (~200 lines)
+  - Result storage with JSON + markdown report generation (~500 lines)
+  - 33 additional unit tests (16 evaluator + 17 storage)
+  - Pytest plugin with `--evaluate` flag for on-demand evaluation
+  - Historical tracking with trend analysis in `tests/golden/results/`
+  - Cost management with configurable budget limits ($1.00 max, $0.50 warn)
+  - Expected cost: ~$0.41 per full run (8 tests)
+  - Uses Claude Opus 4.5 as judge for highest quality evaluations
+  - Structured JSON output + markdown reports with recommendations
+  - See [tests/golden/README.md](../tests/golden/README.md) for complete usage guide
+
+### Added (2026-01-20 Morning)
 - **Things 3 Integration (Phase A)**: Context awareness from Things 3 task manager
 - **Automatic Language Detection**: Supports German, French, Spanish, Italian, English Things 3 installations
 - **Task Sync Module**: `task_sync.py` (~520 lines) with AppleScript integration
@@ -18,7 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **43 Additional Tests**: 33 unit tests + 8 integration tests + 2 golden tests for task sync
 - **MCP Architecture**: Preserved MCPThings3Client class for Phase B (interactive features)
 
-### Changed
+### Changed (2026-01-20 Evening)
+- **Test Suite**: Expanded from 116 to 149 tests total (103 unit + 20 integration + 26 golden/evaluation)
+- Updated `config.yaml` with evaluation settings (judge model, thresholds, cost limits)
+- Modified `conftest.py` to add evaluation fixtures and `--evaluate` flag support
+- Modified `test_golden_conversations.py` to implement evaluation execution
+- Updated all documentation (AGENTS.md, README.md, testing.md, roadmap.md)
+
+### Changed (2026-01-20 Morning)
 - **Test Suite**: Expanded from 73 to 116 tests total
 - **Context Builder**: Now loads `tasks.md` as 4th context file
 - **CLI Startup**: Added task sync before building system prompt

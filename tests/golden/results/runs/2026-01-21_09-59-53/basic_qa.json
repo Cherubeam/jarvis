@@ -1,0 +1,45 @@
+{
+  "test_name": "basic_qa",
+  "timestamp": "2026-01-21T09:00:02.720020Z",
+  "model_tested": "anthropic/claude-sonnet-4.5",
+  "judge_model": "anthropic/claude-opus-4.5",
+  "test_category": "reasoning",
+  "context": {},
+  "user_message": "What is the capital of France?",
+  "actual_response": "The capital of France is **Paris**.\n\nParis is not only the capital but also the largest city in France, known for its iconic landmarks like the Eiffel Tower, the Louvre Museum, Notre-Dame Cathedral, and its rich history, art, culture, and cuisine.",
+  "evaluation": {
+    "overall_score": 0.95,
+    "dimension_scores": {
+      "accurate": 1.0,
+      "concise": 0.85,
+      "confident": 1.0
+    },
+    "reasoning": "The response correctly identifies Paris as the capital of France, demonstrating complete accuracy. The answer is delivered with full confidence, using definitive language ('The capital of France is Paris') without hedging or uncertainty. Regarding conciseness, the response provides the direct answer immediately in the first sentence, which is excellent. The additional context about Paris being the largest city and mentioning landmarks is helpful but slightly extends beyond what was strictly asked. However, this supplementary information is brief and relevant, so it only marginally affects the conciseness score. Overall, this is a high-quality response that directly answers the question with accurate, confident information.",
+    "passed_criteria": [
+      "accurate",
+      "concise",
+      "confident"
+    ],
+    "failed_criteria": [],
+    "forbidden_patterns_found": [],
+    "content_checks_passed": true,
+    "themes_present": []
+  },
+  "passed": true,
+  "quality_threshold": 0.7,
+  "response_cost_usd": 0.0,
+  "judge_cost_usd": 0.0,
+  "total_cost_usd": 0.0,
+  "response_latency_ms": 3068.6681270599365,
+  "judge_latency_ms": 5749.068975448608,
+  "response_tokens": {
+    "prompt": 28,
+    "completion": 57,
+    "total": 85
+  },
+  "judge_tokens": {
+    "prompt": 372,
+    "completion": 208,
+    "total": 580
+  }
+}
