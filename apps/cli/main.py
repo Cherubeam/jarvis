@@ -15,6 +15,7 @@ from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger
 from packages.core.pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
 from packages.integrations.things3.task_sync import sync_tasks_to_file
+from packages.telemetry.metrics import MetricsTracker
 
 
 def get_project_root() -> Path:
@@ -97,6 +98,7 @@ def main():
     )
 
     logger = ConversationLogger(conversations_dir)
+    metrics_tracker = MetricsTracker()
 
     # Fetch pricing for the model
     pricing = get_model_pricing(model_id)
@@ -133,8 +135,13 @@ def main():
             print("\nAssistant: ", end="", flush=True)
             full_response = []
 
+            metrics_tracker.start_request()
             stream = client.chat_stream(messages)
+            first_token = True
             for chunk in stream:
+                if first_token:
+                    metrics_tracker.record_first_token()
+                    first_token = False
                 print(chunk, end="", flush=True)
                 full_response.append(chunk)
 
@@ -152,10 +159,21 @@ def main():
                 # Note: Suppresses Pydantic warnings for streaming responses
                 cost_usd = calculate_cost_from_litellm(stream.raw_response)
 
+            # Finish metrics tracking
+            response_metrics = metrics_tracker.finish_request(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                cost_usd=cost_usd,
+                model=model_id,
+            )
+
+            # Display response stats with TTFT
+            ttft_str = f"TTFT: {response_metrics.ttft_ms:.0f}ms"
+            latency_str = f"Total: {response_metrics.total_latency_ms:.0f}ms"
             if cost_usd > 0:
-                print(f"[{usage.total_tokens:,} tokens | {format_cost(cost_usd)}]")
+                print(f"[{usage.total_tokens:,} tokens | {format_cost(cost_usd)} | {ttft_str} | {latency_str}]")
             else:
-                print(f"[{usage.total_tokens:,} tokens]")
+                print(f"[{usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]")
 
             logger.add_message(
                 "assistant",
@@ -164,6 +182,8 @@ def main():
                 completion_tokens=usage.completion_tokens,
                 total_tokens=usage.total_tokens,
                 cost_usd=cost_usd,
+                ttft_ms=response_metrics.ttft_ms,
+                total_latency_ms=response_metrics.total_latency_ms,
             )
 
     except KeyboardInterrupt:

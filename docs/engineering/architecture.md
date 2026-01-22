@@ -53,12 +53,13 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 **Responsibilities:**
 - Parse user input from stdin
 - Display streamed responses
-- Show token usage and costs
+- Show token usage, costs, and latency metrics (TTFT, total latency)
 - Handle session lifecycle (start, interrupt, end)
+- Track response latency using MetricsTracker
 
 **Key Functions:**
 - `load_config()`: Load YAML config and environment variables
-- `main()`: Main chat loop
+- `main()`: Main chat loop with metrics tracking
 
 **Dependencies:**
 - `packages.integrations.things3.task_sync`: Sync Things 3 tasks on startup
@@ -66,6 +67,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - `packages.core.llm_client`: Stream LLM responses
 - `packages.core.memory`: Log conversations
 - `packages.core.pricing`: Calculate costs
+- `packages.telemetry.metrics`: Track TTFT and response latency
 
 ---
 
@@ -134,15 +136,16 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Responsibilities:**
 - Accumulate messages during session
-- Track session metadata (tokens, cost, model)
+- Track session metadata (tokens, cost, latency, model)
 - Save to timestamped JSON files
 - Return message history for API calls
 
-**Key Class:**
-- `ConversationLogger`
+**Key Classes:**
+- `SessionMetrics`: Aggregated metrics including latency
+- `ConversationLogger`: Main logging class
 
 **Key Methods:**
-- `add_message(role, content, ...)`: Add message to log
+- `add_message(role, content, ..., ttft_ms, total_latency_ms)`: Add message to log
 - `get_messages_for_api()`: Format messages for LLM API
 - `save()`: Write to JSON file
 
@@ -153,12 +156,19 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
   "model": "anthropic/claude-sonnet-4.5",
   "messages": [
     {"role": "user", "content": "...", "timestamp": "..."},
-    {"role": "assistant", "content": "...", "tokens": {...}}
+    {
+      "role": "assistant",
+      "content": "...",
+      "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150, "cost_usd": 0.0045},
+      "latency": {"ttft_ms": 250.0, "total_ms": 1500.0}
+    }
   ],
-  "session_stats": {
-    "total_requests": 10,
+  "metrics": {
     "total_tokens": 15000,
-    "total_cost_usd": 0.045
+    "total_cost_usd": 0.045,
+    "average_ttft_ms": 280.0,
+    "average_latency_ms": 1650.0,
+    "request_count": 10
   }
 }
 ```

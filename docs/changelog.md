@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added (2026-01-22)
+- **TTFT (Time to First Token) Tracking**: Integrated latency metrics into CLI and conversation logs
+  - CLI now displays TTFT and total latency after each response
+  - Session summary includes average TTFT and latency across all requests
+  - Conversation JSON logs include latency metrics per message
+  - Extended `SessionMetrics` with `average_ttft_ms` and `average_latency_ms` properties
+  - New unit test for latency tracking
 - **Scalable Monorepo Structure**: Major folder restructure for multi-agent and web interface support
   - New `apps/` directory for deployable applications (CLI, web)
   - New `packages/` directory for shared libraries (core, agents, integrations, telemetry)
@@ -271,10 +277,10 @@ Changes are grouped by type:
 
 See [roadmap.md](product/roadmap.md) for detailed plans.
 
-### Phase 2: Evaluation & Metrics (50% Complete)
+### Phase 2: Evaluation & Metrics (75% Complete)
 - ✅ Golden test suite (8 test conversations)
 - ✅ LLM-as-judge automated evaluation
-- ⏳ TTFT tracking (infrastructure ready)
+- ✅ TTFT tracking (integrated into CLI)
 - ⏳ Model benchmarking
 
 ### Phase 3: Web Interface + Context Management (Next)

@@ -30,7 +30,7 @@ None currently.
 
 **Timeline**: 2-3 weeks (Late January - Early February 2026)
 **Goal**: Systematic quality measurement and baseline establishment
-**Status**: 🚀 50% Complete (LLM-as-judge implemented)
+**Status**: 🚀 75% Complete (LLM-as-judge + TTFT tracking)
 
 ### Features
 
@@ -54,7 +54,11 @@ None currently.
 - [ ] Phase B (Interactive management) - Moved to Phase 5
 
 #### Metrics Implementation
-- [ ] Latency tracking (Time to First Token - TTFT)
+- [x] Latency tracking (Time to First Token - TTFT) ✅ (2026-01-22)
+  - MetricsTracker integrated into CLI
+  - TTFT and total latency displayed after each response
+  - Session summary with average latency metrics
+  - Conversation JSON logs include latency per message
 - [ ] Response quality scoring (manual → automated)
 - [ ] Context utilization analysis (does it reference personal context?)
 - [ ] Cost per conversation type benchmarks
@@ -304,6 +308,10 @@ None currently.
 ## Recently Completed
 
 ### January 22, 2026
+- ✅ **TTFT (Time to First Token) tracking integrated into CLI**
+  - Displays TTFT and total latency after each response
+  - Session summary shows average TTFT and latency
+  - Conversation JSON logs include latency metrics
 - ✅ **Folder restructure for scalability**
 - ✅ **New monorepo structure: `apps/`, `packages/`, `data/`, `config/`**
 - ✅ **Core modules moved to `packages/core/`**

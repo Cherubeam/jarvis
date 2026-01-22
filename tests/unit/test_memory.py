@@ -30,6 +30,8 @@ class TestSessionMetrics:
         assert metrics.total_tokens == 0
         assert metrics.total_cost_usd == 0.0
         assert metrics.request_count == 0
+        assert metrics.total_ttft_ms == 0.0
+        assert metrics.total_latency_ms == 0.0
 
     def test_session_metrics_add_usage(self):
         """Test that add_usage accumulates tokens and cost correctly."""
@@ -66,7 +68,7 @@ class TestSessionMetrics:
     def test_session_metrics_to_dict(self):
         """Test that to_dict serializes correctly."""
         metrics = SessionMetrics()
-        metrics.add_usage(100, 50, 150, 0.0045)
+        metrics.add_usage(100, 50, 150, 0.0045, ttft_ms=250.0, total_latency_ms=1500.0)
 
         result = metrics.to_dict()
 
@@ -75,7 +77,9 @@ class TestSessionMetrics:
             "total_completion_tokens": 50,
             "total_tokens": 150,
             "total_cost_usd": 0.0045,
-            "request_count": 1
+            "request_count": 1,
+            "average_ttft_ms": 250.0,
+            "average_latency_ms": 1500.0,
         }
 
     def test_session_metrics_zero_cost(self):
@@ -85,6 +89,20 @@ class TestSessionMetrics:
 
         assert metrics.total_cost_usd == 0.0
         assert metrics.request_count == 1
+
+    def test_session_metrics_latency_tracking(self):
+        """Test that latency metrics are tracked and averaged correctly."""
+        metrics = SessionMetrics()
+
+        # First request: fast TTFT
+        metrics.add_usage(100, 50, 150, 0.001, ttft_ms=200.0, total_latency_ms=1000.0)
+        # Second request: slower TTFT
+        metrics.add_usage(100, 50, 150, 0.001, ttft_ms=400.0, total_latency_ms=2000.0)
+
+        assert metrics.total_ttft_ms == 600.0
+        assert metrics.total_latency_ms == 3000.0
+        assert metrics.average_ttft_ms == 300.0
+        assert metrics.average_latency_ms == 1500.0
 
 
 @pytest.mark.unit
