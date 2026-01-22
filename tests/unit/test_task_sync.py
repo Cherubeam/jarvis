@@ -11,27 +11,15 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-# Try new import path first, fall back to old for backward compatibility
-try:
-    from packages.integrations.things3.task_sync import (
-        MCPThings3Client,
-        Task,
-        TaskSyncCache,
-        fetch_tasks_async,
-        format_tasks_as_markdown,
-        parse_task_response,
-        sync_tasks_to_file,
-    )
-except ImportError:
-    from task_sync import (
-        MCPThings3Client,
-        Task,
-        TaskSyncCache,
-        fetch_tasks_async,
-        format_tasks_as_markdown,
-        parse_task_response,
-        sync_tasks_to_file,
-    )
+from packages.integrations.things3.task_sync import (
+    MCPThings3Client,
+    Task,
+    TaskSyncCache,
+    fetch_tasks_async,
+    format_tasks_as_markdown,
+    parse_task_response,
+    sync_tasks_to_file,
+)
 
 
 @pytest.mark.unit
@@ -320,7 +308,7 @@ class TestFetchTasksAsync:
         }
         cache.set(cache_data)
 
-        with patch("task_sync.TaskSyncCache") as mock_cache_class:
+        with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class:
             mock_cache_instance = Mock()
             mock_cache_instance.get.return_value = cache_data
             mock_cache_class.return_value = mock_cache_instance
@@ -339,14 +327,14 @@ class TestFetchTasksAsync:
             "lists_to_include": ["Inbox"],
         }
 
-        with patch("task_sync.MCPThings3Client") as mock_client_class:
+        with patch("packages.integrations.things3.task_sync.MCPThings3Client") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.call_tool = AsyncMock(
                 return_value="• Task from MCP (Due: date)"
             )
             mock_client_class.return_value = mock_client
 
-            with patch("task_sync.TaskSyncCache") as mock_cache:
+            with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache:
                 mock_cache_instance = Mock()
                 mock_cache_instance.get.return_value = None
                 mock_cache.return_value = mock_cache_instance
@@ -382,7 +370,7 @@ class TestSyncTasksToFile:
         assert result is False
         assert not output_path.exists()
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_sync_success(self, mock_run, tmp_path):
         """Test successful sync writes markdown file."""
         config = {
@@ -410,7 +398,7 @@ class TestSyncTasksToFile:
         assert "Task 1" in content
         assert "Task 2" in content
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_sync_handles_errors(self, mock_run, tmp_path):
         """Test sync handles errors gracefully."""
         config = {"things3": {"enabled": True, "sync_on_startup": True}}

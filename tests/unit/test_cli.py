@@ -10,11 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, mock_open, MagicMock
 import yaml
 
-# Try new import path first, fall back to old for backward compatibility
-try:
-    from apps.cli.main import load_config
-except ImportError:
-    from cli import load_config
+from apps.cli.main import load_config
 
 
 @pytest.mark.unit
@@ -52,12 +48,12 @@ system_prompt_prefix: |
         mock_src_dir.parent = mock_personal_context_dir
         mock_personal_context_dir.parent = mock_jarvis_dir
 
-        with patch('cli.Path') as mock_path_class:
+        with patch('apps.cli.main.Path') as mock_path_class:
             # Make Path(__file__) return our mock src_dir
             mock_path_class.return_value = mock_src_dir
 
             # Mock load_dotenv to load our test .env
-            with patch('cli.load_dotenv'):
+            with patch('apps.cli.main.load_dotenv'):
                 # Mock environment variable
                 monkeypatch.setenv("OPENROUTER_API_KEY", "test-api-key-12345")
 
@@ -103,10 +99,10 @@ paths:
         mock_src_dir.parent = mock_personal_context_dir
         mock_personal_context_dir.parent = mock_jarvis_dir
 
-        with patch('cli.Path') as mock_path_class:
+        with patch('apps.cli.main.Path') as mock_path_class:
             mock_path_class.return_value = mock_src_dir
 
-            with patch('cli.load_dotenv'):
+            with patch('apps.cli.main.load_dotenv'):
                 with patch('builtins.open', mock_open(read_data=config_content)):
                     with patch('yaml.safe_load') as mock_yaml:
                         mock_yaml.return_value = {
@@ -135,10 +131,10 @@ paths:
         mock_src_dir.parent = mock_personal_context_dir
         mock_personal_context_dir.parent = mock_jarvis_dir
 
-        with patch('cli.Path') as mock_path_class:
+        with patch('apps.cli.main.Path') as mock_path_class:
             mock_path_class.return_value = mock_src_dir
 
-            with patch('cli.load_dotenv'):
+            with patch('apps.cli.main.load_dotenv'):
                 with patch('builtins.open', side_effect=FileNotFoundError("config.yaml not found")):
                     # Should raise FileNotFoundError
                     with pytest.raises(FileNotFoundError):
@@ -163,10 +159,10 @@ paths:
         mock_src_dir.parent = mock_personal_context_dir
         mock_personal_context_dir.parent = mock_jarvis_dir
 
-        with patch('cli.Path') as mock_path_class:
+        with patch('apps.cli.main.Path') as mock_path_class:
             mock_path_class.return_value = mock_src_dir
 
-            with patch('cli.load_dotenv'):
+            with patch('apps.cli.main.load_dotenv'):
                 with patch('builtins.open', mock_open(read_data=config_content)):
                     with patch('yaml.safe_load') as mock_yaml:
                         mock_yaml.return_value = {
@@ -203,10 +199,10 @@ paths:
         mock_src_dir.parent = mock_personal_context_dir
         mock_personal_context_dir.parent = mock_jarvis_dir
 
-        with patch('cli.Path') as mock_path_class:
+        with patch('apps.cli.main.Path') as mock_path_class:
             mock_path_class.return_value = mock_src_dir
 
-            with patch('cli.load_dotenv'):
+            with patch('apps.cli.main.load_dotenv'):
                 with patch('builtins.open', mock_open(read_data=config_content)):
                     with patch('yaml.safe_load') as mock_yaml:
                         mock_yaml.return_value = {

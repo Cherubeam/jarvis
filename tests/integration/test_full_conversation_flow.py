@@ -7,10 +7,10 @@ Tests the complete flow from user input through LLM response to logging.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
-from llm_client import LLMClient, TokenUsage
-from memory import ConversationLogger
-from context_builder import build_system_prompt
-from pricing import ModelPricing
+from packages.core.llm_client import LLMClient, TokenUsage
+from packages.core.memory import ConversationLogger
+from packages.core.context_builder import build_system_prompt
+from packages.core.pricing import ModelPricing
 
 
 @pytest.mark.integration

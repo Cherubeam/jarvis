@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch
 import pytest
 import yaml
 
-from context_builder import build_system_prompt
-from task_sync import Task, sync_tasks_to_file
+from packages.core.context_builder import build_system_prompt
+from packages.integrations.things3.task_sync import Task, sync_tasks_to_file
 
 
 @pytest.mark.integration
@@ -71,7 +71,7 @@ class TestThings3Integration:
         assert "Test User" in prompt
         assert "Their tasks" not in prompt  # Section shouldn't appear if no tasks
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_sync_creates_valid_tasks_file(self, mock_run, tmp_path):
         """Test that sync creates a valid tasks.md file."""
         context_dir = tmp_path / "context"
@@ -121,7 +121,7 @@ class TestThings3Integration:
         assert result is False
         assert not output_path.exists()
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_sync_failure_doesnt_break_startup(self, mock_run, tmp_path):
         """Test that sync failure doesn't prevent Jarvis from starting."""
         context_dir = tmp_path / "context"
@@ -143,7 +143,7 @@ class TestThings3Integration:
         prompt = build_system_prompt(context_dir, "You are Jarvis.")
         assert "You are Jarvis" in prompt
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_large_task_list_truncation(self, mock_run, tmp_path):
         """Test that large task lists are truncated properly."""
         context_dir = tmp_path / "context"
@@ -181,7 +181,7 @@ class TestThings3Integration:
         # Should have truncation indicator
         assert "(+90 more)" in content
 
-    @patch("task_sync.asyncio.run")
+    @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_full_cli_integration_flow(self, mock_run, tmp_path):
         """Test full integration flow as if running CLI."""
         # Setup project structure

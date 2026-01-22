@@ -7,7 +7,7 @@ Tests pricing API interaction and cost calculation in realistic scenarios.
 import pytest
 import requests
 from unittest.mock import Mock, patch
-from pricing import (
+from packages.core.pricing import (
     ModelPricing,
     fetch_all_pricing,
     get_model_pricing,

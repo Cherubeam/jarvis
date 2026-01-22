@@ -14,12 +14,8 @@ from typing import Any
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-src_dir = Path(__file__).parent.parent.parent / "personal-context" / "src"
-sys.path.insert(0, str(src_dir))
-
-from llm_client import LLMClient, TokenUsage
-from pricing import calculate_cost_from_litellm
+from packages.core.llm_client import LLMClient, TokenUsage
+from packages.core.pricing import calculate_cost_from_litellm
 
 from judge_prompts import build_judge_prompt
 
