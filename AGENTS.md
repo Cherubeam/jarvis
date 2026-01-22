@@ -69,13 +69,35 @@ uv venv                     # Create virtual environment (auto-created by uv syn
 ### Running the CLI
 
 ```bash
-uv run python personal-context/src/cli.py
+# Using module syntax (always works)
+uv run python -m apps.cli.main
+
+# Using the installed script (requires editable install)
+uv run jarvis
 ```
+
+### ⚠️ Script Entry Point Setup
+
+If `uv run jarvis` fails with `ModuleNotFoundError: No module named 'apps'`, you need to install the package in editable mode:
+
+```bash
+uv pip install -e .
+```
+
+**Why this happens:**
+- `uv run python -m apps.cli.main` works because Python adds the current directory to `sys.path`
+- `uv run jarvis` uses the installed script entry point which needs the packages to be properly installed
+- After running `uv pip install -e .`, both methods will work
+
+**When to run editable install:**
+- After a fresh clone
+- After changing the package structure in `pyproject.toml`
+- When switching between branches with different structures
 
 ### Type Checking
 
 ```bash
-mypy personal-context/src/
+mypy packages/ apps/
 ```
 
 ### Testing (Implemented ✅)
@@ -85,7 +107,7 @@ mypy personal-context/src/
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Run specific test categories
 uv run pytest tests/unit/ -v              # Unit tests only (33 tests)
@@ -124,7 +146,8 @@ Always verify changes work from clean environment:
 ```bash
 rm -rf .venv
 uv sync
-uv run python personal-context/src/cli.py
+uv pip install -e .        # Required for script entry point
+uv run jarvis              # Or: uv run python -m apps.cli.main
 ```
 
 ---
@@ -160,9 +183,10 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-# Local
-from context_builder import build_system_prompt
-from llm_client import LLMClient
+# Local (use package imports)
+from packages.core.context_builder import build_system_prompt
+from packages.core.llm_client import LLMClient
+from packages.integrations.things3.task_sync import sync_tasks_to_file
 ```
 
 ---
@@ -171,40 +195,62 @@ from llm_client import LLMClient
 
 ```
 jarvis/
-├── config.yaml                     # Configuration
-├── .env                            # API keys (gitignored)
-├── personal-context/
-│   ├── context/                    # User context (markdown)
+├── apps/                           # Deployable applications
+│   ├── cli/                        # CLI entry point
+│   │   └── main.py                 # CLI application
+│   └── web/                        # Web application (Phase 3)
+│       ├── backend/                # FastAPI backend
+│       └── frontend/               # React frontend
+│
+├── packages/                       # Shared libraries
+│   ├── core/                       # Core functionality
+│   │   ├── llm_client.py           # LLM abstraction (LiteLLM)
+│   │   ├── context_builder.py      # System prompt assembly
+│   │   ├── memory.py               # Conversation logging
+│   │   └── pricing.py              # Cost tracking
+│   ├── agents/                     # Agent implementations
+│   │   ├── base.py                 # Base agent class
+│   │   └── jarvis/                 # Main JARVIS agent
+│   ├── integrations/               # External service integrations
+│   │   └── things3/                # Things 3 task sync (~520 lines)
+│   │       └── task_sync.py
+│   └── telemetry/                  # Metrics and evaluation
+│       └── metrics.py              # TTFT tracking, response metrics
+│
+├── data/                           # User data (gitignored where needed)
+│   ├── context/                    # Personal context (markdown)
+│   │   ├── profile.md
+│   │   ├── preferences.md
+│   │   ├── current_focus.md
 │   │   └── tasks.md                # Auto-synced Things 3 tasks
-│   ├── memory/conversations/       # Session logs (gitignored)
-│   └── src/                        # Source code
-│       ├── cli.py                  # Entry point
-│       ├── llm_client.py           # LLM abstraction (LiteLLM)
-│       ├── context_builder.py      # System prompt assembly
-│       ├── memory.py               # Conversation logging
-│       ├── pricing.py              # Cost tracking
-│       └── task_sync.py            # Things 3 integration (~520 lines)
+│   └── conversations/              # Session logs (gitignored)
+│
+├── config/                         # Configuration
+│   ├── default.yaml                # Default configuration
+│   └── local.yaml                  # Local overrides (gitignored)
+│
 ├── tests/                          # Comprehensive test suite
-│   ├── unit/                       # 103 unit tests (includes evaluator tests)
+│   ├── unit/                       # 103 unit tests
 │   ├── integration/                # 20 integration tests
 │   ├── golden/                     # Golden test conversations + LLM-as-judge
 │   │   ├── conversations/          # 8 YAML test cases
-│   │   ├── results/                # Evaluation results (JSON + markdown reports)
-│   │   ├── evaluator.py            # Core evaluation engine (~400 lines)
-│   │   ├── judge_prompts.py        # Judge prompt templates (~200 lines)
-│   │   ├── result_storage.py       # Storage & reporting (~500 lines)
-│   │   ├── test_golden_conversations.py  # Test runner
-│   │   └── README.md               # Evaluation system guide
-│   ├── fixtures/                   # Test data
-│   ├── conftest.py                 # Shared pytest fixtures + --evaluate flag
-│   ├── TESTING_PLAN.md             # Testing plan
-│   ├── TEST_RESULTS.md             # Test results
-│   └── README.md                   # Testing guide
-└── docs/                           # Documentation
-    ├── product/                    # Product docs (vision, roadmap, metrics, ADRs)
-    ├── engineering/                # Technical docs (architecture, API, testing)
-    └── research/                   # AI engineering (framework, models, prompts)
+│   │   ├── results/                # Evaluation results
+│   │   ├── evaluator.py            # Core evaluation engine
+│   │   ├── judge_prompts.py        # Judge prompt templates
+│   │   └── result_storage.py       # Storage & reporting
+│   └── conftest.py                 # Shared pytest fixtures
+│
+├── docs/                           # Documentation
+│   ├── product/                    # Vision, roadmap, metrics, ADRs
+│   ├── engineering/                # Architecture, API, testing
+│   └── research/                   # AI engineering notes
+│
+├── scripts/                        # Utility scripts
+├── .env                            # API keys (gitignored)
+└── pyproject.toml                  # Project configuration
 ```
+
+**Note**: The old `personal-context/` structure is deprecated. Use the new `packages/`, `apps/`, and `data/` directories.
 
 ---
 
@@ -233,7 +279,7 @@ uv run pytest tests/unit/
 uv run pytest
 
 # With coverage report
-uv run pytest --cov=personal-context/src --cov-report=term
+uv run pytest --cov=packages --cov=apps --cov-report=term
 ```
 
 ### Writing New Tests
@@ -254,11 +300,11 @@ See [tests/TESTING_PLAN.md](tests/TESTING_PLAN.md) for detailed testing guidelin
 
 For end-to-end verification:
 
-1. Start CLI: `uv run python personal-context/src/cli.py`
+1. Start CLI: `uv run python -m apps.cli.main`
 2. Verify context loading (check system prompt includes profile.md)
 3. Test streaming responses
 4. Verify token/cost tracking
-5. Check conversation logs saved
+5. Check conversation logs saved in `data/conversations/`
 
 ---
 
@@ -266,13 +312,13 @@ For end-to-end verification:
 
 ### Never Modify Without Explicit Request
 
-- `config.yaml` - User configuration
-- `personal-context/context/*.md` - User's personal context (except tasks.md which is auto-generated)
+- `config/default.yaml`, `config/local.yaml` - Configuration files
+- `data/context/*.md` - User's personal context (except tasks.md which is auto-generated)
 - `.env` - API keys (never commit)
 
 ### Read-Only Unless Fixing Bugs
 
-- `personal-context/memory/conversations/*.json` - Conversation logs
+- `data/conversations/*.json` - Conversation logs
 - `docs/product/decisions.md` - Architecture Decision Records
 
 ---
@@ -370,13 +416,20 @@ git commit -m "Add package-name dependency"
 ### Creating New Context File
 
 ```bash
-echo "# New Context Section" > personal-context/context/new_file.md
-# Update context_builder.py to load it
+echo "# New Context Section" > data/context/new_file.md
+# Update packages/core/context_builder.py to load it
 ```
 
 ### Switching LLM Providers
 
-Edit `personal-context/src/cli.py`:
+Edit `config/default.yaml` or `config/local.yaml`:
+
+```yaml
+openrouter:
+  default_model: "anthropic/claude-sonnet-4.5"  # Change to desired model
+```
+
+Or programmatically in `apps/cli/main.py`:
 
 ```python
 client = LLMClient(
@@ -496,15 +549,15 @@ uv add --dev pytest-something
 uv sync --extra test
 
 # Run the app
-uv run python personal-context/src/cli.py
+uv run python -m apps.cli.main
 
 # Run all tests
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 ```
 
 ---
 
-*Last updated: 2026-01-20*
+*Last updated: 2026-01-22*

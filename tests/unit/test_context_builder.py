@@ -6,7 +6,12 @@ Tests the functionality of loading context files and building system prompts.
 
 import pytest
 from pathlib import Path
-from context_builder import load_context_file, build_system_prompt
+
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from packages.core.context_builder import load_context_file, build_system_prompt
+except ImportError:
+    from context_builder import load_context_file, build_system_prompt
 
 
 @pytest.mark.unit

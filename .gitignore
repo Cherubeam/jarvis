@@ -12,3 +12,29 @@ wheels/
 .env
 memory/
 personal-context/context/
+
+# Personal data
+data/context/
+data/conversations/
+data/learned_facts.md
+
+# Local config overrides (keep default.yaml, ignore local overrides)
+config/local.yaml
+config/*.local.yaml
+
+# IDE/Editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test/coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+tests/golden/results/

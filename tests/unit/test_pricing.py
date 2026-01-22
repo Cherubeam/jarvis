@@ -7,13 +7,26 @@ Tests model pricing, cost calculation, and API interactions.
 import pytest
 from unittest.mock import Mock, patch
 import requests
-from pricing import (
-    ModelPricing,
-    fetch_all_pricing,
-    get_model_pricing,
-    calculate_cost_from_litellm,
-    format_cost
-)
+
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from packages.core.pricing import (
+        ModelPricing,
+        fetch_all_pricing,
+        get_model_pricing,
+        calculate_cost_from_litellm,
+        format_cost
+    )
+    PRICING_MODULE = "packages.core.pricing"
+except ImportError:
+    from pricing import (
+        ModelPricing,
+        fetch_all_pricing,
+        get_model_pricing,
+        calculate_cost_from_litellm,
+        format_cost
+    )
+    PRICING_MODULE = "pricing"
 
 
 @pytest.mark.unit
@@ -127,7 +140,7 @@ class TestGetModelPricing:
 
     def test_get_model_pricing_found(self, sample_pricing_data):
         """Test getting pricing for an existing model."""
-        with patch('pricing.fetch_all_pricing') as mock_fetch:
+        with patch(f'{PRICING_MODULE}.fetch_all_pricing') as mock_fetch:
             mock_fetch.return_value = {
                 "anthropic/claude-sonnet-4.5": ModelPricing(
                     prompt_cost=0.000003,
@@ -144,7 +157,7 @@ class TestGetModelPricing:
 
     def test_get_model_pricing_not_found(self):
         """Test that None is returned for unknown models."""
-        with patch('pricing.fetch_all_pricing') as mock_fetch:
+        with patch(f'{PRICING_MODULE}.fetch_all_pricing') as mock_fetch:
             mock_fetch.return_value = {}
 
             result = get_model_pricing("unknown-model")
@@ -153,7 +166,7 @@ class TestGetModelPricing:
 
     def test_get_model_pricing_strips_prefix(self):
         """Test that 'openrouter/' prefix is stripped for lookup."""
-        with patch('pricing.fetch_all_pricing') as mock_fetch:
+        with patch(f'{PRICING_MODULE}.fetch_all_pricing') as mock_fetch:
             mock_fetch.return_value = {
                 "anthropic/claude-sonnet-4.5": ModelPricing(
                     prompt_cost=0.000003,

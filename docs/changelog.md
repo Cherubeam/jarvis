@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-01-22)
+- **Scalable Monorepo Structure**: Major folder restructure for multi-agent and web interface support
+  - New `apps/` directory for deployable applications (CLI, web)
+  - New `packages/` directory for shared libraries (core, agents, integrations, telemetry)
+  - New `data/` directory for user data (context, conversations)
+  - New `config/` directory for configuration files
+- **BaseAgent Foundation**: `packages/agents/base.py` with abstract base class for agents
+- **JarvisAgent**: Initial orchestrator agent in `packages/agents/jarvis/agent.py`
+- **MetricsTracker**: `packages/telemetry/metrics.py` for TTFT and response metrics tracking
+- **Web Interface Structure**: `apps/web/` prepared for FastAPI backend + React frontend
+- **Web Dependencies**: Added FastAPI, uvicorn, sse-starlette to pyproject.toml
+
+### Changed (2026-01-22)
+- **Project Structure**: Migrated from `personal-context/` to monorepo structure
+  - `personal-context/src/*.py` → `packages/core/`
+  - `personal-context/src/cli.py` → `apps/cli/main.py`
+  - `personal-context/src/task_sync.py` → `packages/integrations/things3/`
+  - `personal-context/context/` → `data/context/`
+  - `personal-context/memory/` → `data/conversations/`
+  - `config.yaml` → `config/default.yaml`
+- **Import Paths**: All imports now use package paths (e.g., `packages.core.llm_client`)
+- **pyproject.toml**: Updated with new package structure and entry points
+- **Tests**: Updated with backward-compatible imports (try/except pattern)
+- **Documentation**: Updated all docs (AGENTS.md, architecture.md, roadmap.md, deployment.md, decisions.md)
+
+### Documentation (2026-01-22)
+- Added ADR-009: Scalable Monorepo Structure to `docs/product/decisions.md`
+- Updated `docs/engineering/architecture.md` with new architecture diagram
+- Updated `docs/engineering/deployment.md` with new paths and commands
+- Updated `docs/product/roadmap.md` with Phase 3 web interface scope
+- Updated `AGENTS.md` with new folder structure and import patterns
+
 ### Added (2026-01-20 Evening)
 - **LLM-as-Judge Evaluation System** - Complete automated quality assessment
   - Core evaluation engine with `JudgeEvaluator` class (~400 lines)
@@ -239,13 +271,14 @@ Changes are grouped by type:
 
 See [roadmap.md](product/roadmap.md) for detailed plans.
 
-### Phase 2: Evaluation & Metrics (Next)
-- Golden test suite (5-10 test conversations)
-- Automated test runner
-- Latency tracking (TTFT)
-- Model benchmarking
+### Phase 2: Evaluation & Metrics (50% Complete)
+- ✅ Golden test suite (8 test conversations)
+- ✅ LLM-as-judge automated evaluation
+- ⏳ TTFT tracking (infrastructure ready)
+- ⏳ Model benchmarking
 
-### Phase 3: Context Management
+### Phase 3: Web Interface + Context Management (Next)
+- Web interface (FastAPI + React)
 - Conversation search
 - Context window management
 - Fact extraction (learned_facts.md)
@@ -260,10 +293,47 @@ See [roadmap.md](product/roadmap.md) for detailed plans.
 - Tool integrations (web search, code execution)
 - Multi-agent orchestration
 - Intelligent model routing
+- Things 3 interactive management (Phase B)
 
 ---
 
 ## Migration Guides
+
+### 0.3.0 → 0.4.0 (Monorepo Restructure)
+
+**Breaking Changes**: Import paths changed
+
+**Migration Steps**:
+1. Update imports from old paths to new package paths:
+   ```python
+   # Old
+   from llm_client import LLMClient
+   from context_builder import build_system_prompt
+
+   # New
+   from packages.core.llm_client import LLMClient
+   from packages.core.context_builder import build_system_prompt
+   ```
+
+2. Update configuration paths:
+   - Context files: `personal-context/context/` → `data/context/`
+   - Conversations: `personal-context/memory/conversations/` → `data/conversations/`
+   - Config: `config.yaml` → `config/default.yaml`
+
+3. Run CLI with new path:
+   ```bash
+   uv run python -m apps.cli.main
+   # Or
+   uv run jarvis
+   ```
+
+**Data Compatibility**: Copy your data files to new locations:
+```bash
+cp -r personal-context/context/* data/context/
+cp -r personal-context/memory/conversations/* data/conversations/
+```
+
+---
 
 ### 0.2.1 → 0.3.0 (Testing Framework)
 
@@ -280,7 +350,7 @@ uv sync --extra test
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # View coverage report
 open htmlcov/index.html
@@ -296,12 +366,12 @@ open htmlcov/index.html
 
 **New Dependencies**:
 ```bash
-uv pip install litellm
+uv add litellm
 ```
 
 **Configuration Changes**: None required, but you can now switch providers easily:
 ```python
-# In cli.py
+# In apps/cli/main.py
 client = LLMClient(
     api_key=your_key,
     default_model="model-id",
@@ -331,4 +401,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

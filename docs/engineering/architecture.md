@@ -6,59 +6,49 @@
 
 ## Architecture Overview
 
-Jarvis follows a straightforward, layered architecture that prioritizes clarity and maintainability:
+Jarvis follows a modular, scalable architecture designed for multi-agent support and multiple interfaces:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        User (CLI)                            │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                    CLI Layer (cli.py)                        │
-│  • Input/output handling                                     │
-│  • Session management                                        │
-│  • Cost display                                              │
-│  • Startup task sync                                         │
-└─────────┬───────────────────┬───────────┬────────────────────┘
-          │                   │           │
-          ▼                   ▼           ▼
-┌─────────────────┐  ┌──────────────┐  ┌──────────────────┐
-│  Context        │  │   LLM        │  │   Task Sync      │
-│  Builder        │  │   Client     │  │   (task_sync)    │
-│                 │  │              │  │                  │
-│  • Load .md     │  │  • LiteLLM   │  │  • Detect lang   │
-│  • Build        │  │  • Streaming │  │  • AppleScript   │
-│  • Assemble     │  │  • Tracking  │  │  • Cache tasks   │
-└────────┬────────┘  └──────┬───────┘  └─────────┬────────┘
-         │                  │                     │
-         └──────────────────┼─────────────────────┘
-                            │
-               ┌────────────▼────────────┐
-               │  Conversation Logger    │
-               │  (memory.py)            │
-               │                         │
-               │  • Save to JSON         │
-               │  • Track metadata       │
-               │  • Session stats        │
-               └────────────┬────────────┘
-                            │
-               ┌────────────▼─────────────┐
-               │   Filesystem Storage     │
-               │                          │
-               │  • context/*.md          │
-               │  • context/tasks.md      │
-               │  • conversations/*.json  │
-               │  • .cache/tasks_cache    │
-               └──────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                     User Interfaces                             │
+├──────────────────────┬─────────────────────────────────────────┤
+│     CLI (apps/cli)   │         Web UI (apps/web) [Phase 3]     │
+└──────────────────────┴─────────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────┐
+│                      Shared Packages                            │
+├─────────────────┬──────────────────┬───────────────────────────┤
+│  packages/core  │  packages/agents │  packages/integrations    │
+│                 │                  │                           │
+│  • LLM Client   │  • Base Agent    │  • Things 3               │
+│  • Context      │  • JARVIS Agent  │  • (Future: Calendar)     │
+│  • Memory       │  • (Future:      │  • (Future: Email)        │
+│  • Pricing      │    Research,     │                           │
+│                 │    Coding)       │                           │
+├─────────────────┴──────────────────┴───────────────────────────┤
+│                    packages/telemetry                           │
+│  • Metrics tracking (TTFT, latency)                            │
+│  • Evaluation framework                                         │
+└────────────────────────────────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────┐
+│                      Data Layer (data/)                         │
+│                                                                 │
+│  • data/context/*.md        User's personal context             │
+│  • data/conversations/      Session logs (JSON)                 │
+│  • .cache/jarvis/           Task sync cache                     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Component Responsibilities
 
-### 1. CLI Layer (`cli.py`)
+### 1. CLI Layer (`apps/cli/main.py`)
 
 **Purpose**: User interaction and session orchestration.
+
+**Location**: `apps/cli/main.py`
 
 **Responsibilities:**
 - Parse user input from stdin
@@ -71,17 +61,19 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 - `main()`: Main chat loop
 
 **Dependencies:**
-- `task_sync`: Sync Things 3 tasks on startup
-- `context_builder`: Get system prompt
-- `llm_client`: Stream LLM responses
-- `memory`: Log conversations
-- `pricing`: Calculate costs
+- `packages.integrations.things3.task_sync`: Sync Things 3 tasks on startup
+- `packages.core.context_builder`: Get system prompt
+- `packages.core.llm_client`: Stream LLM responses
+- `packages.core.memory`: Log conversations
+- `packages.core.pricing`: Calculate costs
 
 ---
 
-### 2. Context Builder (`context_builder.py`)
+### 2. Context Builder (`packages/core/context_builder.py`)
 
 **Purpose**: Assemble system prompt from user context files.
+
+**Location**: `packages/core/context_builder.py`
 
 **Responsibilities:**
 - Load markdown context files
@@ -103,9 +95,11 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ---
 
-### 3. LLM Client (`llm_client.py`)
+### 3. LLM Client (`packages/core/llm_client.py`)
 
 **Purpose**: Abstract LLM API calls with provider flexibility.
+
+**Location**: `packages/core/llm_client.py`
 
 **Responsibilities:**
 - Stream responses from LLM providers
@@ -132,9 +126,11 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ---
 
-### 4. Conversation Logger (`memory.py`)
+### 4. Conversation Logger (`packages/core/memory.py`)
 
 **Purpose**: Persist conversation history to disk.
+
+**Location**: `packages/core/memory.py`
 
 **Responsibilities:**
 - Accumulate messages during session
@@ -169,9 +165,11 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ---
 
-### 5. Task Sync (`task_sync.py`)
+### 5. Task Sync (`packages/integrations/things3/task_sync.py`)
 
 **Purpose**: Synchronize tasks from Things 3 to provide task context.
+
+**Location**: `packages/integrations/things3/task_sync.py`
 
 **Responsibilities:**
 - Auto-detect Things 3 language (supports German, French, Spanish, Italian, English)
@@ -209,9 +207,11 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ---
 
-### 6. Pricing (`pricing.py`)
+### 6. Pricing (`packages/core/pricing.py`)
 
 **Purpose**: Track LLM costs across providers.
+
+**Location**: `packages/core/pricing.py`
 
 **Responsibilities:**
 - Fetch pricing from OpenRouter API
@@ -282,29 +282,48 @@ Jarvis follows a straightforward, layered architecture that prioritizes clarity 
 
 ```
 jarvis/
-├── config.yaml                     # Configuration
-├── .env                            # API keys (gitignored)
-├── personal-context/
-│   ├── context/                    # User context (version controlled)
+├── apps/                           # Deployable applications
+│   ├── cli/                        # CLI entry point
+│   │   └── main.py                 # CLI application
+│   └── web/                        # Web application (Phase 3)
+│       ├── backend/                # FastAPI backend
+│       └── frontend/               # React frontend
+│
+├── packages/                       # Shared libraries (reusable)
+│   ├── core/                       # Core JARVIS functionality
+│   │   ├── llm_client.py           # LLM API abstraction
+│   │   ├── context_builder.py      # System prompt assembly
+│   │   ├── memory.py               # Conversation logging
+│   │   └── pricing.py              # Cost tracking
+│   ├── agents/                     # Agent implementations
+│   │   ├── base.py                 # Base agent class
+│   │   └── jarvis/                 # Main JARVIS orchestrator
+│   │       └── agent.py
+│   ├── integrations/               # External service integrations
+│   │   └── things3/                # Things 3 task sync
+│   │       └── task_sync.py        # ~520 lines
+│   └── telemetry/                  # Metrics and monitoring
+│       └── metrics.py              # TTFT, response metrics
+│
+├── data/                           # User data
+│   ├── context/                    # Personal context (markdown)
 │   │   ├── profile.md
 │   │   ├── preferences.md
 │   │   ├── current_focus.md
 │   │   └── tasks.md                # Auto-generated from Things 3
-│   ├── memory/
-│   │   ├── conversations/          # Session logs (gitignored)
-│   │   │   └── YYYY-MM-DD_HH-MM-SS_model.json
-│   │   └── learned_facts.md        # (Future) Extracted facts
-│   └── src/
-│       ├── cli.py                  # Main entry point
-│       ├── context_builder.py      # System prompt assembly
-│       ├── llm_client.py           # LLM API abstraction
-│       ├── memory.py               # Conversation logging
-│       ├── pricing.py              # Cost tracking
-│       └── task_sync.py            # Things 3 integration (~520 lines)
-├── .cache/
-│   └── jarvis/
-│       └── tasks_cache.json        # Task sync cache (5-min TTL)
-└── docs/                           # Documentation
+│   ├── conversations/              # Session logs (gitignored)
+│   │   └── YYYY-MM-DD_HH-MM-SS.json
+│   └── learned_facts.md            # (Future) Extracted facts
+│
+├── config/                         # Configuration
+│   ├── default.yaml                # Default configuration
+│   └── local.yaml                  # Local overrides (gitignored)
+│
+├── tests/                          # Test suite
+├── docs/                           # Documentation
+├── scripts/                        # Utility scripts
+├── .env                            # API keys (gitignored)
+└── pyproject.toml                  # Project configuration
 ```
 
 ---
@@ -473,4 +492,4 @@ jarvis/
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

@@ -9,7 +9,12 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open, MagicMock
 import yaml
-from cli import load_config
+
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from apps.cli.main import load_config
+except ImportError:
+    from cli import load_config
 
 
 @pytest.mark.unit
@@ -177,7 +182,6 @@ paths:
                         # Check that _paths were stored
                         assert "_paths" in config
                         assert "jarvis_dir" in config["_paths"]
-                        assert "personal_context_dir" in config["_paths"]
 
     def test_load_config_env_override(self, tmp_path: Path, monkeypatch):
         """Test that environment variables are used for API key."""

@@ -61,7 +61,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Simple Configuration**: YAML-based config with sensible defaults
-- **Comprehensive Testing**: 73 automated tests with 97.5% code coverage
+- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
+- **Comprehensive Testing**: 149 automated tests with 97.5% code coverage
 
 ## Getting Started
 
@@ -80,11 +81,14 @@ cd jarvis
 # Install dependencies using uv (https://github.com/astral-sh/uv)
 uv sync
 
+# Install package in editable mode (required for `uv run jarvis` command)
+uv pip install -e .
+
 # Set up your environment variables
 echo "OPENROUTER_API_KEY=your_key_here" > .env
 
 # Configure your personal context
-# Edit the files in personal-context/context/:
+# Edit the files in data/context/:
 # - profile.md (who you are)
 # - preferences.md (how the assistant should behave)
 # - current_focus.md (what you're working on)
@@ -93,7 +97,11 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 ### Usage
 
 ```bash
-uv run python personal-context/src/cli.py
+# Using the installed script (recommended)
+uv run jarvis
+
+# Or using module syntax
+uv run python -m apps.cli.main
 ```
 
 Start chatting! Type `quit` or `exit` to end the session.
@@ -102,31 +110,50 @@ Start chatting! Type `quit` or `exit` to end the session.
 
 ```
 jarvis/
-├── config.yaml                          # Configuration (model, paths, system prompt)
-├── personal-context/
-│   ├── context/                         # Your personal context files
-│   │   ├── profile.md                   # Who you are
-│   │   ├── preferences.md               # Assistant behavior preferences
-│   │   └── current_focus.md             # Current projects and priorities
-│   ├── memory/
-│   │   ├── conversations/               # Timestamped conversation logs
-│   │   └── learned_facts.md             # (Future) Extracted learnings
-│   └── src/
-│       ├── cli.py                       # Command-line interface
-│       ├── context_builder.py           # Assembles system prompts from context
-│       ├── llm_client.py                # Unified LLM provider interface
-│       ├── memory.py                    # Conversation logging
-│       └── pricing.py                   # Cost calculation and tracking
-├── tests/                               # Comprehensive test suite
-│   ├── unit/                            # 53 unit tests
-│   ├── integration/                     # 12 integration tests
-│   ├── golden/                          # 8 golden test conversations
-│   └── README.md                        # Testing guide
-├── docs/                                # Documentation
-│   ├── product/                         # Product specs and roadmap
-│   ├── engineering/                     # Technical documentation
-│   └── research/                        # AI engineering research
-└── pyproject.toml
+├── apps/                               # Deployable applications
+│   ├── cli/                            # CLI entry point
+│   │   └── main.py                     # Command-line interface
+│   └── web/                            # Web application (Phase 3)
+│       ├── backend/                    # FastAPI backend
+│       └── frontend/                   # React frontend
+│
+├── packages/                           # Shared libraries
+│   ├── core/                           # Core functionality
+│   │   ├── llm_client.py               # Unified LLM provider interface
+│   │   ├── context_builder.py          # Assembles system prompts from context
+│   │   ├── memory.py                   # Conversation logging
+│   │   └── pricing.py                  # Cost calculation and tracking
+│   ├── agents/                         # Agent implementations
+│   │   ├── base.py                     # Base agent class
+│   │   └── jarvis/                     # Main JARVIS agent
+│   ├── integrations/                   # External service integrations
+│   │   └── things3/                    # Things 3 task sync
+│   └── telemetry/                      # Metrics and evaluation
+│
+├── data/                               # User data
+│   ├── context/                        # Your personal context files
+│   │   ├── profile.md                  # Who you are
+│   │   ├── preferences.md              # Assistant behavior preferences
+│   │   ├── current_focus.md            # Current projects and priorities
+│   │   └── tasks.md                    # Auto-synced from Things 3
+│   └── conversations/                  # Timestamped conversation logs
+│
+├── config/                             # Configuration
+│   ├── default.yaml                    # Default configuration
+│   └── local.yaml                      # Local overrides (gitignored)
+│
+├── tests/                              # Comprehensive test suite
+│   ├── unit/                           # 103 unit tests
+│   ├── integration/                    # 20 integration tests
+│   ├── golden/                         # 8 golden test conversations + LLM-as-judge
+│   └── README.md                       # Testing guide
+│
+├── docs/                               # Documentation
+│   ├── product/                        # Product specs and roadmap
+│   ├── engineering/                    # Technical documentation
+│   └── research/                       # AI engineering research
+│
+└── pyproject.toml                      # Project configuration
 ```
 
 ## Roadmap
@@ -138,19 +165,24 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework (73 tests, 97.5% coverage)**
+- [x] **Comprehensive testing framework (149 tests, 97.5% coverage)**
 
-**Phase 2: Evaluation & Quality Metrics (In Progress)**
+**Phase 2: Evaluation & Quality Metrics (50% Complete)**
 - [x] 8 golden test conversations defined
-- [x] **LLM-as-judge automated evaluation (33 tests, ~$0.41/run)**
+- [x] **LLM-as-judge automated evaluation (~$0.41/run)**
+- [x] **Things 3 integration** (task sync with auto language detection)
 - [ ] Latency tracking (TTFT)
 - [ ] Model comparison benchmarks
 
+**Phase 3: Web Interface (Next)**
+- [ ] FastAPI backend with SSE streaming
+- [ ] React frontend with chat UI
+- [ ] Conversation history browser
+
 **Future Phases:**
-- [ ] Multi-turn context window management (truncation strategies)
-- [ ] Fact extraction from conversations (learned_facts.md)
-- [ ] Local embeddings for semantic search over conversation history
-- [ ] Agent orchestration framework (long-term vision)
+- [ ] Context window management (truncation strategies)
+- [ ] Semantic search over conversation history (RAG)
+- [ ] Agent orchestration framework
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
 

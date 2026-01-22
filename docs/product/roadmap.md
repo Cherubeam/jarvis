@@ -73,12 +73,19 @@ None currently.
 
 ---
 
-## Phase 3: Advanced Context Management
+## Phase 3: Web Interface + Advanced Context Management
 
 **Timeline**: 1-2 months (February-March 2026)
-**Goal**: Handle long conversations and enable conversation retrieval
+**Goal**: Add web interface and handle long conversations
 
 ### Features
+
+#### Web Interface (NEW)
+- [ ] FastAPI backend with SSE streaming (`apps/web/backend/`)
+- [ ] React frontend with chat UI (`apps/web/frontend/`)
+- [ ] Conversation history browser
+- [ ] Real-time streaming responses
+- [ ] Session switching between conversations
 
 #### Context Window Management
 - [ ] Implement intelligent truncation strategies
@@ -296,6 +303,19 @@ None currently.
 
 ## Recently Completed
 
+### January 22, 2026
+- ✅ **Folder restructure for scalability**
+- ✅ **New monorepo structure: `apps/`, `packages/`, `data/`, `config/`**
+- ✅ **Core modules moved to `packages/core/`**
+- ✅ **CLI moved to `apps/cli/`**
+- ✅ **Things 3 integration moved to `packages/integrations/things3/`**
+- ✅ **New `packages/telemetry/` with MetricsTracker (TTFT ready)**
+- ✅ **New `packages/agents/` with BaseAgent foundation**
+- ✅ **User data separated to `data/` directory**
+- ✅ **Web interface structure prepared (`apps/web/`)**
+- ✅ **pyproject.toml updated with web dependencies**
+- ✅ **Tests updated with backward-compatible imports**
+
 ### January 20, 2026 (Evening)
 - ✅ **LLM-as-Judge Evaluation System Complete**
 - ✅ **Core evaluation engine with JudgeEvaluator class (~400 lines)**
@@ -342,4 +362,4 @@ None currently.
 
 ---
 
-*Last updated: 2026-01-20*
+*Last updated: 2026-01-22*

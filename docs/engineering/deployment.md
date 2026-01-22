@@ -53,7 +53,7 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 
 ### 4. Configure Personal Context
 
-Edit files in `personal-context/context/`:
+Edit files in `data/context/`:
 
 **`profile.md`** - Who you are:
 ```markdown
@@ -86,10 +86,11 @@ Working on:
 
 ## Configuration
 
-### `config.yaml`
+### Configuration Files
 
-Main configuration file at project root:
+Configuration is stored in `config/`:
 
+**`config/default.yaml`** - Default configuration:
 ```yaml
 openrouter:
   default_model: "anthropic/claude-sonnet-4.5"
@@ -98,8 +99,16 @@ system_prompt_prefix: |
   You are a helpful personal assistant.
 
 paths:
-  context_dir: "personal-context/context"
-  conversations_dir: "personal-context/memory/conversations"
+  context_dir: "data/context"
+  conversations_dir: "data/conversations"
+  learned_facts: "data/learned_facts.md"
+```
+
+**`config/local.yaml`** - Local overrides (gitignored):
+```yaml
+# Override any settings from default.yaml
+openrouter:
+  default_model: "anthropic/claude-3-5-haiku-20241022"
 ```
 
 **Key Settings:**
@@ -115,13 +124,17 @@ paths:
 ### Start CLI
 
 ```bash
-uv run python personal-context/src/cli.py
+# Using uv (recommended)
+uv run python -m apps.cli.main
+
+# Or using the installed script
+uv run jarvis
 ```
 
 Or with activated virtual environment:
 ```bash
 source .venv/bin/activate
-python personal-context/src/cli.py
+python -m apps.cli.main
 ```
 
 ### Usage
@@ -159,7 +172,7 @@ Already configured. Just ensure `OPENROUTER_API_KEY` is set.
    ```
    ANTHROPIC_API_KEY=your_key_here
    ```
-3. Update `cli.py`:
+3. Update `apps/cli/main.py`:
    ```python
    client = LLMClient(
        api_key=config["anthropic"]["api_key"],
@@ -175,7 +188,7 @@ Already configured. Just ensure `OPENROUTER_API_KEY` is set.
    ```
    OPENAI_API_KEY=your_key_here
    ```
-3. Update `cli.py`:
+3. Update `apps/cli/main.py`:
    ```python
    client = LLMClient(
        api_key=config["openai"]["api_key"],
@@ -192,26 +205,44 @@ Already configured. Just ensure `OPENROUTER_API_KEY` is set.
 jarvis/
 ├── .env                            # API keys (DO NOT COMMIT)
 ├── .gitignore                      # Excludes .env, conversations/
-├── config.yaml                     # Main configuration
+├── pyproject.toml                  # Python project metadata
 ├── README.md                       # Project overview
-├── docs/                           # Documentation
-│   ├── product/
-│   ├── engineering/
-│   └── research/
-├── personal-context/
-│   ├── context/                    # User context (commit these)
+│
+├── apps/                           # Deployable applications
+│   ├── cli/                        # CLI entry point
+│   │   └── main.py                 # CLI application
+│   └── web/                        # Web application (Phase 3)
+│       ├── backend/                # FastAPI backend
+│       └── frontend/               # React frontend
+│
+├── packages/                       # Shared libraries
+│   ├── core/                       # Core functionality
+│   │   ├── llm_client.py           # LLM abstraction
+│   │   ├── context_builder.py      # System prompt assembly
+│   │   ├── memory.py               # Conversation logging
+│   │   └── pricing.py              # Cost tracking
+│   ├── agents/                     # Agent implementations
+│   │   ├── base.py                 # Base agent class
+│   │   └── jarvis/                 # Main JARVIS agent
+│   ├── integrations/               # External services
+│   │   └── things3/                # Things 3 task sync
+│   └── telemetry/                  # Metrics and evaluation
+│
+├── data/                           # User data
+│   ├── context/                    # Personal context (commit these)
 │   │   ├── profile.md
 │   │   ├── preferences.md
-│   │   └── current_focus.md
-│   ├── memory/
-│   │   └── conversations/          # Session logs (gitignored)
-│   └── src/
-│       ├── cli.py
-│       ├── context_builder.py
-│       ├── llm_client.py
-│       ├── memory.py
-│       └── pricing.py
-└── pyproject.toml                  # Python project metadata
+│   │   ├── current_focus.md
+│   │   └── tasks.md                # Auto-synced from Things 3
+│   └── conversations/              # Session logs (gitignored)
+│
+├── config/                         # Configuration
+│   ├── default.yaml                # Default configuration
+│   └── local.yaml                  # Local overrides (gitignored)
+│
+├── tests/                          # Test suite
+├── docs/                           # Documentation
+└── scripts/                        # Utility scripts
 ```
 
 ---
@@ -220,30 +251,30 @@ jarvis/
 
 ### Conversation Logs
 
-Saved to `personal-context/memory/conversations/`:
+Saved to `data/conversations/`:
 - Format: `YYYY-MM-DD_HH-MM-SS_<model>.json`
 - **Gitignored by default** (contain sensitive data)
 
 ### Backup Strategy
 
 **What to back up:**
-- ✅ `personal-context/context/*.md` (your context files)
-- ✅ `config.yaml` (your configuration)
-- ✅ `personal-context/memory/conversations/*.json` (optional, if you want history)
+- ✅ `data/context/*.md` (your context files)
+- ✅ `config/default.yaml` (your configuration)
+- ✅ `data/conversations/*.json` (optional, if you want history)
 
 **How to back up:**
 ```bash
-# Simple: Copy entire directory
-cp -r personal-context/ ~/backups/jarvis-$(date +%Y%m%d)/
+# Simple: Copy data directory
+cp -r data/ ~/backups/jarvis-data-$(date +%Y%m%d)/
 
 # Better: Use git for context files
-cd personal-context/context
+cd data/context
 git init
 git add *.md
 git commit -m "Update context"
 
 # Best: Encrypted backup of everything
-tar -czf - personal-context/ | gpg -c > jarvis-backup-$(date +%Y%m%d).tar.gz.gpg
+tar -czf - data/ config/ | gpg -c > jarvis-backup-$(date +%Y%m%d).tar.gz.gpg
 ```
 
 ---
@@ -263,17 +294,17 @@ echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 
 **Solution**: Install dependencies:
 ```bash
-uv pip install litellm
+uv sync
 ```
 
 #### "File does not exist: context/profile.md"
 
 **Solution**: Create context files:
 ```bash
-mkdir -p personal-context/context
-echo "# About Me" > personal-context/context/profile.md
-echo "# Preferences" > personal-context/context/preferences.md
-echo "# Current Focus" > personal-context/context/current_focus.md
+mkdir -p data/context
+echo "# About Me" > data/context/profile.md
+echo "# Preferences" > data/context/preferences.md
+echo "# Current Focus" > data/context/current_focus.md
 ```
 
 #### Slow responses
@@ -309,17 +340,22 @@ echo "# Current Focus" > personal-context/context/current_focus.md
 
 2. Install dev dependencies:
    ```bash
-   uv sync --all-extras
+   uv sync --extra test
    ```
 
 3. Run type checking:
    ```bash
-   mypy personal-context/src/
+   mypy packages/ apps/
    ```
 
-4. Run tests (when available):
+4. Run tests:
    ```bash
-   pytest
+   uv run pytest
+   ```
+
+5. Run tests with coverage:
+   ```bash
+   uv run pytest --cov=packages --cov=apps --cov-report=html
    ```
 
 ---
@@ -329,14 +365,21 @@ echo "# Current Focus" > personal-context/context/current_focus.md
 ### Local CLI (Current)
 
 ```bash
-python personal-context/src/cli.py
+uv run python -m apps.cli.main
+# Or
+uv run jarvis
 ```
 
-### API Server (Future)
+### Web Interface (Phase 3)
 
 ```bash
-# Not yet implemented
-uvicorn api:app --reload
+# Backend
+cd apps/web/backend
+uvicorn main:app --reload
+
+# Frontend (in separate terminal)
+cd apps/web/frontend
+npm run dev
 ```
 
 ### Docker (Future)
@@ -344,7 +387,7 @@ uvicorn api:app --reload
 ```bash
 # Not yet implemented
 docker build -t jarvis .
-docker run -it -v $(pwd)/personal-context:/app/personal-context jarvis
+docker run -it -v $(pwd)/data:/app/data jarvis
 ```
 
 ---
@@ -378,8 +421,8 @@ docker run -it -v $(pwd)/personal-context:/app/personal-context jarvis
 ### Updating Dependencies
 
 ```bash
-# Using uv
-uv pip install --upgrade litellm
+# Update a specific package
+uv add --upgrade litellm
 
 # Or update all
 uv sync --upgrade
@@ -399,7 +442,7 @@ cat docs/changelog.md
 
 **When updating Jarvis:**
 1. Read [changelog.md](../changelog.md) for breaking changes
-2. Back up your `personal-context/` directory
+2. Back up your `data/` directory
 3. Pull updates: `git pull`
 4. Update dependencies: `uv sync`
 5. Test with a simple conversation
@@ -425,4 +468,4 @@ Include:
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

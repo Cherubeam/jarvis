@@ -9,7 +9,12 @@ import json
 from pathlib import Path
 from datetime import datetime
 from freezegun import freeze_time
-from memory import SessionMetrics, ConversationLogger
+
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from packages.core.memory import SessionMetrics, ConversationLogger
+except ImportError:
+    from memory import SessionMetrics, ConversationLogger
 
 
 @pytest.mark.unit

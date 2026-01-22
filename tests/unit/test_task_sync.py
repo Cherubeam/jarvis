@@ -11,15 +11,27 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from task_sync import (
-    MCPThings3Client,
-    Task,
-    TaskSyncCache,
-    fetch_tasks_async,
-    format_tasks_as_markdown,
-    parse_task_response,
-    sync_tasks_to_file,
-)
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from packages.integrations.things3.task_sync import (
+        MCPThings3Client,
+        Task,
+        TaskSyncCache,
+        fetch_tasks_async,
+        format_tasks_as_markdown,
+        parse_task_response,
+        sync_tasks_to_file,
+    )
+except ImportError:
+    from task_sync import (
+        MCPThings3Client,
+        Task,
+        TaskSyncCache,
+        fetch_tasks_async,
+        format_tasks_as_markdown,
+        parse_task_response,
+        sync_tasks_to_file,
+    )
 
 
 @pytest.mark.unit

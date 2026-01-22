@@ -6,7 +6,12 @@ Tests LLMClient, TokenUsage, and StreamingResponse functionality.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from llm_client import TokenUsage, StreamingResponse, LLMClient
+
+# Try new import path first, fall back to old for backward compatibility
+try:
+    from packages.core.llm_client import TokenUsage, StreamingResponse, LLMClient
+except ImportError:
+    from llm_client import TokenUsage, StreamingResponse, LLMClient
 
 
 @pytest.mark.unit

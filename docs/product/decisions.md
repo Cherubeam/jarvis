@@ -593,6 +593,163 @@ When implementing interactive task management:
 
 ---
 
+## ADR-009: Scalable Monorepo Structure
+
+**Date**: 2026-01-22
+**Status**: ✅ Accepted
+
+### Context
+
+The original project structure mixed user data with application code in `personal-context/`:
+
+```
+jarvis/
+├── personal-context/          # Mixed: user data + source code
+│   ├── context/               # User's personal data
+│   ├── memory/                # User's conversations
+│   └── src/                   # Application code (confusing location)
+├── tests/
+└── docs/
+```
+
+Problems with this structure:
+1. **Code/data mixing**: Personal data (`context/`, `memory/`) mixed with application code (`src/`)
+2. **No multi-agent support**: No clear structure for adding new agents
+3. **No web interface support**: No separation for backend/frontend
+4. **Deployment complexity**: Hard to share code without sharing personal data
+5. **Scaling concerns**: As features grow (RAG, telemetry, integrations), flat structure becomes unmanageable
+
+### Decision
+
+Adopt a scalable monorepo structure with clear separation of concerns:
+
+```
+jarvis/
+├── apps/                       # Deployable applications
+│   ├── cli/                    # CLI entry point
+│   └── web/                    # Web application (Phase 3)
+│       ├── backend/            # FastAPI backend
+│       └── frontend/           # React frontend
+│
+├── packages/                   # Shared libraries (reusable across apps)
+│   ├── core/                   # Core functionality (LLM, context, memory, pricing)
+│   ├── agents/                 # Agent implementations
+│   │   ├── base.py             # Base agent class
+│   │   └── jarvis/             # Main JARVIS agent
+│   ├── integrations/           # External services (Things 3, future: calendar, email)
+│   │   └── things3/
+│   └── telemetry/              # Metrics, evaluation, monitoring
+│
+├── data/                       # User data (gitignored where appropriate)
+│   ├── context/                # Personal context files
+│   └── conversations/          # Session logs
+│
+├── config/                     # Configuration
+│   ├── default.yaml            # Default configuration
+│   └── local.yaml              # Local overrides (gitignored)
+│
+├── tests/                      # Test suite
+├── docs/                       # Documentation
+└── scripts/                    # Utility scripts
+```
+
+### Alternatives Considered
+
+1. **Keep `personal-context/` structure**
+   - ✅ No migration effort
+   - ❌ Continues mixing code/data
+   - ❌ Hard to add web interface
+   - ❌ No clear agent structure
+   - ❌ Doesn't scale
+
+2. **Separate repositories (monorepo split)**
+   - ✅ Complete isolation
+   - ❌ Over-engineering for single-developer project
+   - ❌ Harder to share code between CLI and web
+   - ❌ Complex versioning across repos
+
+3. **Flat structure with prefixes**
+   - ✅ Simple
+   - ❌ No logical grouping
+   - ❌ Doesn't support nested modules (agents, integrations)
+   - ❌ Import paths become verbose
+
+4. **Monorepo with apps/packages/data (chosen)**
+   - ✅ Clear separation of concerns
+   - ✅ Multi-agent ready
+   - ✅ Web interface ready
+   - ✅ Reusable packages across apps
+   - ✅ User data isolated and protectable
+   - ✅ Follows industry best practices (Turborepo, Nx patterns)
+
+### Implementation
+
+**Migration steps executed:**
+1. Created new directory structure
+2. Moved `personal-context/src/*.py` → `packages/core/`
+3. Moved `personal-context/src/cli.py` → `apps/cli/main.py`
+4. Moved `personal-context/src/task_sync.py` → `packages/integrations/things3/`
+5. Created `packages/agents/base.py` and `packages/agents/jarvis/agent.py`
+6. Created `packages/telemetry/metrics.py` with MetricsTracker
+7. Moved `personal-context/context/` → `data/context/`
+8. Moved `personal-context/memory/` → `data/conversations/`
+9. Updated all imports to use package paths
+10. Updated `pyproject.toml` with new package structure
+11. Updated tests with backward-compatible imports
+12. Created `config/default.yaml` with updated paths
+
+**Import pattern:**
+```python
+# New package-based imports
+from packages.core.llm_client import LLMClient
+from packages.core.context_builder import build_system_prompt
+from packages.integrations.things3.task_sync import sync_tasks_to_file
+from packages.agents.base import BaseAgent
+```
+
+**Backward compatibility:**
+Tests use try/except pattern to support both old and new import paths during transition:
+```python
+try:
+    from packages.core.llm_client import LLMClient
+except ImportError:
+    from llm_client import LLMClient
+```
+
+### Consequences
+
+**Benefits:**
+- ✅ Clear separation: code (`apps/`, `packages/`) vs data (`data/`) vs config (`config/`)
+- ✅ Multi-agent ready: `packages/agents/` has clear structure for adding agents
+- ✅ Web interface ready: `apps/web/` prepared for FastAPI backend + React frontend
+- ✅ Reusable packages: `packages/core/` shared between CLI and web
+- ✅ Integration home: `packages/integrations/` for Things 3, calendar, email, etc.
+- ✅ Telemetry home: `packages/telemetry/` for metrics, evaluation, RAG
+- ✅ Data protection: `data/` can be gitignored and backed up separately
+- ✅ Industry standard: Follows monorepo patterns used by large-scale projects
+- ✅ All 149 tests passing with updated imports
+
+**Drawbacks:**
+- ⚠️ Migration required (one-time effort)
+- ⚠️ Longer import paths (`packages.core.llm_client` vs `llm_client`)
+- ⚠️ Old `personal-context/` folder deprecated (can be removed after verification)
+
+**Mitigation:**
+- Migration completed with backward-compatible imports
+- Old structure preserved temporarily for safety
+- Clear documentation updated (AGENTS.md, architecture.md)
+- Tests verify both old and new paths work
+
+### Related ADRs
+- Enables: Future ADR on multi-agent orchestration (Phase 5)
+- Enables: Future ADR on web interface architecture (Phase 3)
+- Relates to: ADR-007 (Local-first architecture - data still local)
+- Relates to: ADR-002 (Markdown context files - preserved in data/context/)
+
+**Current Status**: Migration complete. Old `personal-context/` folder can be removed after user verification.
+
+---
+
 ## Template for Future ADRs
 
 ```markdown
@@ -636,4 +793,4 @@ How we address the drawbacks.
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

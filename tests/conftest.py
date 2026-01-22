@@ -10,9 +10,14 @@ from typing import Generator
 import pytest
 from unittest.mock import Mock, MagicMock
 
-# Add the src directory to the path so we can import modules
-src_dir = Path(__file__).parent.parent / "personal-context" / "src"
-sys.path.insert(0, str(src_dir))
+# Add the project root to the path so we can import packages
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Also add old path for backward compatibility during migration
+src_dir = project_root / "personal-context" / "src"
+if src_dir.exists():
+    sys.path.insert(0, str(src_dir))
 
 
 # ==================== Path Fixtures ====================
@@ -118,14 +123,13 @@ def sample_config(tmp_path: Path) -> dict:
             "default_model": "anthropic/claude-sonnet-4.5"
         },
         "paths": {
-            "context_dir": "personal-context/context",
-            "conversations_dir": "personal-context/memory/conversations",
-            "learned_facts": "personal-context/memory/learned_facts.md"
+            "context_dir": "data/context",
+            "conversations_dir": "data/conversations",
+            "learned_facts": "data/learned_facts.md"
         },
         "system_prompt_prefix": "You are Jarvis, an advanced personal AI assistant.",
         "_paths": {
             "jarvis_dir": tmp_path,
-            "personal_context_dir": tmp_path / "personal-context"
         }
     }
 
@@ -230,10 +234,15 @@ def reset_lru_cache():
     yield
     # Clear pricing cache after each test
     try:
-        from pricing import fetch_all_pricing
+        from packages.core.pricing import fetch_all_pricing
         fetch_all_pricing.cache_clear()
     except ImportError:
-        pass
+        # Try old import path during migration
+        try:
+            from pricing import fetch_all_pricing
+            fetch_all_pricing.cache_clear()
+        except ImportError:
+            pass
 
 
 # ==================== LLM-as-Judge Evaluation ====================
@@ -294,7 +303,12 @@ def evaluator(evaluation_config):
     import os
     sys.path.insert(0, str(Path(__file__).parent / "golden"))
     from evaluator import JudgeEvaluator
-    from llm_client import LLMClient
+
+    # Try new import path first, fall back to old
+    try:
+        from packages.core.llm_client import LLMClient
+    except ImportError:
+        from llm_client import LLMClient
 
     # Check for API key
     api_key = os.getenv("OPENROUTER_API_KEY")
