@@ -6,10 +6,10 @@
 
 ## Current State
 
-**Phase**: 1 Complete ✅ + Phase 2 (50% Complete) 🚀
+**Phase**: 1 Complete ✅ + Phase 2 (85% Complete) 🚀
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 149 total (103 unit + 20 integration + 26 golden/evaluation)
+**Tests**: 150 total (104 unit + 20 integration + 26 golden/evaluation)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -63,7 +63,7 @@ tests/
 
 ### Automated Test Coverage
 
-**Unit Tests (103 tests, 97.5% coverage on core):**
+**Unit Tests (104 tests, 97.5% coverage on core):**
 - ✅ `context_builder.py` - 10 tests, 100% coverage
 - ✅ `memory.py` - 15 tests, 97% coverage
 - ✅ `pricing.py` - 12 tests, 98% coverage
@@ -641,6 +641,12 @@ Estimate model comparison costs before running golden evaluations:
 uv run python scripts/model_benchmark.py
 ```
 
+Generate the benchmark comparison table in docs:
+
+```bash
+uv run python scripts/benchmark_report.py
+```
+
 Notes:
 - Uses the most recent golden test run in `tests/golden/results/runs/` as the token baseline.
 - Pulls current pricing from the OpenRouter model list endpoint.
@@ -653,8 +659,8 @@ Notes:
 
 ### Phase 1 (Complete ✅)
 - ✅ Testing framework setup
-- ✅ Unit tests for all core modules (53 tests)
-- ✅ Integration tests (12 tests)
+- ✅ Unit tests for all core modules (104 tests)
+- ✅ Integration tests (20 tests)
 - ✅ Golden test case definitions (8 scenarios)
 - ✅ 97.5% code coverage on core modules
 - ✅ Comprehensive test documentation
@@ -665,8 +671,8 @@ Notes:
 - [x] Add LLM-as-judge for automated quality evaluation ✅
 - [x] Manual baseline evaluation of golden tests ✅
 - [x] Latency tracking (TTFT) ✅
-- [ ] Model comparison benchmarks
-- [ ] Benchmark cost estimation for model comparisons
+- [x] Model comparison benchmarks ✅
+- [x] Benchmark cost estimation for model comparisons ✅
 
 ### Phase 3 (1-2 months)
 - [ ] Automated LLM-as-judge evaluation

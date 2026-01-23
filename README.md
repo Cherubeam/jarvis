@@ -170,12 +170,12 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] LiteLLM integration for provider flexibility
 - [x] **Comprehensive testing framework (150 tests, 97.5% coverage)**
 
-**Phase 2: Evaluation & Quality Metrics (75% Complete)**
+**Phase 2: Evaluation & Quality Metrics (85% Complete)**
 - [x] 8 golden test conversations defined
 - [x] **LLM-as-judge automated evaluation (~$0.41/run)**
 - [x] **Things 3 integration** (task sync with auto language detection)
 - [x] Latency tracking (TTFT)
-- [ ] Model comparison benchmarks
+- [x] Model comparison benchmarks
 - [x] Benchmark cost estimation per model
 
 **Phase 3: Web Interface (Next)**
@@ -199,6 +199,12 @@ uv run python scripts/model_benchmark.py
 ```
 
 To run evaluations after the estimate (paid), add `--evaluate`.
+
+Generate the benchmark comparison table in docs:
+
+```bash
+uv run python scripts/benchmark_report.py
+```
 
 ## What I'm Learning
 

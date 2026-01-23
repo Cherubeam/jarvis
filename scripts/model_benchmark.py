@@ -51,10 +51,12 @@ def _print_estimates(
         print(f"{model_id} | {response_cost} | {judge_cost} | {total_cost}")
 
 
-def _run_evaluations(models: list[str], judge_model: str) -> None:
+def _run_evaluations(models: list[str], judge_model: str, fail_fast: bool) -> None:
     command = [
         "uv",
         "run",
+        "python",
+        "-m",
         "pytest",
         "tests/golden/",
         "--evaluate",
@@ -66,7 +68,15 @@ def _run_evaluations(models: list[str], judge_model: str) -> None:
         env = os.environ.copy()
         env["DEFAULT_MODEL"] = model_id
         print(f"\nRunning evaluation for {model_id}...")
-        subprocess.run(command, check=True, env=env)
+        result = subprocess.run(command, check=False, env=env)
+        if result.returncode != 0:
+            message = f"Evaluation failed for {model_id} (exit {result.returncode})."
+            if fail_fast:
+                raise subprocess.CalledProcessError(
+                    result.returncode,
+                    command,
+                )
+            print(message + " Continuing with next model.")
 
 
 def main() -> int:
@@ -99,6 +109,11 @@ def main() -> int:
         action="store_true",
         help="Run golden evaluations after estimating costs.",
     )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop on the first evaluation failure.",
+    )
 
     args = parser.parse_args()
 
@@ -113,7 +128,7 @@ def main() -> int:
     _print_estimates(estimates, args.judge_model, run_dir)
 
     if args.evaluate:
-        _run_evaluations(args.models, args.judge_model)
+        _run_evaluations(args.models, args.judge_model, args.fail_fast)
 
     return 0
 

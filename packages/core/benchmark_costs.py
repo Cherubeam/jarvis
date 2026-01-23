@@ -42,12 +42,18 @@ class BenchmarkCostEstimate:
     judge_tokens: TokenTotals
 
 
+def _run_has_results(run_dir: Path) -> bool:
+    return any(path.name != "run_summary.json" for path in run_dir.glob("*.json"))
+
+
 def _find_latest_run_dir(results_dir: Path) -> Path | None:
     runs_dir = results_dir / "runs"
     if not runs_dir.exists():
         return None
 
-    run_dirs = [path for path in runs_dir.iterdir() if path.is_dir()]
+    run_dirs = [
+        path for path in runs_dir.iterdir() if path.is_dir() and _run_has_results(path)
+    ]
     if not run_dirs:
         return None
 

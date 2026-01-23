@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-01-23)
+- **Benchmark Report Generator**: `scripts/benchmark_report.py` creates comparison tables in `docs/research/models.md`
+- **Model Benchmark Results**: Golden test benchmarks for Sonnet 4.5, Opus 4.5, GPT-5.2, GPT-5.2-Codex, GPT-OSS-120B, Gemini 3 Flash/Pro (preview)
+- **Benchmark Runner Resilience**: Continue model runs even when individual evaluations fail
+
+### Changed (2026-01-23)
+- **Golden Tests Imports**: Updated golden test runner to use package import paths
+
 ### Added (2026-01-22)
 - **TTFT (Time to First Token) Tracking**: Integrated latency metrics into CLI and conversation logs
   - CLI now displays TTFT and total latency after each response

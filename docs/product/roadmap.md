@@ -30,7 +30,7 @@ None currently.
 
 **Timeline**: 2-3 weeks (Late January - Early February 2026)
 **Goal**: Systematic quality measurement and baseline establishment
-**Status**: 🚀 75% Complete (LLM-as-judge + TTFT tracking)
+**Status**: 🚀 85% Complete (benchmarks + LLM-as-judge + TTFT)
 
 ### Features
 
@@ -64,9 +64,9 @@ None currently.
 - [ ] Cost per conversation type benchmarks
 
 #### Model Comparison
-- [ ] Benchmark 3-5 models on test suite
-- [ ] Compare quality vs. cost tradeoffs
-- [ ] Document model-specific behaviors
+- [x] Benchmark 3-5 models on test suite ✅
+- [x] Compare quality vs. cost tradeoffs ✅
+- [x] Document model-specific behaviors ✅
 - [ ] Establish default model recommendation
 - [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API) ✅
 

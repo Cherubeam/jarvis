@@ -24,8 +24,8 @@
 | Metric | Target | Current | Measurement Method | Status |
 |--------|--------|---------|-------------------|--------|
 | Context utilization | 80% | Manual review | Response analysis: does it use personal context appropriately? | 🟡 Manual only |
-| Response relevance | 85% | In progress | LLM-as-judge evaluation | 🟡 In progress |
-| Test case accuracy | 95% | In progress | Automated test suite with golden test cases | 🟡 In progress |
+| Response relevance | 85% | 0.90 avg | LLM-as-judge evaluation | 🟡 Tracked |
+| Test case accuracy | 95% | 88-100% pass | Automated test suite with golden test cases | 🟡 Tracked |
 | Personalization score | 7/10 | Not tracked | Generic vs. personalized response ratio | 🔴 Not started |
 
 ---
@@ -249,4 +249,4 @@ Top conversation times:
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-23*

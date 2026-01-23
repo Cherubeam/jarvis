@@ -13,16 +13,18 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, List
 
-# Add src to path for imports
-src_dir = Path(__file__).parent.parent.parent / "personal-context" / "src"
-sys.path.insert(0, str(src_dir))
+# Add project root and golden directory to path
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Import evaluation modules (only when --evaluate is used)
 try:
     from evaluator import JudgeEvaluator, EvaluationCriteria
     from result_storage import ResultStorage
-    from llm_client import LLMClient
-    from context_builder import build_system_prompt
+    from packages.core.llm_client import LLMClient
+    from packages.core.context_builder import build_system_prompt
+
     EVALUATION_AVAILABLE = True
 except ImportError:
     EVALUATION_AVAILABLE = False
@@ -37,10 +39,12 @@ def golden_conversations_dir() -> Path:
 @pytest.fixture
 def load_golden_test():
     """Factory fixture to load a golden test by filename."""
+
     def _load(filename: str) -> Dict[str, Any]:
         test_path = Path(__file__).parent / "conversations" / filename
         with open(test_path) as f:
             return yaml.safe_load(f)
+
     return _load
 
 
@@ -81,15 +85,23 @@ class TestGoldenConversationStructure:
 
             # Required top-level fields
             assert "name" in data, f"{yaml_file.name}: missing 'name' field"
-            assert "description" in data, f"{yaml_file.name}: missing 'description' field"
+            assert "description" in data, (
+                f"{yaml_file.name}: missing 'description' field"
+            )
             assert "category" in data, f"{yaml_file.name}: missing 'category' field"
             assert "context" in data, f"{yaml_file.name}: missing 'context' field"
-            assert "conversation" in data, f"{yaml_file.name}: missing 'conversation' field"
+            assert "conversation" in data, (
+                f"{yaml_file.name}: missing 'conversation' field"
+            )
 
             # Validate conversation structure
             conversation = data["conversation"]
-            assert isinstance(conversation, list), f"{yaml_file.name}: conversation must be a list"
-            assert len(conversation) >= 2, f"{yaml_file.name}: conversation must have at least user + assistant"
+            assert isinstance(conversation, list), (
+                f"{yaml_file.name}: conversation must be a list"
+            )
+            assert len(conversation) >= 2, (
+                f"{yaml_file.name}: conversation must have at least user + assistant"
+            )
 
 
 @pytest.mark.golden
@@ -121,7 +133,11 @@ class TestGoldenConversations:
             request.cls.model_tested = model_tested
         yield
         # Finalize run after all tests
-        if evaluation_config["enabled"] and hasattr(request.cls, "results") and request.cls.results:
+        if (
+            evaluation_config["enabled"]
+            and hasattr(request.cls, "results")
+            and request.cls.results
+        ):
             result_storage.finalize_run(request.cls.run_id, request.cls.results)
 
     def _run_golden_test(
@@ -157,13 +173,14 @@ class TestGoldenConversations:
             pytest.fail("OPENROUTER_API_KEY environment variable not set")
 
         # Import modules here (already in path from conftest.py)
-        from llm_client import LLMClient
+        try:
+            from packages.core.llm_client import LLMClient
+        except ImportError:
+            from llm_client import LLMClient
         from evaluator import EvaluationCriteria
 
         model_client = LLMClient(
-            api_key=api_key,
-            default_model=self.model_tested,
-            provider="openrouter"
+            api_key=api_key, default_model=self.model_tested, provider="openrouter"
         )
 
         # Extract context from test case
@@ -186,7 +203,7 @@ class TestGoldenConversations:
                 # Build messages for LLM
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
+                    {"role": "user", "content": user_message},
                 ]
 
                 # Call model
@@ -205,7 +222,8 @@ class TestGoldenConversations:
 
                 # Calculate cost
                 try:
-                    from pricing import calculate_cost_from_litellm
+                    from packages.core.pricing import calculate_cost_from_litellm
+
                     response_cost = calculate_cost_from_litellm(raw_response)
                 except Exception:
                     # Fallback cost calculation
@@ -258,35 +276,60 @@ class TestGoldenConversations:
 
     def test_01_basic_qa(self, evaluator, evaluation_config, result_storage):
         """Test basic factual question answering."""
-        self._run_golden_test("01_basic_qa.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "01_basic_qa.yaml", evaluator, evaluation_config, result_storage
+        )
 
     def test_02_context_recall(self, evaluator, evaluation_config, result_storage):
         """Test that assistant recalls information from profile."""
-        self._run_golden_test("02_context_recall.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "02_context_recall.yaml", evaluator, evaluation_config, result_storage
+        )
 
-    def test_03_multi_turn_reasoning(self, evaluator, evaluation_config, result_storage):
+    def test_03_multi_turn_reasoning(
+        self, evaluator, evaluation_config, result_storage
+    ):
         """Test multi-turn technical conversation with context retention."""
-        self._run_golden_test("03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage
+        )
 
-    def test_04_personalization_tone(self, evaluator, evaluation_config, result_storage):
+    def test_04_personalization_tone(
+        self, evaluator, evaluation_config, result_storage
+    ):
         """Test that assistant follows tone preferences."""
-        self._run_golden_test("04_personalization_tone.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "04_personalization_tone.yaml", evaluator, evaluation_config, result_storage
+        )
 
     def test_05_technical_deep_dive(self, evaluator, evaluation_config, result_storage):
         """Test handling of complex technical questions."""
-        self._run_golden_test("05_technical_deep_dive.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "05_technical_deep_dive.yaml", evaluator, evaluation_config, result_storage
+        )
 
     def test_06_current_focus_aware(self, evaluator, evaluation_config, result_storage):
         """Test awareness of current priorities from current_focus.md."""
-        self._run_golden_test("06_current_focus_aware.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "06_current_focus_aware.yaml", evaluator, evaluation_config, result_storage
+        )
 
     def test_07_ambiguous_query(self, evaluator, evaluation_config, result_storage):
         """Test graceful handling of ambiguous questions."""
-        self._run_golden_test("07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage
+        )
 
-    def test_08_preferences_adherence(self, evaluator, evaluation_config, result_storage):
+    def test_08_preferences_adherence(
+        self, evaluator, evaluation_config, result_storage
+    ):
         """Test following multiple preference guidelines simultaneously."""
-        self._run_golden_test("08_preferences_adherence.yaml", evaluator, evaluation_config, result_storage)
+        self._run_golden_test(
+            "08_preferences_adherence.yaml",
+            evaluator,
+            evaluation_config,
+            result_storage,
+        )
 
 
 # Helper function for manual golden test evaluation (to be used in Phase 2)
@@ -304,36 +347,36 @@ def run_golden_test_manual(test_file: str):
     with open(test_path) as f:
         test_case = yaml.safe_load(f)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Golden Test: {test_case['name']}")
     print(f"Description: {test_case['description']}")
     print(f"Category: {test_case['category']}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Print context if present
-    if test_case['context']:
+    if test_case["context"]:
         print("Context:")
-        for key, value in test_case['context'].items():
+        for key, value in test_case["context"].items():
             print(f"  {key}:")
-            for line in value.strip().split('\n'):
+            for line in value.strip().split("\n"):
                 print(f"    {line}")
         print()
 
     # Print conversation
     print("Conversation:")
-    for turn in test_case['conversation']:
-        if turn['role'] == 'user':
+    for turn in test_case["conversation"]:
+        if turn["role"] == "user":
             print(f"\n  User: {turn['content']}")
         else:
             print(f"\n  Expected Assistant Response:")
-            if 'expected_themes' in turn:
+            if "expected_themes" in turn:
                 print(f"    Themes: {', '.join(turn['expected_themes'])}")
-            if 'expected_qualities' in turn:
+            if "expected_qualities" in turn:
                 print(f"    Qualities: {turn['expected_qualities']}")
-            if 'expected_content' in turn:
+            if "expected_content" in turn:
                 print(f"    Content: {turn['expected_content']}")
 
-    print(f"\n{'='*60}\n")
+    print(f"\n{'=' * 60}\n")
     print("To run this test with actual LLM:")
     print("1. Implement LLM call with context")
     print("2. Evaluate response against expected qualities")

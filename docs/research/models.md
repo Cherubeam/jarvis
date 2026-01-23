@@ -267,6 +267,31 @@ Run golden tests on:
 
 ---
 
+## Benchmark Results
+
+<!-- BENCHMARK_TABLE_START -->
+Generated: 2026-01-23 19:32 UTC
+Judge model(s): anthropic/claude-opus-4.5
+
+| Model | Run | Avg score | Pass rate | Avg response latency | Avg judge latency | Response tokens | Judge tokens | Est. total cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+anthropic/claude-opus-4.5 | 2026-01-23_20-06-30 | 0.907 | 100% | 6908 ms | 7023 ms | 1813 | 6288 | $0.11
+anthropic/claude-sonnet-4.5 | 2026-01-23_20-04-23 | 0.919 | 100% | 6693 ms | 7187 ms | 2117 | 6656 | $0.10
+google/gemini-3-flash-preview | 2026-01-23_20-19-23 | 0.903 | 100% | 5944 ms | 6799 ms | 3362 | 7848 | $0.09
+google/gemini-3-pro-preview | 2026-01-23_20-25-14 | 0.921 | 100% | 20304 ms | 6864 ms | 9419 | 8154 | $0.19
+openai/gpt-5.2 | 2026-01-23_20-14-47 | 0.885 | 89% | 13738 ms | 6493 ms | 3777 | 8200 | $0.13
+openai/gpt-5.2-codex | 2026-01-23_20-17-51 | 0.886 | 88% | 4199 ms | 6285 ms | 1534 | 5937 | $0.09
+openai/gpt-oss-120b | 2026-01-23_20-08-37 | 0.887 | 89% | 16293 ms | 7586 ms | 9459 | 13913 | $0.11
+<!-- BENCHMARK_TABLE_END -->
+
+Notes:
+- `openai/gpt-5.2-pro` failed to run (OpenRouter returned 402 Payment Required).
+- Top score: `google/gemini-3-pro-preview` (0.921) with the highest response latency.
+- Fastest responses: `openai/gpt-5.2-codex` (~4.2s avg) with an 88% pass rate.
+- Best cost/quality balance: `google/gemini-3-flash-preview` and `anthropic/claude-sonnet-4.5` (both ~0.90+ score under $0.10).
+
+---
+
 ## Model Selection TODOs
 
 **Phase 2-3:**
