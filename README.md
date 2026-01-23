@@ -60,9 +60,11 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
+- **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
-- **Comprehensive Testing**: 149 automated tests with 97.5% code coverage
+- **Comprehensive Testing**: 150 automated tests with 97.5% code coverage
+- **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 
 ## Getting Started
 
@@ -122,7 +124,8 @@ jarvis/
 │   │   ├── llm_client.py               # Unified LLM provider interface
 │   │   ├── context_builder.py          # Assembles system prompts from context
 │   │   ├── memory.py                   # Conversation logging
-│   │   └── pricing.py                  # Cost calculation and tracking
+│   │   ├── pricing.py                  # Cost calculation and tracking
+│   │   └── benchmark_costs.py          # Benchmark cost estimation
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class
 │   │   └── jarvis/                     # Main JARVIS agent
@@ -165,14 +168,15 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework (149 tests, 97.5% coverage)**
+- [x] **Comprehensive testing framework (150 tests, 97.5% coverage)**
 
-**Phase 2: Evaluation & Quality Metrics (50% Complete)**
+**Phase 2: Evaluation & Quality Metrics (75% Complete)**
 - [x] 8 golden test conversations defined
 - [x] **LLM-as-judge automated evaluation (~$0.41/run)**
 - [x] **Things 3 integration** (task sync with auto language detection)
-- [ ] Latency tracking (TTFT)
+- [x] Latency tracking (TTFT)
 - [ ] Model comparison benchmarks
+- [x] Benchmark cost estimation per model
 
 **Phase 3: Web Interface (Next)**
 - [ ] FastAPI backend with SSE streaming
@@ -185,6 +189,16 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [ ] Agent orchestration framework
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
+
+## Benchmarking
+
+Estimate benchmark costs anytime (uses latest golden run baseline):
+
+```bash
+uv run python scripts/model_benchmark.py
+```
+
+To run evaluations after the estimate (paid), add `--evaluate`.
 
 ## What I'm Learning
 

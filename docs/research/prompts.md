@@ -9,7 +9,7 @@
 ### Structure
 
 ```
-{system_prompt_prefix from config.yaml}
+{system_prompt_prefix from config/default.yaml}
 
 ## About this person
 {contents of profile.md}
@@ -19,6 +19,9 @@
 
 ## Current focus
 {contents of current_focus.md}
+
+## Tasks
+{contents of tasks.md}
 ```
 
 ### Example
@@ -43,6 +46,10 @@ Working on:
 - Building Jarvis, a personal AI assistant
 - Learning about RAG and vector databases
 - Exploring agentic AI frameworks
+
+## Tasks
+
+- (Auto-synced from Things 3)
 ```
 
 ---
@@ -270,12 +277,12 @@ For complex queries, think step-by-step:
 ### Version Control Strategy
 
 Store prompts in git:
-- Context files: `personal-context/context/*.md`
-- System prompt prefix: `config.yaml`
+- Context files: `data/context/*.md`
+- System prompt prefix: `config/default.yaml`
 
 Track changes:
 ```bash
-git log --oneline personal-context/context/
+git log --oneline data/context/
 ```
 
 ### Naming Convention
@@ -301,9 +308,9 @@ experiments/
 ### Evaluation Tools
 
 - **Manual**: Golden test suite (Phase 2)
-- **Automated**: LLM-as-judge (Phase 3)
+- **Automated**: LLM-as-judge (Phase 2)
 - **Metrics**: BLEU, ROUGE, custom scoring
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

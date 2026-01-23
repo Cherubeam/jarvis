@@ -115,7 +115,7 @@ Prompts are code. They need:
 
 - ✅ System prompt in version control
 - ✅ Context files versioned
-- 🔴 No systematic evaluation yet (Phase 2 goal)
+- ✅ LLM-as-judge evaluation framework implemented
 
 ---
 
@@ -156,6 +156,7 @@ No single model is best for everything:
 
 - ✅ Multi-provider support via LiteLLM
 - ✅ Cost tracking per model
+- 🟡 Benchmark cost estimation available
 - 🔴 No systematic benchmarking yet (Phase 3 goal)
 
 See [models.md](models.md) for model comparison.
@@ -469,4 +470,4 @@ Phase 8: Fine-tuning
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

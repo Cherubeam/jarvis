@@ -97,8 +97,6 @@ tests/
 
 - ⚡ All unit tests run in < 1 second
 - ⚡ Full test suite runs in < 2 seconds
-- ✅ 62/73 tests passing (85% pass rate)
-- ⏸️ 11 tests skipped (intentional - manual golden tests + complex CLI)
 - 📊 HTML coverage reports generated
 
 ### Running Tests
@@ -108,7 +106,7 @@ tests/
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Run specific category
 uv run pytest tests/unit/ -v
@@ -635,6 +633,22 @@ golden_tests:
 
 ---
 
+## Benchmark Cost Estimation
+
+Estimate model comparison costs before running golden evaluations:
+
+```bash
+uv run python scripts/model_benchmark.py
+```
+
+Notes:
+- Uses the most recent golden test run in `tests/golden/results/runs/` as the token baseline.
+- Pulls current pricing from the OpenRouter model list endpoint.
+- Skips models without pricing (emits a warning).
+- Add `--evaluate` to run evaluations after the estimate.
+
+---
+
 ## Testing Roadmap
 
 ### Phase 1 (Complete ✅)
@@ -648,10 +662,11 @@ golden_tests:
 ### Phase 2 (Next - In Progress)
 - [x] Create golden test conversation suite (8 cases) ✅
 - [x] Implement automated test runner (pytest) ✅
-- [ ] Add LLM-as-judge for automated quality evaluation
-- [ ] Manual baseline evaluation of golden tests
-- [ ] Latency tracking (TTFT)
+- [x] Add LLM-as-judge for automated quality evaluation ✅
+- [x] Manual baseline evaluation of golden tests ✅
+- [x] Latency tracking (TTFT) ✅
 - [ ] Model comparison benchmarks
+- [ ] Benchmark cost estimation for model comparisons
 
 ### Phase 3 (1-2 months)
 - [ ] Automated LLM-as-judge evaluation
@@ -692,4 +707,4 @@ golden_tests:
 
 ---
 
-*Last updated: 2026-01-15*
+*Last updated: 2026-01-22*

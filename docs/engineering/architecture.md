@@ -24,6 +24,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • Context      │  • JARVIS Agent  │  • (Future: Calendar)     │
 │  • Memory       │  • (Future:      │  • (Future: Email)        │
 │  • Pricing      │    Research,     │                           │
+│  • Benchmarks   │    Coding)       │                           │
 │                 │    Coding)       │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
@@ -235,6 +236,9 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - `calculate_cost_from_litellm(response)`: Fallback cost calculation
 - `format_cost(cost_usd)`: Human-readable formatting
 
+**Related Module:**
+- `packages/core/benchmark_costs.py`: Estimate benchmark costs from golden test baselines
+
 **Pricing Strategy:**
 1. **Primary**: OpenRouter API (upfront, accurate)
 2. **Fallback**: LiteLLM internal pricing database
@@ -304,7 +308,8 @@ jarvis/
 │   │   ├── llm_client.py           # LLM API abstraction
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
-│   │   └── pricing.py              # Cost tracking
+│   │   ├── pricing.py              # Cost tracking
+│   │   └── benchmark_costs.py      # Benchmark cost estimation
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # Base agent class
 │   │   └── jarvis/                 # Main JARVIS orchestrator
@@ -445,9 +450,9 @@ jarvis/
 
 ## Testing Strategy
 
-### Current State (Phase 1 - Complete)
+### Current State (Phase 2 - In Progress)
 - ✅ Comprehensive automated test suite
-- ✅ 116 total tests (86 unit + 20 integration + 10 golden)
+- ✅ 150 total tests (104 unit + 20 integration + 26 golden/evaluation)
 - ✅ 97.5% code coverage on core modules
 - ✅ Type hints for static analysis
 - ✅ Fast test execution (< 2 seconds)
@@ -478,7 +483,6 @@ jarvis/
 
 ### Missing (Planned)
 
-- Latency tracking (TTFT)
 - Error rates and types
 - Model performance metrics
 - User interaction patterns

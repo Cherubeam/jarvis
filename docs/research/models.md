@@ -225,11 +225,11 @@ Complex → Opus ($$$$$$$$)
 
 ---
 
-## Benchmarking Plan (Phase 3)
+## Benchmarking Plan (Phase 2)
 
 ### Golden Test Suite
 
-Create 5-10 test conversations covering:
+Golden tests are defined; use them to benchmark models:
 1. Context recall (uses profile.md)
 2. Technical explanation
 3. Multi-step reasoning
@@ -270,7 +270,8 @@ Run golden tests on:
 ## Model Selection TODOs
 
 **Phase 2-3:**
-- [ ] Create golden test suite
+- [x] Create golden test suite ✅
+- [x] Add benchmark cost estimation tooling ✅
 - [ ] Benchmark 3-5 models
 - [ ] Document quality vs. cost tradeoffs
 
@@ -290,7 +291,7 @@ Run golden tests on:
 
 ### Via Config (Current)
 
-Edit `config.yaml`:
+Edit `config/default.yaml` (or override in `config/local.yaml`):
 ```yaml
 openrouter:
   default_model: "anthropic/claude-haiku-3.5"  # Change this line
@@ -384,4 +385,4 @@ Use data to refine routing algorithm.
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

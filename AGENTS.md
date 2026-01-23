@@ -110,7 +110,7 @@ uv run pytest
 uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Run specific test categories
-uv run pytest tests/unit/ -v              # Unit tests only (33 tests)
+uv run pytest tests/unit/ -v              # Unit tests only (104 tests)
 uv run pytest tests/integration/ -v       # Integration tests only
 uv run pytest tests/golden/ -v            # Golden test structure validation (free)
 
@@ -126,7 +126,7 @@ open htmlcov/index.html
 ```
 
 **Test Statistics:**
-- 149 total tests (103 unit + 20 integration + 26 golden/evaluation)
+- 150 total tests (104 unit + 20 integration + 26 golden/evaluation)
 - 97.5% code coverage on core modules
 - Unit/integration suite runs in < 2 seconds
 - LLM-as-judge evaluation: 8 golden tests (~$0.41/run, optional)

@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document provides reference documentation for Jarvis's internal modules. All code is in `personal-context/src/`.
+This document provides reference documentation for Jarvis's internal modules. Core code lives in `packages/` with CLI entry points in `apps/`.
 
 ---
 
@@ -131,7 +131,7 @@ Assemble full system prompt from context files.
 from pathlib import Path
 
 prompt = build_system_prompt(
-    Path("personal-context/context"),
+    Path("data/context"),
     "You are a helpful assistant."
 )
 ```
@@ -178,7 +178,7 @@ Save conversation to timestamped JSON file.
 
 **Usage Example:**
 ```python
-logger = ConversationLogger(Path("personal-context/memory/conversations"))
+logger = ConversationLogger(Path("data/conversations"))
 logger.add_message("user", "Hello!")
 logger.add_message("assistant", "Hi there!", total_tokens=50, cost_usd=0.001)
 logger.save()  # Saves to file
@@ -253,7 +253,7 @@ Format cost for display with appropriate precision.
 
 ## Configuration
 
-### `config.yaml`
+### `config/default.yaml`
 
 **Structure:**
 ```yaml
@@ -264,8 +264,8 @@ system_prompt_prefix: |
   You are a helpful personal assistant.
 
 paths:
-  context_dir: "personal-context/context"
-  conversations_dir: "personal-context/memory/conversations"
+  context_dir: "data/context"
+  conversations_dir: "data/conversations"
 ```
 
 **Loading:**
@@ -274,6 +274,35 @@ import yaml
 with open("config.yaml") as f:
     config = yaml.safe_load(f)
 ```
+
+---
+
+## Module: `benchmark_costs`
+
+### `class BenchmarkCostEstimate`
+
+Estimated costs for running the golden suite on a model.
+
+**Attributes:**
+- `model_id: str` - Model identifier
+- `response_cost_usd: float` - Estimated response generation cost
+- `judge_cost_usd: float` - Estimated judge evaluation cost
+- `total_cost_usd: float` - Combined estimate
+
+---
+
+### `estimate_benchmark_costs(models, judge_model, results_dir, run_id=None)`
+
+Estimate costs for a benchmark run using OpenRouter pricing and the latest golden test token baseline.
+
+**Parameters:**
+- `models` - Model IDs to evaluate
+- `judge_model` - Model ID for the judge
+- `results_dir` - Golden results directory (default: `tests/golden/results`)
+- `run_id` - Optional baseline run ID
+
+**Returns:**
+- Tuple of `(estimates_by_model, token_baseline)`
 
 ---
 
@@ -334,4 +363,4 @@ def chat_stream(
 
 ---
 
-*Last updated: 2026-01-14*
+*Last updated: 2026-01-22*

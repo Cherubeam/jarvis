@@ -68,6 +68,7 @@ None currently.
 - [ ] Compare quality vs. cost tradeoffs
 - [ ] Document model-specific behaviors
 - [ ] Establish default model recommendation
+- [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API) ✅
 
 **Success Criteria:**
 - 10 golden test cases covering common scenarios

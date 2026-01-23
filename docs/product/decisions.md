@@ -485,7 +485,7 @@ Initial plan was to use [mcp-server-things3](https://github.com/jonagill/mcp-ser
 **Phase A (Current)**: Use direct AppleScript with automatic language detection
 - Implement `task_sync.py` module (~520 lines) with AppleScript interface
 - Auto-detect Things 3 language by querying list names on first run
-- Sync tasks to `personal-context/context/tasks.md` on startup
+- Sync tasks to `data/context/tasks.md` on startup
 - Cache results for 5 minutes to avoid repeated queries
 - Preserve `MCPThings3Client` class structure for Phase B compatibility
 

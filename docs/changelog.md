@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MetricsTracker**: `packages/telemetry/metrics.py` for TTFT and response metrics tracking
 - **Web Interface Structure**: `apps/web/` prepared for FastAPI backend + React frontend
 - **Web Dependencies**: Added FastAPI, uvicorn, sse-starlette to pyproject.toml
+- **Benchmark Cost Estimator**: Estimate golden test run costs per model using OpenRouter pricing
 
 ### Changed (2026-01-22)
 - **Project Structure**: Migrated from `personal-context/` to monorepo structure
