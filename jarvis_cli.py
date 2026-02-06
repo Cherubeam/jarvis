@@ -9,8 +9,18 @@ hidden flag are skipped during site initialization.
 import sys
 from pathlib import Path
 
-# Ensure project root is in sys.path for editable installs
-_project_root = str(Path(__file__).parent)
+# When installed via hatchling force-include, __file__ resolves to
+# site-packages/jarvis_cli.py.  Read the project root from the .pth
+# file that the editable install wrote next to us.
+_site_packages = Path(__file__).resolve().parent
+_pth_file = _site_packages / "_jarvis.pth"
+
+if _pth_file.exists():
+    _project_root = _pth_file.read_text().strip().splitlines()[0]
+else:
+    # Fallback: assume running from project root directly
+    _project_root = str(_site_packages)
+
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 

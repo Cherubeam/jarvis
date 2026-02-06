@@ -14,6 +14,7 @@ memory/
 personal-context/context/
 
 # Personal data
+backup
 data/context/
 data/conversations/
 data/learned_facts.md

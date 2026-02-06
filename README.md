@@ -63,7 +63,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
-- **Comprehensive Testing**: 150 automated tests with 97.5% code coverage
+- **Comprehensive Testing**: 192 automated tests with 97.5% code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 
 ## Getting Started
@@ -82,9 +82,6 @@ cd jarvis
 
 # Install dependencies using uv (https://github.com/astral-sh/uv)
 uv sync
-
-# Install package in editable mode (required for `uv run jarvis` command)
-uv pip install -e .
 
 # Set up your environment variables
 echo "OPENROUTER_API_KEY=your_key_here" > .env
@@ -107,6 +104,20 @@ uv run python -m apps.cli.main
 ```
 
 Start chatting! Type `quit` or `exit` to end the session.
+
+### Troubleshooting
+
+**`ModuleNotFoundError: No module named 'apps'` when running `uv run jarvis`**
+
+On macOS with Python 3.13+, the editable-install `.pth` file can get a hidden flag (`UF_HIDDEN`) that causes Python to skip it during startup. Fix it with:
+
+```bash
+# Remove the hidden flag from the .pth file
+chflags nohidden .venv/lib/python3.13/site-packages/_jarvis.pth
+
+# Or recreate the virtual environment from scratch
+rm -rf .venv && uv sync
+```
 
 ## Project Structure
 
@@ -146,9 +157,9 @@ jarvis/
 │   └── local.yaml                      # Local overrides (gitignored)
 │
 ├── tests/                              # Comprehensive test suite
-│   ├── unit/                           # 103 unit tests
-│   ├── integration/                    # 20 integration tests
-│   ├── golden/                         # 8 golden test conversations + LLM-as-judge
+│   ├── unit/                           # 160 unit tests
+│   ├── integration/                    # 22 integration tests
+│   ├── golden/                         # 10 golden test conversations + LLM-as-judge
 │   └── README.md                       # Testing guide
 │
 ├── docs/                               # Documentation
@@ -168,15 +179,16 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework (150 tests, 97.5% coverage)**
+- [x] **Comprehensive testing framework (192 tests, 97.5% coverage)**
 
-**Phase 2: Evaluation & Quality Metrics (85% Complete)**
-- [x] 8 golden test conversations defined
+**Phase 2: Evaluation & Quality Metrics (Complete ✅)**
+- [x] 10 golden test conversations defined
 - [x] **LLM-as-judge automated evaluation (~$0.41/run)**
 - [x] **Things 3 integration** (task sync with auto language detection)
 - [x] Latency tracking (TTFT)
 - [x] Model comparison benchmarks
 - [x] Benchmark cost estimation per model
+- [x] Conversation schema v1.0.0 (structured logging with migration support)
 
 **Phase 3: Web Interface (Next)**
 - [ ] FastAPI backend with SSE streaming
@@ -241,7 +253,7 @@ This is primarily a personal learning project, but if you find it useful or have
 
 ## License
 
-MIT License - feel free to fork and adapt for your own use.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
