@@ -4,6 +4,7 @@ Ties everything together.
 """
 
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -12,10 +13,12 @@ from dotenv import load_dotenv
 
 from packages.core.context_builder import build_system_prompt
 from packages.core.llm_client import LLMClient
-from packages.core.memory import ConversationLogger
+from packages.core.memory import ConversationLogger, hash_content
 from packages.core.pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
 from packages.integrations.things3.task_sync import sync_tasks_to_file
 from packages.telemetry.metrics import MetricsTracker
+
+CLIENT_VERSION = "0.4.0"
 
 
 def get_project_root() -> Path:
@@ -86,10 +89,8 @@ def main():
     # Sync tasks from Things 3 (if enabled)
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
-    system_prompt = build_system_prompt(
-        context_dir,
-        config.get("system_prompt_prefix", "You are a helpful assistant.")
-    )
+    system_prompt_prefix = config.get("system_prompt_prefix", "You are a helpful assistant.")
+    system_prompt = build_system_prompt(context_dir, system_prompt_prefix)
 
     client = LLMClient(
         api_key=config["openrouter"]["api_key"],
@@ -97,7 +98,52 @@ def main():
         provider="openrouter"
     )
 
-    logger = ConversationLogger(conversations_dir)
+    # Build schema config dicts for ConversationLogger
+    model_config = {
+        "id": model_id,
+        "provider": "openrouter",
+        "parameters": {},
+    }
+
+    agent_config = {
+        "name": "JARVIS",
+        "system_prompt_hash": f"sha256:{hash_content(system_prompt)}",
+        "tools": [],
+        "metadata": {},
+    }
+
+    context_files = []
+    if context_dir.exists():
+        for f in sorted(context_dir.iterdir()):
+            if f.is_file() and f.suffix == ".md":
+                content = f.read_text(encoding="utf-8")
+                context_files.append({
+                    "path": str(f.relative_to(jarvis_dir)),
+                    "hash": f"sha256:{hash_content(content)}",
+                    "size_bytes": f.stat().st_size,
+                })
+
+    context_snapshot = {
+        "files_loaded": context_files,
+        "system_prompt_prefix": system_prompt_prefix,
+        "metadata": {},
+    }
+
+    environment = {
+        "client": "cli",
+        "client_version": CLIENT_VERSION,
+        "platform": sys.platform,
+        "python_version": platform.python_version(),
+        "metadata": {},
+    }
+
+    logger = ConversationLogger(
+        conversations_dir,
+        model_config=model_config,
+        agent_config=agent_config,
+        context_snapshot=context_snapshot,
+        environment=environment,
+    )
     metrics_tracker = MetricsTracker()
 
     # Fetch pricing for the model

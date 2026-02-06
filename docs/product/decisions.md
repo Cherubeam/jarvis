@@ -750,6 +750,82 @@ except ImportError:
 
 ---
 
+## ADR-010: Future-Proof Conversation Schema (v1.0.0)
+
+**Date**: 2026-02-06
+**Status**: ✅ Accepted
+
+### Context
+
+The conversation JSON schema (`data/conversations/*.json`) had drifted through ~3 informal versions (no metrics, metrics without latency, metrics with latency) with no way to distinguish them. The schema lacked conversation identity, topic classification, model info, agent config, context snapshots, extensible metadata, and typed content blocks. Every new feature (topics, tool use, multi-modal, feedback, error tracking) would require a structural change.
+
+### Decision
+
+Redesign the conversation schema once with extensibility primitives so that no future feature ever requires a structural change:
+
+1. **Schema versioning** (`schema_version: "1.0.0"`) — readers branch on major version; minor adds optional fields only
+2. **Conversation identity** — unique `id` (`conv_{YYYYMMDD}_{HHMMSS}_{4hex}`), `title`, `topic`, `tags`
+3. **Model configuration** — `model.id`, `model.provider`, `model.parameters` (open object)
+4. **Agent / persona tracking** — `agent.name`, `agent.system_prompt_hash`, `agent.tools`
+5. **Context snapshot** — `context.files_loaded` with hashes, `context.system_prompt_prefix`
+6. **Environment info** — `environment.client`, `environment.platform`, `environment.python_version`
+7. **Typed content blocks** — `content` as array of `{type, ...}` objects instead of plain strings. Supports `text`, `tool_use`, `tool_result`, `thinking`, `image`, `audio`, `file`, `code` — new types added without schema changes
+8. **Message identity** — sequential `id` (`msg_001`), `parent_id` for branching, `status`, `error`, `stop_reason`
+9. **Extended usage** — `cache_read_tokens`, `cache_write_tokens`, `thinking_tokens`, `cost_usd`
+10. **`metadata: {}` at every level** — escape hatch for unforeseen data at conversation, metrics, message, and usage levels
+11. **Session feedback** — nullable `feedback` with `overall_rating`, `helpful`, `notes`
+12. **Read-time migration** — `migrate_conversation()` normalizes any old format to v1.0.0 when loaded; existing files never modified on disk
+
+### Alternatives Considered
+
+1. **Incremental patching of existing schema**
+   - ✅ Smaller change
+   - ❌ Continues drift without versioning
+   - ❌ No extensibility story
+
+2. **Database-backed storage (SQLite)**
+   - ✅ Query capabilities
+   - ❌ Violates local-first / human-readable principle
+   - ❌ Much larger scope change
+
+3. **One-time schema redesign with extensibility primitives (chosen)**
+   - ✅ Future features require zero structural changes
+   - ✅ Backward-compatible read-time migration
+   - ✅ Preserves JSON / human-readable format
+
+### Consequences
+
+**Benefits:**
+- ✅ Schema versioning prevents silent drift
+- ✅ Typed content blocks support tool use, multi-modal, thinking without schema changes
+- ✅ `metadata: {}` escape hatches at every level for unforeseen data
+- ✅ Read-time migration means zero data loss, no batch conversion needed
+- ✅ Conversation identity enables cross-system referencing
+- ✅ Environment + model + agent info enables reproducibility
+
+**Drawbacks:**
+- ⚠️ Larger JSON files (more fields, even when null)
+- ⚠️ Existing tools reading raw JSON need updating
+
+**Mitigation:**
+- Null fields compress well; file size increase is minimal
+- `ConversationLogger.load()` provides migration-aware reading
+
+### Impact
+
+- `packages/core/memory.py`: Major rewrite — new schema, content blocks, migration
+- `apps/cli/main.py`: Constructs model, agent, context, environment configs
+- `tests/unit/test_memory.py`: Expanded from 15 to 52 tests
+- `tests/integration/test_full_conversation_flow.py`: 2 new schema verification tests
+
+### Related ADRs
+- Supersedes: ADR-004 (JSON for Conversation Logs — format updated, decision still valid)
+- Relates to: ADR-005 (Start Without Database — filesystem format improved)
+
+**Current Status**: Implemented and tested.
+
+---
+
 ## Template for Future ADRs
 
 ```markdown
@@ -793,4 +869,4 @@ How we address the drawbacks.
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-06*

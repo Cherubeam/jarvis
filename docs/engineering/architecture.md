@@ -150,27 +150,45 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - `get_messages_for_api()`: Format messages for LLM API
 - `save()`: Write to JSON file
 
-**File Format:**
+**File Format (Schema v1.0.0):**
 ```json
 {
-  "timestamp": "2026-01-14T10:30:00Z",
-  "model": "anthropic/claude-sonnet-4.5",
+  "schema_version": "1.0.0",
+  "id": "conv_20260206_143022_b8e1",
+  "title": null,
+  "topic": null,
+  "tags": [],
+  "session_start": "2026-01-14T10:30:00Z",
+  "session_end": "2026-01-14T10:45:00Z",
+  "model": { "id": "anthropic/claude-sonnet-4.5", "provider": "openrouter", "parameters": {} },
+  "agent": { "name": "JARVIS", "system_prompt_hash": "sha256:...", "tools": [], "metadata": {} },
+  "context": { "files_loaded": [...], "system_prompt_prefix": "...", "metadata": {} },
+  "environment": { "client": "cli", "client_version": "0.3.0", "platform": "darwin", "python_version": "3.13.1", "metadata": {} },
+  "metrics": {
+    "total_tokens": 15000, "total_cost_usd": 0.045,
+    "total_cache_read_tokens": 0, "total_cache_write_tokens": 0, "total_thinking_tokens": 0,
+    "average_ttft_ms": 280.0, "average_latency_ms": 1650.0,
+    "request_count": 10, "metadata": {}
+  },
   "messages": [
-    {"role": "user", "content": "...", "timestamp": "..."},
     {
-      "role": "assistant",
-      "content": "...",
-      "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150, "cost_usd": 0.0045},
-      "latency": {"ttft_ms": 250.0, "total_ms": 1500.0}
+      "id": "msg_001", "parent_id": null, "role": "user",
+      "timestamp": "...",
+      "content": [{"type": "text", "text": "..."}],
+      "usage": null, "latency": null,
+      "stop_reason": null, "status": "completed", "error": null, "metadata": {}
+    },
+    {
+      "id": "msg_002", "parent_id": null, "role": "assistant",
+      "timestamp": "...",
+      "content": [{"type": "text", "text": "..."}],
+      "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150, "cache_read_tokens": 0, "cache_write_tokens": 0, "thinking_tokens": 0, "cost_usd": 0.0045, "metadata": {}},
+      "latency": {"ttft_ms": 250.0, "total_ms": 1500.0},
+      "stop_reason": "end_turn", "status": "completed", "error": null, "metadata": {}
     }
   ],
-  "metrics": {
-    "total_tokens": 15000,
-    "total_cost_usd": 0.045,
-    "average_ttft_ms": 280.0,
-    "average_latency_ms": 1650.0,
-    "request_count": 10
-  }
+  "feedback": null,
+  "metadata": {}
 }
 ```
 
@@ -506,4 +524,4 @@ jarvis/
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-06*

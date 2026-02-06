@@ -9,15 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (2026-01-23)
+### Added
+- **Future-Proof Conversation Schema (v1.0.0)**: Complete redesign of conversation JSON format
+  - Schema versioning (`schema_version: "1.0.0"`) for safe evolution
+  - Conversation identity (`id`, `title`, `topic`, `tags`) for classification and referencing
+  - Model configuration tracking (`model.id`, `model.provider`, `model.parameters`)
+  - Agent/persona tracking (`agent.name`, `agent.system_prompt_hash`)
+  - Context snapshot (`context.files_loaded` with hashes, `context.system_prompt_prefix`)
+  - Environment info (`client`, `platform`, `python_version`)
+  - Typed content blocks (`content` as array of `{type, ...}` objects) — supports text, tool_use, tool_result, thinking, images, audio, code without schema changes
+  - Message identity (`id`, `parent_id`, `status`, `error`, `stop_reason`)
+  - Extended usage tracking (`cache_read_tokens`, `cache_write_tokens`, `thinking_tokens`)
+  - `metadata: {}` escape hatches at every level (conversation, metrics, messages, usage)
+  - Session-level `feedback` (nullable, with `overall_rating`, `helpful`, `notes`)
+  - Read-time migration (`migrate_conversation()`) for backward compatibility with all old formats
+  - `ConversationLogger.load()` static method for migration-aware file reading
+  - New methods: `set_title()`, `set_topic()`, `add_tag()`, `set_feedback()`
+  - New utility functions: `generate_conversation_id()`, `hash_content()`
+  - 52 unit tests for memory module (expanded from 15)
+  - 2 new integration tests for schema verification
+
+---
+
+## [0.4.0] - 2026-01-23
+
+### Added
 - **Benchmark Report Generator**: `scripts/benchmark_report.py` creates comparison tables in `docs/research/models.md`
 - **Model Benchmark Results**: Golden test benchmarks for Sonnet 4.5, Opus 4.5, GPT-5.2, GPT-5.2-Codex, GPT-OSS-120B, Gemini 3 Flash/Pro (preview)
 - **Benchmark Runner Resilience**: Continue model runs even when individual evaluations fail
-
-### Changed (2026-01-23)
-- **Golden Tests Imports**: Updated golden test runner to use package import paths
-
-### Added (2026-01-22)
 - **TTFT (Time to First Token) Tracking**: Integrated latency metrics into CLI and conversation logs
   - CLI now displays TTFT and total latency after each response
   - Session summary includes average TTFT and latency across all requests
@@ -35,28 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Web Interface Structure**: `apps/web/` prepared for FastAPI backend + React frontend
 - **Web Dependencies**: Added FastAPI, uvicorn, sse-starlette to pyproject.toml
 - **Benchmark Cost Estimator**: Estimate golden test run costs per model using OpenRouter pricing
-
-### Changed (2026-01-22)
-- **Project Structure**: Migrated from `personal-context/` to monorepo structure
-  - `personal-context/src/*.py` → `packages/core/`
-  - `personal-context/src/cli.py` → `apps/cli/main.py`
-  - `personal-context/src/task_sync.py` → `packages/integrations/things3/`
-  - `personal-context/context/` → `data/context/`
-  - `personal-context/memory/` → `data/conversations/`
-  - `config.yaml` → `config/default.yaml`
-- **Import Paths**: All imports now use package paths (e.g., `packages.core.llm_client`)
-- **pyproject.toml**: Updated with new package structure and entry points
-- **Tests**: Updated with backward-compatible imports (try/except pattern)
-- **Documentation**: Updated all docs (AGENTS.md, architecture.md, roadmap.md, deployment.md, decisions.md)
-
-### Documentation (2026-01-22)
-- Added ADR-009: Scalable Monorepo Structure to `docs/product/decisions.md`
-- Updated `docs/engineering/architecture.md` with new architecture diagram
-- Updated `docs/engineering/deployment.md` with new paths and commands
-- Updated `docs/product/roadmap.md` with Phase 3 web interface scope
-- Updated `AGENTS.md` with new folder structure and import patterns
-
-### Added (2026-01-20 Evening)
 - **LLM-as-Judge Evaluation System** - Complete automated quality assessment
   - Core evaluation engine with `JudgeEvaluator` class (~400 lines)
   - Category-specific judge prompts for 4 test types (~200 lines)
@@ -69,8 +66,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uses Claude Opus 4.5 as judge for highest quality evaluations
   - Structured JSON output + markdown reports with recommendations
   - See [tests/golden/README.md](../tests/golden/README.md) for complete usage guide
-
-### Added (2026-01-20 Morning)
 - **Things 3 Integration (Phase A)**: Context awareness from Things 3 task manager
 - **Automatic Language Detection**: Supports German, French, Spanish, Italian, English Things 3 installations
 - **Task Sync Module**: `task_sync.py` (~520 lines) with AppleScript integration
@@ -79,18 +74,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **43 Additional Tests**: 33 unit tests + 8 integration tests + 2 golden tests for task sync
 - **MCP Architecture**: Preserved MCPThings3Client class for Phase B (interactive features)
 
-### Changed (2026-01-20 Evening)
-- **Test Suite**: Expanded from 116 to 149 tests total (103 unit + 20 integration + 26 golden/evaluation)
+### Changed
+- **Project Structure**: Migrated from `personal-context/` to monorepo structure
+  - `personal-context/src/*.py` → `packages/core/`
+  - `personal-context/src/cli.py` → `apps/cli/main.py`
+  - `personal-context/src/task_sync.py` → `packages/integrations/things3/`
+  - `personal-context/context/` → `data/context/`
+  - `personal-context/memory/` → `data/conversations/`
+  - `config.yaml` → `config/default.yaml`
+- **Import Paths**: All imports now use package paths (e.g., `packages.core.llm_client`)
+- **pyproject.toml**: Updated with new package structure and entry points
+- **Tests**: Updated with backward-compatible imports (try/except pattern)
+- **Test Suite**: Expanded from 73 to 149 tests total (103 unit + 20 integration + 26 golden/evaluation)
+- **Context Builder**: Now loads `tasks.md` as 4th context file
+- **CLI Startup**: Added task sync before building system prompt
+- **Golden Tests Imports**: Updated golden test runner to use package import paths
 - Updated `config.yaml` with evaluation settings (judge model, thresholds, cost limits)
 - Modified `conftest.py` to add evaluation fixtures and `--evaluate` flag support
 - Modified `test_golden_conversations.py` to implement evaluation execution
-- Updated all documentation (AGENTS.md, README.md, testing.md, roadmap.md)
-
-### Changed (2026-01-20 Morning)
-- **Test Suite**: Expanded from 73 to 116 tests total
-- **Context Builder**: Now loads `tasks.md` as 4th context file
-- **CLI Startup**: Added task sync before building system prompt
-- **Documentation**: Updated all docs with Things 3 integration details
 
 ### Fixed
 - **Token Usage Tracking**: Fixed streaming responses not reporting token counts
@@ -108,9 +109,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Added ADR-008 to `docs/product/decisions.md`
-- Updated `docs/engineering/architecture.md` with task_sync module
-- Updated `docs/product/roadmap.md` with Phase A completion
-- Updated `AGENTS.md` with new test counts and structure
+- Added ADR-009: Scalable Monorepo Structure to `docs/product/decisions.md`
+- Updated `docs/engineering/architecture.md` with new architecture diagram and task_sync module
+- Updated `docs/engineering/deployment.md` with new paths and commands
+- Updated `docs/product/roadmap.md` with Phase 3 web interface scope and Phase A completion
+- Updated `AGENTS.md` with new folder structure, import patterns, and test counts
 
 ---
 
@@ -416,4 +419,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-06*

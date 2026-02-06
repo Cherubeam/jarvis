@@ -216,6 +216,53 @@ def sample_pricing_data() -> dict:
     }
 
 
+# ==================== Schema Config Fixtures ====================
+
+@pytest.fixture
+def sample_model_config() -> dict:
+    """Sample model configuration for conversation schema."""
+    return {
+        "id": "anthropic/claude-sonnet-4.5",
+        "provider": "openrouter",
+        "parameters": {"temperature": 0.7, "max_tokens": 4096},
+    }
+
+
+@pytest.fixture
+def sample_agent_config() -> dict:
+    """Sample agent configuration for conversation schema."""
+    return {
+        "name": "JARVIS",
+        "system_prompt_hash": "sha256:a1b2c3d4e5f67890",
+        "tools": [],
+        "metadata": {},
+    }
+
+
+@pytest.fixture
+def sample_context_snapshot() -> dict:
+    """Sample context snapshot for conversation schema."""
+    return {
+        "files_loaded": [
+            {"path": "data/context/profile.md", "hash": "sha256:abcdef1234567890", "size_bytes": 342},
+        ],
+        "system_prompt_prefix": "You are Jarvis...",
+        "metadata": {},
+    }
+
+
+@pytest.fixture
+def sample_environment() -> dict:
+    """Sample environment info for conversation schema."""
+    return {
+        "client": "cli",
+        "client_version": "0.3.0",
+        "platform": "darwin",
+        "python_version": "3.13.1",
+        "metadata": {},
+    }
+
+
 # ==================== Time Freezing Fixtures ====================
 
 @pytest.fixture

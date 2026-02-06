@@ -4,11 +4,12 @@ Integration tests for full conversation flow.
 Tests the complete flow from user input through LLM response to logging.
 """
 
+import json
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from packages.core.llm_client import LLMClient, TokenUsage
-from packages.core.memory import ConversationLogger
+from packages.core.memory import ConversationLogger, SCHEMA_VERSION
 from packages.core.context_builder import build_system_prompt
 from packages.core.pricing import ModelPricing
 
@@ -43,15 +44,17 @@ class TestFullConversationFlow:
                 chunk.choices = [Mock()]
                 chunk.choices[0].delta = Mock()
                 chunk.choices[0].delta.content = word + " "
+                chunk.usage = None  # Non-final chunks have no usage
                 mock_chunks.append(chunk)
+
+            # Last chunk carries usage data
+            usage_chunk = Mock()
+            usage_chunk.choices = []
+            usage_chunk.usage = Mock(prompt_tokens=100, completion_tokens=50, total_tokens=150)
+            mock_chunks.append(usage_chunk)
 
             mock_stream = Mock()
             mock_stream.__iter__ = Mock(return_value=iter(mock_chunks))
-            mock_stream.usage = Mock(
-                prompt_tokens=100,
-                completion_tokens=50,
-                total_tokens=150
-            )
 
             mock_completion.return_value = mock_stream
 
@@ -158,10 +161,14 @@ class TestFullConversationFlow:
             chunk.choices = [Mock()]
             chunk.choices[0].delta = Mock()
             chunk.choices[0].delta.content = "Response"
+            chunk.usage = None
+
+            usage_chunk = Mock()
+            usage_chunk.choices = []
+            usage_chunk.usage = Mock(prompt_tokens=200, completion_tokens=50, total_tokens=250)
 
             stream = Mock()
-            stream.__iter__ = Mock(return_value=iter([chunk]))
-            stream.usage = Mock(prompt_tokens=200, completion_tokens=50, total_tokens=250)
+            stream.__iter__ = Mock(return_value=iter([chunk, usage_chunk]))
 
             mock_completion.return_value = stream
 
@@ -223,14 +230,18 @@ class TestFullConversationFlow:
         )
 
         with patch('litellm.completion') as mock_completion:
-            chunk = Mock()
-            chunk.choices = [Mock()]
-            chunk.choices[0].delta = Mock()
-            chunk.choices[0].delta.content = "Response"
+            content_chunk = Mock()
+            content_chunk.choices = [Mock()]
+            content_chunk.choices[0].delta = Mock()
+            content_chunk.choices[0].delta.content = "Response"
+            content_chunk.usage = None
+
+            usage_chunk = Mock()
+            usage_chunk.choices = []
+            usage_chunk.usage = Mock(prompt_tokens=1000, completion_tokens=500, total_tokens=1500)
 
             stream = Mock()
-            stream.__iter__ = Mock(return_value=iter([chunk]))
-            stream.usage = Mock(prompt_tokens=1000, completion_tokens=500, total_tokens=1500)
+            stream.__iter__ = Mock(return_value=iter([content_chunk, usage_chunk]))
 
             mock_completion.return_value = stream
 
@@ -259,3 +270,65 @@ class TestFullConversationFlow:
             )
 
             assert logger.metrics.total_cost_usd == pytest.approx(0.0105)
+
+    def test_saved_json_has_schema_v1_structure(self, temp_conversations_dir: Path):
+        """Test that saved conversation JSON contains all v1.0.0 schema fields."""
+        model_config = {"id": "test-model", "provider": "openrouter", "parameters": {}}
+        environment = {"client": "cli", "client_version": "0.3.0", "platform": "darwin", "python_version": "3.13.1", "metadata": {}}
+
+        logger = ConversationLogger(
+            temp_conversations_dir,
+            model_config=model_config,
+            environment=environment,
+        )
+
+        logger.add_message("user", "Hello")
+        logger.add_message("assistant", "Hi!", prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.001)
+        logger.save()
+
+        files = list(temp_conversations_dir.glob("*.json"))
+        assert len(files) == 1
+
+        with open(files[0]) as f:
+            data = json.load(f)
+
+        # Verify top-level schema structure
+        assert data["schema_version"] == SCHEMA_VERSION
+        assert data["id"].startswith("conv_")
+        assert "title" in data
+        assert "topic" in data
+        assert "tags" in data
+        assert "session_start" in data
+        assert "session_end" in data
+        assert data["model"] == model_config
+        assert data["environment"] == environment
+        assert "metrics" in data
+        assert "messages" in data
+        assert "feedback" in data
+        assert "metadata" in data
+
+        # Verify message structure
+        msg = data["messages"][0]
+        assert "id" in msg
+        assert "parent_id" in msg
+        assert "content" in msg
+        assert "status" in msg
+        assert isinstance(msg["content"], list)
+        assert msg["content"][0]["type"] == "text"
+
+    def test_message_ids_sequential_in_saved_json(self, temp_conversations_dir: Path):
+        """Test that saved JSON has sequential message IDs."""
+        logger = ConversationLogger(temp_conversations_dir)
+
+        logger.add_message("user", "Turn 1")
+        logger.add_message("assistant", "Response 1", 100, 50, 150, 0.001)
+        logger.add_message("user", "Turn 2")
+        logger.save()
+
+        files = list(temp_conversations_dir.glob("*.json"))
+        with open(files[0]) as f:
+            data = json.load(f)
+
+        assert data["messages"][0]["id"] == "msg_001"
+        assert data["messages"][1]["id"] == "msg_002"
+        assert data["messages"][2]["id"] == "msg_003"
