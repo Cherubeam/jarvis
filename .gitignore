@@ -17,6 +17,7 @@ personal-context/context/
 data/context/
 data/conversations/
 data/learned_facts.md
+backup/
 
 # Local config overrides (keep default.yaml, ignore local overrides)
 config/local.yaml
