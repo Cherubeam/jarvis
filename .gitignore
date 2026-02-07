@@ -14,11 +14,11 @@ memory/
 personal-context/context/
 
 # Personal data
-backup
+backup/
 data/context/
 data/conversations/
 data/learned_facts.md
-backup/
+imports/
 
 # Local config overrides (keep default.yaml, ignore local overrides)
 config/local.yaml
