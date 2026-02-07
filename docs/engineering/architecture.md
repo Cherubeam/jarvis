@@ -89,10 +89,12 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - `build_system_prompt(context_dir, prefix)`: Assemble full prompt
 
 **Context Loading Order:**
-1. `profile.md` - Who the user is
-2. `preferences.md` - How to behave
-3. `current_focus.md` - What's currently relevant
-4. `tasks.md` - Current tasks from Things 3 (auto-generated)
+1. `personal_context.md` - Who the user is (personal background)
+2. `professional_context.md` - Professional background and skills
+3. `preferences.md` - How to behave
+4. `current_focus.md` - What's currently relevant
+5. `tasks.md` - Current tasks from Things 3 (auto-generated)
+6. `projects/*.md` - Project-specific context (alphabetical)
 
 **Design Principle**: Intentionally simple (no templating, no logic).
 
@@ -344,7 +346,10 @@ jarvis/
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   └── importers/              # Conversation importers
-│   │       └── chatgpt.py          # ChatGPT export converter
+│   │       ├── common.py           # Shared importer utilities
+│   │       ├── chatgpt.py          # ChatGPT export converter
+│   │       ├── claude.py           # Claude export converter
+│   │       └── claude_context.py   # Claude memories/projects importer
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # Base agent class
 │   │   └── jarvis/                 # Main JARVIS orchestrator
@@ -357,10 +362,12 @@ jarvis/
 │
 ├── data/                           # User data
 │   ├── context/                    # Personal context (markdown)
-│   │   ├── profile.md
+│   │   ├── personal_context.md     # Personal background
+│   │   ├── professional_context.md # Professional background
 │   │   ├── preferences.md
 │   │   ├── current_focus.md
-│   │   └── tasks.md                # Auto-generated from Things 3
+│   │   ├── tasks.md                # Auto-generated from Things 3
+│   │   └── projects/               # Project-specific context
 │   ├── conversations/              # Session logs (gitignored)
 │   │   └── YYYY-MM-DD_HH-MM-SS.json
 │   └── learned_facts.md            # (Future) Extracted facts
@@ -485,25 +492,9 @@ jarvis/
 
 ## Testing Strategy
 
-### Current State (Phase 2 - In Progress)
-- ✅ Comprehensive automated test suite
-- ✅ 246 total tests (214 unit + 22 integration + 10 golden)
-- ✅ 97.5% code coverage on core modules
-- ✅ Type hints for static analysis
-- ✅ Fast test execution (< 2 seconds)
+See [docs/engineering/testing.md](testing.md) for current test counts, coverage details, and the full testing strategy.
 
-### Test Categories
-- **Unit Tests**: Each module tested in isolation (mocked dependencies)
-- **Integration Tests**: Full flow tests with real interactions
-- **Golden Tests**: Conversation scenarios for quality evaluation
-
-### Test Coverage
-- `context_builder.py`: 100%
-- `llm_client.py`: 98%
-- `memory.py`: 100%
-- `pricing.py`: 95%
-- `task_sync.py`: 97%
-- Overall: 97.5%
+**Quick summary**: Comprehensive automated test suite with 97.5% coverage on core modules. Unit, integration, and golden tests with LLM-as-judge evaluation.
 
 ---
 
@@ -541,4 +532,4 @@ jarvis/
 
 ---
 
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-07*

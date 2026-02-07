@@ -68,9 +68,11 @@ Need to store user context (profile, preferences, current focus) in a format tha
 ### Decision
 
 Use markdown files for all user context storage:
-- `profile.md` - Who the user is
+- `personal_context.md` - Who the user is (personal background)
+- `professional_context.md` - Professional background and skills
 - `preferences.md` - How the assistant should behave
 - `current_focus.md` - Current projects and priorities
+- `projects/*.md` - Project-specific context
 
 ### Alternatives Considered
 

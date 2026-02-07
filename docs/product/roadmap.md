@@ -16,7 +16,7 @@
 - [x] LiteLLM integration for provider flexibility
 - [x] Automatic cost fallback via LiteLLM pricing
 - [x] **Testing framework setup (pytest, coverage, fixtures)**
-- [x] **Comprehensive unit test suite (214 tests, 97.5% coverage)**
+- [x] **Comprehensive unit test suite (388 tests, 97.5% coverage)**
 - [x] **Integration tests (22 tests)**
 - [x] **8 golden test conversations defined**
 
@@ -30,7 +30,7 @@ None currently.
 
 **Timeline**: 2-3 weeks (Late January - Early February 2026)
 **Goal**: Systematic quality measurement and baseline establishment
-**Status**: 🚀 85% Complete (benchmarks + LLM-as-judge + TTFT)
+**Status**: Complete ✅
 
 ### Features
 
@@ -45,7 +45,7 @@ None currently.
   - On-demand via `--evaluate` flag
 - [x] ChatGPT conversation import (bulk import with CLI filters) ✅
 - [x] Claude conversation import (bulk import with date filters) ✅
-- [ ] Baseline quality metrics across different models
+- [x] Baseline quality metrics across different models ✅
 
 #### Things 3 Integration (Phase A - Context Awareness)
 - [x] Task sync module with AppleScript integration ✅
@@ -61,15 +61,15 @@ None currently.
   - TTFT and total latency displayed after each response
   - Session summary with average latency metrics
   - Conversation JSON logs include latency per message
-- [ ] Response quality scoring (manual → automated)
-- [ ] Context utilization analysis (does it reference personal context?)
-- [ ] Cost per conversation type benchmarks
+- [x] Response quality scoring (manual → automated) ✅
+- [x] Context utilization analysis (does it reference personal context?) ✅
+- [x] Cost per conversation type benchmarks ✅
 
 #### Model Comparison
 - [x] Benchmark 3-5 models on test suite ✅
 - [x] Compare quality vs. cost tradeoffs ✅
 - [x] Document model-specific behaviors ✅
-- [ ] Establish default model recommendation
+- [x] Establish default model recommendation ✅
 - [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API) ✅
 
 **Success Criteria:**
@@ -311,6 +311,11 @@ None currently.
 ## Recently Completed
 
 ### February 7, 2026
+- ✅ **Phase 2 Complete**: All evaluation & quality metrics items finished
+- ✅ **Context Utilization Analyzer**: `scripts/analyze_context.py` — measures context file usage across conversations
+- ✅ **Cost-by-Type Analysis**: `scripts/analyze_costs.py` — classifies and aggregates costs by source/model/length
+- ✅ **Default Model Recommendation**: Formal decision matrix in `docs/research/models.md` based on benchmark data
+- ✅ **31 new unit tests** for analysis scripts
 - ✅ **Claude Context Import (memories + projects)**
 - ✅ **Import module: `packages/core/importers/claude_context.py`**
 - ✅ **CLI script: `scripts/import_claude_context.py` with --dry-run flag**

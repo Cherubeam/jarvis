@@ -6,10 +6,10 @@
 
 ## Current State
 
-**Phase**: 1 Complete ✅ + Phase 2 (85% Complete) 🚀
+**Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 246 total (214 unit + 22 integration + 10 golden)
+**Tests**: 420 total (388 unit + 22 integration + 10 golden)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -48,7 +48,7 @@
 **Test Structure:**
 ```
 tests/
-├── unit/              # 214 tests - Fast, isolated (includes evaluator tests)
+├── unit/              # 388 tests - Fast, isolated (includes evaluator tests)
 ├── integration/       # 22 tests - With mocked dependencies
 ├── golden/            # LLM-as-judge evaluation system
 │   ├── conversations/ # 8 YAML test cases
@@ -63,16 +63,21 @@ tests/
 
 ### Automated Test Coverage
 
-**Unit Tests (214 tests, 97.5% coverage on core):**
-- ✅ `context_builder.py` - 10 tests, 100% coverage
-- ✅ `memory.py` - 15 tests, 97% coverage
-- ✅ `pricing.py` - 12 tests, 98% coverage
+**Unit Tests (388 tests, 97.5% coverage on core):**
+- ✅ `context_builder.py` - 21 tests, 100% coverage
+- ✅ `memory.py` - 52 tests, 97% coverage (schema v1.0.0 expansion)
+- ✅ `pricing.py` - 16 tests, 98% coverage
 - ✅ `llm_client.py` - 11 tests, 95% coverage
-- ✅ `task_sync.py` - 33 tests, 98% coverage
+- ✅ `task_sync.py` - 26 tests, 98% coverage
 - ✅ `evaluator.py` - 16 tests, 100% coverage (LLM-as-judge)
 - ✅ `result_storage.py` - 17 tests, 100% coverage (evaluation results)
 - ✅ `chatgpt importer` - 54 tests, 100% coverage
-- ⚠️ `cli.py` - 5 tests (skipped - complex I/O)
+- ✅ `claude importer` - 59 tests, 100% coverage
+- ✅ `claude context importer` - 41 tests, 100% coverage
+- ✅ `benchmark_costs.py` - 4 tests
+- ✅ `cli.py` - 8 tests
+- ✅ `analyze_context.py` - 31 tests (context utilization analysis)
+- ✅ `analyze_costs.py` - 32 tests (cost-by-type analysis)
 
 **Integration Tests (22 tests):**
 - ✅ Full conversation flow (5 tests)
@@ -661,13 +666,13 @@ Notes:
 
 ### Phase 1 (Complete ✅)
 - ✅ Testing framework setup
-- ✅ Unit tests for all core modules (214 tests)
+- ✅ Unit tests for all core modules (388 tests)
 - ✅ Integration tests (22 tests)
 - ✅ Golden test case definitions (8 scenarios)
 - ✅ 97.5% code coverage on core modules
 - ✅ Comprehensive test documentation
 
-### Phase 2 (Next - In Progress)
+### Phase 2 (Complete ✅)
 - [x] Create golden test conversation suite (8 cases) ✅
 - [x] Implement automated test runner (pytest) ✅
 - [x] Add LLM-as-judge for automated quality evaluation ✅

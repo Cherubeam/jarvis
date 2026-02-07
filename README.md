@@ -25,7 +25,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ```
 ┌─────────────────┐
-│   Context Files │  (profile.md, preferences.md, current_focus.md)
+│   Context Files │  (personal_context.md, preferences.md, current_focus.md)
 │   (Markdown)    │
 └────────┬────────┘
          │
@@ -89,7 +89,8 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 
 # Configure your personal context
 # Edit the files in data/context/:
-# - profile.md (who you are)
+# - personal_context.md (who you are)
+# - professional_context.md (professional background)
 # - preferences.md (how the assistant should behave)
 # - current_focus.md (what you're working on)
 ```
@@ -148,10 +149,12 @@ jarvis/
 │
 ├── data/                               # User data
 │   ├── context/                        # Your personal context files
-│   │   ├── profile.md                  # Who you are
+│   │   ├── personal_context.md         # Who you are
+│   │   ├── professional_context.md     # Professional background
 │   │   ├── preferences.md              # Assistant behavior preferences
 │   │   ├── current_focus.md            # Current projects and priorities
-│   │   └── tasks.md                    # Auto-synced from Things 3
+│   │   ├── tasks.md                    # Auto-synced from Things 3
+│   │   └── projects/                   # Project-specific context
 │   └── conversations/                  # Timestamped conversation logs
 │
 ├── config/                             # Configuration

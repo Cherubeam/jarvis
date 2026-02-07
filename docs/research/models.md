@@ -230,7 +230,7 @@ Complex → Opus ($$$$$$$$)
 ### Golden Test Suite
 
 Golden tests are defined; use them to benchmark models:
-1. Context recall (uses profile.md)
+1. Context recall (uses personal/professional context)
 2. Technical explanation
 3. Multi-step reasoning
 4. Personalization (tone matching)
@@ -292,13 +292,53 @@ Notes:
 
 ---
 
+## Default Model Recommendation
+
+Based on golden test benchmarks across 7 models (see results above), we recommend **Claude Sonnet 4.5** as the default model.
+
+### Decision Matrix
+
+| Criteria | Claude Sonnet 4.5 | Claude Opus 4.5 | Gemini 3 Flash | GPT-5.2-Codex |
+| --- | --- | --- | --- | --- |
+| **Avg Score** | 0.919 | 0.907 | 0.903 | 0.886 |
+| **Pass Rate** | 100% | 100% | 100% | 88% |
+| **Avg Latency** | 6,693 ms | 6,908 ms | 5,944 ms | 4,199 ms |
+| **Est. Cost (8 tests)** | ~$0.10 | ~$0.11 | ~$0.09 | ~$0.09 |
+| **Quality/Cost** | Best | High cost, lower score | Cheapest, lower score | Fastest, lower pass rate |
+
+### Rationale
+
+1. **Highest quality score** (0.919) — tied with Gemini 3 Pro Preview but at lower cost and latency
+2. **100% pass rate** — all golden tests pass, no reliability concerns
+3. **Reasonable cost** — ~$0.10 per 8-test run, comparable to budget models
+4. **Good latency** — 6.7s average, acceptable for interactive use
+5. **Strong personalization** — consistently references user context in responses
+
+### When to Override
+
+- **Budget-constrained**: Switch to `google/gemini-3-flash-preview` (similar quality at lower cost)
+- **Maximum quality**: Use `anthropic/claude-opus-4.5` for complex multi-step reasoning
+- **Lowest latency**: Use `openai/gpt-5.2-codex` (~4.2s avg) when speed matters most
+
+### Configuration
+
+Set in `config/default.yaml`:
+```yaml
+openrouter:
+  default_model: "anthropic/claude-sonnet-4.5"
+```
+
+Override per-session in `config/local.yaml` or via future CLI flags (Phase 7).
+
+---
+
 ## Model Selection TODOs
 
 **Phase 2-3:**
 - [x] Create golden test suite ✅
 - [x] Add benchmark cost estimation tooling ✅
-- [ ] Benchmark 3-5 models
-- [ ] Document quality vs. cost tradeoffs
+- [x] Benchmark 3-5 models ✅
+- [x] Document quality vs. cost tradeoffs ✅
 
 **Phase 5:**
 - [ ] Implement task complexity classifier
@@ -410,4 +450,4 @@ Use data to refine routing algorithm.
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

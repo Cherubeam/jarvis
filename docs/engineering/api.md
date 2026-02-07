@@ -122,9 +122,12 @@ Assemble full system prompt from context files.
 - `str` - Complete system prompt
 
 **Context File Loading Order:**
-1. `profile.md` - User identity
-2. `preferences.md` - Behavior guidelines
-3. `current_focus.md` - Current priorities
+1. `personal_context.md` - Personal background
+2. `professional_context.md` - Professional background
+3. `preferences.md` - Behavior guidelines
+4. `current_focus.md` - Current priorities
+5. `tasks.md` - Things 3 tasks (auto-generated)
+6. `projects/*.md` - Project context (alphabetical)
 
 **Usage Example:**
 ```python

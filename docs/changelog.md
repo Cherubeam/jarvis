@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Context Utilization Analyzer**: `scripts/analyze_context.py` measures how context files are referenced in assistant responses
+  - Keyword-based matching against loaded context content
+  - Per-file utilization stats, context overhead estimates
+  - Markdown report output (stdout or `--output FILE`)
+  - 31 unit tests for context analyzer functions
+- **Cost-by-Type Analysis**: `scripts/analyze_costs.py` classifies and aggregates conversation costs
+  - Groups by source (native/imported), model, or message length
+  - Supports `--by source`, `--by model`, `--by length`, `--by all`
+  - Markdown table output with cost, token, and latency breakdowns
+  - 32 unit tests for cost analysis functions
+- **Default Model Recommendation**: Formal decision matrix in `docs/research/models.md`
+  - Based on golden test benchmarks across 7 models
+  - Claude Sonnet 4.5 selected as default (highest score 0.919, 100% pass rate)
+  - Config comments in `config/default.yaml` explaining rationale
 - **Claude Context Import**: Import Claude memories + projects into Jarvis context system
   - Import module at `packages/core/importers/claude_context.py`
   - CLI script at `scripts/import_claude_context.py` with `--memories`, `--projects`, `--dry-run` flags
@@ -22,7 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Context builder updated to load split profile files + project context
   - CLI context snapshot includes project files
 
+### Fixed
+- **8 Stale Unit Tests**: Aligned test mocks with current MCP SDK and AppleScript direct architecture across `test_benchmark_costs.py`, `test_cli.py`, `test_task_sync.py`
+
 ### Changed
+- **Test Suite**: Expanded from 246 to 420 tests (388 unit + 22 integration + 10 golden)
 - **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
   - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Projects
   - Loads `projects/*.md` files alphabetically as project context sections
@@ -66,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New utility functions: `generate_conversation_id()`, `hash_content()`
   - 52 unit tests for memory module (expanded from 15)
   - 2 new integration tests for schema verification
+
+### Documentation
+- Added branching guideline to AGENTS.md (`git switch -c <type>/<description>`)
+- Updated test counts in `docs/engineering/testing.md` (246 → 420)
 
 ---
 
@@ -327,11 +349,14 @@ Changes are grouped by type:
 
 See [roadmap.md](product/roadmap.md) for detailed plans.
 
-### Phase 2: Evaluation & Metrics (75% Complete)
+### Phase 2: Evaluation & Metrics (Complete ✅)
 - ✅ Golden test suite (8 test conversations)
 - ✅ LLM-as-judge automated evaluation
 - ✅ TTFT tracking (integrated into CLI)
-- ⏳ Model benchmarking
+- ✅ Model benchmarking
+- ✅ Context utilization analysis
+- ✅ Cost per conversation type benchmarks
+- ✅ Default model recommendation
 
 ### Phase 3: Web Interface + Context Management (Next)
 - Web interface (FastAPI + React)

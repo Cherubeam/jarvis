@@ -23,7 +23,7 @@
 
 | Metric | Target | Current | Measurement Method | Status |
 |--------|--------|---------|-------------------|--------|
-| Context utilization | 80% | Manual review | Response analysis: does it use personal context appropriately? | 🟡 Manual only |
+| Context utilization | 80% | Automated | `scripts/analyze_context.py` — keyword matching against loaded context | ✅ **Implemented** |
 | Response relevance | 85% | 0.90 avg | LLM-as-judge evaluation | 🟡 Tracked |
 | Test case accuracy | 95% | 88-100% pass | Automated test suite with golden test cases | 🟡 Tracked |
 | Personalization score | 7/10 | Not tracked | Generic vs. personalized response ratio | 🔴 Not started |
@@ -62,18 +62,14 @@
 
 *Tracking expenses and cost efficiency*
 
-### Current Cost Benchmarks (January 2026)
+### Current Cost Benchmarks
 
-Based on ~1,200 prompt tokens (system prompt + history) and ~200 completion tokens per request:
+See [docs/research/models.md](../research/models.md#cost-examples) for detailed per-model cost tables and the [Default Model Recommendation](../research/models.md#default-model-recommendation) decision matrix.
 
-| Model | Cost per Request | 10-Request Session | 100-Request Month |
-|-------|------------------|-------------------|-------------------|
-| Claude Opus 4.5 | ~$0.011 | ~$0.11 | ~$1.10 |
-| Claude Sonnet 4.5 | ~$0.007 | ~$0.07 | ~$0.70 |
-| Claude Haiku 3.5 | ~$0.002 | ~$0.02 | ~$0.20 |
-| GPT-4o | ~$0.006 | ~$0.06 | ~$0.60 |
-| GPT-4o-mini | ~$0.0003 | ~$0.003 | ~$0.03 |
-| Gemini 2.0 Flash | ~$0.0002 | ~$0.002 | ~$0.02 |
+For actual cost breakdowns by conversation type, run:
+```bash
+uv run python scripts/analyze_costs.py --by all
+```
 
 ### Cost Targets
 
@@ -81,7 +77,7 @@ Based on ~1,200 prompt tokens (system prompt + history) and ~200 completion toke
 |--------|--------|---------|-------|
 | Daily cost (heavy use) | <$0.50 | ~$0.30 | 40-50 requests/day with Sonnet 4.5 |
 | Monthly cost | <$15 | ~$10 | Below any single-provider subscription |
-| Cost per task type | Varies | Not tracked | Simple tasks → cheap model, complex → expensive |
+| Cost per task type | Varies | Tracked | `scripts/analyze_costs.py --by all` — by source, model, length |
 
 ### Cost Optimization Opportunities
 
@@ -129,7 +125,7 @@ Will be evaluated on golden test cases:
 ### Test Case Categories
 
 1. **Context recall** (20% of tests)
-   - Can it remember facts from profile.md?
+   - Can it remember facts from personal/professional context?
    - Does it reference current_focus.md appropriately?
 
 2. **Reasoning** (30% of tests)
@@ -157,10 +153,11 @@ Will be evaluated on golden test cases:
 - ✅ Manual evaluation of responses
 - ✅ Establish quality baselines
 
-### Phase 2: Automated Tracking (In Progress)
-- [ ] Implement logging for all metrics
+### Phase 2: Automated Tracking (Complete ✅)
 - [x] Build automated test runner ✅
 - [x] Add TTFT tracking ✅
+- [x] Context utilization analysis (`scripts/analyze_context.py`) ✅
+- [x] Cost per conversation type (`scripts/analyze_costs.py`) ✅
 - [ ] Add error rate tracking
 - [ ] Weekly metric reviews
 
@@ -249,4 +246,4 @@ Top conversation times:
 
 ---
 
-*Last updated: 2026-01-23*
+*Last updated: 2026-02-07*

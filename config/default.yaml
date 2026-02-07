@@ -2,6 +2,10 @@
 # This is the default configuration. Create local.yaml for local overrides.
 
 # OpenRouter configuration
+# Default model: Claude Sonnet 4.5 — highest golden test score (0.919), 100% pass
+# rate, and best quality/cost ratio across 7 benchmarked models.
+# See docs/research/models.md "Default Model Recommendation" for decision matrix.
+# Override in config/local.yaml or via future CLI flags (Phase 7).
 openrouter:
   default_model: "anthropic/claude-sonnet-4.5"
 

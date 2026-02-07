@@ -137,4 +137,4 @@ These may change in the future, but clarity on non-goals prevents scope creep.
 
 ---
 
-*Last updated: 2025-01-14*
+*Last updated: 2026-02-07*

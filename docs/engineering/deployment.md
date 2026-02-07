@@ -55,7 +55,7 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 
 Edit files in `data/context/`:
 
-**`profile.md`** - Who you are:
+**`personal_context.md`** - Who you are:
 ```markdown
 # About Me
 
@@ -201,50 +201,7 @@ Already configured. Just ensure `OPENROUTER_API_KEY` is set.
 
 ## File Structure
 
-```
-jarvis/
-├── .env                            # API keys (DO NOT COMMIT)
-├── .gitignore                      # Excludes .env, conversations/
-├── pyproject.toml                  # Python project metadata
-├── README.md                       # Project overview
-│
-├── apps/                           # Deployable applications
-│   ├── cli/                        # CLI entry point
-│   │   └── main.py                 # CLI application
-│   └── web/                        # Web application (Phase 3)
-│       ├── backend/                # FastAPI backend
-│       └── frontend/               # React frontend
-│
-├── packages/                       # Shared libraries
-│   ├── core/                       # Core functionality
-│   │   ├── llm_client.py           # LLM abstraction
-│   │   ├── context_builder.py      # System prompt assembly
-│   │   ├── memory.py               # Conversation logging
-│   │   ├── pricing.py              # Cost tracking
-│   │   └── importers/              # Conversation importers
-│   ├── agents/                     # Agent implementations
-│   │   ├── base.py                 # Base agent class
-│   │   └── jarvis/                 # Main JARVIS agent
-│   ├── integrations/               # External services
-│   │   └── things3/                # Things 3 task sync
-│   └── telemetry/                  # Metrics and evaluation
-│
-├── data/                           # User data
-│   ├── context/                    # Personal context (commit these)
-│   │   ├── profile.md
-│   │   ├── preferences.md
-│   │   ├── current_focus.md
-│   │   └── tasks.md                # Auto-synced from Things 3
-│   └── conversations/              # Session logs (gitignored)
-│
-├── config/                         # Configuration
-│   ├── default.yaml                # Default configuration
-│   └── local.yaml                  # Local overrides (gitignored)
-│
-├── tests/                          # Test suite
-├── docs/                           # Documentation
-└── scripts/                        # Utility scripts
-```
+See [docs/engineering/architecture.md](architecture.md#file-structure) for the full project structure.
 
 ---
 
@@ -298,12 +255,13 @@ echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 uv sync
 ```
 
-#### "File does not exist: context/profile.md"
+#### "File does not exist: context/personal_context.md"
 
 **Solution**: Create context files:
 ```bash
 mkdir -p data/context
-echo "# About Me" > data/context/profile.md
+echo "# About Me" > data/context/personal_context.md
+echo "# Professional Background" > data/context/professional_context.md
 echo "# Preferences" > data/context/preferences.md
 echo "# Current Focus" > data/context/current_focus.md
 ```
@@ -469,4 +427,4 @@ Include:
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

@@ -12,7 +12,10 @@
 {system_prompt_prefix from config/default.yaml}
 
 ## About this person
-{contents of profile.md}
+{contents of personal_context.md}
+
+## Professional Background
+{contents of professional_context.md}
 
 ## Their preferences
 {contents of preferences.md}
@@ -22,6 +25,9 @@
 
 ## Tasks
 {contents of tasks.md}
+
+## Projects
+{contents of projects/*.md}
 ```
 
 ### Example
@@ -102,9 +108,9 @@ Compare Claude Sonnet 4.5 and GPT-4o in a table with these columns:
 
 ## Context Files Best Practices
 
-### profile.md
+### personal_context.md / professional_context.md
 
-**Purpose**: Who you are, stable facts.
+**Purpose**: Who you are, stable facts (split into personal and professional).
 
 **Good:**
 ```markdown
