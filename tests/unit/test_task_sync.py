@@ -208,79 +208,71 @@ class TestMCPThings3Client:
 
     @pytest.mark.asyncio
     async def test_client_connect(self):
-        """Test client connection starts subprocess."""
+        """Test client connection initializes MCP session."""
         client = MCPThings3Client()
 
-        with patch("asyncio.create_subprocess_exec") as mock_exec:
-            mock_process = AsyncMock()
-            mock_process.returncode = None
-            mock_exec.return_value = mock_process
+        with patch.object(client, "_find_server_executable", return_value="/usr/bin/test"):
+            with patch("packages.integrations.things3.task_sync.subprocess") as mock_subprocess:
+                mock_subprocess.os = Mock()
+                mock_subprocess.os.environ = {}
 
-            await client.connect()
+                # Mock MCP SDK imports used inside connect()
+                mock_read_stream = AsyncMock()
+                mock_write_stream = AsyncMock()
 
-            assert mock_exec.called
-            assert client.process is not None
+                with patch("mcp.client.stdio.stdio_client") as mock_stdio:
+                    mock_ctx = AsyncMock()
+                    mock_ctx.__aenter__ = AsyncMock(return_value=(mock_read_stream, mock_write_stream))
+                    mock_stdio.return_value = mock_ctx
+
+                    with patch("mcp.client.session.ClientSession") as mock_session_class:
+                        mock_session = AsyncMock()
+                        mock_session_class.return_value = mock_session
+                        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+
+                        await client.connect()
+
+                        assert client.session is not None
 
     @pytest.mark.asyncio
     async def test_client_close(self):
-        """Test client close terminates process."""
+        """Test client close exits MCP session."""
         client = MCPThings3Client()
 
-        # Mock process
-        mock_process = AsyncMock()
-        client.process = mock_process
+        # Set up a mock session
+        mock_session = AsyncMock()
+        client.session = mock_session
 
         await client.close()
 
-        mock_process.terminate.assert_called_once()
-        mock_process.wait.assert_called_once()
+        mock_session.__aexit__.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_call_tool_success(self):
-        """Test successful tool call."""
+        """Test successful tool call via MCP session."""
         client = MCPThings3Client()
 
-        # Mock process
-        mock_process = AsyncMock()
-        mock_process.returncode = None
-        mock_process.stdin = AsyncMock()
-        mock_process.stdout = AsyncMock()
-
-        # Mock response
-        response = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "result": {"content": [{"text": "Tool executed successfully"}]},
-        }
-        mock_process.stdout.readline = AsyncMock(
-            return_value=(json.dumps(response) + "\n").encode()
-        )
-
-        client.process = mock_process
+        # Set up mock session with call_tool
+        mock_result = Mock()
+        mock_result.content = [Mock(text="Tool executed successfully")]
+        mock_session = AsyncMock()
+        mock_session.call_tool = AsyncMock(return_value=mock_result)
+        client.session = mock_session
 
         result = await client.call_tool("view-inbox", {})
 
         assert result == "Tool executed successfully"
-        assert mock_process.stdin.write.called
+        mock_session.call_tool.assert_called_once_with("view-inbox", {})
 
     @pytest.mark.asyncio
     async def test_call_tool_error_response(self):
         """Test tool call with error response."""
         client = MCPThings3Client()
 
-        # Mock process
-        mock_process = AsyncMock()
-        mock_process.returncode = None
-        mock_process.stdin = AsyncMock()
-        mock_process.stdout = AsyncMock()
-
-        # Mock error response
-        response = {"jsonrpc": "2.0", "id": 1, "error": {"message": "Tool failed"}}
-        mock_process.stdout.readline = AsyncMock(
-            return_value=(json.dumps(response) + "\n").encode()
-        )
-
-        client.process = mock_process
+        # Set up mock session that raises on call_tool
+        mock_session = AsyncMock()
+        mock_session.call_tool = AsyncMock(side_effect=Exception("Tool failed"))
+        client.session = mock_session
 
         with pytest.raises(RuntimeError, match="MCP tool error"):
             await client.call_tool("view-inbox", {})
@@ -321,29 +313,28 @@ class TestFetchTasksAsync:
 
     @pytest.mark.asyncio
     async def test_fetch_without_cache(self):
-        """Test fetch when cache is disabled."""
+        """Test fetch when cache is disabled uses AppleScript direct path."""
         config = {
             "cache_ttl_seconds": 300,
             "lists_to_include": ["Inbox"],
         }
 
-        with patch("packages.integrations.things3.task_sync.MCPThings3Client") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_client.call_tool = AsyncMock(
-                return_value="• Task from MCP (Due: date)"
-            )
-            mock_client_class.return_value = mock_client
+        with patch("packages.integrations.things3.task_sync.detect_things3_language") as mock_detect:
+            mock_detect.return_value = {"Inbox": "Inbox", "Today": "Today", "Upcoming": "Upcoming"}
 
-            with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache:
-                mock_cache_instance = Mock()
-                mock_cache_instance.get.return_value = None
-                mock_cache.return_value = mock_cache_instance
+            with patch("packages.integrations.things3.task_sync.fetch_tasks_applescript_direct") as mock_fetch:
+                mock_fetch.return_value = [Task(title="Task from AppleScript")]
 
-                result = await fetch_tasks_async(config, use_cache=False)
+                with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache:
+                    mock_cache_instance = Mock()
+                    mock_cache_instance.get.return_value = None
+                    mock_cache.return_value = mock_cache_instance
 
-                # Should have attempted MCP call
-                mock_client.connect.assert_called_once()
-                mock_client.close.assert_called_once()
+                    result = await fetch_tasks_async(config, use_cache=False)
+
+                    assert len(result["inbox"]) == 1
+                    assert result["inbox"][0].title == "Task from AppleScript"
+                    mock_fetch.assert_called_once()
 
 
 @pytest.mark.unit

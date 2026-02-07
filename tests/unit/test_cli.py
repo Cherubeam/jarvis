@@ -19,64 +19,35 @@ class TestLoadConfig:
 
     def test_load_config_success(self, tmp_path: Path, monkeypatch):
         """Test successful configuration loading."""
-        # Create a mock config.yaml
+        # Create real config file at expected location
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
         config_content = """
 openrouter:
   default_model: "anthropic/claude-sonnet-4.5"
 
 paths:
-  context_dir: "personal-context/context"
-  conversations_dir: "personal-context/memory/conversations"
-  learned_facts: "personal-context/memory/learned_facts.md"
+  context_dir: "data/context"
+  conversations_dir: "data/conversations"
 
 system_prompt_prefix: |
   You are Jarvis, an advanced personal AI assistant.
 """
-        config_path = tmp_path / "config.yaml"
-        config_path.write_text(config_content)
+        (config_dir / "default.yaml").write_text(config_content)
 
-        # Create .env file with API key
-        env_path = tmp_path / ".env"
-        env_path.write_text("OPENROUTER_API_KEY=test-api-key-12345\n")
+        # Create .env file
+        (tmp_path / ".env").write_text("OPENROUTER_API_KEY=test-api-key-12345\n")
 
-        # Mock Path resolution to use our tmp_path
-        # Create mock path hierarchy: __file__ -> src_dir -> personal_context_dir -> jarvis_dir
-        mock_src_dir = Mock()
-        mock_personal_context_dir = Mock()
-        mock_jarvis_dir = tmp_path
+        # Point get_project_root() at tmp_path so load_config reads real files
+        monkeypatch.setattr("apps.cli.main.get_project_root", lambda: tmp_path)
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-api-key-12345")
 
-        mock_src_dir.parent = mock_personal_context_dir
-        mock_personal_context_dir.parent = mock_jarvis_dir
+        config = load_config()
 
-        with patch('apps.cli.main.Path') as mock_path_class:
-            # Make Path(__file__) return our mock src_dir
-            mock_path_class.return_value = mock_src_dir
-
-            # Mock load_dotenv to load our test .env
-            with patch('apps.cli.main.load_dotenv'):
-                # Mock environment variable
-                monkeypatch.setenv("OPENROUTER_API_KEY", "test-api-key-12345")
-
-                # Mock open to read our config file
-                with patch('builtins.open', mock_open(read_data=config_content)):
-                    with patch('yaml.safe_load') as mock_yaml:
-                        # Return a proper dict (not calling yaml.safe_load again!)
-                        mock_yaml.return_value = {
-                            "openrouter": {"default_model": "anthropic/claude-sonnet-4.5"},
-                            "paths": {
-                                "context_dir": "personal-context/context",
-                                "conversations_dir": "personal-context/memory/conversations",
-                                "learned_facts": "personal-context/memory/learned_facts.md"
-                            },
-                            "system_prompt_prefix": "You are Jarvis, an advanced personal AI assistant.\n"
-                        }
-
-                        config = load_config()
-
-                        assert config["openrouter"]["api_key"] == "test-api-key-12345"
-                        assert config["openrouter"]["default_model"] == "anthropic/claude-sonnet-4.5"
-                        assert "paths" in config
-                        assert "_paths" in config
+        assert config["openrouter"]["api_key"] == "test-api-key-12345"
+        assert config["openrouter"]["default_model"] == "anthropic/claude-sonnet-4.5"
+        assert "paths" in config
+        assert "_paths" in config
 
     def test_load_config_missing_api_key(self, tmp_path: Path, monkeypatch):
         """Test that missing API key causes sys.exit."""
@@ -120,25 +91,14 @@ paths:
                         assert exc_info.value.code == 1
 
     def test_load_config_missing_yaml(self, tmp_path: Path, monkeypatch):
-        """Test handling of missing config.yaml file."""
+        """Test that missing config.yaml falls back to empty config gracefully."""
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        monkeypatch.setattr("apps.cli.main.get_project_root", lambda: tmp_path)
 
-        # Create mock path hierarchy
-        mock_src_dir = Mock()
-        mock_personal_context_dir = Mock()
-        mock_jarvis_dir = tmp_path
+        config = load_config()
 
-        mock_src_dir.parent = mock_personal_context_dir
-        mock_personal_context_dir.parent = mock_jarvis_dir
-
-        with patch('apps.cli.main.Path') as mock_path_class:
-            mock_path_class.return_value = mock_src_dir
-
-            with patch('apps.cli.main.load_dotenv'):
-                with patch('builtins.open', side_effect=FileNotFoundError("config.yaml not found")):
-                    # Should raise FileNotFoundError
-                    with pytest.raises(FileNotFoundError):
-                        load_config()
+        assert config["openrouter"]["api_key"] == "test-key"
+        assert "default_model" not in config["openrouter"]
 
     def test_load_config_paths_resolved(self, tmp_path: Path, monkeypatch):
         """Test that paths are resolved correctly."""

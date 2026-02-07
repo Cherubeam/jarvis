@@ -50,6 +50,10 @@ def test_get_run_dir_latest(tmp_path: Path):
     first_run.mkdir(parents=True)
     second_run.mkdir(parents=True)
 
+    # _run_has_results() requires at least one .json file (other than run_summary.json)
+    (first_run / "result.json").write_text("{}")
+    (second_run / "result.json").write_text("{}")
+
     latest = benchmark_costs.get_run_dir(results_dir)
     assert latest.name == "2026-01-21_09-59-53"
 
