@@ -12,7 +12,7 @@ uv sync --extra test
 uv run pytest
 
 # Run with coverage report
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # View coverage report in browser
 open htmlcov/index.html
@@ -26,11 +26,15 @@ open htmlcov/index.html
 tests/
 ├── unit/              # Fast, isolated unit tests
 ├── integration/       # Integration tests with mocked dependencies
-├── golden/           # Golden conversation test cases
+├── golden/           # Golden conversation test cases + LLM-as-judge
+│   ├── conversations/ # YAML test cases
+│   ├── results/       # Evaluation results
+│   ├── evaluator.py   # Core evaluation engine
+│   ├── judge_prompts.py # Judge prompt templates
+│   └── result_storage.py # Storage & reporting
 ├── fixtures/         # Test data and fixtures
 ├── conftest.py       # Shared pytest fixtures
-├── TESTING_PLAN.md   # Comprehensive testing plan
-└── TEST_RESULTS.md   # Current test results and status
+└── TESTING_PLAN.md   # Comprehensive testing plan
 ```
 
 ---
@@ -46,8 +50,12 @@ uv run pytest tests/unit/ -v
 # Integration tests only
 uv run pytest tests/integration/ -v
 
-# Golden test structure validation
-uv run pytest tests/golden/test_golden_conversations.py::TestGoldenConversationStructure -v
+# Golden test structure validation (free)
+uv run pytest tests/golden/ -v
+
+# Golden tests WITH evaluation (costs ~$0.41, requires API key)
+export OPENROUTER_API_KEY="your-key"
+uv run pytest tests/golden/ --evaluate -v
 
 # Exclude slow/manual tests
 uv run pytest -m "not slow"
@@ -69,17 +77,17 @@ uv run pytest tests/unit/test_pricing.py::TestModelPricing::test_model_pricing_c
 ### Coverage Options
 
 ```bash
-# Coverage for specific module
-uv run pytest --cov=personal-context/src/pricing.py --cov-report=term
+# Coverage for all project code
+uv run pytest --cov=packages --cov=apps --cov-report=term
 
 # Detailed coverage with missing lines
-uv run pytest --cov=personal-context/src --cov-report=term-missing
+uv run pytest --cov=packages --cov=apps --cov-report=term-missing
 
 # Coverage with HTML report
-uv run pytest --cov=personal-context/src --cov-report=html
+uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Coverage with minimum threshold
-uv run pytest --cov=personal-context/src --cov-fail-under=85
+uv run pytest --cov=packages --cov=apps --cov-fail-under=85
 ```
 
 ### Performance Options
@@ -138,14 +146,7 @@ uv run pytest -m "not slow"
 
 ## Test Statistics
 
-- **Total Tests**: 73
-- **Unit Tests**: 53
-- **Integration Tests**: 12
-- **Golden Tests**: 8 + 2 structure validation
-- **Code Coverage**: 97.5% (core modules)
-- **Pass Rate**: 85% (62/73 passing)
-
-See [TEST_RESULTS.md](TEST_RESULTS.md) for detailed results.
+Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](../docs/engineering/testing.md) for test statistics and strategy.
 
 ---
 
@@ -209,7 +210,7 @@ class TestIntegration:
 
 ---
 
-## Golden Tests (Phase 2)
+## Golden Tests
 
 Golden tests are defined in YAML format:
 
@@ -234,7 +235,7 @@ conversation:
       concise: true
 ```
 
-Currently, golden tests validate YAML structure. LLM-as-judge automation coming in Phase 2.
+See [tests/golden/README.md](golden/README.md) for the full golden test guide including LLM-as-judge evaluation.
 
 ---
 
@@ -253,7 +254,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra test
-      - run: uv run pytest --cov=personal-context/src --cov-report=xml
+      - run: uv run pytest --cov=packages --cov=apps --cov-report=xml
       - uses: codecov/codecov-action@v3
 ```
 
@@ -265,8 +266,7 @@ jobs:
 
 If tests can't find modules:
 ```bash
-# Ensure src is in path (conftest.py handles this)
-# Or sync the project properly
+# Ensure the project is properly synced
 uv sync
 ```
 
@@ -291,21 +291,5 @@ Ensure files follow naming conventions:
 ## Documentation
 
 - [TESTING_PLAN.md](TESTING_PLAN.md) - Comprehensive testing plan and architecture
-- [TEST_RESULTS.md](TEST_RESULTS.md) - Current test results and coverage
-- [../docs/engineering/testing.md](../docs/engineering/testing.md) - Testing strategy and philosophy
-
----
-
-## Next Steps
-
-### Phase 2: Evaluation & Quality Metrics
-1. Implement LLM-as-judge for golden test automation
-2. Add TTFT (Time to First Token) tracking
-3. Model comparison benchmarks
-4. Automated regression detection
-
-See [TESTING_PLAN.md](TESTING_PLAN.md) Section 9 for details.
-
----
-
-*Last updated: 2026-01-15*
+- [../docs/engineering/testing.md](../docs/engineering/testing.md) - Testing strategy, statistics, and philosophy
+- [golden/README.md](golden/README.md) - Golden test guide with LLM-as-judge details

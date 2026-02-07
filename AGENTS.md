@@ -18,18 +18,18 @@ Jarvis is a personal AI assistant built to solve the vendor lock-in problem in c
 
 ## Critical: Dependency Management
 
-### ⚠️ ALWAYS use `uv`, NEVER use `pip`
+### ALWAYS use `uv`, NEVER use `pip`
 
 **This project uses `uv` exclusively. AI agents often default to `pip` - DO NOT DO THIS.**
 
-**❌ WRONG:**
+**WRONG:**
 ```bash
 pip install package          # NEVER use pip
 uv pip install package       # NEVER use uv pip install
 pip install -e ".[test]"     # NEVER use pip for test dependencies
 ```
 
-**✅ CORRECT:**
+**CORRECT:**
 ```bash
 uv add package               # Add runtime dependency
 uv add --dev package         # Add dev dependency
@@ -76,7 +76,7 @@ uv run python -m apps.cli.main
 uv run jarvis
 ```
 
-### ⚠️ Script Entry Point Setup
+### Script Entry Point Setup
 
 If `uv run jarvis` fails with `ModuleNotFoundError: No module named 'apps'`, you need to install the package in editable mode:
 
@@ -100,7 +100,7 @@ uv pip install -e .
 mypy packages/ apps/
 ```
 
-### Testing (Implemented ✅)
+### Testing
 
 ```bash
 # Run all tests (free, no LLM calls)
@@ -109,35 +109,11 @@ uv run pytest
 # Run with coverage
 uv run pytest --cov=packages --cov=apps --cov-report=html
 
-# Run specific test categories
-uv run pytest tests/unit/ -v              # Unit tests only (214 tests)
-uv run pytest tests/integration/ -v       # Integration tests only
-uv run pytest tests/golden/ -v            # Golden test structure validation (free)
-
-# Run golden tests WITH evaluation (costs ~$0.41, requires API key)
-export OPENROUTER_API_KEY="your-key"
-uv run pytest tests/golden/ --evaluate -v
-
-# Run tests in parallel (faster)
-uv run pytest -n auto
-
-# View coverage report
-open htmlcov/index.html
+# Unit tests only
+uv run pytest tests/unit/ -v
 ```
 
-**Test Statistics:**
-- 246 total tests (214 unit + 22 integration + 10 golden)
-- 97.5% code coverage on core modules
-- Unit/integration suite runs in < 2 seconds
-- LLM-as-judge evaluation: 8 golden tests (~$0.41/run, optional)
-
-**LLM-as-Judge Evaluation:**
-- Automated quality assessment using Claude Opus 4.5 as judge
-- Generates detailed markdown reports with scores and recommendations
-- Tracks quality trends over time in `tests/golden/results/`
-- Only runs with `--evaluate` flag (no cost by default)
-
-See [tests/README.md](tests/README.md) and [tests/golden/README.md](tests/golden/README.md) for complete testing guides.
+Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](docs/engineering/testing.md) for test statistics, strategy, and the full command reference. See [tests/README.md](tests/README.md) for quick-reference test commands.
 
 ### Clean Setup Verification
 
@@ -193,85 +169,13 @@ from packages.integrations.things3.task_sync import sync_tasks_to_file
 
 ## Project Structure
 
-```
-jarvis/
-├── apps/                           # Deployable applications
-│   ├── cli/                        # CLI entry point
-│   │   └── main.py                 # CLI application
-│   └── web/                        # Web application (Phase 3)
-│       ├── backend/                # FastAPI backend
-│       └── frontend/               # React frontend
-│
-├── packages/                       # Shared libraries
-│   ├── core/                       # Core functionality
-│   │   ├── llm_client.py           # LLM abstraction (LiteLLM)
-│   │   ├── context_builder.py      # System prompt assembly
-│   │   ├── memory.py               # Conversation logging
-│   │   ├── pricing.py              # Cost tracking
-│   │   └── importers/              # Conversation importers
-│   │       └── chatgpt.py          # ChatGPT export converter
-│   ├── agents/                     # Agent implementations
-│   │   ├── base.py                 # Base agent class
-│   │   └── jarvis/                 # Main JARVIS agent
-│   ├── integrations/               # External service integrations
-│   │   └── things3/                # Things 3 task sync (~520 lines)
-│   │       └── task_sync.py
-│   └── telemetry/                  # Metrics and evaluation
-│       └── metrics.py              # TTFT tracking, response metrics
-│
-├── data/                           # User data (gitignored where needed)
-│   ├── context/                    # Personal context (markdown)
-│   │   ├── profile.md
-│   │   ├── preferences.md
-│   │   ├── current_focus.md
-│   │   └── tasks.md                # Auto-synced Things 3 tasks
-│   └── conversations/              # Session logs (gitignored)
-│
-├── config/                         # Configuration
-│   ├── default.yaml                # Default configuration
-│   └── local.yaml                  # Local overrides (gitignored)
-│
-├── tests/                          # Comprehensive test suite
-│   ├── unit/                       # 214 unit tests
-│   ├── integration/                # 22 integration tests
-│   ├── golden/                     # Golden test conversations + LLM-as-judge
-│   │   ├── conversations/          # 8 YAML test cases
-│   │   ├── results/                # Evaluation results
-│   │   ├── evaluator.py            # Core evaluation engine
-│   │   ├── judge_prompts.py        # Judge prompt templates
-│   │   └── result_storage.py       # Storage & reporting
-│   └── conftest.py                 # Shared pytest fixtures
-│
-├── docs/                           # Documentation
-│   ├── product/                    # Vision, roadmap, metrics, ADRs
-│   ├── engineering/                # Architecture, API, testing
-│   └── research/                   # AI engineering notes
-│
-├── scripts/                        # Utility scripts
-├── .env                            # API keys (gitignored)
-└── pyproject.toml                  # Project configuration
-```
+See [docs/engineering/architecture.md](docs/engineering/architecture.md#project-structure) for the full project structure.
 
 **Note**: The old `personal-context/` structure is deprecated. Use the new `packages/`, `apps/`, and `data/` directories.
 
 ---
 
-## Testing Guidelines
-
-### Automated Testing (Implemented ✅)
-
-**Test Framework:** pytest with 97.5% code coverage
-
-**Test Categories:**
-- **Unit Tests** (214 tests): Fast, isolated tests for each module including evaluator
-- **Integration Tests** (22 tests): Full flow with mocked dependencies
-- **Golden Tests** (8 tests): Real conversation test cases with LLM-as-judge evaluation
-  - Structure validation: Free, always runs
-  - Quality evaluation: Costs ~$0.41/run, requires `--evaluate` flag
-
-### Before Committing Code
-
-Always run tests to ensure nothing broke:
+## Before Committing Code
 
 ```bash
 # Quick check (unit tests only, < 1 second)
@@ -283,30 +187,6 @@ uv run pytest
 # With coverage report
 uv run pytest --cov=packages --cov=apps --cov-report=term
 ```
-
-### Writing New Tests
-
-When adding features, add corresponding tests:
-
-```bash
-# Unit test template location
-tests/unit/test_your_module.py
-
-# Integration test location
-tests/integration/test_your_feature.py
-```
-
-See [tests/TESTING_PLAN.md](tests/TESTING_PLAN.md) for detailed testing guidelines.
-
-### Manual Testing
-
-For end-to-end verification:
-
-1. Start CLI: `uv run python -m apps.cli.main`
-2. Verify context loading (check system prompt includes profile.md)
-3. Test streaming responses
-4. Verify token/cost tracking
-5. Check conversation logs saved in `data/conversations/`
 
 ---
 
@@ -327,7 +207,7 @@ For end-to-end verification:
 
 ## Documentation Updates
 
-### ⚠️ CRITICAL: Always Check ALL Documentation Files
+### CRITICAL: Always Check ALL Documentation Files
 
 **After ANY implementation, you MUST read and update ALL relevant files in the `docs/` folder.**
 
@@ -337,7 +217,7 @@ This is a mandatory step - do not skip it. Many files reference each other and n
 
 1. **Code changes** → Update [docs/engineering/architecture.md](docs/engineering/architecture.md) or [api.md](docs/engineering/api.md)
 2. **New features** → Update [docs/product/roadmap.md](docs/product/roadmap.md) AND [docs/changelog.md](docs/changelog.md)
-3. **Architecture decisions** → Add new ADR to [docs/product/decisions.md](docs/product/decisions.md)
+3. **Architecture decisions** → Add new ADR to [docs/product/decisions.md](docs/product/decisions.md) (see that file for format)
 4. **Version releases** → Update [docs/changelog.md](docs/changelog.md)
 5. **Test changes** → Update [docs/engineering/testing.md](docs/engineering/testing.md)
 
@@ -367,41 +247,21 @@ After implementing a feature, check and update these files if relevant:
 - [ ] [AGENTS.md](AGENTS.md) - Changes to development workflow or structure?
 - [ ] [README.md](README.md) - User-facing changes?
 
-### ADR Format
-
-When documenting architectural decisions:
-
-```markdown
-## ADR-XXX: [Title]
-**Date**: YYYY-MM-DD
-**Status**: ✅ Accepted
-
-### Context
-What's the problem?
-
-### Decision
-What are we doing?
-
-### Consequences
-- ✅ Benefits
-- ⚠️ Tradeoffs
-```
-
 ---
 
 ## Security Considerations
 
 ### API Keys
 
-- ✅ Always use `.env` file (gitignored)
-- ❌ Never hardcode in source files
-- ❌ Never commit to git
+- Always use `.env` file (gitignored)
+- Never hardcode in source files
+- Never commit to git
 
 ### Conversation Logs
 
-- ⚠️ Contain sensitive personal data
-- ✅ Gitignored by default
-- ⚠️ Warn user before committing context files
+- Contain sensitive personal data
+- Gitignored by default
+- Warn user before committing context files
 
 ---
 
@@ -446,15 +306,7 @@ openrouter:
   default_model: "anthropic/claude-sonnet-4.5"  # Change to desired model
 ```
 
-Or programmatically in `apps/cli/main.py`:
-
-```python
-client = LLMClient(
-    api_key=config["provider"]["api_key"],
-    default_model="model-id",
-    provider="openrouter"  # or "anthropic", "openai"
-)
-```
+See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration details.
 
 ---
 
@@ -497,12 +349,12 @@ echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 
 ### Before Committing
 
-1. ✅ Dependencies added via `uv add` (NEVER pip)
-2. ✅ Tests pass: `uv run pytest`
-3. ✅ Code works after clean setup: `rm -rf .venv && uv sync`
-4. ✅ Type checking passes (if applicable)
-5. ✅ Documentation updated
-6. ✅ No API keys or secrets in code
+1. Dependencies added via `uv add` (NEVER pip)
+2. Tests pass: `uv run pytest`
+3. Code works after clean setup: `rm -rf .venv && uv sync`
+4. Type checking passes (if applicable)
+5. Documentation updated
+6. No API keys or secrets in code
 
 ---
 
@@ -538,6 +390,7 @@ docs: restructure documentation into organized /docs directory
 - **Full docs**: See `docs/` directory
 - **Setup guide**: [docs/engineering/deployment.md](docs/engineering/deployment.md)
 - **Architecture**: [docs/engineering/architecture.md](docs/engineering/architecture.md)
+- **Testing**: [docs/engineering/testing.md](docs/engineering/testing.md)
 - **Roadmap**: [docs/product/roadmap.md](docs/product/roadmap.md)
 - **ADRs**: [docs/product/decisions.md](docs/product/decisions.md)
 

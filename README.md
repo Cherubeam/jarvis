@@ -63,7 +63,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
-- **Comprehensive Testing**: 246 automated tests with 97.5% code coverage
+- **Comprehensive Testing**: Automated test suite with high code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 - **Conversation Import**: Import ChatGPT exports into Jarvis format (extensible to other providers)
 
@@ -159,9 +159,9 @@ jarvis/
 │   └── local.yaml                      # Local overrides (gitignored)
 │
 ├── tests/                              # Comprehensive test suite
-│   ├── unit/                           # 214 unit tests
-│   ├── integration/                    # 22 integration tests
-│   ├── golden/                         # 10 golden test conversations + LLM-as-judge
+│   ├── unit/                           # Unit tests
+│   ├── integration/                    # Integration tests
+│   ├── golden/                         # Golden test conversations + LLM-as-judge
 │   └── README.md                       # Testing guide
 │
 ├── docs/                               # Documentation
@@ -181,7 +181,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework (246 tests, 97.5% coverage)**
+- [x] **Comprehensive testing framework**
 
 **Phase 2: Evaluation & Quality Metrics (Complete ✅)**
 - [x] 10 golden test conversations defined
@@ -247,7 +247,7 @@ This project demonstrates several things I value as an engineer:
 - **LLM Provider**: LiteLLM + OpenRouter (unified API for Claude, GPT-4, Gemini, etc.)
 - **Storage**: Local filesystem (markdown + JSON)
 - **Configuration**: YAML + environment variables
-- **Testing**: pytest with 97.5% code coverage
+- **Testing**: pytest ([details](docs/engineering/testing.md))
 - **Package Management**: uv (fast Python package installer)
 
 ## Contributing
