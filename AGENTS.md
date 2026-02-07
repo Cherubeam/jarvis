@@ -374,6 +374,21 @@ echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 
 ## Git Commit Guidelines
 
+### Branching
+
+Always create a feature branch before starting work. Never commit directly to `main`.
+
+```bash
+git switch -c <type>/<short-description>
+```
+
+**Examples:**
+```bash
+git switch -c feat/task-sync-localization
+git switch -c fix/stale-unit-tests
+git switch -c refactor/config-loading
+```
+
 ### Commit Message Format
 
 ```
