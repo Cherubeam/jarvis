@@ -110,7 +110,7 @@ uv run pytest
 uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Run specific test categories
-uv run pytest tests/unit/ -v              # Unit tests only (104 tests)
+uv run pytest tests/unit/ -v              # Unit tests only (214 tests)
 uv run pytest tests/integration/ -v       # Integration tests only
 uv run pytest tests/golden/ -v            # Golden test structure validation (free)
 
@@ -126,7 +126,7 @@ open htmlcov/index.html
 ```
 
 **Test Statistics:**
-- 150 total tests (104 unit + 20 integration + 26 golden/evaluation)
+- 246 total tests (214 unit + 22 integration + 10 golden)
 - 97.5% code coverage on core modules
 - Unit/integration suite runs in < 2 seconds
 - LLM-as-judge evaluation: 8 golden tests (~$0.41/run, optional)
@@ -207,7 +207,9 @@ jarvis/
 │   │   ├── llm_client.py           # LLM abstraction (LiteLLM)
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
-│   │   └── pricing.py              # Cost tracking
+│   │   ├── pricing.py              # Cost tracking
+│   │   └── importers/              # Conversation importers
+│   │       └── chatgpt.py          # ChatGPT export converter
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # Base agent class
 │   │   └── jarvis/                 # Main JARVIS agent
@@ -230,8 +232,8 @@ jarvis/
 │   └── local.yaml                  # Local overrides (gitignored)
 │
 ├── tests/                          # Comprehensive test suite
-│   ├── unit/                       # 103 unit tests
-│   ├── integration/                # 20 integration tests
+│   ├── unit/                       # 214 unit tests
+│   ├── integration/                # 22 integration tests
 │   ├── golden/                     # Golden test conversations + LLM-as-judge
 │   │   ├── conversations/          # 8 YAML test cases
 │   │   ├── results/                # Evaluation results
@@ -261,8 +263,8 @@ jarvis/
 **Test Framework:** pytest with 97.5% code coverage
 
 **Test Categories:**
-- **Unit Tests** (103 tests): Fast, isolated tests for each module including evaluator
-- **Integration Tests** (20 tests): Full flow with mocked dependencies
+- **Unit Tests** (214 tests): Fast, isolated tests for each module including evaluator
+- **Integration Tests** (22 tests): Full flow with mocked dependencies
 - **Golden Tests** (8 tests): Real conversation test cases with LLM-as-judge evaluation
   - Structure validation: Free, always runs
   - Quality evaluation: Costs ~$0.41/run, requires `--evaluate` flag
@@ -420,6 +422,21 @@ echo "# New Context Section" > data/context/new_file.md
 # Update packages/core/context_builder.py to load it
 ```
 
+### Importing Conversations
+
+```bash
+# Preview what would be imported
+uv run python scripts/import_chatgpt.py imports/conversations.json --dry-run
+
+# Import all non-archived conversations
+uv run python scripts/import_chatgpt.py imports/conversations.json
+
+# Import with filters
+uv run python scripts/import_chatgpt.py imports/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
+```
+
+Imported files are written to `data/conversations/` with tags `["imported", "chatgpt"]`. The import is idempotent — re-running skips already-imported conversations.
+
 ### Switching LLM Providers
 
 Edit `config/default.yaml` or `config/local.yaml`:
@@ -560,4 +577,4 @@ uv run pytest --cov=packages --cov=apps --cov-report=html
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

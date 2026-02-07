@@ -220,7 +220,8 @@ jarvis/
 │   │   ├── llm_client.py           # LLM abstraction
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
-│   │   └── pricing.py              # Cost tracking
+│   │   ├── pricing.py              # Cost tracking
+│   │   └── importers/              # Conversation importers
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # Base agent class
 │   │   └── jarvis/                 # Main JARVIS agent

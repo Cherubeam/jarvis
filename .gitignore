@@ -13,6 +13,9 @@ wheels/
 memory/
 personal-context/context/
 
+# Import sources (large export files)
+imports/
+
 # Personal data
 backup
 data/context/

@@ -186,6 +186,32 @@ logger.save()  # Saves to file
 
 ---
 
+## Module: `importers.chatgpt`
+
+### Functions
+
+#### `linearize_message_tree(mapping: dict, current_node: str) -> list[dict]`
+
+Walk from `current_node` to root via parent pointers, return messages in chronological order. Skips null messages. Detects cycles.
+
+#### `convert_content_parts(content: dict) -> list[dict]`
+
+Convert a ChatGPT message content dict to Jarvis content blocks. Handles `text`, `multimodal_text`, `code`, `thoughts`, `execution_output`, `tether_browsing_display`, `tether_quote`, `reasoning_recap`, `system_error`, `user_editable_context`, `app_pairing_content`, and unknown types.
+
+#### `convert_conversation(chatgpt_conv: dict) -> dict`
+
+Convert a single ChatGPT conversation to Jarvis schema v1.0.0.
+
+#### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to, model_filter, include_archived) -> ImportSummary`
+
+Orchestrate bulk import with filters. Idempotent — skips already-imported conversations by `chatgpt_id`.
+
+### `class ImportSummary`
+
+Dataclass with import results: `total`, `imported`, `skipped_existing`, `skipped_archived`, `skipped_filter`, `errors`, `error_details`.
+
+---
+
 ## Module: `pricing`
 
 ### `class ModelPricing`

@@ -826,6 +826,70 @@ Redesign the conversation schema once with extensibility primitives so that no f
 
 ---
 
+## ADR-011: ChatGPT Import Strategy
+
+**Date**: 2026-02-07
+**Status**: ✅ Accepted
+
+### Context
+
+147 ChatGPT conversations (March 2023 - February 2026, 13.8 MB) need to be migrated to Jarvis to support vendor independence. Conversations are exported as a single `conversations.json` file using ChatGPT's data export feature. The export uses a tree-structured message mapping (supporting conversation branching in ChatGPT's UI) with various content types (text, multimodal, code, thoughts, browsing results, etc.).
+
+### Decision
+
+Implement a bulk import with CLI filters rather than a per-conversation selection UI:
+
+1. **Reusable conversion module** (`packages/core/importers/chatgpt.py`) — pure conversion logic in an extensible `importers/` subpackage
+2. **Thin CLI script** (`scripts/import_chatgpt.py`) — `--dry-run`, `--date-from/to`, `--model`, `--include-archived` filters
+3. **Same target directory** (`data/conversations/`) — imported files interleave with native Jarvis conversations, distinguished by tags and metadata
+4. **Deterministic IDs** — `conv_id` derived from SHA-256 of ChatGPT UUID, enabling idempotent re-imports
+5. **Idempotent skip** — existing imports detected by `chatgpt_id` in metadata, not by filename
+
+### Alternatives Considered
+
+1. **Per-conversation selection UI**
+   - ✅ Fine-grained control
+   - ❌ Over-engineering for a one-time 147-conversation import
+   - ❌ `data/conversations/` is gitignored, so deleting unwanted files is trivial
+
+2. **Separate `data/imported/` directory**
+   - ✅ Clear separation
+   - ❌ Breaks existing glob/load patterns in `ConversationLogger`
+   - ❌ Tags and metadata already distinguish origin
+
+3. **Database-backed import tracking**
+   - ✅ Efficient skip-existing checks
+   - ❌ Adds database dependency for a one-time operation
+   - ❌ Scanning existing JSON files is fast enough for <1000 conversations
+
+### Consequences
+
+**Benefits:**
+- ✅ Vendor independence — conversations no longer locked in ChatGPT
+- ✅ Extensible `importers/` subpackage for future providers (Claude, Gemini, etc.)
+- ✅ Idempotent — safe to re-run without duplicates
+- ✅ All content types preserved with metadata markers
+- ✅ Imported files work with existing `ConversationLogger.load()`
+
+**Drawbacks:**
+- ⚠️ Images stored as `[Image not available]` placeholders (ChatGPT export doesn't include image data)
+- ⚠️ No usage/cost data (ChatGPT export doesn't include token counts)
+- ⚠️ Tree linearization loses branching information (only follows `current_node` path)
+
+**Mitigation:**
+- Image metadata preserved for potential future re-fetch
+- Empty metrics clearly indicate imported conversations
+- Primary conversation path is the most meaningful one
+
+### Related ADRs
+- Builds on: ADR-010 (Conversation Schema v1.0.0 — target format for imports)
+- Relates to: ADR-004 (JSON for Conversation Logs — same format, same directory)
+- Relates to: ADR-007 (Local-first — imported data stays local)
+
+**Current Status**: Implemented and tested.
+
+---
+
 ## Template for Future ADRs
 
 ```markdown

@@ -1,0 +1,223 @@
+[
+  {
+    "title": "Simple Text Chat",
+    "create_time": 1711580000.0,
+    "update_time": 1711580100.0,
+    "mapping": {
+      "root-node": {
+        "id": "root-node",
+        "message": null,
+        "parent": null,
+        "children": ["system-node"]
+      },
+      "system-node": {
+        "id": "system-node",
+        "message": {
+          "id": "system-node",
+          "author": {"role": "system"},
+          "create_time": 1711580000.0,
+          "update_time": 1711580000.0,
+          "content": {"content_type": "text", "parts": ["You are a helpful assistant."]},
+          "status": "finished_successfully",
+          "end_turn": false,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "root-node",
+        "children": ["user-node"]
+      },
+      "user-node": {
+        "id": "user-node",
+        "message": {
+          "id": "user-node",
+          "author": {"role": "user"},
+          "create_time": 1711580010.0,
+          "update_time": 1711580010.0,
+          "content": {"content_type": "text", "parts": ["Hello, how are you?"]},
+          "status": "finished_successfully",
+          "end_turn": false,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "system-node",
+        "children": ["assistant-node"]
+      },
+      "assistant-node": {
+        "id": "assistant-node",
+        "message": {
+          "id": "assistant-node",
+          "author": {"role": "assistant"},
+          "create_time": 1711580020.0,
+          "update_time": 1711580020.0,
+          "content": {"content_type": "text", "parts": ["I'm doing well, thank you for asking!"]},
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {"model_slug": "gpt-4"},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "user-node",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "assistant-node",
+    "plugin_ids": null,
+    "conversation_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "conversation_template_id": null,
+    "gizmo_id": null,
+    "gizmo_type": null,
+    "is_archived": false,
+    "is_starred": false,
+    "safe_urls": [],
+    "blocked_urls": [],
+    "default_model_slug": "gpt-4",
+    "conversation_origin": null,
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+  },
+  {
+    "title": "Multimodal Conversation",
+    "create_time": 1711580000.0,
+    "update_time": 1711580200.0,
+    "mapping": {
+      "root-node": {
+        "id": "root-node",
+        "message": null,
+        "parent": null,
+        "children": ["user-multi"]
+      },
+      "user-multi": {
+        "id": "user-multi",
+        "message": {
+          "id": "user-multi",
+          "author": {"role": "user"},
+          "create_time": 1711580010.0,
+          "update_time": 1711580010.0,
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              "What is in this image?",
+              {
+                "content_type": "image_asset_pointer",
+                "asset_pointer": "sediment://file_abc123",
+                "size_bytes": 12345,
+                "width": 800,
+                "height": 600,
+                "fovea": null,
+                "metadata": {}
+              }
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": false,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "root-node",
+        "children": ["assistant-multi"]
+      },
+      "assistant-multi": {
+        "id": "assistant-multi",
+        "message": {
+          "id": "assistant-multi",
+          "author": {"role": "assistant"},
+          "create_time": 1711580030.0,
+          "update_time": 1711580030.0,
+          "content": {"content_type": "text", "parts": ["The image shows a landscape."]},
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "user-multi",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "assistant-multi",
+    "plugin_ids": null,
+    "conversation_id": "11111111-2222-3333-4444-555555555555",
+    "conversation_template_id": null,
+    "gizmo_id": null,
+    "gizmo_type": null,
+    "is_archived": false,
+    "is_starred": false,
+    "safe_urls": [],
+    "blocked_urls": [],
+    "default_model_slug": "gpt-4o",
+    "conversation_origin": null,
+    "id": "11111111-2222-3333-4444-555555555555"
+  },
+  {
+    "title": "Archived Chat",
+    "create_time": 1700000000.0,
+    "update_time": 1700000100.0,
+    "mapping": {
+      "root-node": {
+        "id": "root-node",
+        "message": null,
+        "parent": null,
+        "children": ["user-archived"]
+      },
+      "user-archived": {
+        "id": "user-archived",
+        "message": {
+          "id": "user-archived",
+          "author": {"role": "user"},
+          "create_time": 1700000010.0,
+          "update_time": 1700000010.0,
+          "content": {"content_type": "text", "parts": ["Old question"]},
+          "status": "finished_successfully",
+          "end_turn": false,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "root-node",
+        "children": ["assistant-archived"]
+      },
+      "assistant-archived": {
+        "id": "assistant-archived",
+        "message": {
+          "id": "assistant-archived",
+          "author": {"role": "assistant"},
+          "create_time": 1700000020.0,
+          "update_time": 1700000020.0,
+          "content": {"content_type": "text", "parts": ["Old answer"]},
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "user-archived",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "assistant-archived",
+    "plugin_ids": null,
+    "conversation_id": "99999999-8888-7777-6666-555555555555",
+    "conversation_template_id": null,
+    "gizmo_id": null,
+    "gizmo_type": null,
+    "is_archived": true,
+    "is_starred": false,
+    "safe_urls": [],
+    "blocked_urls": [],
+    "default_model_slug": "gpt-4",
+    "conversation_origin": null,
+    "id": "99999999-8888-7777-6666-555555555555"
+  }
+]
