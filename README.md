@@ -65,7 +65,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
 - **Comprehensive Testing**: Automated test suite with high code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
-- **Conversation Import**: Import ChatGPT exports into Jarvis format (extensible to other providers)
+- **Conversation Import**: Import ChatGPT and Claude exports into Jarvis format
 
 ## Getting Started
 
@@ -192,6 +192,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Benchmark cost estimation per model
 - [x] Conversation schema v1.0.0 (structured logging with migration support)
 - [x] ChatGPT conversation import (bulk import with filters)
+- [x] Claude conversation import (bulk import with date filters)
 
 **Phase 3: Web Interface (Next)**
 - [ ] FastAPI backend with SSE streaming

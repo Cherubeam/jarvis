@@ -295,7 +295,21 @@ uv run python scripts/import_chatgpt.py imports/conversations.json
 uv run python scripts/import_chatgpt.py imports/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
 ```
 
-Imported files are written to `data/conversations/` with tags `["imported", "chatgpt"]`. The import is idempotent — re-running skips already-imported conversations.
+```bash
+# Claude conversation import
+uv run python scripts/import_claude.py imports/conversations.json --dry-run
+uv run python scripts/import_claude.py imports/conversations.json
+uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
+```
+
+```bash
+# Claude context import (memories + projects)
+uv run python scripts/import_claude_context.py --dry-run
+uv run python scripts/import_claude_context.py
+uv run python scripts/import_claude_context.py --memories imports/memories.json --projects imports/projects.json
+```
+
+Imported files are written to `data/conversations/` with source-specific tags (`["imported", "chatgpt"]` or `["imported", "claude"]`). The import is idempotent — re-running skips already-imported conversations.
 
 ### Switching LLM Providers
 

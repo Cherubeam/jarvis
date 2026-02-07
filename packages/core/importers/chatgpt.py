@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
 from packages.core.memory import SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
@@ -168,12 +167,11 @@ def _unix_to_iso(ts: float | None) -> str | None:
 
 def _make_conv_id(chatgpt_uuid: str, create_time: float | None) -> str:
     """Generate deterministic conv_id from ChatGPT UUID."""
-    hex_suffix = hashlib.sha256(chatgpt_uuid.encode()).hexdigest()[:4]
     if create_time:
         dt = datetime.fromtimestamp(create_time, tz=timezone.utc)
     else:
         dt = datetime.now(tz=timezone.utc)
-    return f"conv_{dt.strftime('%Y%m%d')}_{dt.strftime('%H%M%S')}_{hex_suffix}"
+    return make_conv_id(chatgpt_uuid, dt)
 
 
 def _make_filename(create_time: float | None, update_time: float | None) -> str:
@@ -182,7 +180,7 @@ def _make_filename(create_time: float | None, update_time: float | None) -> str:
         dt = datetime.fromtimestamp(ts, tz=timezone.utc)
     else:
         dt = datetime.now(tz=timezone.utc)
-    return dt.strftime("%Y-%m-%d_%H-%M-%S.json")
+    return make_filename(dt)
 
 
 def convert_conversation(chatgpt_conv: dict) -> dict:
@@ -257,17 +255,6 @@ def convert_conversation(chatgpt_conv: dict) -> dict:
             "import_timestamp": now_iso,
         },
     }
-
-
-@dataclass
-class ImportSummary:
-    total: int = 0
-    imported: int = 0
-    skipped_existing: int = 0
-    skipped_archived: int = 0
-    skipped_filter: int = 0
-    errors: int = 0
-    error_details: list[str] = field(default_factory=list)
 
 
 def import_conversations(

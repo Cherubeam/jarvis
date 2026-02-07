@@ -1,0 +1,9 @@
+{
+  "conversations_memory": "**Work context**\nConsultant and agile coach working in automotive industry. Building personal AI tools as learning projects. Uses Python, VS Code, and OpenRouter.\n\n**Personal context**\nLives in Berlin with family. Speaks German, English, and Spanish. Values personal responsibility and financial independence.\n\n**Top of mind**\nFocusing on Claude context import for Jarvis. Exploring how to structure personal context files for maximum usefulness.\n\n**Brief history**\nStarted in humanities, moved into product management, then agile coaching. Currently transitioning toward AI engineering.",
+  "project_memories": [
+    {
+      "project_uuid": "proj-001-uuid",
+      "memory": "Jarvis is a local-first personal AI assistant built in Python. Uses OpenRouter for LLM access. Monorepo structure with apps/, packages/, data/. Conversation schema v1.0.0 with typed content blocks."
+    }
+  ]
+}

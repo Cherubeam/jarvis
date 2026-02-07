@@ -1,0 +1,244 @@
+[
+  {
+    "uuid": "aaaa1111-bbbb-cccc-dddd-eeeeeeee0001",
+    "name": "Simple Text Chat",
+    "summary": "A simple text conversation.",
+    "created_at": "2025-12-10T10:30:00.000000Z",
+    "updated_at": "2025-12-10T10:35:00.000000Z",
+    "account": {"uuid": "account-uuid-001"},
+    "chat_messages": [
+      {
+        "uuid": "msg-uuid-001",
+        "text": "Hello, how are you?",
+        "content": [
+          {
+            "start_timestamp": "2025-12-10T10:30:00.000000Z",
+            "stop_timestamp": "2025-12-10T10:30:00.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "Hello, how are you?",
+            "citations": []
+          }
+        ],
+        "sender": "human",
+        "created_at": "2025-12-10T10:30:00.000000Z",
+        "updated_at": "2025-12-10T10:30:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "msg-uuid-002",
+        "text": "I'm doing well, thank you for asking! How can I help you today?",
+        "content": [
+          {
+            "start_timestamp": "2025-12-10T10:30:05.000000Z",
+            "stop_timestamp": "2025-12-10T10:30:10.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "I'm doing well, thank you for asking! How can I help you today?",
+            "citations": []
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2025-12-10T10:30:05.000000Z",
+        "updated_at": "2025-12-10T10:30:10.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "aaaa1111-bbbb-cccc-dddd-eeeeeeee0002",
+    "name": "Thinking and Attachments",
+    "summary": "A conversation with thinking blocks and file attachments.",
+    "created_at": "2025-12-15T14:00:00.000000Z",
+    "updated_at": "2025-12-15T14:10:00.000000Z",
+    "account": {"uuid": "account-uuid-001"},
+    "chat_messages": [
+      {
+        "uuid": "msg-uuid-003",
+        "text": "Please analyze this document.",
+        "content": [
+          {
+            "start_timestamp": "2025-12-15T14:00:00.000000Z",
+            "stop_timestamp": "2025-12-15T14:00:00.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "Please analyze this document.",
+            "citations": []
+          }
+        ],
+        "sender": "human",
+        "created_at": "2025-12-15T14:00:00.000000Z",
+        "updated_at": "2025-12-15T14:00:00.000000Z",
+        "attachments": [
+          {
+            "file_name": "report.txt",
+            "file_size": 1024,
+            "file_type": "txt",
+            "extracted_content": "This is the content of the attached report document."
+          }
+        ],
+        "files": []
+      },
+      {
+        "uuid": "msg-uuid-004",
+        "text": "Here is my analysis of the document.",
+        "content": [
+          {
+            "start_timestamp": "2025-12-15T14:00:05.000000Z",
+            "stop_timestamp": "2025-12-15T14:00:08.000000Z",
+            "flags": [],
+            "type": "thinking",
+            "thinking": "The user wants me to analyze a report document. Let me review the content carefully.",
+            "summaries": ["Analyzing the report"],
+            "cut_off": false,
+            "alternative_display_type": null
+          },
+          {
+            "start_timestamp": "2025-12-15T14:00:08.000000Z",
+            "stop_timestamp": "2025-12-15T14:00:15.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "Here is my analysis of the document.",
+            "citations": []
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2025-12-15T14:00:05.000000Z",
+        "updated_at": "2025-12-15T14:00:15.000000Z",
+        "attachments": [],
+        "files": [
+          {"file_name": "analysis-summary.md"}
+        ]
+      },
+      {
+        "uuid": "msg-uuid-005",
+        "text": "Can you search for more information?",
+        "content": [
+          {
+            "start_timestamp": "2025-12-15T14:01:00.000000Z",
+            "stop_timestamp": "2025-12-15T14:01:00.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "Can you search for more information?",
+            "citations": []
+          }
+        ],
+        "sender": "human",
+        "created_at": "2025-12-15T14:01:00.000000Z",
+        "updated_at": "2025-12-15T14:01:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "msg-uuid-006",
+        "text": "I'll search for that information now.",
+        "content": [
+          {
+            "start_timestamp": "2025-12-15T14:01:05.000000Z",
+            "stop_timestamp": "2025-12-15T14:01:06.000000Z",
+            "flags": [],
+            "type": "tool_use",
+            "id": "tool-call-001",
+            "name": "web_search",
+            "input": {"query": "report analysis best practices"},
+            "message": null,
+            "integration_name": "web_search",
+            "integration_icon_url": null,
+            "context": null,
+            "display_content": null,
+            "approval_options": null,
+            "approval_key": null,
+            "is_mcp_app": false
+          },
+          {
+            "start_timestamp": "2025-12-15T14:01:06.000000Z",
+            "stop_timestamp": "2025-12-15T14:01:08.000000Z",
+            "flags": [],
+            "type": "tool_result",
+            "tool_use_id": "tool-call-001",
+            "name": "web_search",
+            "content": [
+              {"type": "text", "text": "Found 5 relevant results about report analysis.", "uuid": "result-uuid-001"}
+            ],
+            "is_error": false,
+            "structured_content": null,
+            "meta": null,
+            "message": null,
+            "integration_name": "web_search",
+            "integration_icon_url": null,
+            "display_content": null
+          },
+          {
+            "start_timestamp": "2025-12-15T14:01:08.000000Z",
+            "stop_timestamp": "2025-12-15T14:01:09.000000Z",
+            "flags": [],
+            "type": "token_budget"
+          },
+          {
+            "start_timestamp": "2025-12-15T14:01:09.000000Z",
+            "stop_timestamp": "2025-12-15T14:01:15.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "Based on my search, here are some additional insights.",
+            "citations": []
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2025-12-15T14:01:05.000000Z",
+        "updated_at": "2025-12-15T14:01:15.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "aaaa1111-bbbb-cccc-dddd-eeeeeeee0003",
+    "name": "Old Conversation",
+    "summary": "An old conversation for date filter testing.",
+    "created_at": "2024-06-15T08:00:00.000000Z",
+    "updated_at": "2024-06-15T08:05:00.000000Z",
+    "account": {"uuid": "account-uuid-001"},
+    "chat_messages": [
+      {
+        "uuid": "msg-uuid-007",
+        "text": "What year is it?",
+        "content": [
+          {
+            "start_timestamp": "2024-06-15T08:00:00.000000Z",
+            "stop_timestamp": "2024-06-15T08:00:00.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "What year is it?",
+            "citations": []
+          }
+        ],
+        "sender": "human",
+        "created_at": "2024-06-15T08:00:00.000000Z",
+        "updated_at": "2024-06-15T08:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "msg-uuid-008",
+        "text": "It is currently 2024.",
+        "content": [
+          {
+            "start_timestamp": "2024-06-15T08:00:05.000000Z",
+            "stop_timestamp": "2024-06-15T08:00:08.000000Z",
+            "flags": [],
+            "type": "text",
+            "text": "It is currently 2024.",
+            "citations": []
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2024-06-15T08:00:05.000000Z",
+        "updated_at": "2024-06-15T08:00:08.000000Z",
+        "attachments": [],
+        "files": []
+      }
+    ]
+  }
+]

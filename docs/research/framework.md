@@ -116,6 +116,10 @@ Prompts are code. They need:
 - ✅ System prompt in version control
 - ✅ Context files versioned
 - ✅ LLM-as-judge evaluation framework implemented
+- ✅ Golden test suite (10 cases) with historical trend tracking
+- ✅ Cost management (~$0.41/run) with --evaluate flag
+- ✅ ChatGPT & Claude conversation import
+- ✅ Conversation schema v1.0.0 (structured logging with migration)
 
 ---
 
@@ -156,8 +160,9 @@ No single model is best for everything:
 
 - ✅ Multi-provider support via LiteLLM
 - ✅ Cost tracking per model
-- 🟡 Benchmark cost estimation available
-- 🔴 No systematic benchmarking yet (Phase 3 goal)
+- ✅ Benchmark cost estimation (OpenRouter pricing API)
+- 🟡 7 models benchmarked via benchmark_costs.py + benchmark_report.py
+- 🔴 Baseline quality recommendation not yet established
 
 See [models.md](models.md) for model comparison.
 
@@ -288,9 +293,10 @@ See [ADR-005](../product/decisions.md#adr-005-start-without-database-plan-rag-tr
 
 ### Jarvis Status
 
+- ✅ Things 3 integration (Phase A — context awareness, 43 tests)
+- 🟡 Agent foundation: BaseAgent + JarvisAgent classes (packages/agents/)
 - 🟡 LiteLLM provides function calling support
-- 🔴 No tools implemented yet (Phase 5 goal)
-- 🔴 No agent orchestration (Phase 5 goal)
+- 🔴 Function calling not yet wired into agents
 
 ---
 
@@ -341,6 +347,8 @@ Every request should log:
 ### Jarvis Status
 
 - ✅ Basic logging (tokens, cost)
+- ✅ TTFT/latency tracking per response and session
+- ✅ Conversation schema v1.0.0 with structured logging
 - 🔴 No structured error tracking
 - 🔴 No automated analysis
 
@@ -425,13 +433,21 @@ Every request should log:
 
 ---
 
+## Cross-Cutting Features (Spanning Multiple Phases)
+
+- **Conversation Schema v1.0.0** (Phase 2 + 6): Structured logging, typed content blocks, migration support
+- **ChatGPT & Claude Import** (Phase 2 + 6): Bulk import with CLI filters, idempotent re-imports
+- **Things 3 Integration Phase A** (Phase 2 + 5): Context awareness via task sync
+
+---
+
 ## Summary: Phase Progression
 
 ```
-Phase 1: Problem Framing ← [You are here]
+Phase 1: Problem Framing ✅
     ↓ (Define metrics, establish baselines)
 
-Phase 2: Prompt Engineering
+Phase 2: Prompt Engineering ← [~85% complete]
     ↓ (Version prompts, build test suite)
 
 Phase 3: Model Selection
@@ -470,4 +486,4 @@ Phase 8: Fine-tuning
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

@@ -70,29 +70,32 @@ class TestBuildSystemPrompt:
 
         # Check all sections are present
         assert "## About this person" in result
+        assert "## Professional context" in result
         assert "## Their preferences" in result
         assert "## Current focus" in result
 
         # Check content from each file
         assert "software engineer" in result
+        assert "agile coach" in result
         assert "Be concise and technical" in result
         assert "Jarvis" in result
 
     def test_build_system_prompt_partial_files(self, temp_context_dir: Path):
         """Test assembling with only some files present."""
-        # Create only profile.md
-        profile = temp_context_dir / "profile.md"
-        profile.write_text("I am a developer.")
+        # Create only personal_context.md
+        personal = temp_context_dir / "personal_context.md"
+        personal.write_text("I am a developer.")
 
         prefix = "You are helpful."
         result = build_system_prompt(temp_context_dir, prefix)
 
-        # Check prefix and profile are included
+        # Check prefix and personal context are included
         assert "You are helpful." in result
         assert "## About this person" in result
         assert "I am a developer." in result
 
         # Check other sections are not included
+        assert "## Professional context" not in result
         assert "## Their preferences" not in result
         assert "## Current focus" not in result
 
@@ -106,33 +109,36 @@ class TestBuildSystemPrompt:
 
         # Should not have section headers
         assert "## About this person" not in result
+        assert "## Professional context" not in result
         assert "## Their preferences" not in result
         assert "## Current focus" not in result
 
     def test_build_system_prompt_section_order(self, sample_context_all_files: Path):
-        """Test that sections appear in the correct order: profile → preferences → focus."""
+        """Test that sections appear in the correct order."""
         prefix = "Test"
         result = build_system_prompt(sample_context_all_files, prefix)
 
         # Find positions of each section
         about_pos = result.find("## About this person")
+        professional_pos = result.find("## Professional context")
         prefs_pos = result.find("## Their preferences")
         focus_pos = result.find("## Current focus")
 
         # All should exist
         assert about_pos != -1
+        assert professional_pos != -1
         assert prefs_pos != -1
         assert focus_pos != -1
 
-        # Check order
-        assert about_pos < prefs_pos < focus_pos
+        # Check order: personal -> professional -> preferences -> focus
+        assert about_pos < professional_pos < prefs_pos < focus_pos
 
     def test_build_system_prompt_prefix_formatting(self, temp_context_dir: Path):
         """Test that prefix is formatted correctly with proper spacing."""
         # Test with trailing whitespace
         prefix_with_space = "You are helpful.   \n  "
-        profile = temp_context_dir / "profile.md"
-        profile.write_text("Developer")
+        personal = temp_context_dir / "personal_context.md"
+        personal.write_text("Developer")
 
         result = build_system_prompt(temp_context_dir, prefix_with_space)
 
@@ -148,6 +154,116 @@ class TestBuildSystemPrompt:
         # Check for separator between sections
         assert "\n\n---\n\n" in result
 
-        # Count separators (should be 2 for 3 sections)
+        # Count separators (should be 3 for 4 sections: personal, professional, prefs, focus)
         separator_count = result.count("\n\n---\n\n")
-        assert separator_count == 2
+        assert separator_count == 3
+
+
+@pytest.mark.unit
+class TestBuildSystemPromptSplitProfile:
+    """Tests for split personal + professional context files."""
+
+    def test_personal_context_only(self, temp_context_dir: Path):
+        """Test with only personal_context.md present."""
+        (temp_context_dir / "personal_context.md").write_text("Name: Marco")
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## About this person" in result
+        assert "Name: Marco" in result
+        assert "## Professional context" not in result
+
+    def test_professional_context_only(self, temp_context_dir: Path):
+        """Test with only professional_context.md present."""
+        (temp_context_dir / "professional_context.md").write_text("Consultant")
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## Professional context" in result
+        assert "Consultant" in result
+        assert "## About this person" not in result
+
+    def test_both_contexts(self, temp_context_dir: Path):
+        """Test with both personal and professional context."""
+        (temp_context_dir / "personal_context.md").write_text("Name: Marco")
+        (temp_context_dir / "professional_context.md").write_text("Consultant")
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## About this person" in result
+        assert "## Professional context" in result
+
+    def test_missing_both_graceful(self, temp_context_dir: Path):
+        """Test graceful handling when both profile files are missing."""
+        result = build_system_prompt(temp_context_dir, "Test prefix")
+        assert "Test prefix" in result
+        assert "## About this person" not in result
+        assert "## Professional context" not in result
+
+
+@pytest.mark.unit
+class TestBuildSystemPromptProjects:
+    """Tests for project context file loading."""
+
+    def test_loads_project_files(self, temp_context_dir: Path):
+        """Test that project .md files are loaded."""
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "jarvis.md").write_text("# Jarvis\nPersonal AI assistant.")
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## Project context" in result
+        assert "Personal AI assistant." in result
+
+    def test_alphabetical_order(self, temp_context_dir: Path):
+        """Test that project files are loaded in alphabetical order."""
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "beta.md").write_text("Beta project")
+        (projects_dir / "alpha.md").write_text("Alpha project")
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        alpha_pos = result.find("Alpha project")
+        beta_pos = result.find("Beta project")
+        assert alpha_pos < beta_pos
+
+    def test_empty_projects_dir(self, temp_context_dir: Path):
+        """Test with an empty projects directory."""
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## Project context" not in result
+
+    def test_no_projects_dir(self, temp_context_dir: Path):
+        """Test when projects directory doesn't exist."""
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## Project context" not in result
+
+    def test_projects_after_tasks(self, temp_context_dir: Path):
+        """Test that projects appear after tasks in the prompt."""
+        (temp_context_dir / "tasks.md").write_text("- Buy groceries")
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "test.md").write_text("Test project")
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        tasks_pos = result.find("## Their tasks")
+        project_pos = result.find("## Project context")
+        assert tasks_pos < project_pos
+
+    def test_ignores_non_md_files(self, temp_context_dir: Path):
+        """Test that non-.md files in projects/ are ignored."""
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "notes.txt").write_text("Should be ignored")
+        (projects_dir / "data.json").write_text("{}")
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        assert "## Project context" not in result
+
+    def test_skips_empty_project_files(self, temp_context_dir: Path):
+        """Test that empty project files are not included."""
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "empty.md").write_text("")
+        (projects_dir / "real.md").write_text("Real content")
+
+        result = build_system_prompt(temp_context_dir, "Test")
+        # Should only have one project context section
+        assert result.count("## Project context") == 1
+        assert "Real content" in result

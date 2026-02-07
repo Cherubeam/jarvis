@@ -67,15 +67,27 @@ def temp_conversations_dir(tmp_path: Path) -> Path:
 # ==================== Context File Fixtures ====================
 
 @pytest.fixture
-def sample_profile(temp_context_dir: Path) -> Path:
-    """Create a sample profile.md file."""
-    profile_path = temp_context_dir / "profile.md"
-    profile_path.write_text(
+def sample_personal_context(temp_context_dir: Path) -> Path:
+    """Create a sample personal_context.md file."""
+    path = temp_context_dir / "personal_context.md"
+    path.write_text(
         "I am a software engineer with 10 years of experience.\n"
         "I specialize in Python and machine learning.\n"
         "I'm currently learning about LLM applications."
     )
-    return profile_path
+    return path
+
+
+@pytest.fixture
+def sample_professional_context(temp_context_dir: Path) -> Path:
+    """Create a sample professional_context.md file."""
+    path = temp_context_dir / "professional_context.md"
+    path.write_text(
+        "Currently working as a consultant and agile coach.\n"
+        "Background in humanities and product management.\n"
+        "Transitioning toward AI engineering."
+    )
+    return path
 
 
 @pytest.fixture
@@ -103,7 +115,8 @@ def sample_current_focus(temp_context_dir: Path) -> Path:
 
 @pytest.fixture
 def sample_context_all_files(
-    sample_profile: Path,
+    sample_personal_context: Path,
+    sample_professional_context: Path,
     sample_preferences: Path,
     sample_current_focus: Path,
     temp_context_dir: Path
@@ -244,7 +257,7 @@ def sample_context_snapshot() -> dict:
     """Sample context snapshot for conversation schema."""
     return {
         "files_loaded": [
-            {"path": "data/context/profile.md", "hash": "sha256:abcdef1234567890", "size_bytes": 342},
+            {"path": "data/context/personal_context.md", "hash": "sha256:abcdef1234567890", "size_bytes": 342},
         ],
         "system_prompt_prefix": "You are Jarvis...",
         "metadata": {},

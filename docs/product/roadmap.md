@@ -44,6 +44,7 @@ None currently.
   - Cost management (~$0.41/run)
   - On-demand via `--evaluate` flag
 - [x] ChatGPT conversation import (bulk import with CLI filters) ✅
+- [x] Claude conversation import (bulk import with date filters) ✅
 - [ ] Baseline quality metrics across different models
 
 #### Things 3 Integration (Phase A - Context Awareness)
@@ -310,6 +311,15 @@ None currently.
 ## Recently Completed
 
 ### February 7, 2026
+- ✅ **Claude Context Import (memories + projects)**
+- ✅ **Import module: `packages/core/importers/claude_context.py`**
+- ✅ **CLI script: `scripts/import_claude_context.py` with --dry-run flag**
+- ✅ **Split profile.md into personal_context.md + professional_context.md**
+- ✅ **Project context loading in context builder**
+- ✅ **Claude Conversation Import**
+- ✅ **Conversion module: `packages/core/importers/claude.py`**
+- ✅ **CLI script: `scripts/import_claude.py` with --dry-run and date filters**
+- ✅ **Shared importer utilities extracted to `packages/core/importers/common.py`**
 - ✅ **ChatGPT Conversation Import**
 - ✅ **Conversion module: `packages/core/importers/chatgpt.py`**
 - ✅ **CLI script: `scripts/import_chatgpt.py` with --dry-run and filter flags**

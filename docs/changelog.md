@@ -10,6 +10,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Claude Context Import**: Import Claude memories + projects into Jarvis context system
+  - Import module at `packages/core/importers/claude_context.py`
+  - CLI script at `scripts/import_claude_context.py` with `--memories`, `--projects`, `--dry-run` flags
+  - Splits `profile.md` into `personal_context.md` and `professional_context.md`
+  - Parses Claude `conversations_memory` bold-header sections (Work, Personal, Top of mind, Brief history)
+  - Imports project memories and prompt templates to `data/context/projects/<slug>.md`
+  - Saves project docs to `data/context/projects/docs/<slug>/` (not loaded into prompt)
+  - Updates `current_focus.md` top-of-mind section from Claude memories
+  - Skips starter/template projects automatically
+  - Context builder updated to load split profile files + project context
+  - CLI context snapshot includes project files
+
+### Changed
+- **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
+  - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Projects
+  - Loads `projects/*.md` files alphabetically as project context sections
+- **CLI Context Snapshot**: Now includes `projects/*.md` in context file tracking
+
+- **Claude Conversation Import**: Bulk import of Claude conversation exports into Jarvis schema v1.0.0
+  - Conversion module at `packages/core/importers/claude.py`
+  - CLI script at `scripts/import_claude.py` with `--dry-run`, `--date-from/to` filters
+  - Handles all Claude content block types: text, thinking, tool_use, tool_result, token_budget
+  - Converts attachments (human messages) and generated files (assistant messages)
+  - Deterministic conversation IDs from Claude UUIDs (enables idempotent re-imports)
+  - Tags: `["imported", "claude"]`
+- **Shared Importer Utilities**: Extracted common code to `packages/core/importers/common.py`
+  - `ImportSummary` dataclass shared across all importers
+  - `make_conv_id()` and `make_filename()` utility functions
+  - ChatGPT importer refactored to use shared utilities (no behavior changes)
 - **ChatGPT Conversation Import**: Bulk import of ChatGPT conversation exports into Jarvis schema v1.0.0
   - Reusable conversion module at `packages/core/importers/chatgpt.py`
   - CLI script at `scripts/import_chatgpt.py` with `--dry-run`, `--date-from/to`, `--model`, `--include-archived` filters
@@ -428,4 +457,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-07*

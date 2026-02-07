@@ -1,0 +1,38 @@
+[
+  {
+    "uuid": "proj-starter-uuid",
+    "name": "Getting Started",
+    "is_starter_project": true,
+    "prompt_template": "",
+    "docs": []
+  },
+  {
+    "uuid": "proj-001-uuid",
+    "name": "The Technical Humanist",
+    "prompt_template": "You are helping Marco with his personal AI projects. Focus on practical, hands-on guidance.",
+    "docs": [
+      {
+        "filename": "research-notes.md",
+        "title": "Research Notes",
+        "content": "# Research Notes\n\nThese are research notes for the project."
+      }
+    ]
+  },
+  {
+    "uuid": "proj-002-uuid",
+    "name": "Agile Product & Software Development",
+    "prompt_template": "",
+    "docs": [
+      {
+        "filename": "introduction-notes.md",
+        "title": "Introduction Notes",
+        "content": "# Introduction Notes\n\nMap of contents for agile research."
+      },
+      {
+        "filename": "challenges.md",
+        "title": "Challenges of Agile",
+        "content": "# Challenges\n\nKey challenges in agile hardware and software development."
+      }
+    ]
+  }
+]

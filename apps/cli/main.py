@@ -122,6 +122,16 @@ def main():
                     "hash": f"sha256:{hash_content(content)}",
                     "size_bytes": f.stat().st_size,
                 })
+        # Include project context files
+        projects_dir = context_dir / "projects"
+        if projects_dir.is_dir():
+            for f in sorted(projects_dir.glob("*.md")):
+                content = f.read_text(encoding="utf-8")
+                context_files.append({
+                    "path": str(f.relative_to(jarvis_dir)),
+                    "hash": f"sha256:{hash_content(content)}",
+                    "size_bytes": f.stat().st_size,
+                })
 
     context_snapshot = {
         "files_loaded": context_files,

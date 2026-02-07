@@ -24,7 +24,7 @@ class TestThings3Integration:
         context_dir.mkdir()
 
         # Create minimal context files
-        (context_dir / "profile.md").write_text("# Test User\nSoftware engineer")
+        (context_dir / "personal_context.md").write_text("# Test User\nSoftware engineer")
         (context_dir / "preferences.md").write_text("# Preferences\nConcise responses")
         (context_dir / "current_focus.md").write_text(
             "# Current Focus\nBuilding Jarvis"
@@ -60,7 +60,7 @@ class TestThings3Integration:
         context_dir.mkdir()
 
         # Create only essential files
-        (context_dir / "profile.md").write_text("# Test User")
+        (context_dir / "personal_context.md").write_text("# Test User")
         (context_dir / "preferences.md").write_text("# Preferences")
 
         # Don't create tasks.md
@@ -139,7 +139,7 @@ class TestThings3Integration:
         assert result is False
 
         # Context should still work without tasks
-        (context_dir / "profile.md").write_text("# User")
+        (context_dir / "personal_context.md").write_text("# User")
         prompt = build_system_prompt(context_dir, "You are Jarvis.")
         assert "You are Jarvis" in prompt
 
@@ -200,7 +200,7 @@ class TestThings3Integration:
         }
 
         # Create context files
-        (context_dir / "profile.md").write_text("# Marco\nSoftware engineer")
+        (context_dir / "personal_context.md").write_text("# Marco\nSoftware engineer")
         (context_dir / "preferences.md").write_text("# Preferences\nBe concise")
         (context_dir / "current_focus.md").write_text("# Focus\nBuilding Jarvis")
 
