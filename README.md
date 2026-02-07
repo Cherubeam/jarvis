@@ -63,8 +63,9 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
-- **Comprehensive Testing**: 192 automated tests with 97.5% code coverage
+- **Comprehensive Testing**: 246 automated tests with 97.5% code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
+- **Conversation Import**: Import ChatGPT exports into Jarvis format (extensible to other providers)
 
 ## Getting Started
 
@@ -136,7 +137,8 @@ jarvis/
 │   │   ├── context_builder.py          # Assembles system prompts from context
 │   │   ├── memory.py                   # Conversation logging
 │   │   ├── pricing.py                  # Cost calculation and tracking
-│   │   └── benchmark_costs.py          # Benchmark cost estimation
+│   │   ├── benchmark_costs.py          # Benchmark cost estimation
+│   │   └── importers/                  # Conversation importers (ChatGPT, etc.)
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class
 │   │   └── jarvis/                     # Main JARVIS agent
@@ -157,7 +159,7 @@ jarvis/
 │   └── local.yaml                      # Local overrides (gitignored)
 │
 ├── tests/                              # Comprehensive test suite
-│   ├── unit/                           # 160 unit tests
+│   ├── unit/                           # 214 unit tests
 │   ├── integration/                    # 22 integration tests
 │   ├── golden/                         # 10 golden test conversations + LLM-as-judge
 │   └── README.md                       # Testing guide
@@ -179,7 +181,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework (192 tests, 97.5% coverage)**
+- [x] **Comprehensive testing framework (246 tests, 97.5% coverage)**
 
 **Phase 2: Evaluation & Quality Metrics (Complete ✅)**
 - [x] 10 golden test conversations defined
@@ -189,6 +191,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Model comparison benchmarks
 - [x] Benchmark cost estimation per model
 - [x] Conversation schema v1.0.0 (structured logging with migration support)
+- [x] ChatGPT conversation import (bulk import with filters)
 
 **Phase 3: Web Interface (Next)**
 - [ ] FastAPI backend with SSE streaming

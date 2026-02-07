@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **ChatGPT Conversation Import**: Bulk import of ChatGPT conversation exports into Jarvis schema v1.0.0
+  - Reusable conversion module at `packages/core/importers/chatgpt.py`
+  - CLI script at `scripts/import_chatgpt.py` with `--dry-run`, `--date-from/to`, `--model`, `--include-archived` filters
+  - Handles all ChatGPT content types: text, multimodal, code, thoughts, browsing, quotes, execution output, system errors
+  - Linearizes ChatGPT's tree-structured message mapping into sequential messages
+  - Deterministic conversation IDs from ChatGPT UUIDs (enables idempotent re-imports)
+  - Tags: `["imported", "chatgpt"]` (+ `"archived"` if applicable)
+  - Filename collision handling for same-second timestamps
+  - 54 unit tests with fixture and integration round-trip test
 - **Future-Proof Conversation Schema (v1.0.0)**: Complete redesign of conversation JSON format
   - Schema versioning (`schema_version: "1.0.0"`) for safe evolution
   - Conversation identity (`id`, `title`, `topic`, `tags`) for classification and referencing

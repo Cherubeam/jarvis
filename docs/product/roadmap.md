@@ -16,8 +16,8 @@
 - [x] LiteLLM integration for provider flexibility
 - [x] Automatic cost fallback via LiteLLM pricing
 - [x] **Testing framework setup (pytest, coverage, fixtures)**
-- [x] **Comprehensive unit test suite (53 tests, 97.5% coverage)**
-- [x] **Integration tests (12 tests)**
+- [x] **Comprehensive unit test suite (214 tests, 97.5% coverage)**
+- [x] **Integration tests (22 tests)**
 - [x] **8 golden test conversations defined**
 
 ### Blocked ⛔
@@ -43,6 +43,7 @@ None currently.
   - Historical trend tracking
   - Cost management (~$0.41/run)
   - On-demand via `--evaluate` flag
+- [x] ChatGPT conversation import (bulk import with CLI filters) ✅
 - [ ] Baseline quality metrics across different models
 
 #### Things 3 Integration (Phase A - Context Awareness)
@@ -308,6 +309,12 @@ None currently.
 
 ## Recently Completed
 
+### February 7, 2026
+- ✅ **ChatGPT Conversation Import**
+- ✅ **Conversion module: `packages/core/importers/chatgpt.py`**
+- ✅ **CLI script: `scripts/import_chatgpt.py` with --dry-run and filter flags**
+- ✅ **54 unit tests with integration round-trip**
+
 ### January 22, 2026
 - ✅ **TTFT (Time to First Token) tracking integrated into CLI**
   - Displays TTFT and total latency after each response
@@ -371,4 +378,4 @@ None currently.
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

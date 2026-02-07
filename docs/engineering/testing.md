@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 (85% Complete) 🚀
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 150 total (104 unit + 20 integration + 26 golden/evaluation)
+**Tests**: 246 total (214 unit + 22 integration + 10 golden)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -48,8 +48,8 @@
 **Test Structure:**
 ```
 tests/
-├── unit/              # 103 tests - Fast, isolated (includes evaluator tests)
-├── integration/       # 20 tests - With mocked dependencies
+├── unit/              # 214 tests - Fast, isolated (includes evaluator tests)
+├── integration/       # 22 tests - With mocked dependencies
 ├── golden/            # LLM-as-judge evaluation system
 │   ├── conversations/ # 8 YAML test cases
 │   ├── results/       # Evaluation results (JSON + markdown)
@@ -63,7 +63,7 @@ tests/
 
 ### Automated Test Coverage
 
-**Unit Tests (104 tests, 97.5% coverage on core):**
+**Unit Tests (214 tests, 97.5% coverage on core):**
 - ✅ `context_builder.py` - 10 tests, 100% coverage
 - ✅ `memory.py` - 15 tests, 97% coverage
 - ✅ `pricing.py` - 12 tests, 98% coverage
@@ -71,13 +71,15 @@ tests/
 - ✅ `task_sync.py` - 33 tests, 98% coverage
 - ✅ `evaluator.py` - 16 tests, 100% coverage (LLM-as-judge)
 - ✅ `result_storage.py` - 17 tests, 100% coverage (evaluation results)
+- ✅ `chatgpt importer` - 54 tests, 100% coverage
 - ⚠️ `cli.py` - 5 tests (skipped - complex I/O)
 
-**Integration Tests (20 tests):**
+**Integration Tests (22 tests):**
 - ✅ Full conversation flow (5 tests)
 - ✅ Context system integration (4 tests)
 - ✅ Pricing system integration (3 tests)
 - ✅ Task sync integration (8 tests)
+- ✅ Configuration integration (2 tests)
 
 **Golden Test Cases (26 tests):**
 - ✅ 8 conversation scenarios (YAML format):
@@ -659,8 +661,8 @@ Notes:
 
 ### Phase 1 (Complete ✅)
 - ✅ Testing framework setup
-- ✅ Unit tests for all core modules (104 tests)
-- ✅ Integration tests (20 tests)
+- ✅ Unit tests for all core modules (214 tests)
+- ✅ Integration tests (22 tests)
 - ✅ Golden test case definitions (8 scenarios)
 - ✅ 97.5% code coverage on core modules
 - ✅ Comprehensive test documentation
@@ -713,4 +715,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-02-07*

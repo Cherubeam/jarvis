@@ -289,6 +289,21 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 8. Logger saves session to JSON
 ```
 
+### Import Flow (ChatGPT)
+
+```
+1. Load ChatGPT conversations.json
+   |
+2. Apply filters (date, model, archived)
+   |
+3. For each conversation:
+   ├─ Check if already imported (by chatgpt_id)
+   ├─ Linearize message tree (current_node → root)
+   ├─ Convert content parts to Jarvis blocks
+   ├─ Generate deterministic conv_id
+   └─ Write to data/conversations/YYYY-MM-DD_HH-MM-SS.json
+```
+
 ### Startup Flow
 
 ```
@@ -327,7 +342,9 @@ jarvis/
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
 │   │   ├── pricing.py              # Cost tracking
-│   │   └── benchmark_costs.py      # Benchmark cost estimation
+│   │   ├── benchmark_costs.py      # Benchmark cost estimation
+│   │   └── importers/              # Conversation importers
+│   │       └── chatgpt.py          # ChatGPT export converter
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # Base agent class
 │   │   └── jarvis/                 # Main JARVIS orchestrator
@@ -470,7 +487,7 @@ jarvis/
 
 ### Current State (Phase 2 - In Progress)
 - ✅ Comprehensive automated test suite
-- ✅ 150 total tests (104 unit + 20 integration + 26 golden/evaluation)
+- ✅ 246 total tests (214 unit + 22 integration + 10 golden)
 - ✅ 97.5% code coverage on core modules
 - ✅ Type hints for static analysis
 - ✅ Fast test execution (< 2 seconds)
