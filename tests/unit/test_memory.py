@@ -27,10 +27,10 @@ class TestGenerateConversationId:
     """Tests for generate_conversation_id()."""
 
     def test_format_pattern(self):
-        """Test that ID matches conv_{YYYYMMDD}_{HHMMSS}_{4hex} pattern."""
+        """Test that ID matches conv_{YYYYMMDD}_{HHMMSS}_{6hex} pattern."""
         import re
         conv_id = generate_conversation_id()
-        assert re.match(r"^conv_\d{8}_\d{6}_[0-9a-f]{4}$", conv_id)
+        assert re.match(r"^conv_\d{8}_\d{6}_[0-9a-f]{6}$", conv_id)
 
     def test_starts_with_conv_prefix(self):
         """Test that ID starts with conv_ prefix."""

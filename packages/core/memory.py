@@ -16,9 +16,9 @@ SCHEMA_VERSION = "1.0.0"
 
 
 def generate_conversation_id() -> str:
-    """Generate a unique conversation ID: conv_{YYYYMMDD}_{HHMMSS}_{4hex}."""
+    """Generate a unique conversation ID: conv_{YYYYMMDD}_{HHMMSS}_{6hex}."""
     now = datetime.now()
-    hex_suffix = secrets.token_hex(2)  # 4 hex chars
+    hex_suffix = secrets.token_hex(3)  # 6 hex chars
     return f"conv_{now.strftime('%Y%m%d')}_{now.strftime('%H%M%S')}_{hex_suffix}"
 
 

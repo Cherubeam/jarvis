@@ -766,7 +766,7 @@ The conversation JSON schema (`data/conversations/*.json`) had drifted through ~
 Redesign the conversation schema once with extensibility primitives so that no future feature ever requires a structural change:
 
 1. **Schema versioning** (`schema_version: "1.0.0"`) — readers branch on major version; minor adds optional fields only
-2. **Conversation identity** — unique `id` (`conv_{YYYYMMDD}_{HHMMSS}_{4hex}`), `title`, `topic`, `tags`
+2. **Conversation identity** — unique `id` (`conv_{YYYYMMDD}_{HHMMSS}_{6hex}`), `title`, `topic`, `tags`
 3. **Model configuration** — `model.id`, `model.provider`, `model.parameters` (open object)
 4. **Agent / persona tracking** — `agent.name`, `agent.system_prompt_hash`, `agent.tools`
 5. **Context snapshot** — `context.files_loaded` with hashes, `context.system_prompt_prefix`
