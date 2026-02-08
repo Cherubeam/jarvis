@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 420 total (388 unit + 22 integration + 10 golden)
+**Tests**: 428 total (408 unit + 22 integration + 10 golden)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -48,7 +48,7 @@
 **Test Structure:**
 ```
 tests/
-├── unit/              # 388 tests - Fast, isolated (includes evaluator tests)
+├── unit/              # 408 tests - Fast, isolated (includes evaluator tests)
 ├── integration/       # 22 tests - With mocked dependencies
 ├── golden/            # LLM-as-judge evaluation system
 │   ├── conversations/ # 8 YAML test cases
@@ -63,8 +63,8 @@ tests/
 
 ### Automated Test Coverage
 
-**Unit Tests (388 tests, 97.5% coverage on core):**
-- ✅ `context_builder.py` - 21 tests, 100% coverage
+**Unit Tests (408 tests, 97.5% coverage on core):**
+- ✅ `context_builder.py` - 40 tests, 100% coverage (incl. frontmatter parsing, filtering, project index)
 - ✅ `memory.py` - 52 tests, 97% coverage (schema v1.0.0 expansion)
 - ✅ `pricing.py` - 16 tests, 98% coverage
 - ✅ `llm_client.py` - 11 tests, 95% coverage
@@ -666,7 +666,7 @@ Notes:
 
 ### Phase 1 (Complete ✅)
 - ✅ Testing framework setup
-- ✅ Unit tests for all core modules (388 tests)
+- ✅ Unit tests for all core modules (408 tests)
 - ✅ Integration tests (22 tests)
 - ✅ Golden test case definitions (8 scenarios)
 - ✅ 97.5% code coverage on core modules
@@ -720,4 +720,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-02-08*

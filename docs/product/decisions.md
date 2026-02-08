@@ -892,6 +892,91 @@ Implement a bulk import with CLI filters rather than a per-conversation selectio
 
 ---
 
+## ADR-012: Selective Context Loading via Frontmatter
+
+**Date**: 2026-02-08
+**Status**: ✅ Accepted
+
+### Context
+
+All context files (~11K tokens: ~6.5K core + ~4.5K projects) are loaded into every system prompt regardless of conversation topic. At 4 project files this is manageable (~5.5% of the 200K context window), but as projects grow to 10-20, blindly loading everything wastes tokens and money.
+
+The question arose: should context files go into future conversation RAG infrastructure? Analysis showed context files and conversations need different strategies:
+
+- **Context files**: Small volume (10-20 files), slow-changing, curated — RAG overhead (embedding, indexing, retrieval) adds complexity without proportional benefit
+- **Conversations**: Large volume (hundreds → thousands), fast-changing, unstructured — good RAG candidate
+
+### Decision
+
+Use **annotated selective loading** via YAML frontmatter on project files instead of RAG:
+
+```yaml
+---
+active: true
+topics: [python, ai-engineering]
+summary: "One-line project description"
+---
+```
+
+- **`active`** (bool): Controls full content loading. Files without frontmatter default to `true`.
+- **`topics`** (list[str]): Keywords for future topic-based auto-activation. Stored but not used yet.
+- **`summary`** (str): One-line description shown in the project index.
+
+Core identity files (personal, professional, preferences, current_focus, tasks) stay always-loaded — they're small and define who the user is.
+
+**Project index**: A new section (~100 tokens) lists all projects so the LLM knows they exist, even when inactive projects are not fully loaded.
+
+### Alternatives Considered
+
+1. **RAG for context files**
+   - ✅ Unified infrastructure with conversation RAG
+   - ❌ Over-engineering for 10-20 small, curated files
+   - ❌ Embedding/retrieval overhead without proportional benefit
+   - ❌ Loses deterministic control over what's loaded
+
+2. **Topic-based auto-activation** (keyword matching or embeddings)
+   - ✅ Automatic, no manual toggling
+   - ⚠️ More complex, potential for false positives/negatives
+   - ⚠️ Deferred to future extension — `topics` field stored for this purpose
+
+3. **Manual frontmatter toggle (chosen)**
+   - ✅ Simple, predictable, zero-overhead
+   - ✅ User controls exactly what's loaded
+   - ✅ `topics` field enables future auto-activation without schema change
+   - ⚠️ Requires manual toggle when switching between projects
+
+### Consequences
+
+**Benefits:**
+- ✅ Token savings: inactive projects contribute ~100 tokens (summary) instead of ~1-4K tokens each
+- ✅ Backwards compatible: files without frontmatter default to active
+- ✅ No new dependencies (uses PyYAML already in dependency tree)
+- ✅ Project index keeps LLM aware of all projects
+- ✅ `topics` field provides extensibility for future auto-activation
+
+**Drawbacks:**
+- ⚠️ Manual toggle required (user must edit frontmatter)
+- ⚠️ No automatic topic detection (deferred)
+
+**Mitigation:**
+- Manual toggling is rare (project relevance changes slowly)
+- Future topic-based auto-activation can use stored `topics` field
+
+### Impact
+
+- `packages/core/context_builder.py`: Added `parse_frontmatter()`, modified `build_system_prompt()` for tiered loading + project index
+- `apps/cli/main.py`: Context snapshot tracks `active` and `frontmatter` per project file
+- `data/context/projects/*.md`: All 4 project files annotated with frontmatter
+- `tests/unit/test_context_builder.py`: 19 new tests (8 frontmatter, 5 filtering, 6 project index)
+
+### Related ADRs
+- Extends: ADR-002 (Markdown for Context Files — adds optional frontmatter)
+- Relates to: ADR-005 (Start Without Database — context files stay filesystem-based, RAG reserved for conversations)
+
+**Current Status**: Implemented and tested. Future extension: topic-based auto-activation.
+
+---
+
 ## Template for Future ADRs
 
 ```markdown
@@ -935,4 +1020,4 @@ How we address the drawbacks.
 
 ---
 
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-08*

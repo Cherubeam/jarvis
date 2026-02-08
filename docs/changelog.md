@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter for tiered loading
+  - `active: true/false` controls whether full content is loaded into system prompt
+  - `topics` list for future topic-based auto-activation
+  - `summary` one-liner used in the project index
+  - Files without frontmatter default to `active: true` (backwards compatible)
+  - New `parse_frontmatter()` utility in `context_builder.py`
+  - Project index section lists all projects (active + inactive) so LLM knows they exist
+  - Inactive projects appear only as summary lines (~100 tokens vs ~1-4K tokens each)
+  - CLI context snapshot now tracks `active` status and `frontmatter` per project file
+  - 19 new unit tests for frontmatter parsing, filtering, and project index
 - **Context Utilization Analyzer**: `scripts/analyze_context.py` measures how context files are referenced in assistant responses
   - Keyword-based matching against loaded context content
   - Per-file utilization stats, context overhead estimates
@@ -40,11 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **8 Stale Unit Tests**: Aligned test mocks with current MCP SDK and AppleScript direct architecture across `test_benchmark_costs.py`, `test_cli.py`, `test_task_sync.py`
 
 ### Changed
-- **Test Suite**: Expanded from 246 to 420 tests (388 unit + 22 integration + 10 golden)
+- **Test Suite**: Expanded from 246 to 428 tests (408 unit + 22 integration + 10 golden)
 - **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
-  - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Projects
-  - Loads `projects/*.md` files alphabetically as project context sections
-- **CLI Context Snapshot**: Now includes `projects/*.md` in context file tracking
+  - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Project Index -> Active Projects
+  - Loads `projects/*.md` files alphabetically with frontmatter-based filtering
+  - Project index lists all projects; only `active: true` projects get full context
+- **CLI Context Snapshot**: Now includes `projects/*.md` in context file tracking with `active` and `frontmatter` metadata
 
 - **Claude Conversation Import**: Bulk import of Claude conversation exports into Jarvis schema v1.0.0
   - Conversion module at `packages/core/importers/claude.py`
@@ -87,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Added branching guideline to AGENTS.md (`git switch -c <type>/<description>`)
-- Updated test counts in `docs/engineering/testing.md` (246 → 420)
+- Updated test counts in `docs/engineering/testing.md` (246 → 428)
 
 ---
 
@@ -482,4 +493,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-02-08*

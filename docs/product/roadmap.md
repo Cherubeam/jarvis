@@ -310,6 +310,11 @@ None currently.
 
 ## Recently Completed
 
+### February 8, 2026
+- ✅ **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter (`active`, `topics`, `summary`) for tiered loading
+- ✅ **Project Index**: All projects listed in a lightweight index; inactive projects excluded from full context
+- ✅ **19 new unit tests** for frontmatter parsing, filtering, and project index generation
+
 ### February 7, 2026
 - ✅ **Phase 2 Complete**: All evaluation & quality metrics items finished
 - ✅ **Context Utilization Analyzer**: `scripts/analyze_context.py` — measures context file usage across conversations
@@ -393,4 +398,4 @@ None currently.
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-02-08*

@@ -86,7 +86,8 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Key Functions:**
 - `load_context_file(filepath)`: Load single markdown file
-- `build_system_prompt(context_dir, prefix)`: Assemble full prompt
+- `parse_frontmatter(text)`: Extract YAML frontmatter from markdown, returns `(metadata, content)`
+- `build_system_prompt(context_dir, prefix)`: Assemble full prompt with tiered project loading
 
 **Context Loading Order:**
 1. `personal_context.md` - Who the user is (personal background)
@@ -94,9 +95,21 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 3. `preferences.md` - How to behave
 4. `current_focus.md` - What's currently relevant
 5. `tasks.md` - Current tasks from Things 3 (auto-generated)
-6. `projects/*.md` - Project-specific context (alphabetical)
+6. **Project index** - Summary of all projects (active + inactive)
+7. `projects/*.md` - Full content for `active: true` projects only (alphabetical)
 
-**Design Principle**: Intentionally simple (no templating, no logic).
+**Project Frontmatter:**
+Project files support optional YAML frontmatter for selective loading:
+```yaml
+---
+active: true          # false = summary only in index, full content excluded
+topics: [python, ai]  # For future topic-based auto-activation
+summary: "One-line project description for the index"
+---
+```
+Files without frontmatter default to `active: true` (backwards compatible).
+
+**Design Principle**: Intentionally simple. Frontmatter adds minimal complexity while enabling significant token savings as projects grow.
 
 ---
 
@@ -532,4 +545,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-02-08*
