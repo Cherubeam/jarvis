@@ -286,6 +286,50 @@ def frozen_time():
         yield
 
 
+# ==================== Obsidian Vault Fixtures ====================
+
+@pytest.fixture
+def temp_vault(tmp_path: Path) -> Path:
+    """Create a temporary Obsidian vault with Daily Notes directory."""
+    daily_dir = tmp_path / "Daily Notes"
+    daily_dir.mkdir()
+    return tmp_path
+
+
+@pytest.fixture
+def sample_vault_config(temp_vault: Path):
+    """Sample VaultConfig pointing at the temp vault."""
+    from packages.integrations.obsidian.vault import VaultConfig
+
+    daily_dir = temp_vault / "Daily Notes"
+    return VaultConfig(
+        vault_path=temp_vault,
+        allowed_dirs=[daily_dir],
+        daily_note_path_format="Daily Notes/%Y-%m-%d",
+        enabled=True,
+    )
+
+
+@pytest.fixture
+def daily_note_with_callout(temp_vault: Path) -> Path:
+    """Create a daily note with a JARVIS callout block."""
+    note = temp_vault / "Daily Notes" / "2026-02-09.md"
+    note.write_text(
+        "# 2026-02-09\n"
+        "\n"
+        "## Notes\n"
+        "Had a productive day.\n"
+        "\n"
+        "> [!JARVIS]\n"
+        "> Morning: reviewed code architecture\n"
+        "\n"
+        "## Tasks\n"
+        "- Finish integration\n",
+        encoding="utf-8",
+    )
+    return note
+
+
 # ==================== Cleanup ====================
 
 @pytest.fixture(autouse=True)

@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Nested Daily Note Paths**: `daily_note_path_format` replaces `daily_notes_dir` + `daily_note_format`
+  - Single `strftime`-based path format supports date-derived subdirectories (e.g., `Journals/%Y/%Y-%m/%Y-%m-%d`)
+  - Config key: `obsidian.daily_notes.path_format` (default: `"Daily Notes/%Y-%m-%d"`)
+- **Obsidian Vault Integration**: Read from and write to Obsidian vaults, starting with daily notes
+  - Five-module architecture: `vault.py`, `callout.py`, `diff.py`, `writer.py`, `prompts.py`
+  - `VaultConfig` with path validation and symlink/traversal protection
+  - `> [!JARVIS]` callout block parser and content builder (pure string ops, no I/O)
+  - UI-agnostic diff computation with CLI (colored) and API (JSON) formatters
+  - `ConfirmationHandler` ABC for GUI-ready write confirmation (CLI implementation included)
+  - `/daily-summary` CLI command: generates end-of-day summary via LLM, appends to daily note callout
+  - Prompt files in `data/prompts/obsidian/` loaded on demand (not in system prompt)
+  - 83 new tests (73 unit + 10 integration) covering all modules and security boundaries
+  - Configuration in `config/default.yaml` (disabled by default, user enables in `local.yaml`)
 - **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter for tiered loading
   - `active: true/false` controls whether full content is loaded into system prompt
   - `topics` list for future topic-based auto-activation
@@ -50,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **8 Stale Unit Tests**: Aligned test mocks with current MCP SDK and AppleScript direct architecture across `test_benchmark_costs.py`, `test_cli.py`, `test_task_sync.py`
 
 ### Changed
-- **Test Suite**: Expanded from 246 to 428 tests (408 unit + 22 integration + 10 golden)
+- **Test Suite**: Expanded from 246 to 512 tests (482 unit + 32 integration + 10 golden)
 - **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
   - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Project Index -> Active Projects
   - Loads `projects/*.md` files alphabetically with frontmatter-based filtering
@@ -493,4 +506,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-08*
+*Last updated: 2026-02-09*

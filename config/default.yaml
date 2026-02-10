@@ -41,7 +41,7 @@ system_prompt_prefix: |
 
 # LLM-as-judge evaluation settings
 evaluation:
-  judge_model: "anthropic/claude-opus-4.5"
+  judge_model: "anthropic/claude-opus-4.6"
   quality_threshold: 0.70  # Minimum score to pass
 
   # Category-specific thresholds (optional overrides)
@@ -57,3 +57,13 @@ evaluation:
   # Cost management
   max_cost_per_run: 1.00  # USD, abort if exceeded
   warn_cost_threshold: 0.50  # USD, warn but continue
+
+# Obsidian vault integration
+obsidian:
+  enabled: false
+  vault_path: ""                    # User sets in local.yaml
+  allowed_dirs:
+    - "Daily Notes"
+  daily_notes:
+    path_format: "Daily Notes/%Y-%m-%d"
+  prompts_dir: "data/prompts/obsidian"

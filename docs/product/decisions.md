@@ -977,6 +977,76 @@ Core identity files (personal, professional, preferences, current_focus, tasks) 
 
 ---
 
+## ADR-013: Obsidian Vault Integration Architecture
+
+**Date**: 2026-02-09
+**Status**: ✅ Accepted
+
+### Context
+
+JARVIS needs to read from and write to an Obsidian vault for daily note summaries and future note management. Writes must be safe (diff + confirmation), the design must be GUI-ready, and vault access must be restricted to configured directories.
+
+### Decision
+
+Five focused modules under `packages/integrations/obsidian/`:
+1. `vault.py` — Single enforcement point for all vault I/O with path validation
+2. `callout.py` — Pure string operations for `> [!JARVIS]` callout blocks (no I/O)
+3. `diff.py` — UI-agnostic diff computation using stdlib `difflib`
+4. `writer.py` — Write orchestration with `ConfirmationHandler` ABC
+5. `prompts.py` — On-demand prompt loading from `data/prompts/obsidian/`
+
+GUI-readiness achieved through the `ConfirmationHandler` abstract base class. CLI implements `CLIConfirmationHandler`; future web/GUI would implement their own handler.
+
+### Alternatives Considered
+
+1. **Single monolithic module**
+   - ✅ Simpler file structure
+   - ❌ Mixes I/O, parsing, and UI concerns
+   - ❌ Hard to test callout parsing in isolation
+
+2. **Function-calling / tool-based approach**
+   - ✅ Automatic invocation by LLM
+   - ❌ JARVIS doesn't have function calling yet
+   - ❌ Less explicit user control
+   - ⚠️ Easy to convert later when function calling arrives
+
+3. **Five focused modules (chosen)**
+   - ✅ Clean separation: I/O, parsing, diffing, confirmation, prompts
+   - ✅ Callout module is pure (no I/O), highly testable
+   - ✅ GUI-ready via ConfirmationHandler ABC
+   - ✅ No new dependencies (stdlib only)
+
+### Consequences
+
+**Benefits:**
+- ✅ All vault I/O through single `vault.py` module with path validation
+- ✅ Symlink/traversal attacks blocked by `Path.resolve()`
+- ✅ Every write shows a diff and requires explicit confirmation
+- ✅ GUI can swap in a different `ConfirmationHandler` without touching integration code
+- ✅ 83 tests including security boundary tests
+
+**Drawbacks:**
+- ⚠️ Five modules for a focused feature (more files than a monolithic approach)
+- ⚠️ `/daily-summary` requires manual command (no automatic triggers)
+
+**Mitigation:**
+- Module boundaries match responsibility boundaries, keeping each module small and testable
+- Manual command is intentional: user controls when summaries are generated
+
+### Impact
+
+- `packages/integrations/obsidian/`: 5 new modules + `__init__.py`
+- `data/prompts/obsidian/`: 2 prompt files (daily_note_entry.md, general_writing.md)
+- `config/default.yaml`: New `obsidian` section (disabled by default)
+- `apps/cli/main.py`: `/daily-summary` command handler (~30 lines)
+- `tests/conftest.py`: 3 new fixtures (temp_vault, sample_vault_config, daily_note_with_callout)
+
+### Related ADRs
+- Follows pattern of: ADR-008 (Things 3 Integration — similar integration structure)
+- Relates to: ADR-009 (Scalable Monorepo — new package under `packages/integrations/`)
+
+---
+
 ## Template for Future ADRs
 
 ```markdown
@@ -1020,4 +1090,4 @@ How we address the drawbacks.
 
 ---
 
-*Last updated: 2026-02-08*
+*Last updated: 2026-02-09*
