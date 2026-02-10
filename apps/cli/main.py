@@ -16,6 +16,11 @@ from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
 from packages.core.pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
 from packages.integrations.things3.task_sync import sync_tasks_to_file
+from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
+from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
+from packages.integrations.obsidian.diff import compute_diff
+from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
+from packages.integrations.obsidian.prompts import get_daily_note_instructions
 from packages.telemetry.metrics import MetricsTracker
 
 CLIENT_VERSION = "0.4.0"
@@ -73,6 +78,70 @@ def load_config() -> dict:
     }
 
     return config
+
+
+def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLogger,
+                         system_prompt: str) -> None:
+    """Handle the /daily-summary command."""
+    vault_config = load_vault_config(config)
+    if vault_config is None:
+        print("\nObsidian integration is not configured or disabled.")
+        print("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
+        return
+
+    # Get today's daily note
+    note_path = get_daily_note_path(vault_config)
+    try:
+        note_content = read_note(note_path, vault_config)
+    except FileNotFoundError:
+        print(f"\nDaily note not found: {note_path.name}")
+        print("Create the note with a > [!JARVIS] callout block first.\n")
+        return
+    except PermissionError as e:
+        print(f"\n{e}\n")
+        return
+
+    # Check for JARVIS callout
+    callout = find_jarvis_callout(note_content)
+    if isinstance(callout, CalloutNotFound):
+        print(f"\nNo > [!JARVIS] callout block found in {note_path.name}")
+        print("Add a '> [!JARVIS]' line to your daily note first.\n")
+        return
+
+    # Load prompt and build LLM messages
+    try:
+        daily_prompt = get_daily_note_instructions()
+    except FileNotFoundError:
+        print("\nDaily note prompt file not found.\n")
+        return
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        *logger.get_messages_for_api(),
+        {"role": "user", "content": (
+            f"{daily_prompt}\n\n"
+            f"---\n\n"
+            f"**Today's daily note ({note_path.name}):**\n\n"
+            f"{note_content}"
+        )},
+    ]
+
+    # Collect streamed LLM response for the summary
+    print("\nGenerating daily summary...", flush=True)
+    stream = client.chat_stream(messages)
+    chunks = []
+    for chunk in stream:
+        chunks.append(chunk)
+    generated_entry = "".join(chunks)
+
+    # Write to vault with diff + confirmation
+    handler = CLIConfirmationHandler()
+    result = append_to_daily_note(generated_entry, vault_config, handler)
+
+    if result.success:
+        print(f"\n{result.message}\n")
+    else:
+        print(f"\n{result.message}\n")
 
 
 def main():
@@ -186,6 +255,11 @@ def main():
                 continue
             if user_input.lower() in ("quit", "exit"):
                 break
+
+            # Handle slash commands
+            if user_input.strip() == "/daily-summary":
+                handle_daily_summary(config, client, logger, system_prompt)
+                continue
 
             logger.add_message("user", user_input)
 

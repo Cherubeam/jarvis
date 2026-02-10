@@ -310,6 +310,15 @@ None currently.
 
 ## Recently Completed
 
+### February 9, 2026
+- ✅ **Obsidian Vault Integration**: Read from and write to Obsidian vaults with daily note support
+- ✅ **Five-module architecture**: vault, callout, diff, writer, prompts under `packages/integrations/obsidian/`
+- ✅ **`/daily-summary` CLI command**: LLM-generated end-of-day summaries appended to `> [!JARVIS]` callout blocks
+- ✅ **GUI-ready write confirmation**: `ConfirmationHandler` ABC with CLI implementation
+- ✅ **Security**: Path validation with symlink/traversal attack prevention
+- ✅ **83 new tests** (73 unit + 10 integration) covering all modules and security boundaries
+- ✅ **Test suite**: 511 total (481 unit + 32 integration + 10 golden)
+
 ### February 8, 2026
 - ✅ **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter (`active`, `topics`, `summary`) for tiered loading
 - ✅ **Project Index**: All projects listed in a lightweight index; inactive projects excluded from full context
@@ -398,4 +407,4 @@ None currently.
 
 ---
 
-*Last updated: 2026-02-08*
+*Last updated: 2026-02-09*

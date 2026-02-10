@@ -21,8 +21,8 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  packages/core  │  packages/agents │  packages/integrations    │
 │                 │                  │                           │
 │  • LLM Client   │  • Base Agent    │  • Things 3               │
-│  • Context      │  • JARVIS Agent  │  • (Future: Calendar)     │
-│  • Memory       │  • (Future:      │  • (Future: Email)        │
+│  • Context      │  • JARVIS Agent  │  • Obsidian               │
+│  • Memory       │  • (Future:      │  • (Future: Calendar)     │
 │  • Pricing      │    Research,     │                           │
 │  • Benchmarks   │    Coding)       │                           │
 │                 │    Coding)       │                           │
@@ -64,6 +64,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Dependencies:**
 - `packages.integrations.things3.task_sync`: Sync Things 3 tasks on startup
+- `packages.integrations.obsidian`: Obsidian vault integration (`/daily-summary` command)
 - `packages.core.context_builder`: Get system prompt
 - `packages.core.llm_client`: Stream LLM responses
 - `packages.core.memory`: Log conversations
@@ -251,7 +252,46 @@ Files without frontmatter default to `active: true` (backwards compatible).
 
 ---
 
-### 6. Pricing (`packages/core/pricing.py`)
+### 6. Obsidian Integration (`packages/integrations/obsidian/`)
+
+**Purpose**: Read from and write to Obsidian vaults, starting with daily notes.
+
+**Location**: `packages/integrations/obsidian/`
+
+**Responsibilities:**
+- Vault access with path validation and symlink/traversal protection
+- Parse and manipulate `> [!JARVIS]` callout blocks (pure string operations)
+- Compute and format diffs (CLI and API output)
+- Orchestrate write operations with diff → confirm → write flow
+- Load prompt files on demand from `data/prompts/obsidian/`
+
+**Key Modules:**
+- `vault.py`: `VaultConfig`, path validation, read/list/get daily note
+- `callout.py`: `CalloutBlock`, `find_jarvis_callout()`, `build_updated_content()` (no I/O)
+- `diff.py`: `VaultDiff`, `compute_diff()`, CLI/API formatters
+- `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`
+- `prompts.py`: Load `.md` prompt files from `data/prompts/obsidian/`
+
+**Key Design Decisions:**
+- **ConfirmationHandler ABC**: CLI and future GUI each implement this interface
+- **Pure string callout parsing**: No I/O in callout module, testable in isolation
+- **Path validation**: All vault I/O goes through `vault.py`, uses `Path.resolve()` to block traversal
+- **Prompts on demand**: Not in system prompt, loaded only for `/daily-summary` command
+
+**CLI Command**: `/daily-summary`
+```
+User types: /daily-summary
+  → Load vault config
+  → Read today's daily note
+  → Find > [!JARVIS] callout (abort if not found)
+  → Load prompt, send to LLM with conversation history
+  → Compute diff, show colored output
+  → Write if user confirms
+```
+
+---
+
+### 7. Pricing (`packages/core/pricing.py`)
 
 **Purpose**: Track LLM costs across providers.
 
@@ -368,8 +408,14 @@ jarvis/
 │   │   └── jarvis/                 # Main JARVIS orchestrator
 │   │       └── agent.py
 │   ├── integrations/               # External service integrations
-│   │   └── things3/                # Things 3 task sync
-│   │       └── task_sync.py        # ~520 lines
+│   │   ├── things3/                # Things 3 task sync
+│   │   │   └── task_sync.py        # ~520 lines
+│   │   └── obsidian/               # Obsidian vault integration
+│   │       ├── vault.py            # Vault access + path validation
+│   │       ├── callout.py          # Callout block parser (pure string ops)
+│   │       ├── diff.py             # Diff computation + formatters
+│   │       ├── writer.py           # Write orchestration + ConfirmationHandler
+│   │       └── prompts.py          # Prompt file loader
 │   └── telemetry/                  # Metrics and monitoring
 │       └── metrics.py              # TTFT, response metrics
 │
@@ -383,6 +429,8 @@ jarvis/
 │   │   └── projects/               # Project-specific context
 │   ├── conversations/              # Session logs (gitignored)
 │   │   └── YYYY-MM-DD_HH-MM-SS.json
+│   ├── prompts/                    # LLM prompt templates
+│   │   └── obsidian/              # Obsidian-specific prompts
 │   └── learned_facts.md            # (Future) Extracted facts
 │
 ├── config/                         # Configuration
@@ -545,4 +593,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-02-08*
+*Last updated: 2026-02-09*
