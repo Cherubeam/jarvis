@@ -6,24 +6,88 @@ Ties everything together.
 import os
 import platform
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
 
 from packages.core.context_builder import build_system_prompt, parse_frontmatter
-from packages.core.llm_client import LLMClient
+from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.memory import ConversationLogger, hash_content
-from packages.core.pricing import get_model_pricing, format_cost, calculate_cost_from_litellm
+from packages.core.pricing import ModelPricing, get_model_pricing, format_cost, calculate_cost_from_litellm
 from packages.integrations.things3.task_sync import sync_tasks_to_file
 from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
 from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
 from packages.integrations.obsidian.diff import compute_diff
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.integrations.obsidian.prompts import get_daily_note_instructions
-from packages.telemetry.metrics import MetricsTracker
+from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
 CLIENT_VERSION = "0.4.0"
+
+
+@dataclass
+class StreamResult:
+    text: str
+    usage: TokenUsage
+    cost_usd: float
+    metrics: ResponseMetrics
+
+
+def stream_and_track(
+    client: LLMClient,
+    messages: list[dict],
+    metrics_tracker: MetricsTracker,
+    pricing: ModelPricing | None,
+    model_id: str,
+    print_chunks: bool = False,
+) -> StreamResult:
+    """Stream an LLM response, tracking metrics and cost."""
+    metrics_tracker.start_request()
+    stream = client.chat_stream(messages)
+
+    chunks: list[str] = []
+    first_token = True
+    for chunk in stream:
+        if first_token:
+            metrics_tracker.record_first_token()
+            first_token = False
+        if print_chunks:
+            print(chunk, end="", flush=True)
+        chunks.append(chunk)
+
+    usage = stream.usage
+
+    cost_usd = 0.0
+    if pricing:
+        cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+    else:
+        cost_usd = calculate_cost_from_litellm(stream.raw_response)
+
+    response_metrics = metrics_tracker.finish_request(
+        prompt_tokens=usage.prompt_tokens,
+        completion_tokens=usage.completion_tokens,
+        cost_usd=cost_usd,
+        model=model_id,
+    )
+
+    return StreamResult(
+        text="".join(chunks),
+        usage=usage,
+        cost_usd=cost_usd,
+        metrics=response_metrics,
+    )
+
+
+def print_usage_stats(result: StreamResult) -> None:
+    """Format and print token usage, cost, and latency stats."""
+    ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms"
+    latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
+    if result.cost_usd > 0:
+        print(f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]")
+    else:
+        print(f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]")
 
 
 def get_project_root() -> Path:
@@ -81,7 +145,8 @@ def load_config() -> dict:
 
 
 def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLogger,
-                         system_prompt: str) -> None:
+                         system_prompt: str, metrics_tracker: MetricsTracker,
+                         pricing: ModelPricing | None, model_id: str) -> None:
     """Handle the /daily-summary command."""
     vault_config = load_vault_config(config)
     if vault_config is None:
@@ -108,6 +173,12 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         print("Add a '> [!JARVIS]' line to your daily note first.\n")
         return
 
+    # Strip existing JARVIS callout from note content to avoid duplication
+    note_lines = note_content.split("\n")
+    note_without_callout = "\n".join(
+        note_lines[:callout.start_line] + note_lines[callout.end_line + 1:]
+    ).strip()
+
     # Load prompt and build LLM messages
     try:
         daily_prompt = get_daily_note_instructions()
@@ -115,33 +186,52 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         print("\nDaily note prompt file not found.\n")
         return
 
+    user_content = (
+        f"Generate my daily note summary for today.\n\n"
+        f"---\n\n"
+        f"**Today's daily note ({note_path.name}):**\n\n"
+        f"{note_without_callout}"
+    )
+    if callout.existing_content.strip():
+        user_content += (
+            f"\n\n---\n\n"
+            f"**Existing JARVIS callout entries (DO NOT repeat these):**\n\n"
+            f"{callout.existing_content.strip()}"
+        )
+
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": f"{system_prompt}\n\n{daily_prompt}"},
         *logger.get_messages_for_api(),
-        {"role": "user", "content": (
-            f"{daily_prompt}\n\n"
-            f"---\n\n"
-            f"**Today's daily note ({note_path.name}):**\n\n"
-            f"{note_content}"
-        )},
+        {"role": "user", "content": user_content},
     ]
 
     # Collect streamed LLM response for the summary
     print("\nGenerating daily summary...", flush=True)
-    stream = client.chat_stream(messages)
-    chunks = []
-    for chunk in stream:
-        chunks.append(chunk)
-    generated_entry = "".join(chunks)
+    result = stream_and_track(client, messages, metrics_tracker, pricing, model_id)
+
+    # Log the exchange so save() writes conversation + prints session summary
+    logger.add_message("user", "/daily-summary")
+    logger.add_message(
+        "assistant",
+        result.text,
+        prompt_tokens=result.usage.prompt_tokens,
+        completion_tokens=result.usage.completion_tokens,
+        total_tokens=result.usage.total_tokens,
+        cost_usd=result.cost_usd,
+        ttft_ms=result.metrics.ttft_ms,
+        total_latency_ms=result.metrics.total_latency_ms,
+    )
 
     # Write to vault with diff + confirmation
     handler = CLIConfirmationHandler()
-    result = append_to_daily_note(generated_entry, vault_config, handler)
+    write_result = append_to_daily_note(result.text, vault_config, handler)
 
-    if result.success:
-        print(f"\n{result.message}\n")
+    if write_result.success:
+        print(f"\n{write_result.message}\n")
     else:
-        print(f"\n{result.message}\n")
+        print(f"\n{write_result.message}\n")
+
+    print_usage_stats(result)
 
 
 def main():
@@ -258,7 +348,8 @@ def main():
 
             # Handle slash commands
             if user_input.strip() == "/daily-summary":
-                handle_daily_summary(config, client, logger, system_prompt)
+                handle_daily_summary(config, client, logger, system_prompt,
+                                     metrics_tracker, pricing, model_id)
                 continue
 
             logger.add_message("user", user_input)
@@ -269,57 +360,20 @@ def main():
             ]
 
             print("\nAssistant: ", end="", flush=True)
-            full_response = []
-
-            metrics_tracker.start_request()
-            stream = client.chat_stream(messages)
-            first_token = True
-            for chunk in stream:
-                if first_token:
-                    metrics_tracker.record_first_token()
-                    first_token = False
-                print(chunk, end="", flush=True)
-                full_response.append(chunk)
-
+            result = stream_and_track(client, messages, metrics_tracker, pricing, model_id, print_chunks=True)
             print("\n")
 
-            usage = stream.usage
-
-            # Calculate cost if pricing is available
-            cost_usd = 0.0
-            if pricing:
-                # Primary: Use OpenRouter pricing
-                cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
-            else:
-                # Fallback: Use LiteLLM's built-in cost calculation
-                # Note: Suppresses Pydantic warnings for streaming responses
-                cost_usd = calculate_cost_from_litellm(stream.raw_response)
-
-            # Finish metrics tracking
-            response_metrics = metrics_tracker.finish_request(
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-                cost_usd=cost_usd,
-                model=model_id,
-            )
-
-            # Display response stats with TTFT
-            ttft_str = f"TTFT: {response_metrics.ttft_ms:.0f}ms"
-            latency_str = f"Total: {response_metrics.total_latency_ms:.0f}ms"
-            if cost_usd > 0:
-                print(f"[{usage.total_tokens:,} tokens | {format_cost(cost_usd)} | {ttft_str} | {latency_str}]")
-            else:
-                print(f"[{usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]")
+            print_usage_stats(result)
 
             logger.add_message(
                 "assistant",
-                "".join(full_response),
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-                total_tokens=usage.total_tokens,
-                cost_usd=cost_usd,
-                ttft_ms=response_metrics.ttft_ms,
-                total_latency_ms=response_metrics.total_latency_ms,
+                result.text,
+                prompt_tokens=result.usage.prompt_tokens,
+                completion_tokens=result.usage.completion_tokens,
+                total_tokens=result.usage.total_tokens,
+                cost_usd=result.cost_usd,
+                ttft_ms=result.metrics.ttft_ms,
+                total_latency_ms=result.metrics.total_latency_ms,
             )
 
     except KeyboardInterrupt:

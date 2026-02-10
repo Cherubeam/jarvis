@@ -44,6 +44,12 @@ class TestGetDailyNoteInstructions:
         assert len(result) > 0
         assert "Daily Note" in result
 
+    def test_prompt_contains_output_constraints(self):
+        result = get_daily_note_instructions()
+        assert "DO NOT" in result
+        assert "bullet" in result.lower()
+        assert "OUTPUT ONLY" in result
+
     def test_custom_prompts_dir(self, tmp_path):
         prompt_file = tmp_path / "daily_note_entry.md"
         prompt_file.write_text("Custom daily instructions")

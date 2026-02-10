@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`/daily-summary` session tracking**: Command now logs the exchange via `logger.add_message()` so `save()` writes the conversation file and prints the session summary on exit
+- **`/daily-summary` content duplication**: Existing JARVIS callout entries are stripped from the note content sent to the LLM and passed separately with a "DO NOT repeat" instruction, preventing duplicated bullets on re-runs
+
 ### Added
 - **Nested Daily Note Paths**: `daily_note_path_format` replaces `daily_notes_dir` + `daily_note_format`
   - Single `strftime`-based path format supports date-derived subdirectories (e.g., `Journals/%Y/%Y-%m/%Y-%m-%d`)
