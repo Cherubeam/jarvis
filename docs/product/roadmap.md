@@ -1,11 +1,11 @@
 # Product Roadmap
 
-## Current Phase: Phase 1 - Foundation & Metrics
+## Phase 1: Foundation & Metrics
 
-**Status**: ✅ 100% complete
+**Status**: 100% complete
 **Timeline**: Completed January 2026
 
-### Completed ✅
+### Completed
 
 - [x] Basic CLI interface with streaming responses
 - [x] Context system (profile.md, preferences.md, current_focus.md)
@@ -20,7 +20,7 @@
 - [x] **Integration tests (22 tests)**
 - [x] **8 golden test conversations defined**
 
-### Blocked ⛔
+### Blocked
 
 None currently.
 
@@ -30,47 +30,51 @@ None currently.
 
 **Timeline**: 2-3 weeks (Late January - Early February 2026)
 **Goal**: Systematic quality measurement and baseline establishment
-**Status**: Complete ✅
+**Status**: Complete
 
 ### Features
 
 #### Testing Infrastructure
-- [x] Create golden test conversation suite (8 cases) ✅
-- [x] Implement automated test runner (pytest) ✅
-- [x] **Add LLM-as-judge for automated quality evaluation** ✅ (2026-01-20)
+
+- [x] Create golden test conversation suite (8 cases)
+- [x] Implement automated test runner (pytest)
+- [x] **Add LLM-as-judge for automated quality evaluation**
   - 33 unit tests (evaluator + storage)
   - Structured JSON results + markdown reports
   - Historical trend tracking
   - Cost management (~$0.41/run)
   - On-demand via `--evaluate` flag
-- [x] ChatGPT conversation import (bulk import with CLI filters) ✅
-- [x] Claude conversation import (bulk import with date filters) ✅
-- [x] Baseline quality metrics across different models ✅
+- [x] ChatGPT conversation import (bulk import with CLI filters)
+- [x] Claude conversation import (bulk import with date filters)
+- [x] Baseline quality metrics across different models
 
 #### Things 3 Integration (Phase A - Context Awareness)
-- [x] Task sync module with AppleScript integration ✅
-- [x] Automatic language detection (German, French, Spanish, Italian, English) ✅
-- [x] Auto-sync tasks to tasks.md on startup ✅
-- [x] 5-minute task cache to optimize performance ✅
-- [x] 43 tests for task sync (33 unit + 8 integration + 2 golden) ✅
+
+- [x] Task sync module with AppleScript integration
+- [x] Automatic language detection (German, French, Spanish, Italian, English)
+- [x] Auto-sync tasks to tasks.md on startup
+- [x] 5-minute task cache to optimize performance
+- [x] 43 tests for task sync (33 unit + 8 integration + 2 golden)
 - [ ] Phase B (Interactive management) - Moved to Phase 5
 
 #### Metrics Implementation
-- [x] Latency tracking (Time to First Token - TTFT) ✅ (2026-01-22)
+
+- [x] Latency tracking (Time to First Token - TTFT)
   - MetricsTracker integrated into CLI
   - TTFT and total latency displayed after each response
   - Session summary with average latency metrics
   - Conversation JSON logs include latency per message
-- [x] Response quality scoring (manual → automated) ✅
-- [x] Context utilization analysis (does it reference personal context?) ✅
-- [x] Cost per conversation type benchmarks ✅
+- [x] Response quality scoring (manual → automated)
+- [x] Context utilization analysis (does it reference personal context?)
+- [x] Cost per conversation type benchmarks
 
 #### Model Comparison
-- [x] Benchmark 3-5 models on test suite ✅
-- [x] Compare quality vs. cost tradeoffs ✅
-- [x] Document model-specific behaviors ✅
-- [x] Establish default model recommendation ✅
-- [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API) ✅
+
+- [x] Benchmark 3-5 models on test suite
+- [x] Compare quality vs. cost tradeoffs
+- [x] Document model-specific behaviors
+- [x] Establish default model recommendation
+- [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API)
 
 **Success Criteria:**
 - 10 golden test cases covering common scenarios
@@ -84,10 +88,12 @@ None currently.
 
 **Timeline**: 1-2 months (February-March 2026)
 **Goal**: Add web interface and handle long conversations
+**Status**: Not Started
 
 ### Features
 
-#### Web Interface (NEW)
+#### Web Interface
+
 - [ ] FastAPI backend with SSE streaming (`apps/web/backend/`)
 - [ ] React frontend with chat UI (`apps/web/frontend/`)
 - [ ] Conversation history browser
@@ -95,18 +101,21 @@ None currently.
 - [ ] Session switching between conversations
 
 #### Context Window Management
+
 - [ ] Implement intelligent truncation strategies
 - [ ] Summarization for old conversation context
 - [ ] Token budget management (stay within context limits)
 - [ ] Smart context prioritization (recent + relevant)
 
 #### Conversation Search
+
 - [ ] Full-text search over conversation history
 - [ ] Filter by date, model, topic
 - [ ] Export conversations to readable formats
 - [ ] Conversation statistics and insights
 
 #### Fact Extraction
+
 - [ ] Implement learned_facts.md population
 - [ ] Extract key information from conversations
 - [ ] Periodic fact review and updates
@@ -124,22 +133,26 @@ None currently.
 
 **Timeline**: 2-3 months (April-June 2026)
 **Goal**: Enable semantic search over conversation history
+**Status**: Not Started
 
 ### Features
 
 #### Vector Store Integration
+
 - [ ] Embed past conversations locally
 - [ ] Implement semantic similarity search
 - [ ] Retrieve relevant past context for current query
 - [ ] Hybrid search (semantic + keyword)
 
 #### Retrieval Quality
+
 - [ ] Measure retrieval relevance
 - [ ] Track retrieval confidence scores
 - [ ] Optimize chunk size and overlap
 - [ ] A/B test retrieval strategies
 
 #### Performance
+
 - [ ] Sub-second retrieval latency
 - [ ] Efficient embedding generation
 - [ ] Incremental index updates
@@ -157,16 +170,19 @@ None currently.
 
 **Timeline**: 3-6 months (July-December 2026)
 **Goal**: Tool use and multi-agent orchestration
+**Status**: Not Started
 
 ### Features
 
 #### Function Calling & Tools
+
 - [ ] Implement function calling support (via LiteLLM)
 - [ ] Web search integration
 - [ ] Code execution sandbox
 - [ ] File system operations
 
 #### Things 3 Integration (Phase B - Interactive Management)
+
 - [ ] Add MCP server integration for task creation
 - [ ] Implement task completion via MCP
 - [ ] Task search and filtering
@@ -174,18 +190,21 @@ None currently.
 - [ ] Localization support in MCP wrapper (if needed)
 
 #### Agent Orchestration
+
 - [ ] Multi-agent architecture design
 - [ ] Agent communication protocols
 - [ ] Task delegation and routing
 - [ ] Error recovery and fallbacks
 
 #### Intelligent Model Routing
+
 - [ ] Classify task complexity
 - [ ] Route simple tasks to cheap models (Haiku, GPT-4o-mini)
 - [ ] Route complex tasks to expensive models (Opus, o1)
 - [ ] Track cost savings from routing
 
 #### Monitoring
+
 - [ ] Task completion rate tracking
 - [ ] Tool success rate metrics
 - [ ] Steps-to-completion analysis
@@ -203,22 +222,26 @@ None currently.
 
 **Timeline**: Ongoing (Throughout 2026)
 **Goal**: Production-grade reliability and observability
+**Status**: Not Started
 
 ### Features
 
 #### Comprehensive Logging
+
 - [ ] Structured logging for all requests
 - [ ] Error categorization and tracking
 - [ ] Performance profiling
 - [ ] User interaction analytics
 
 #### Evaluation Framework
+
 - [ ] LLM-as-judge for response quality
 - [ ] Automated regression testing
 - [ ] Continuous quality monitoring
 - [ ] Alert system for quality degradation
 
 #### Optimization
+
 - [ ] Prompt optimization based on metrics
 - [ ] Context compression techniques
 - [ ] Caching frequently used responses
@@ -236,22 +259,26 @@ None currently.
 
 **Timeline**: 6-12 months (Mid-2026 onwards)
 **Goal**: Improve usability and interaction patterns
+**Status**: Not Started
 
 ### Features
 
 #### CLI Improvements
+
 - [ ] Rich TUI with textual or similar
 - [ ] Conversation history browser
 - [ ] Interactive context editor
 - [ ] Better formatting and syntax highlighting
 
 #### Configuration Management
+
 - [ ] Profile switching (work/personal contexts)
 - [ ] Model presets (fast/quality/balanced)
 - [ ] Easy provider switching commands
 - [ ] Session templates
 
 #### Export & Sharing
+
 - [ ] Export conversations to markdown/PDF
 - [ ] Share prompts and configurations
 - [ ] Agent configuration sharing
@@ -269,14 +296,17 @@ None currently.
 
 **Timeline**: 12+ months (2027+)
 **Goal**: Personalized model behavior (only if needed)
+**Status**: Not Started
 
 ### Prerequisites
+
 - [ ] Collected 1000+ high-quality interactions
 - [ ] Identified specific capability gaps
 - [ ] Evaluated: prompting alone insufficient
 - [ ] Cost-benefit analysis completed
 
 ### Features
+
 - [ ] Data preparation for fine-tuning
 - [ ] Fine-tuned model training
 - [ ] A/B testing vs. base models
@@ -289,111 +319,25 @@ None currently.
 ## Backlog (Prioritized)
 
 ### High Priority
+
 - [ ] Conversation export to multiple formats
 - [ ] Conversation statistics dashboard
 - [ ] Multi-model comparison UI
 - [ ] Cost tracking over time
 
 ### Medium Priority
+
 - [ ] Web interface (optional, after TUI)
 - [ ] API server mode (for integrations)
 - [ ] Mobile companion app
 - [ ] Voice input/output
 
 ### Low Priority / Future Ideas
+
 - [ ] Multi-user support
 - [ ] Cloud sync (optional, end-to-end encrypted)
 - [ ] Plugin system for community extensions
 - [ ] Integration marketplace
-
----
-
-## Recently Completed
-
-### February 9, 2026
-- ✅ **Obsidian Vault Integration**: Read from and write to Obsidian vaults with daily note support
-- ✅ **Five-module architecture**: vault, callout, diff, writer, prompts under `packages/integrations/obsidian/`
-- ✅ **`/daily-summary` CLI command**: LLM-generated end-of-day summaries appended to `> [!JARVIS]` callout blocks
-- ✅ **GUI-ready write confirmation**: `ConfirmationHandler` ABC with CLI implementation
-- ✅ **Security**: Path validation with symlink/traversal attack prevention
-- ✅ **83 new tests** (73 unit + 10 integration) covering all modules and security boundaries
-- ✅ **Test suite**: 511 total (481 unit + 32 integration + 10 golden)
-
-### February 8, 2026
-- ✅ **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter (`active`, `topics`, `summary`) for tiered loading
-- ✅ **Project Index**: All projects listed in a lightweight index; inactive projects excluded from full context
-- ✅ **19 new unit tests** for frontmatter parsing, filtering, and project index generation
-
-### February 7, 2026
-- ✅ **Phase 2 Complete**: All evaluation & quality metrics items finished
-- ✅ **Context Utilization Analyzer**: `scripts/analyze_context.py` — measures context file usage across conversations
-- ✅ **Cost-by-Type Analysis**: `scripts/analyze_costs.py` — classifies and aggregates costs by source/model/length
-- ✅ **Default Model Recommendation**: Formal decision matrix in `docs/research/models.md` based on benchmark data
-- ✅ **31 new unit tests** for analysis scripts
-- ✅ **Claude Context Import (memories + projects)**
-- ✅ **Import module: `packages/core/importers/claude_context.py`**
-- ✅ **CLI script: `scripts/import_claude_context.py` with --dry-run flag**
-- ✅ **Split profile.md into personal_context.md + professional_context.md**
-- ✅ **Project context loading in context builder**
-- ✅ **Claude Conversation Import**
-- ✅ **Conversion module: `packages/core/importers/claude.py`**
-- ✅ **CLI script: `scripts/import_claude.py` with --dry-run and date filters**
-- ✅ **Shared importer utilities extracted to `packages/core/importers/common.py`**
-- ✅ **ChatGPT Conversation Import**
-- ✅ **Conversion module: `packages/core/importers/chatgpt.py`**
-- ✅ **CLI script: `scripts/import_chatgpt.py` with --dry-run and filter flags**
-- ✅ **54 unit tests with integration round-trip**
-
-### January 22, 2026
-- ✅ **TTFT (Time to First Token) tracking integrated into CLI**
-  - Displays TTFT and total latency after each response
-  - Session summary shows average TTFT and latency
-  - Conversation JSON logs include latency metrics
-- ✅ **Folder restructure for scalability**
-- ✅ **New monorepo structure: `apps/`, `packages/`, `data/`, `config/`**
-- ✅ **Core modules moved to `packages/core/`**
-- ✅ **CLI moved to `apps/cli/`**
-- ✅ **Things 3 integration moved to `packages/integrations/things3/`**
-- ✅ **New `packages/telemetry/` with MetricsTracker (TTFT ready)**
-- ✅ **New `packages/agents/` with BaseAgent foundation**
-- ✅ **User data separated to `data/` directory**
-- ✅ **Web interface structure prepared (`apps/web/`)**
-- ✅ **pyproject.toml updated with web dependencies**
-- ✅ **Tests updated with backward-compatible imports**
-
-### January 20, 2026 (Evening)
-- ✅ **LLM-as-Judge Evaluation System Complete**
-- ✅ **Core evaluation engine with JudgeEvaluator class (~400 lines)**
-- ✅ **Judge prompt templates for 4 test categories (~200 lines)**
-- ✅ **Result storage with markdown report generation (~500 lines)**
-- ✅ **33 additional unit tests (evaluator + storage)**
-- ✅ **Pytest plugin with --evaluate flag support**
-- ✅ **Total: 149 tests with 97.5% coverage**
-
-### January 20, 2026 (Morning)
-- ✅ **Things 3 Integration Phase A complete**
-- ✅ **Task sync module with AppleScript (~520 lines)**
-- ✅ **Automatic language detection (5 languages supported)**
-- ✅ **43 additional tests (33 unit + 8 integration + 2 golden)**
-
-### January 15, 2026
-- ✅ **Complete testing framework implementation**
-- ✅ **73 automated tests (53 unit + 12 integration + 8 golden)**
-- ✅ **97.5% code coverage on core modules**
-- ✅ **Test documentation (TESTING_PLAN.md, TEST_RESULTS.md, README.md)**
-- ✅ **CI/CD ready infrastructure**
-
-### January 14, 2026
-- ✅ Migrated from raw HTTP to LiteLLM
-- ✅ Added provider flexibility (OpenRouter/Anthropic/OpenAI)
-- ✅ Implemented fallback cost calculation
-- ✅ Prepared system for function calling support
-
-### January 7, 2026
-- ✅ Token usage tracking per request
-- ✅ Cost calculation via OpenRouter API
-- ✅ Session metrics in conversation JSON
-- ✅ Model comparison documentation
 
 ---
 
@@ -407,4 +351,4 @@ None currently.
 
 ---
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-11*
