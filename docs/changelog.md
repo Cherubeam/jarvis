@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **JARVIS Persona Prompt**: Replaced generic `system_prompt_prefix` with movie-inspired JARVIS voice
+  - Traits: loyal, sharp, composed — dry wit and understated precision
+  - Guardrails against sycophantic responses ("never obsequious")
+  - Context presented as innate knowledge, not file reads
+  - Encourages honest pushback ("When you disagree, say that too")
+  - No explicit "sir" or "British butler" stereotypes — modern and tech-literate tone
+  - ~85-90 tokens (up from ~60), negligible cost impact
+
 ### Fixed
 - **`/daily-summary` session tracking**: Command now logs the exchange via `logger.add_message()` so `save()` writes the conversation file and prints the session summary on exit
 - **`/daily-summary` content duplication**: Existing JARVIS callout entries are stripped from the note content sent to the LLM and passed separately with a "DO NOT repeat" instruction, preventing duplicated bullets on re-runs
