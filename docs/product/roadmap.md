@@ -5,7 +5,7 @@
 **Status**: 100% complete
 **Timeline**: Completed January 2026
 
-### Completed
+### Features
 
 - [x] Basic CLI interface with streaming responses
 - [x] Context system (profile.md, preferences.md, current_focus.md)
@@ -19,10 +19,6 @@
 - [x] **Comprehensive unit test suite (388 tests, 97.5% coverage)**
 - [x] **Integration tests (22 tests)**
 - [x] **8 golden test conversations defined**
-
-### Blocked
-
-None currently.
 
 ---
 
