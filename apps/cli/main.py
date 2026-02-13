@@ -3,36 +3,30 @@ Command-line interface for the personal assistant.
 Ties everything together.
 """
 
+import argparse
 import os
 import platform
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
 
+from packages.agents.jarvis.agent import JarvisAgent
+from packages.agents.registry import discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, parse_frontmatter
-from packages.core.llm_client import LLMClient, TokenUsage
+from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
-from packages.core.pricing import ModelPricing, get_model_pricing, format_cost, calculate_cost_from_litellm
+from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
+from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
 from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
 from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
-from packages.integrations.obsidian.diff import compute_diff
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.integrations.obsidian.prompts import get_daily_note_instructions
-from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
+from packages.telemetry.metrics import MetricsTracker
 
 CLIENT_VERSION = "0.4.0"
-
-
-@dataclass
-class StreamResult:
-    text: str
-    usage: TokenUsage
-    cost_usd: float
-    metrics: ResponseMetrics
 
 
 def stream_and_track(
@@ -43,41 +37,12 @@ def stream_and_track(
     model_id: str,
     print_chunks: bool = False,
 ) -> StreamResult:
-    """Stream an LLM response, tracking metrics and cost."""
-    metrics_tracker.start_request()
-    stream = client.chat_stream(messages)
+    """Stream an LLM response, tracking metrics and cost.
 
-    chunks: list[str] = []
-    first_token = True
-    for chunk in stream:
-        if first_token:
-            metrics_tracker.record_first_token()
-            first_token = False
-        if print_chunks:
-            print(chunk, end="", flush=True)
-        chunks.append(chunk)
-
-    usage = stream.usage
-
-    cost_usd = 0.0
-    if pricing:
-        cost_usd = pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
-    else:
-        cost_usd = calculate_cost_from_litellm(stream.raw_response)
-
-    response_metrics = metrics_tracker.finish_request(
-        prompt_tokens=usage.prompt_tokens,
-        completion_tokens=usage.completion_tokens,
-        cost_usd=cost_usd,
-        model=model_id,
-    )
-
-    return StreamResult(
-        text="".join(chunks),
-        usage=usage,
-        cost_usd=cost_usd,
-        metrics=response_metrics,
-    )
+    Thin wrapper around StreamHandler.stream() for backward compatibility.
+    """
+    handler = StreamHandler(client, metrics_tracker, pricing, model_id)
+    return handler.stream(messages, print_chunks=print_chunks)
 
 
 def print_usage_stats(result: StreamResult) -> None:
@@ -234,14 +199,68 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     print_usage_stats(result)
 
 
-def main():
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse CLI arguments."""
+    parser = argparse.ArgumentParser(description="JARVIS personal assistant")
+    parser.add_argument(
+        "--agent",
+        type=str,
+        default=None,
+        help="Run a standalone agent instead of the default JARVIS orchestrator (e.g. --agent writing)",
+    )
+    return parser.parse_args(argv)
+
+
+def _handle_agent_command(
+    command: str,
+    payload: str,
+    client: LLMClient,
+    stream_handler: StreamHandler,
+    logger: ConversationLogger,
+    model_id: str,
+    agent_registry: dict,
+) -> bool:
+    """Route a slash command to the matching agent. Returns True if handled."""
+    meta = get_by_command(command, agent_registry)
+    if meta is None:
+        return False
+
+    agent = meta.agent_class(llm_client=client, model=model_id)
+
+    if not payload:
+        print(f"\nUsage: {command} <text>")
+        print(f"  {meta.description}\n")
+        return True
+
+    logger.add_message("user", f"{command} {payload}")
+
+    print(f"\n[{meta.name}]: ", end="", flush=True)
+    result = agent.run(payload, stream_handler, print_chunks=True)
+    print("\n")
+
+    print_usage_stats(result)
+
+    logger.add_message(
+        "assistant",
+        result.text,
+        prompt_tokens=result.usage.prompt_tokens,
+        completion_tokens=result.usage.completion_tokens,
+        total_tokens=result.usage.total_tokens,
+        cost_usd=result.cost_usd,
+        ttft_ms=result.metrics.ttft_ms,
+        total_latency_ms=result.metrics.total_latency_ms,
+    )
+    return True
+
+
+def main(argv: list[str] | None = None):
+    args = parse_args(argv)
     config = load_config()
 
     jarvis_dir = config["_paths"]["jarvis_dir"]
     model_id = config["openrouter"]["default_model"]
 
     # Initialize components - paths now relative to jarvis root
-    # Use new data/ directory structure
     context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
     conversations_dir = jarvis_dir / config.get("paths", {}).get("conversations_dir", "data/conversations")
 
@@ -257,6 +276,27 @@ def main():
         provider="openrouter"
     )
 
+    # Discover registered agents for slash-command routing
+    agent_registry = discover_agents()
+
+    # Build the active agent
+    if args.agent:
+        if args.agent not in agent_registry:
+            available = ", ".join(sorted(agent_registry)) or "(none)"
+            print(f"Error: unknown agent '{args.agent}'. Available: {available}")
+            sys.exit(1)
+        meta = agent_registry[args.agent]
+        active_agent = meta.agent_class(llm_client=client, model=model_id)
+        agent_name = meta.name
+    else:
+        active_agent = JarvisAgent(
+            llm_client=client,
+            context_dir=context_dir,
+            system_prompt_prefix=system_prompt_prefix,
+            model=model_id,
+        )
+        agent_name = "JARVIS"
+
     # Build schema config dicts for ConversationLogger
     model_config = {
         "id": model_id,
@@ -264,9 +304,9 @@ def main():
         "parameters": {},
     }
 
-    agent_config = {
-        "name": "JARVIS",
-        "system_prompt_hash": f"sha256:{hash_content(system_prompt)}",
+    logger_agent_config = {
+        "name": agent_name,
+        "system_prompt_hash": f"sha256:{hash_content(active_agent.config.system_prompt)}",
         "tools": [],
         "metadata": {},
     }
@@ -286,16 +326,16 @@ def main():
         if projects_dir.is_dir():
             for f in sorted(projects_dir.glob("*.md")):
                 content = f.read_text(encoding="utf-8")
-                meta, _ = parse_frontmatter(content)
-                is_active = meta.get("active", True)
+                meta_fm, _ = parse_frontmatter(content)
+                is_active = meta_fm.get("active", True)
                 entry = {
                     "path": str(f.relative_to(jarvis_dir)),
                     "hash": f"sha256:{hash_content(content)}",
                     "size_bytes": f.stat().st_size,
                     "active": is_active,
                 }
-                if meta:
-                    entry["frontmatter"] = meta
+                if meta_fm:
+                    entry["frontmatter"] = meta_fm
                 context_files.append(entry)
 
     context_snapshot = {
@@ -315,7 +355,7 @@ def main():
     logger = ConversationLogger(
         conversations_dir,
         model_config=model_config,
-        agent_config=agent_config,
+        agent_config=logger_agent_config,
         context_snapshot=context_snapshot,
         environment=environment,
     )
@@ -328,9 +368,14 @@ def main():
     else:
         price_info = "(pricing unavailable)"
 
+    stream_handler = StreamHandler(client, metrics_tracker, pricing, model_id)
+
     # Print startup info
     print("Personal Assistant")
-    print(f"Model: {model_id} {price_info}")
+    print(f"Agent: {agent_name} | Model: {model_id} {price_info}")
+    if agent_registry:
+        cmds = " ".join(m.command for m in agent_registry.values())
+        print(f"Commands: {cmds} /daily-summary")
     print("Type 'quit' or 'exit' to end. Ctrl+C also works.\n")
 
     # Main chat loop
@@ -347,20 +392,39 @@ def main():
                 break
 
             # Handle slash commands
-            if user_input.strip() == "/daily-summary":
-                handle_daily_summary(config, client, logger, system_prompt,
-                                     metrics_tracker, pricing, model_id)
+            if user_input.startswith("/"):
+                parts = user_input.split(None, 1)
+                command = parts[0]
+                payload = parts[1] if len(parts) > 1 else ""
+
+                # Built-in commands
+                if command == "/daily-summary":
+                    handle_daily_summary(config, client, logger, system_prompt,
+                                         metrics_tracker, pricing, model_id)
+                    continue
+
+                # Agent-routed commands
+                if _handle_agent_command(
+                    command, payload, client, stream_handler, logger,
+                    model_id, agent_registry,
+                ):
+                    continue
+
+                print(f"\nUnknown command: {command}\n")
                 continue
 
+            # Regular chat — route through active agent
+            # Grab existing history before adding user message (run() appends it)
+            history = logger.get_messages_for_api()
             logger.add_message("user", user_input)
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                *logger.get_messages_for_api()
-            ]
-
             print("\nAssistant: ", end="", flush=True)
-            result = stream_and_track(client, messages, metrics_tracker, pricing, model_id, print_chunks=True)
+            result = active_agent.run(
+                user_input,
+                stream_handler,
+                print_chunks=True,
+                messages_override=history,
+            )
             print("\n")
 
             print_usage_stats(result)

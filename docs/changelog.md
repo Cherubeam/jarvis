@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Agent Framework**: Wired agent layer into CLI with slash-command routing and standalone mode
+  - `StreamHandler` class extracted from `main.py` into `packages/core/stream_handler.py`
+  - `BaseAgent.run()` method — primary entry point for agent execution with streaming
+  - `BaseAgent.load_prompt()` classmethod — loads prompts from agent's `prompts/` directory
+  - Agent registry (`packages/agents/registry.py`) with filesystem-based auto-discovery
+  - Three specialized agents: Writing (`/write`), Research (`/research`), Clarity (`/clarity`)
+  - `--agent <name>` CLI flag for standalone agent mode (e.g. `uv run jarvis --agent writing`)
+  - Slash-command routing in CLI via agent registry lookup
+  - 44 new tests for StreamHandler, registry, BaseAgent, agents, and CLI routing
+  - Convention: drop a folder in `packages/agents/` with `agent.py` + `prompts/system.md` and it works
+
 ### Changed
 - **JARVIS Persona Prompt**: Replaced generic `system_prompt_prefix` with movie-inspired JARVIS voice
   - Traits: loyal, sharp, composed — dry wit and understated precision
@@ -519,4 +531,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-13*

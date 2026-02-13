@@ -22,10 +22,10 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │                 │                  │                           │
 │  • LLM Client   │  • Base Agent    │  • Things 3               │
 │  • Context      │  • JARVIS Agent  │  • Obsidian               │
-│  • Memory       │  • (Future:      │  • (Future: Calendar)     │
-│  • Pricing      │    Research,     │                           │
-│  • Benchmarks   │    Coding)       │                           │
-│                 │    Coding)       │                           │
+│  • Memory       │  • Writing Agent │  • (Future: Calendar)     │
+│  • Pricing      │  • Research Agent│                           │
+│  • Stream       │  • Clarity Agent │                           │
+│    Handler      │  • Registry      │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
 │  • Metrics tracking (TTFT, latency)                            │
@@ -60,9 +60,14 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Key Functions:**
 - `load_config()`: Load YAML config and environment variables
-- `main()`: Main chat loop with metrics tracking
+- `parse_args()`: Parse CLI arguments (including `--agent`)
+- `main()`: Main chat loop with agent routing and metrics tracking
+- `_handle_agent_command()`: Route slash commands to registered agents
 
 **Dependencies:**
+- `packages.agents.jarvis`: Default JARVIS orchestrator agent
+- `packages.agents.registry`: Agent discovery and slash-command routing
+- `packages.core.stream_handler`: Shared streaming + metrics + cost tracking
 - `packages.integrations.things3.task_sync`: Sync Things 3 tasks on startup
 - `packages.integrations.obsidian`: Obsidian vault integration (`/daily-summary` command)
 - `packages.core.context_builder`: Get system prompt
@@ -397,6 +402,7 @@ jarvis/
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
 │   │   ├── pricing.py              # Cost tracking
+│   │   ├── stream_handler.py       # Streaming + metrics + cost
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
@@ -404,9 +410,19 @@ jarvis/
 │   │       ├── claude.py           # Claude export converter
 │   │       └── claude_context.py   # Claude memories/projects importer
 │   ├── agents/                     # Agent implementations
-│   │   ├── base.py                 # Base agent class
-│   │   └── jarvis/                 # Main JARVIS orchestrator
-│   │       └── agent.py
+│   │   ├── base.py                 # Base agent class (run, load_prompt)
+│   │   ├── registry.py             # Agent discovery + slash-command lookup
+│   │   ├── jarvis/                 # Main JARVIS orchestrator
+│   │   │   └── agent.py
+│   │   ├── writing/                # Writing agent (/write)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   ├── research/               # Research agent (/research)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   └── clarity/                # Clarity agent (/clarity)
+│   │       ├── agent.py
+│   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
 │   │   │   └── task_sync.py        # ~520 lines
@@ -593,4 +609,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-13*

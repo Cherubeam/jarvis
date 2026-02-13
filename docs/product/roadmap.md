@@ -166,9 +166,20 @@
 
 **Timeline**: 3-6 months (July-December 2026)
 **Goal**: Tool use and multi-agent orchestration
-**Status**: Not Started
+**Status**: In Progress
 
 ### Features
+
+#### Agent Framework (Phase A - Infrastructure)
+
+- [x] Extract `StreamHandler` from CLI into shared module
+- [x] Add `BaseAgent.run()` and `BaseAgent.load_prompt()` methods
+- [x] Agent registry with filesystem-based auto-discovery
+- [x] Wire agents into CLI with slash-command routing
+- [x] `--agent <name>` standalone mode
+- [x] Writing agent (`/write`), Research agent (`/research`), Clarity agent (`/clarity`)
+- [ ] Phase B: JARVIS delegation — sub-conversations with specialist agents
+- [ ] Phase C: LLM-based intent detection and auto-routing
 
 #### Function Calling & Tools
 
@@ -187,9 +198,9 @@
 
 #### Agent Orchestration
 
-- [ ] Multi-agent architecture design
-- [ ] Agent communication protocols
-- [ ] Task delegation and routing
+- [x] Multi-agent architecture design (folder convention + registry)
+- [ ] Agent communication protocols (JARVIS delegation)
+- [ ] Task delegation and routing (LLM-based intent detection)
 - [ ] Error recovery and fallbacks
 
 #### Intelligent Model Routing

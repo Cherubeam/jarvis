@@ -37,7 +37,12 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
          │
          ▼
 ┌─────────────────┐
-│   LLM Client    │  Streams responses from any provider (via OpenRouter)
+│     Agent       │  JARVIS orchestrator or specialist (Writing / Research / Clarity)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Stream Handler  │  Streams responses from any provider (via OpenRouter)
 └────────┬────────┘
          │
          ▼
@@ -56,6 +61,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
+- **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity)
+- **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
@@ -63,6 +70,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
+- **Obsidian Integration**: Generate daily note summaries from conversation history
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
 - **Comprehensive Testing**: Automated test suite with high code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
@@ -99,14 +107,25 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 ### Usage
 
 ```bash
-# Using the installed script (recommended)
+# Start JARVIS (default orchestrator)
 uv run jarvis
 
-# Or using module syntax
-uv run python -m apps.cli.main
+# Run a specialist agent directly
+uv run jarvis --agent writing
+uv run jarvis --agent research
+uv run jarvis --agent clarity
 ```
 
-Start chatting! Type `quit` or `exit` to end the session.
+During a chat session, you can use slash commands to delegate to a specialist:
+
+```
+/write <text>           Delegates to Writing agent (prose, editing, rewriting)
+/research <text>        Delegates to Research agent (analysis, synthesis)
+/clarity <text>         Delegates to Clarity agent (explains complex ideas simply)
+/daily-summary          Generates an Obsidian daily note summary
+```
+
+Type `quit` or `exit` to end the session.
 
 ### Troubleshooting
 
@@ -137,13 +156,18 @@ jarvis/
 │   ├── core/                           # Core functionality
 │   │   ├── llm_client.py               # Unified LLM provider interface
 │   │   ├── context_builder.py          # Assembles system prompts from context
+│   │   ├── stream_handler.py           # Streaming response handler
 │   │   ├── memory.py                   # Conversation logging
 │   │   ├── pricing.py                  # Cost calculation and tracking
 │   │   ├── benchmark_costs.py          # Benchmark cost estimation
 │   │   └── importers/                  # Conversation importers (ChatGPT, etc.)
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class
-│   │   └── jarvis/                     # Main JARVIS agent
+│   │   ├── registry.py                 # Filesystem-based agent auto-discovery
+│   │   ├── jarvis/                     # Main JARVIS orchestrator agent
+│   │   ├── writing/                    # Writing specialist (prose, editing)
+│   │   ├── research/                   # Research specialist (analysis, synthesis)
+│   │   └── clarity/                    # Clarity specialist (simplify complex ideas)
 │   ├── integrations/                   # External service integrations
 │   │   └── things3/                    # Things 3 task sync
 │   └── telemetry/                      # Metrics and evaluation
@@ -198,15 +222,22 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] ChatGPT conversation import (bulk import with filters)
 - [x] Claude conversation import (bulk import with date filters)
 
-**Phase 3: Web Interface (Next)**
-- [ ] FastAPI backend with SSE streaming
-- [ ] React frontend with chat UI
-- [ ] Conversation history browser
+**Phase 3: Context & Integrations (Complete ✅)**
+- [x] Context builder with frontmatter selective loading
+- [x] Obsidian daily note integration (`/daily-summary`)
+
+**Phase 4: Agent Framework (Complete ✅)**
+- [x] Base agent class with prompt loading
+- [x] Agent registry with filesystem-based auto-discovery
+- [x] Specialist agents: Writing, Research, Clarity
+- [x] Slash-command routing and standalone `--agent` mode
+- [x] StreamHandler extraction from CLI
 
 **Future Phases:**
+- [ ] JARVIS delegation (orchestrator auto-routes to specialists)
 - [ ] Context window management (truncation strategies)
 - [ ] Semantic search over conversation history (RAG)
-- [ ] Agent orchestration framework
+- [ ] Web interface (FastAPI + React)
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
 
