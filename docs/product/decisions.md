@@ -1090,4 +1090,55 @@ How we address the drawbacks.
 
 ---
 
-*Last updated: 2026-02-09*
+## ADR-014: Agent Framework — Convention-Based Discovery
+
+**Date**: 2026-02-13
+**Status**: Accepted
+
+### Context
+
+JARVIS had a `BaseAgent` ABC and `JarvisAgent` class, but neither was used — the CLI called `LLMClient` directly. To support specialized agents (Writing, Research, Clarity) with minimal friction, we needed to wire the agent layer into the CLI and establish conventions for adding new agents.
+
+### Decision
+
+Convention-based agent framework with filesystem discovery:
+
+1. **Each agent** lives in `packages/agents/<name>/` with `agent.py`, `prompts/system.md`, and an `__init__.py` exporting `AGENT_META`.
+2. **Registry** (`registry.py`) scans agent directories at startup, builds a command-to-agent lookup table.
+3. **Routing**: Slash commands first (zero LLM overhead), LLM-based auto-routing deferred to Phase C.
+4. **StreamHandler** extracted from `main.py` to `packages/core/stream_handler.py` — shared by all agents.
+5. **History management**: `ConversationLogger` remains the source of truth; agents receive `messages_override` to avoid duplicate state.
+6. **Standalone mode**: `--agent <name>` CLI flag bypasses JARVIS and runs a specialist directly.
+
+### Alternatives Considered
+
+1. **Config-based agent registration** (YAML listing)
+   - Requires updating config every time an agent is added
+   - More steps = more friction
+
+2. **Decorator-based registration** (`@register_agent`)
+   - Requires importing all agent modules at startup
+   - Harder to reason about load order
+
+3. **Plugin system** (entry points / setuptools)
+   - Over-engineered for a single-repo project
+   - Adds packaging complexity
+
+### Consequences
+
+**Benefits:**
+- Adding an agent = drop a folder with `agent.py` + `prompts/system.md`, zero config changes
+- Prompts live next to agent code (self-contained, portable)
+- Slash commands work today with no LLM overhead
+- Clean separation: StreamHandler shared, agents pluggable
+
+**Drawbacks:**
+- Filesystem scan on startup (negligible for < 20 agents)
+- Agent prompts not in the centralized `data/prompts/` location
+
+### Related ADRs
+- Extends: ADR-009 (Scalable Monorepo Structure)
+
+---
+
+*Last updated: 2026-02-13*
