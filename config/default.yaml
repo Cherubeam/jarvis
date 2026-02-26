@@ -7,7 +7,7 @@
 # See docs/research/models.md "Default Model Recommendation" for decision matrix.
 # Override in config/local.yaml or via future CLI flags (Phase 7).
 openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
+  default_model: "anthropic/claude-sonnet-4.6"
 
 # Paths (relative to project root)
 paths:
