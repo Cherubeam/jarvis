@@ -1196,4 +1196,66 @@ JARVIS needed the ability to fetch and read web content (articles, docs, links) 
 
 ---
 
+---
+
+## ADR-016: Agentic Loop — Eliminate Redundant "Stop Check" Call
+
+**Date**: 2026-02-27
+**Status**: Accepted
+
+### Context
+
+After shipping ADR-015's agentic loop, a cost investigation revealed that a tool-use turn was making **3 API calls** instead of the expected 2:
+
+1. `complete()` → `finish_reason == "tool_calls"` → execute tool
+2. `complete()` → `finish_reason == "stop"` ← **redundant: result immediately discarded**
+3. `chat_stream()` → final answer (regenerates the same output as call #2)
+
+Call #2 was also double-counting its usage: the response was appended to `_intermediate_usage`, and then `chat_stream()` counted the same input/output tokens again. For a typical Substack article fetch this produced ~23k reported tokens (~$0.09) instead of ~16k (~$0.05).
+
+### Decision
+
+Two minimal changes to `_run_agentic_loop()`:
+
+1. **Move usage accumulation after the `finish_reason` check**: Only accumulate for `"tool_calls"` responses. When the model returns `"stop"`, its usage is covered by the subsequent `chat_stream()` call — don't add it to `_intermediate_usage` too.
+
+2. **`break` immediately after tool execution**: After executing tool calls and appending results to messages, break out of the loop. This eliminates call #2 entirely; `chat_stream()` in `_stream_simple()` handles the final answer directly.
+
+Corrected flow for a single tool-use turn:
+```
+complete([system, user], tools)    → "tool_calls" → accumulate ✓ → execute → break
+chat_stream([..., tool_result])    → stream final answer → streaming_usage
+
+Total = tool_calls_usage + streaming_usage  ← correct, no double-counting
+```
+
+### Alternatives Considered
+
+1. **Skip the agentic loop for non-tool queries** (streaming tool call detection)
+   - Would eliminate the `complete()` call entirely for queries that don't use tools
+   - Requires parsing `delta.tool_calls` chunks — complex, deferred (noted as known remaining limitation)
+
+2. **Return the "stop" content directly** (skip `chat_stream()` when `finish_reason == "stop"`)
+   - Would save the streaming call but lose progressive rendering for users
+   - The streaming UX is a core product requirement
+
+### Consequences
+
+**Benefits:**
+- Eliminates one billable API call per tool-use turn (~33% reduction in call count)
+- Fixes token double-counting — displayed usage now matches actual billing
+- Simpler loop logic: no need for a second `complete()` just to detect "stop"
+
+**Drawbacks:**
+- Multi-step sequential tool use (tool → inspect result → call another tool) now requires the model to plan ahead and call multiple tools in a single turn. Acceptable for the current single-step `fetch_url` use case.
+
+### Known Remaining Limitation
+
+JARVIS always has a non-empty `ToolRegistry` (contains `FETCH_URL_TOOL`), so `_run_agentic_loop()` is always entered, making one `complete()` call even for queries that don't use URL fetching. After the fix, the "stop" call's usage is no longer double-counted, but the unnecessary call still happens (~$0.002 overhead per query). Fixing this properly requires streaming tool-call detection — deferred to a future phase.
+
+### Related ADRs
+- Fixes: ADR-015 (Tool Calling — Non-Streaming Intermediate Calls)
+
+---
+
 *Last updated: 2026-02-27*

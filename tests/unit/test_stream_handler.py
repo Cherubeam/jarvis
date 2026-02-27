@@ -216,11 +216,8 @@ class TestStreamHandlerAgenticLoop:
         tool_call = _make_tool_call_obj("tc1", "fetch_url", json.dumps({"url": "https://example.com"}))
         first_response = _make_complete_response("tool_calls", tool_calls=[tool_call])
 
-        # After tool result, LLM gives a plain response → handled by streaming
-        second_complete_response = _make_complete_response("stop")
-
         client = Mock(spec=LLMClient)
-        client.complete.side_effect = [first_response, second_complete_response]
+        client.complete.side_effect = [first_response]
         client.chat_stream.return_value = _make_streaming_response(["The article says: content of https://example.com"])
 
         handler = self._make_handler(client)
@@ -237,10 +234,12 @@ class TestStreamHandlerAgenticLoop:
         # Final streamed content printed too
         assert "content of https://example.com" in captured.out
 
-        # complete() called twice: once for tool call, once to check stop
-        assert client.complete.call_count == 2
+        # complete() called once for the tool call; streaming handles the final answer
+        assert client.complete.call_count == 1
 
-        # chat_stream() called once for final answer
+        # chat_stream() called once with messages including the tool result
         client.chat_stream.assert_called_once()
+        streamed_messages = client.chat_stream.call_args[0][0]
+        assert any(m.get("role") == "tool" for m in streamed_messages)
 
         assert result.text == "The article says: content of https://example.com"

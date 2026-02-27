@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 26 new unit tests across `test_tools_base.py`, `test_tools_executor.py`, `test_web_fetch.py`, plus additions to `test_stream_handler.py`
   - Dependencies added: `httpx`, `trafilatura`
 
+### Fixed
+- **Agentic loop double-counting bug** (`StreamHandler._run_agentic_loop()`):
+  - Usage accumulation now only happens for `"tool_calls"` responses; `"stop"` responses are covered by `chat_stream()` and were previously double-counted
+  - Eliminated a redundant `complete()` call (the "stop check") that was immediately discarded when `chat_stream()` regenerated the same answer — saves one billable API call per tool-use turn
+  - Corrected flow: `complete() → tool_calls → execute → break → chat_stream()` (2 calls instead of 3)
+
 ### Changed
 - **`AgentConfig.tools`**: Type changed from `list[str]` → `list[ToolDefinition]`; `BaseAgent.__init__` builds `ToolRegistry` from config tools; `to_dict()` serializes as tool names
 - **`StreamHandler.stream()`**: Accepts optional `tool_registry` parameter (default `None` — fully backward compatible)
