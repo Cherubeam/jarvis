@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **RAG date filtering broken**: ChromaDB's `$gte`/`$lte` operators only support numeric types, so string-based `session_date` filters silently threw `ValueError`. Added integer `session_date_int` (YYYYMMDD) metadata field with automatic migration of existing records. Tool description now includes today's date and instructs the LLM to set `date_from`/`date_to` for temporal queries. Results with similar relevance scores now prefer newer conversations (recency tiebreaker).
 - **RAG startup failure with OpenRouter**: Explicitly pass `encoding_format="float"` in `_embed_batch()` (`indexer.py`) and `search()` (`searcher.py`) to satisfy OpenRouter's strict Zod schema validation, which rejects requests missing or sending an unexpected `encoding_format` value.
 
 ### Added
