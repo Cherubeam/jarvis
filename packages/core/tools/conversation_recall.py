@@ -70,7 +70,7 @@ def make_conversation_recall_tool(
         name="recall_conversations",
         description=(
             "Search past conversations for relevant context. "
-            f"Today is {date.today().isoformat()}. "
+            f"Today is {date.today().strftime('%A, %Y-%m-%d')}. "
             "IMPORTANT: When the user asks about a time period "
             "(this week, last month, yesterday, recently, etc.), "
             "you MUST set date_from and/or date_to to restrict results to that period. "

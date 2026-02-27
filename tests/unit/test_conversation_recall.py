@@ -141,8 +141,8 @@ class TestRecallToolOutput:
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
             tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
 
-        today = date.today().isoformat()
-        assert today in tool.description
+        today_str = date.today().strftime("%A, %Y-%m-%d")
+        assert today_str in tool.description
         assert "date_from" in tool.description
         assert "date_to" in tool.description
 
