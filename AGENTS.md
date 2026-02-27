@@ -227,7 +227,7 @@ git switch -c refactor/config-loading
 
 ### Committing During Development
 
-Commit after each development step with a one-sentence commit message. Do not batch multiple steps into a single commit.
+Always commit automatically after completing each development step — do not wait for user confirmation. Use a one-line commit message following the format below. Do not batch multiple steps into a single commit.
 
 ### Commit Message Format
 
