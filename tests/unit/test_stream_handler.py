@@ -130,7 +130,7 @@ class TestStreamHandler:
         handler = StreamHandler(client, tracker, pricing, "test-model")
         handler.stream(messages)
 
-        client.chat_stream.assert_called_once_with(messages)
+        client.chat_stream.assert_called_once_with(messages, tools=None)
 
 
 # ---------------------------------------------------------------------------
@@ -212,12 +212,13 @@ class TestStreamHandlerAgenticLoop:
         registry = ToolRegistry()
         registry.register(tool)
 
-        # LLM first responds with a tool call
+        # LLM first responds with a tool call, second with stop
         tool_call = _make_tool_call_obj("tc1", "fetch_url", json.dumps({"url": "https://example.com"}))
         first_response = _make_complete_response("tool_calls", tool_calls=[tool_call])
+        second_response = _make_complete_response("stop")
 
         client = Mock(spec=LLMClient)
-        client.complete.side_effect = [first_response]
+        client.complete.side_effect = [first_response, second_response]
         client.chat_stream.return_value = _make_streaming_response(["The article says: content of https://example.com"])
 
         handler = self._make_handler(client)
@@ -234,12 +235,73 @@ class TestStreamHandlerAgenticLoop:
         # Final streamed content printed too
         assert "content of https://example.com" in captured.out
 
-        # complete() called once for the tool call; streaming handles the final answer
-        assert client.complete.call_count == 1
+        # complete() called twice: tool_calls then stop
+        assert client.complete.call_count == 2
 
-        # chat_stream() called once with messages including the tool result
+        # chat_stream() called with tools parameter
         client.chat_stream.assert_called_once()
+        call_kwargs = client.chat_stream.call_args[1]
+        assert call_kwargs.get("tools") is not None
+
+        # Messages include the tool result
         streamed_messages = client.chat_stream.call_args[0][0]
         assert any(m.get("role") == "tool" for m in streamed_messages)
 
         assert result.text == "The article says: content of https://example.com"
+
+    def test_multi_tool_chain(self, capsys):
+        """LLM calls tool A, then tool B, then stops."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "result_a")
+        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "result_b")
+        registry = ToolRegistry()
+        registry.register(tool_a)
+        registry.register(tool_b)
+
+        call_a = _make_tool_call_obj("tc1", "tool_a")
+        call_b = _make_tool_call_obj("tc2", "tool_b")
+        resp1 = _make_complete_response("tool_calls", tool_calls=[call_a])
+        resp2 = _make_complete_response("tool_calls", tool_calls=[call_b])
+        resp3 = _make_complete_response("stop")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [resp1, resp2, resp3]
+        client.chat_stream.return_value = _make_streaming_response(["final answer"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "do things"}],
+            print_chunks=True,
+            tool_registry=registry,
+        )
+
+        assert client.complete.call_count == 3
+        captured = capsys.readouterr()
+        assert "[Tool: tool_a]" in captured.out
+        assert "[Tool: tool_b]" in captured.out
+        assert result.text == "final answer"
+
+    def test_tools_passed_to_streaming_call(self):
+        """chat_stream() receives the tools parameter after the agentic loop."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok")
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        stop_response = _make_complete_response("stop")
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [stop_response]
+        client.chat_stream.return_value = _make_streaming_response(["done"])
+
+        handler = self._make_handler(client)
+        handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        # chat_stream should receive tools kwarg matching the registry format
+        call_kwargs = client.chat_stream.call_args[1]
+        assert call_kwargs["tools"] == registry.to_litellm_format()
