@@ -69,6 +69,7 @@ class ConversationSearcher:
             "model": self.embedding_model,
             "input": [query],
             "api_key": self.api_key,
+            "encoding_format": "float",
         }
         if self.api_base:
             embed_kwargs["api_base"] = self.api_base

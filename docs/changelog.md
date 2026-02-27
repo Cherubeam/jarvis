@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **RAG startup failure with OpenRouter**: Explicitly pass `encoding_format="float"` in `_embed_batch()` (`indexer.py`) and `search()` (`searcher.py`) to satisfy OpenRouter's strict Zod schema validation, which rejects requests missing or sending an unexpected `encoding_format` value.
+
 ### Added
 - **Conversation Recall (RAG)**: Semantic search over past conversations via ChromaDB + LiteLLM embeddings
   - `packages/core/rag/indexer.py`: `ConversationIndexer` — startup scan of `data/conversations/*.json`, incremental embedding + upsert to ChromaDB
