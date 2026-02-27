@@ -76,24 +76,6 @@ uv run python -m apps.cli.main
 uv run jarvis
 ```
 
-### Script Entry Point Setup
-
-If `uv run jarvis` fails with `ModuleNotFoundError: No module named 'apps'`, you need to install the package in editable mode:
-
-```bash
-uv pip install -e .
-```
-
-**Why this happens:**
-- `uv run python -m apps.cli.main` works because Python adds the current directory to `sys.path`
-- `uv run jarvis` uses the installed script entry point which needs the packages to be properly installed
-- After running `uv pip install -e .`, both methods will work
-
-**When to run editable install:**
-- After a fresh clone
-- After changing the package structure in `pyproject.toml`
-- When switching between branches with different structures
-
 ### Type Checking
 
 ```bash
@@ -114,17 +96,6 @@ uv run pytest tests/unit/ -v
 ```
 
 Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](docs/engineering/testing.md) for test statistics, strategy, and the full command reference. See [tests/README.md](tests/README.md) for quick-reference test commands.
-
-### Clean Setup Verification
-
-Always verify changes work from clean environment:
-
-```bash
-rm -rf .venv
-uv sync
-uv pip install -e .        # Required for script entry point
-uv run jarvis              # Or: uv run python -m apps.cli.main
-```
 
 ---
 
@@ -207,142 +178,7 @@ uv run pytest --cov=packages --cov=apps --cov-report=term
 
 ## Documentation Updates
 
-### CRITICAL: Always Check ALL Documentation Files
-
-**After ANY implementation, you MUST read and update ALL relevant files in the `docs/` folder.**
-
-This is a mandatory step - do not skip it. Many files reference each other and need to stay consistent.
-
-### When Making Changes
-
-1. **Code changes** → Update [docs/engineering/architecture.md](docs/engineering/architecture.md) or [api.md](docs/engineering/api.md)
-2. **New features** → Update [docs/product/roadmap.md](docs/product/roadmap.md) AND [docs/changelog.md](docs/changelog.md)
-3. **Architecture decisions** → Add new ADR to [docs/product/decisions.md](docs/product/decisions.md) (see that file for format)
-4. **Version releases** → Update [docs/changelog.md](docs/changelog.md)
-5. **Test changes** → Update [docs/engineering/testing.md](docs/engineering/testing.md)
-
-### Documentation Review Checklist
-
-After implementing a feature, check and update these files if relevant:
-
-**Product Documentation:**
-- [ ] [docs/product/vision.md](docs/product/vision.md) - Does this change the vision or principles?
-- [ ] [docs/product/roadmap.md](docs/product/roadmap.md) - Mark features as complete, update phases
-- [ ] [docs/product/metrics.md](docs/product/metrics.md) - Are there new metrics to track?
-- [ ] [docs/product/decisions.md](docs/product/decisions.md) - Add ADR for architectural decisions
-- [ ] [docs/changelog.md](docs/changelog.md) - **ALWAYS UPDATE** - Document all changes here
-
-**Engineering Documentation:**
-- [ ] [docs/engineering/architecture.md](docs/engineering/architecture.md) - New modules or data flows?
-- [ ] [docs/engineering/api.md](docs/engineering/api.md) - New APIs or interfaces?
-- [ ] [docs/engineering/testing.md](docs/engineering/testing.md) - Test strategy changes?
-- [ ] [docs/engineering/deployment.md](docs/engineering/deployment.md) - Setup changes?
-
-**Research Documentation:**
-- [ ] [docs/research/framework.md](docs/research/framework.md) - New AI engineering patterns?
-- [ ] [docs/research/models.md](docs/research/models.md) - Model comparison updates?
-- [ ] [docs/research/prompts.md](docs/research/prompts.md) - Prompt engineering insights?
-
-**Root Documentation:**
-- [ ] [AGENTS.md](AGENTS.md) - Changes to development workflow or structure?
-- [ ] [README.md](README.md) - User-facing changes?
-
----
-
-## Security Considerations
-
-### API Keys
-
-- Always use `.env` file (gitignored)
-- Never hardcode in source files
-- Never commit to git
-
-### Conversation Logs
-
-- Contain sensitive personal data
-- Gitignored by default
-- Warn user before committing context files
-
----
-
-## Common Tasks
-
-### Adding a New Dependency
-
-```bash
-uv add package-name
-git add pyproject.toml uv.lock
-git commit -m "Add package-name dependency"
-```
-
-### Creating New Context File
-
-```bash
-echo "# New Context Section" > data/context/new_file.md
-# Update packages/core/context_builder.py to load it
-```
-
-### Importing Conversations
-
-```bash
-# Preview what would be imported
-uv run python scripts/import_chatgpt.py imports/conversations.json --dry-run
-
-# Import all non-archived conversations
-uv run python scripts/import_chatgpt.py imports/conversations.json
-
-# Import with filters
-uv run python scripts/import_chatgpt.py imports/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
-```
-
-```bash
-# Claude conversation import
-uv run python scripts/import_claude.py imports/conversations.json --dry-run
-uv run python scripts/import_claude.py imports/conversations.json
-uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
-```
-
-```bash
-# Claude context import (memories + projects)
-uv run python scripts/import_claude_context.py --dry-run
-uv run python scripts/import_claude_context.py
-uv run python scripts/import_claude_context.py --memories imports/memories.json --projects imports/projects.json
-```
-
-Imported files are written to `data/conversations/` with source-specific tags (`["imported", "chatgpt"]` or `["imported", "claude"]`). The import is idempotent — re-running skips already-imported conversations.
-
-### Switching LLM Providers
-
-Edit `config/default.yaml` or `config/local.yaml`:
-
-```yaml
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"  # Change to desired model
-```
-
-See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration details.
-
----
-
-## Error Handling
-
-### Import Errors on Fresh Setup
-
-**Cause**: Dependency missing from `pyproject.toml`
-
-**Fix**:
-```bash
-uv add missing-package
-```
-
-### API Key Errors
-
-**Cause**: `.env` file missing or incorrect
-
-**Fix**:
-```bash
-echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
-```
+After any implementation, check and update all relevant files in `docs/`. Always update [docs/changelog.md](docs/changelog.md). See the docs folder structure for which files may need changes.
 
 ---
 
@@ -388,6 +224,10 @@ git switch -c feat/task-sync-localization
 git switch -c fix/stale-unit-tests
 git switch -c refactor/config-loading
 ```
+
+### Committing During Development
+
+Commit after each development step with a one-sentence commit message. Do not batch multiple steps into a single commit.
 
 ### Commit Message Format
 
@@ -435,28 +275,6 @@ docs: restructure documentation into organized /docs directory
 4. **Keep it simple** - No premature optimization
 5. **Test dependencies** - Use `uv sync --extra test` for test setup
 
-### Most Common Commands
-
-```bash
-# Add dependency (runtime)
-uv add package-name
-
-# Add test dependency
-uv add --dev pytest-something
-
-# Install everything including tests
-uv sync --extra test
-
-# Run the app
-uv run python -m apps.cli.main
-
-# Run all tests
-uv run pytest
-
-# Run tests with coverage
-uv run pytest --cov=packages --cov=apps --cov-report=html
-```
-
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-02-27*
