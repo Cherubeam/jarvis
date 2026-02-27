@@ -69,6 +69,7 @@ class ConversationSearcher:
         n_results: int = 5,
         date_from: str | None = None,
         date_to: str | None = None,
+        deduplicate: bool = True,
     ) -> list[SearchResult]:
         """Embed query and return the top-n most similar conversation chunks.
 
@@ -77,12 +78,16 @@ class ConversationSearcher:
             n_results: Maximum number of results to return
             date_from: Optional start date filter (YYYY-MM-DD, inclusive)
             date_to: Optional end date filter (YYYY-MM-DD, inclusive)
+            deduplicate: Keep only the best result per conversation (default True)
 
         Returns:
             List of SearchResult sorted by relevance (closest first).
         """
         if self._collection.count() == 0:
             return []
+
+        # Over-fetch when deduplicating so we still have enough unique conversations
+        fetch_n = n_results * 3 if deduplicate else n_results
 
         # Embed the query
         embed_kwargs: dict = {
@@ -101,7 +106,7 @@ class ConversationSearcher:
 
         kwargs: dict = {
             "query_embeddings": [query_embedding],
-            "n_results": min(n_results, self._collection.count()),
+            "n_results": min(fetch_n, self._collection.count()),
             "include": ["documents", "metadatas", "distances"],
         }
         if where is not None:
@@ -131,7 +136,17 @@ class ConversationSearcher:
             key=lambda r: (round(r.distance, 2), _invert_date(r.session_date)),
         )
 
-        return search_results
+        # Per-conversation deduplication: keep only the best result per conv_id
+        if deduplicate:
+            seen_convs: set[str] = set()
+            deduped: list[SearchResult] = []
+            for r in search_results:
+                if r.conv_id not in seen_convs:
+                    seen_convs.add(r.conv_id)
+                    deduped.append(r)
+            search_results = deduped
+
+        return search_results[:n_results]
 
     def _build_where_filter(
         self,

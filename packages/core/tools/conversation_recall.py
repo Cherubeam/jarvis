@@ -32,10 +32,13 @@ def make_conversation_recall_tool(
         query: str,
         date_from: str | None = None,
         date_to: str | None = None,
+        n_results: int = 10,
     ) -> str:
+        # Clamp to [1, 20]
+        clamped = max(1, min(int(n_results), 20))
         results = searcher.search(
             query,
-            n_results=5,
+            n_results=clamped,
             date_from=date_from or None,
             date_to=date_to or None,
         )
@@ -71,6 +74,7 @@ def make_conversation_recall_tool(
             "IMPORTANT: When the user asks about a time period "
             "(this week, last month, yesterday, recently, etc.), "
             "you MUST set date_from and/or date_to to restrict results to that period. "
+            "For broad queries like weekly summaries, request more results with n_results. "
             "Returns excerpts from the most semantically similar past exchanges."
         ),
         parameters={
@@ -87,6 +91,11 @@ def make_conversation_recall_tool(
                 "date_to": {
                     "type": "string",
                     "description": "Optional end date filter (YYYY-MM-DD, inclusive).",
+                },
+                "n_results": {
+                    "type": "integer",
+                    "description": "Number of results to return (default 10, max 20).",
+                    "default": 10,
                 },
             },
             "required": ["query"],
