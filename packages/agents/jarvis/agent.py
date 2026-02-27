@@ -10,6 +10,7 @@ from pathlib import Path
 from packages.agents.base import BaseAgent, AgentConfig
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.context_builder import build_system_prompt
+from packages.core.tools.base import ToolDefinition
 from packages.core.tools.web_fetch import FETCH_URL_TOOL
 
 
@@ -30,6 +31,7 @@ class JarvisAgent(BaseAgent):
         context_dir: Path,
         system_prompt_prefix: str,
         model: str = "anthropic/claude-sonnet-4",
+        extra_tools: list[ToolDefinition] | None = None,
     ):
         """
         Initialize JARVIS.
@@ -39,16 +41,21 @@ class JarvisAgent(BaseAgent):
             context_dir: Path to context files
             system_prompt_prefix: Prefix for system prompt
             model: Model to use
+            extra_tools: Additional tools to register beyond the defaults
         """
         # Build system prompt from context
         system_prompt = build_system_prompt(context_dir, system_prompt_prefix)
+
+        tools = [FETCH_URL_TOOL]
+        if extra_tools:
+            tools.extend(extra_tools)
 
         config = AgentConfig(
             name="JARVIS",
             description="Personal AI assistant with context awareness",
             model=model,
             system_prompt=system_prompt,
-            tools=[FETCH_URL_TOOL],
+            tools=tools,
         )
 
         super().__init__(config, llm_client)

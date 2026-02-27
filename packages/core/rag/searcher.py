@@ -1,0 +1,121 @@
+"""
+Conversation searcher — semantic search over indexed conversations in ChromaDB.
+"""
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import litellm
+
+
+@dataclass
+class SearchResult:
+    """A single search result from ChromaDB."""
+    conv_id: str
+    session_date: str
+    document: str
+    user_snippet: str
+    assistant_snippet: str
+    title: str
+    distance: float
+
+
+class ConversationSearcher:
+    """Search indexed conversations by semantic similarity."""
+
+    def __init__(
+        self,
+        db_path: str | Path,
+        embedding_model: str,
+        api_key: str | None = None,
+    ):
+        import chromadb
+
+        self.db_path = Path(db_path)
+        self.embedding_model = embedding_model
+        self.api_key = api_key
+
+        self._client = chromadb.PersistentClient(path=str(self.db_path))
+        self._collection = self._client.get_or_create_collection(
+            name="conversations",
+            metadata={"hnsw:space": "cosine"},
+        )
+
+    def search(
+        self,
+        query: str,
+        n_results: int = 5,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> list[SearchResult]:
+        """Embed query and return the top-n most similar conversation chunks.
+
+        Args:
+            query: Natural-language search query
+            n_results: Maximum number of results to return
+            date_from: Optional start date filter (YYYY-MM-DD, inclusive)
+            date_to: Optional end date filter (YYYY-MM-DD, inclusive)
+
+        Returns:
+            List of SearchResult sorted by relevance (closest first).
+        """
+        if self._collection.count() == 0:
+            return []
+
+        # Embed the query
+        response = litellm.embedding(
+            model=self.embedding_model,
+            input=[query],
+            api_key=self.api_key,
+        )
+        query_embedding = response.data[0]["embedding"]
+
+        # Build optional date filter
+        where = self._build_where_filter(date_from, date_to)
+
+        kwargs: dict = {
+            "query_embeddings": [query_embedding],
+            "n_results": min(n_results, self._collection.count()),
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if where is not None:
+            kwargs["where"] = where
+
+        result = self._collection.query(**kwargs)
+
+        search_results: list[SearchResult] = []
+        documents = result.get("documents", [[]])[0]
+        metadatas = result.get("metadatas", [[]])[0]
+        distances = result.get("distances", [[]])[0]
+
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            search_results.append(SearchResult(
+                conv_id=meta.get("conv_id", ""),
+                session_date=meta.get("session_date", ""),
+                document=doc,
+                user_snippet=meta.get("user_snippet", ""),
+                assistant_snippet=meta.get("assistant_snippet", ""),
+                title=meta.get("title", ""),
+                distance=float(dist),
+            ))
+
+        return search_results
+
+    def _build_where_filter(
+        self,
+        date_from: str | None,
+        date_to: str | None,
+    ) -> dict | None:
+        """Build a ChromaDB metadata filter for date range."""
+        conditions = []
+
+        if date_from:
+            conditions.append({"session_date": {"$gte": date_from}})
+        if date_to:
+            conditions.append({"session_date": {"$lte": date_to}})
+
+        if not conditions:
+            return None
+        if len(conditions) == 1:
+            return conditions[0]
+        return {"$and": conditions}

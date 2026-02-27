@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Conversation Recall (RAG)**: Semantic search over past conversations via ChromaDB + LiteLLM embeddings
+  - `packages/core/rag/indexer.py`: `ConversationIndexer` — startup scan of `data/conversations/*.json`, incremental embedding + upsert to ChromaDB
+  - `packages/core/rag/searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — cosine similarity search with optional date filters
+  - `packages/core/tools/conversation_recall.py`: `make_conversation_recall_tool()` factory — produces a `recall_conversations` ToolDefinition backed by the searcher
+  - `JarvisAgent.__init__()`: new `extra_tools` parameter for injecting additional tools at construction
+  - `apps/cli/main.py`: RAG initialization block — indexes new conversations at startup, wires `recall_tool` into `JarvisAgent`
+  - `config/default.yaml`: new `rag:` section (`enabled`, `db_path`, `embedding_model`)
+  - `pyproject.toml`: new optional `[rag]` dependency group with `chromadb>=0.6.0`
+  - 27 new unit tests across `test_rag_indexer.py`, `test_rag_searcher.py`, `test_conversation_recall.py`
+  - Opt-in: set `rag.enabled: true` in `config/local.yaml` and `uv add chromadb`; disabled by default
+
 - **Tool Calling Infrastructure + Web Fetch**: LLM can now invoke tools via function calling
   - `packages/core/tools/base.py`: `ToolDefinition` dataclass and `ToolRegistry` class
   - `packages/core/tools/executor.py`: `execute_tool_calls()` — runs tool calls, returns formatted result messages

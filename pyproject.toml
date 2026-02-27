@@ -29,6 +29,9 @@ web = [
     "uvicorn>=0.34.0",
     "sse-starlette>=2.0.0",
 ]
+rag = [
+    "chromadb>=0.6.0",
+]
 
 [project.scripts]
 jarvis = "jarvis_cli:main"
