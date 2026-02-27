@@ -12,6 +12,25 @@ import litellm
 from packages.core.memory import ConversationLogger, _extract_text_from_content
 
 _EMBED_BATCH_SIZE = 64
+_MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
+_CHUNK_OVERLAP_CHARS = 2_400  # ~10 % of _MAX_EMBED_CHARS
+
+
+def _chunk_document(text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS) -> list[str]:
+    """Split *text* into overlapping windows of at most *max_chars* characters.
+
+    Short documents (≤ max_chars) are returned as-is in a single-element list.
+    """
+    if len(text) <= max_chars:
+        return [text]
+
+    step = max_chars - overlap
+    chunks: list[str] = []
+    start = 0
+    while start < len(text):
+        chunks.append(text[start : start + max_chars])
+        start += step
+    return chunks
 
 
 class ConversationIndexer:
@@ -63,7 +82,7 @@ class ConversationIndexer:
             if conv_id in already_indexed:
                 continue
 
-            pairs = self._extract_pairs(conversation)
+            pairs = self._extract_pairs(conversation, conv_id=conv_id)
             if not pairs:
                 continue
 
@@ -105,10 +124,10 @@ class ConversationIndexer:
 
         return data
 
-    def _extract_pairs(self, conversation: dict) -> list[dict]:
+    def _extract_pairs(self, conversation: dict, *, conv_id: str | None = None) -> list[dict]:
         """Build message-pair chunks from consecutive user+assistant turns."""
         messages = conversation.get("messages", [])
-        conv_id = conversation.get("id") or ""
+        conv_id = conv_id or conversation.get("id") or ""
         title = conversation.get("title") or ""
 
         # Extract session date from session_start or conv_id
@@ -147,18 +166,28 @@ class ConversationIndexer:
                     continue
 
                 doc = f"User: {user_text}\n\nAssistant: {assistant_text}"
-                pairs.append({
-                    "id": f"{conv_id}_pair_{pair_index}",
-                    "document": doc,
-                    "metadata": {
-                        "conv_id": conv_id,
-                        "session_date": session_date,
-                        "pair_index": pair_index,
-                        "user_snippet": user_text[:200],
-                        "assistant_snippet": assistant_text[:200],
-                        "title": title,
-                    },
-                })
+                chunks = _chunk_document(doc)
+                for chunk_idx, chunk in enumerate(chunks):
+                    if len(chunks) == 1:
+                        chunk_id = f"{conv_id}_pair_{pair_index}"
+                        chunk_meta = {}
+                    else:
+                        chunk_id = f"{conv_id}_pair_{pair_index}_chunk_{chunk_idx}"
+                        chunk_meta = {"chunk_index": chunk_idx, "total_chunks": len(chunks)}
+
+                    pairs.append({
+                        "id": chunk_id,
+                        "document": chunk,
+                        "metadata": {
+                            "conv_id": conv_id,
+                            "session_date": session_date,
+                            "pair_index": pair_index,
+                            "user_snippet": user_text[:200],
+                            "assistant_snippet": assistant_text[:200],
+                            "title": title,
+                            **chunk_meta,
+                        },
+                    })
                 pair_index += 1
             else:
                 i += 1

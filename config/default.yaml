@@ -65,11 +65,9 @@ evaluation:
 rag:
   enabled: false          # set to true in local.yaml to activate
   db_path: "data/rag/chroma"
-  embedding_model: "openai/text-embedding-3-small"
-  embedding_api_base: "https://openrouter.ai/api/v1"
+  embedding_model: "openrouter/openai/text-embedding-3-small"
   # Uses the same OPENROUTER_API_KEY already configured for chat.
-  # LiteLLM's openai/ prefix + api_base routes to OpenRouter's OpenAI-compatible
-  # embeddings endpoint without needing a separate OpenAI key.
+  # LiteLLM's openrouter/ prefix routes natively — no api_base needed.
 
 # Obsidian vault integration
 obsidian:

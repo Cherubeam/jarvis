@@ -7,6 +7,8 @@ from pathlib import Path
 
 import litellm
 
+_MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
+
 
 @dataclass
 class SearchResult:
@@ -67,7 +69,7 @@ class ConversationSearcher:
         # Embed the query
         embed_kwargs: dict = {
             "model": self.embedding_model,
-            "input": [query],
+            "input": [query[:_MAX_EMBED_CHARS]],
             "api_key": self.api_key,
             "encoding_format": "float",
         }
