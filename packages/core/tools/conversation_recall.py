@@ -16,6 +16,7 @@ def make_conversation_recall_tool(
     db_path: str | Path,
     embedding_model: str,
     api_key: str | None = None,
+    api_base: str | None = None,
 ) -> ToolDefinition:
     """Create and return a recall_conversations ToolDefinition.
 
@@ -24,7 +25,7 @@ def make_conversation_recall_tool(
     # Eagerly import to surface missing dependency at setup time, not at call time.
     from packages.core.rag.searcher import ConversationSearcher  # noqa: F401 (import check)
 
-    searcher = ConversationSearcher(db_path, embedding_model, api_key)
+    searcher = ConversationSearcher(db_path, embedding_model, api_key, api_base)
 
     def _recall(
         query: str,

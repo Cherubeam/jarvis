@@ -22,12 +22,14 @@ class ConversationIndexer:
         db_path: str | Path,
         embedding_model: str,
         api_key: str | None = None,
+        api_base: str | None = None,
     ):
         import chromadb
 
         self.db_path = Path(db_path)
         self.embedding_model = embedding_model
         self.api_key = api_key
+        self.api_base = api_base
 
         self.db_path.mkdir(parents=True, exist_ok=True)
         self._client = chromadb.PersistentClient(path=str(self.db_path))
@@ -165,11 +167,14 @@ class ConversationIndexer:
 
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts using LiteLLM."""
-        response = litellm.embedding(
-            model=self.embedding_model,
-            input=texts,
-            api_key=self.api_key,
-        )
+        kwargs: dict = {
+            "model": self.embedding_model,
+            "input": texts,
+            "api_key": self.api_key,
+        }
+        if self.api_base:
+            kwargs["api_base"] = self.api_base
+        response = litellm.embedding(**kwargs)
         return [item["embedding"] for item in response.data]
 
     def _get_indexed_conv_ids(self) -> set[str]:

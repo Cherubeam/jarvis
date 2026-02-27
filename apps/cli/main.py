@@ -289,17 +289,20 @@ def main(argv: list[str] | None = None):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
             db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-            embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
+            embedding_model = rag_cfg.get("embedding_model", "openai/text-embedding-3-small")
+            embedding_api_base = rag_cfg.get("embedding_api_base", "https://openrouter.ai/api/v1")
 
-            indexer = ConversationIndexer(db_path, embedding_model, api_key)
+            indexer = ConversationIndexer(db_path, embedding_model, api_key, embedding_api_base)
             n_new = indexer.index_new(conversations_dir)
             if n_new:
                 print(f"[RAG] Indexed {n_new} new conversation(s).")
 
-            recall_tool = make_conversation_recall_tool(db_path, embedding_model, api_key)
+            recall_tool = make_conversation_recall_tool(db_path, embedding_model, api_key, embedding_api_base)
             extra_tools.append(recall_tool)
         except ImportError:
             print("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
+        except Exception as e:
+            print(f"[RAG] Startup failed — recall disabled. ({e})")
 
     # Build the active agent
     if args.agent:

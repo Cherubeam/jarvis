@@ -64,8 +64,9 @@ class TestExtractPairs:
             from packages.core.rag.indexer import ConversationIndexer
             indexer = ConversationIndexer.__new__(ConversationIndexer)
             indexer.db_path = Path("/tmp/fake_rag")
-            indexer.embedding_model = "openrouter/openai/text-embedding-3-small"
+            indexer.embedding_model = "openai/text-embedding-3-small"
             indexer.api_key = None
+            indexer.api_base = None
             indexer._client = mock_chroma.PersistentClient.return_value
             indexer._collection = mock_collection
             return indexer
@@ -207,6 +208,7 @@ class TestIndexNew:
             indexer.db_path = tmp_path / "chroma"
             indexer.embedding_model = "test-model"
             indexer.api_key = None
+            indexer.api_base = None
             indexer._client = mock_chroma_module.PersistentClient.return_value
             indexer._collection = mock_collection
 

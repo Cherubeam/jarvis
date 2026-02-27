@@ -940,6 +940,7 @@ name = "jarvis"
 version = "0.4.0"
 source = { editable = "." }
 dependencies = [
+    { name = "chromadb" },
     { name = "httpx" },
     { name = "litellm" },
     { name = "mcp" },
@@ -970,6 +971,7 @@ web = [
 
 [package.metadata]
 requires-dist = [
+    { name = "chromadb", specifier = ">=1.5.1" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.6.0" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115.0" },
     { name = "freezegun", marker = "extra == 'test'", specifier = ">=1.4.0" },

@@ -28,12 +28,14 @@ class ConversationSearcher:
         db_path: str | Path,
         embedding_model: str,
         api_key: str | None = None,
+        api_base: str | None = None,
     ):
         import chromadb
 
         self.db_path = Path(db_path)
         self.embedding_model = embedding_model
         self.api_key = api_key
+        self.api_base = api_base
 
         self._client = chromadb.PersistentClient(path=str(self.db_path))
         self._collection = self._client.get_or_create_collection(
@@ -63,11 +65,14 @@ class ConversationSearcher:
             return []
 
         # Embed the query
-        response = litellm.embedding(
-            model=self.embedding_model,
-            input=[query],
-            api_key=self.api_key,
-        )
+        embed_kwargs: dict = {
+            "model": self.embedding_model,
+            "input": [query],
+            "api_key": self.api_key,
+        }
+        if self.api_base:
+            embed_kwargs["api_base"] = self.api_base
+        response = litellm.embedding(**embed_kwargs)
         query_embedding = response.data[0]["embedding"]
 
         # Build optional date filter

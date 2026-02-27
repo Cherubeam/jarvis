@@ -24,6 +24,7 @@ def _make_searcher(tmp_path: Path, collection_count: int = 3):
         searcher.db_path = tmp_path / "chroma"
         searcher.embedding_model = "test-model"
         searcher.api_key = None
+        searcher.api_base = None
         searcher._client = mock_chroma_module.PersistentClient.return_value
         searcher._collection = mock_collection
 
