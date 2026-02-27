@@ -16,6 +16,14 @@ _MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 t
 _CHUNK_OVERLAP_CHARS = 2_400  # ~10 % of _MAX_EMBED_CHARS
 
 
+def _date_str_to_int(date_str: str) -> int:
+    """Convert 'YYYY-MM-DD' → YYYYMMDD integer for ChromaDB numeric filtering."""
+    try:
+        return int(date_str.replace("-", ""))
+    except (ValueError, AttributeError):
+        return 0
+
+
 def _chunk_document(text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS) -> list[str]:
     """Split *text* into overlapping windows of at most *max_chars* characters.
 
@@ -66,6 +74,7 @@ class ConversationIndexer:
         if not conversations_dir.exists():
             return 0
 
+        self._migrate_date_metadata()
         already_indexed = self._get_indexed_conv_ids()
 
         new_count = 0
@@ -181,6 +190,7 @@ class ConversationIndexer:
                         "metadata": {
                             "conv_id": conv_id,
                             "session_date": session_date,
+                            "session_date_int": _date_str_to_int(session_date),
                             "pair_index": pair_index,
                             "user_snippet": user_text[:200],
                             "assistant_snippet": assistant_text[:200],
@@ -206,6 +216,25 @@ class ConversationIndexer:
             kwargs["api_base"] = self.api_base
         response = litellm.embedding(**kwargs)
         return [item["embedding"] for item in response.data]
+
+    def _migrate_date_metadata(self) -> None:
+        """Add session_date_int to records that are missing it (one-time migration)."""
+        if self._collection.count() == 0:
+            return
+
+        result = self._collection.get(include=["metadatas"])
+        ids_to_update: list[str] = []
+        metas_to_update: list[dict] = []
+
+        for doc_id, meta in zip(result["ids"], result["metadatas"]):
+            if meta.get("session_date_int"):
+                continue
+            session_date = meta.get("session_date", "")
+            ids_to_update.append(doc_id)
+            metas_to_update.append({**meta, "session_date_int": _date_str_to_int(session_date)})
+
+        if ids_to_update:
+            self._collection.update(ids=ids_to_update, metadatas=metas_to_update)
 
     def _get_indexed_conv_ids(self) -> set[str]:
         """Return the set of conv_ids already in the ChromaDB collection."""

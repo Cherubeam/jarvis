@@ -157,6 +157,7 @@ class TestExtractPairs:
         pairs = indexer._extract_pairs(conv)
 
         assert pairs[0]["metadata"]["session_date"] == "2026-02-20"
+        assert pairs[0]["metadata"]["session_date_int"] == 20260220
 
     def test_session_date_falls_back_to_conv_id(self):
         indexer = self._make_indexer()
@@ -169,6 +170,7 @@ class TestExtractPairs:
         pairs = indexer._extract_pairs(conv)
 
         assert pairs[0]["metadata"]["session_date"] == "2026-03-15"
+        assert pairs[0]["metadata"]["session_date_int"] == 20260315
 
     def test_snippets_capped_at_200_chars(self):
         indexer = self._make_indexer()
@@ -287,9 +289,10 @@ class TestIndexNew:
         mock_collection = MagicMock()
         mock_collection.count.return_value = len(already_indexed_ids or [])
 
-        # Simulate _get_indexed_conv_ids returning the pre-existing set
-        existing_metas = [{"conv_id": cid} for cid in (already_indexed_ids or [])]
-        mock_collection.get.return_value = {"metadatas": existing_metas}
+        # Simulate _get_indexed_conv_ids and _migrate_date_metadata returning the pre-existing set
+        existing_ids = [f"id_{i}" for i in range(len(already_indexed_ids or []))]
+        existing_metas = [{"conv_id": cid, "session_date": "2026-01-01", "session_date_int": 20260101} for cid in (already_indexed_ids or [])]
+        mock_collection.get.return_value = {"ids": existing_ids, "metadatas": existing_metas}
         mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
@@ -415,6 +418,56 @@ class TestIndexNew:
 
         assert n_new == 0
         mock_embed.assert_not_called()
+
+    def test_migrate_adds_session_date_int_to_existing_records(self, tmp_path):
+        """_migrate_date_metadata should add session_date_int to records that lack it."""
+        mock_chroma_module = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 2
+        # Simulate existing records WITHOUT session_date_int
+        mock_collection.get.return_value = {
+            "ids": ["id_0", "id_1"],
+            "metadatas": [
+                {"conv_id": "conv_a", "session_date": "2026-02-20"},
+                {"conv_id": "conv_b", "session_date": "2026-01-15"},
+            ],
+        }
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
+            from packages.core.rag.indexer import ConversationIndexer
+            indexer = ConversationIndexer.__new__(ConversationIndexer)
+            indexer._collection = mock_collection
+
+        indexer._migrate_date_metadata()
+
+        mock_collection.update.assert_called_once()
+        call_kwargs = mock_collection.update.call_args[1]
+        assert call_kwargs["ids"] == ["id_0", "id_1"]
+        assert call_kwargs["metadatas"][0]["session_date_int"] == 20260220
+        assert call_kwargs["metadatas"][1]["session_date_int"] == 20260115
+
+    def test_migrate_skips_records_that_already_have_date_int(self, tmp_path):
+        """_migrate_date_metadata should not update records that already have session_date_int."""
+        mock_chroma_module = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 1
+        mock_collection.get.return_value = {
+            "ids": ["id_0"],
+            "metadatas": [
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "session_date_int": 20260220},
+            ],
+        }
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
+            from packages.core.rag.indexer import ConversationIndexer
+            indexer = ConversationIndexer.__new__(ConversationIndexer)
+            indexer._collection = mock_collection
+
+        indexer._migrate_date_metadata()
+
+        mock_collection.update.assert_not_called()
 
     def test_indexes_only_new_among_multiple(self, tmp_path):
         indexer, mock_collection = self._setup(

@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from packages.core.rag.searcher import _MAX_EMBED_CHARS, _invert_date
+from packages.core.rag.searcher import _MAX_EMBED_CHARS, _date_str_to_int, _invert_date
 
 
 # ---------------------------------------------------------------------------
@@ -71,20 +71,20 @@ class TestBuildWhereFilter:
     def test_date_from_only(self, tmp_path):
         s = self._searcher(tmp_path)
         result = s._build_where_filter("2026-02-01", None)
-        assert result == {"session_date": {"$gte": "2026-02-01"}}
+        assert result == {"session_date_int": {"$gte": 20260201}}
 
     def test_date_to_only(self, tmp_path):
         s = self._searcher(tmp_path)
         result = s._build_where_filter(None, "2026-02-28")
-        assert result == {"session_date": {"$lte": "2026-02-28"}}
+        assert result == {"session_date_int": {"$lte": 20260228}}
 
     def test_both_dates_produces_and_filter(self, tmp_path):
         s = self._searcher(tmp_path)
         result = s._build_where_filter("2026-02-01", "2026-02-28")
         assert result == {
             "$and": [
-                {"session_date": {"$gte": "2026-02-01"}},
-                {"session_date": {"$lte": "2026-02-28"}},
+                {"session_date_int": {"$gte": 20260201}},
+                {"session_date_int": {"$lte": 20260228}},
             ]
         }
 
@@ -222,6 +222,18 @@ class TestSearch:
 # ---------------------------------------------------------------------------
 # _invert_date helper
 # ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestDateStrToInt:
+    def test_converts_iso_date(self):
+        assert _date_str_to_int("2026-02-27") == 20260227
+
+    def test_empty_string_returns_zero(self):
+        assert _date_str_to_int("") == 0
+
+    def test_none_returns_zero(self):
+        assert _date_str_to_int(None) == 0
+
 
 @pytest.mark.unit
 class TestInvertDate:

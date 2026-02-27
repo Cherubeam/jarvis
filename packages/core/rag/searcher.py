@@ -10,6 +10,14 @@ import litellm
 _MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
 
 
+def _date_str_to_int(date_str: str) -> int:
+    """Convert 'YYYY-MM-DD' → YYYYMMDD integer for ChromaDB numeric filtering."""
+    try:
+        return int(date_str.replace("-", ""))
+    except (ValueError, AttributeError):
+        return 0
+
+
 def _invert_date(session_date: str) -> str:
     """Return a string that sorts *descending* by date when sorted ascending.
 
@@ -130,13 +138,17 @@ class ConversationSearcher:
         date_from: str | None,
         date_to: str | None,
     ) -> dict | None:
-        """Build a ChromaDB metadata filter for date range."""
+        """Build a ChromaDB metadata filter for date range.
+
+        Uses session_date_int (YYYYMMDD integer) because ChromaDB's
+        $gte/$lte operators only work with numeric types.
+        """
         conditions = []
 
         if date_from:
-            conditions.append({"session_date": {"$gte": date_from}})
+            conditions.append({"session_date_int": {"$gte": _date_str_to_int(date_from)}})
         if date_to:
-            conditions.append({"session_date": {"$lte": date_to}})
+            conditions.append({"session_date_int": {"$lte": _date_str_to_int(date_to)}})
 
         if not conditions:
             return None
