@@ -1258,4 +1258,90 @@ JARVIS always has a non-empty `ToolRegistry` (contains `FETCH_URL_TOOL`), so `_r
 
 ---
 
+## ADR-016: Conversation Recall via ChromaDB + LiteLLM Embeddings (RAG)
+
+**Date**: 2026-02-27
+**Status**: ✅ Accepted
+
+### Context
+
+Jarvis stores every session as a JSON file in `data/conversations/` (153+ files). When the user asks "what did we discuss this week?" or "remind me what we decided about X", the assistant has no access to any prior session. All historical context is lost.
+
+### Decision
+
+Add a `recall_conversations` tool backed by **ChromaDB** (local persistent vector store) and **LiteLLM embeddings** (via the existing OpenRouter key) that plugs into the agentic loop introduced in ADR-015.
+
+**Architecture:**
+
+1. At startup, `ConversationIndexer` scans `data/conversations/*.json`, skips already-indexed conv_ids, embeds new message-pair chunks, and upserts them into ChromaDB's `"conversations"` collection.
+2. At runtime, the LLM can call `recall_conversations(query, date_from?, date_to?)`. `ConversationSearcher` embeds the query, does a cosine similarity lookup in ChromaDB, and returns formatted snippets back to the LLM.
+
+**Chunking strategy — message pairs:**
+
+Each chunk is a consecutive user + assistant exchange:
+
+```
+User: <user turn text>
+Assistant: <assistant turn text>
+```
+
+This preserves the full conversational context — the question and its answer together — which is more semantically meaningful than indexing individual messages.
+
+**Key implementation details:**
+- `chromadb>=0.6.0` in optional `[rag]` dependency group (not installed by default)
+- Embedding model: `openrouter/openai/text-embedding-3-small` (cheap, fast, good quality)
+- LiteLLM routes to OpenRouter using the existing `OPENROUTER_API_KEY`
+- ChromaDB persisted at `data/rag/chroma/` (gitignored)
+- `rag.enabled: false` in `default.yaml` — user opts in via `local.yaml`
+- Startup indexing is incremental: already-indexed conv_ids are skipped
+
+### Alternatives Considered
+
+1. **Full-text keyword search (grep over JSON)**
+   - ✅ Zero dependencies, works offline
+   - ❌ No semantic understanding — misses synonyms, paraphrases
+   - ❌ 'What did we talk about this week?' requires date-sorted grep, not semantic matching
+   - ❌ Doesn't scale gracefully with 1,000+ conversations
+
+2. **In-context window stuffing** (inject recent conversations into system prompt)
+   - ✅ Simple, no new dependencies
+   - ❌ Context window limits: even at 200K tokens, 153 full conversations don't fit
+   - ❌ Noisy: injects irrelevant conversations alongside relevant ones
+   - ❌ Quadratic cost growth as conversation count grows
+
+3. **SQLite FTS (full-text search)**
+   - ✅ Local, fast, no API calls for indexing
+   - ❌ Keyword-only, no semantic search
+   - ❌ Adds an FTS schema maintenance burden
+
+4. **Local embeddings (sentence-transformers)**
+   - ✅ Fully offline, no embedding API cost
+   - ❌ Requires ~100-500MB model download
+   - ❌ PyTorch dependency is heavy and platform-specific
+   - ⚠️ Can be added later as a config option if offline use becomes a priority
+
+### Consequences
+
+**Benefits:**
+- ✅ Semantic recall: 'what did we discuss about the digital twin?' finds relevant sessions even if exact words differ
+- ✅ Incremental: startup overhead is proportional to *new* conversations only
+- ✅ Optional: disabled by default; no impact on users who don't enable it
+- ✅ Reuses existing OpenRouter API key — no new credentials
+- ✅ `data/rag/chroma/` is gitignored — no accidental commit of indexed personal data
+
+**Drawbacks:**
+- ⚠️ Requires `uv add chromadb` and `rag.enabled: true` — not zero-config
+- ⚠️ Embedding API calls cost money (text-embedding-3-small: ~$0.02/1M tokens — minimal for personal use)
+- ⚠️ Embedding provider dependency: if OpenRouter changes its embeddings API, the model string needs updating
+
+**Mitigation:**
+- Opt-in design keeps the default path clean
+- Local embedding support is a future option via config (`embedding_model: 'ollama/...'`)
+
+### Related
+- Extends: ADR-015 (Tool Calling — tools are the runtime hook for recall)
+- Extends: ADR-003 (LiteLLM — reused for embedding() calls)
+
+---
+
 *Last updated: 2026-02-27*

@@ -61,6 +61,16 @@ evaluation:
   max_cost_per_run: 1.00  # USD, abort if exceeded
   warn_cost_threshold: 0.50  # USD, warn but continue
 
+# RAG — Conversation recall via ChromaDB + LiteLLM embeddings
+rag:
+  enabled: false          # set to true in local.yaml to activate
+  db_path: "data/rag/chroma"
+  embedding_model: "openai/text-embedding-3-small"
+  embedding_api_base: "https://openrouter.ai/api/v1"
+  # Uses the same OPENROUTER_API_KEY already configured for chat.
+  # LiteLLM's openai/ prefix + api_base routes to OpenRouter's OpenAI-compatible
+  # embeddings endpoint without needing a separate OpenAI key.
+
 # Obsidian vault integration
 obsidian:
   enabled: false

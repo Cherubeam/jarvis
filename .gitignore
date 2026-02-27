@@ -21,6 +21,7 @@ backup/
 data/context/
 data/conversations/
 data/learned_facts.md
+data/rag/
 imports/
 
 # Local config overrides (keep default.yaml, ignore local overrides)

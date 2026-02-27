@@ -320,7 +320,49 @@ User types: /daily-summary
 
 ---
 
-### 8. Pricing (`packages/core/pricing.py`)
+### 8. RAG / Conversation Recall (`packages/core/rag/`)
+
+**Purpose**: Semantic search over past conversations via ChromaDB vector storage.
+
+**Location**: `packages/core/rag/`
+
+**Modules:**
+- `indexer.py`: `ConversationIndexer` — scans `data/conversations/*.json`, skips already-indexed conv_ids, embeds message-pair chunks via LiteLLM, upserts into ChromaDB
+- `searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — embeds a query, runs cosine similarity search, returns ranked results with optional date range filter
+
+**Tool Integration:**
+- `packages/core/tools/conversation_recall.py`: `make_conversation_recall_tool()` factory — wraps a `ConversationSearcher` in a `ToolDefinition` callable by the LLM
+- LLM calls: `recall_conversations(query, date_from?, date_to?)`
+
+**Chunking Strategy:**
+Message-pair chunks (user + assistant turns together) preserve conversational context and are more semantically coherent than individual messages.
+
+**ChromaDB Document Schema:**
+
+| Field | Value |
+|---|---|
+| `id` | `{conv_id}_pair_{n}` |
+| `document` | `"User: {text}\n\nAssistant: {text}"` |
+| `metadata.conv_id` | e.g. `"conv_20260226_112019_dfa2a9"` |
+| `metadata.session_date` | `"YYYY-MM-DD"` (for date range filters) |
+| `metadata.pair_index` | 0-based int |
+| `metadata.user_snippet` | first 200 chars of user turn |
+| `metadata.assistant_snippet` | first 200 chars of assistant turn |
+| `metadata.title` | conversation title or `""` |
+
+**Configuration** (`config/default.yaml`):
+```yaml
+rag:
+  enabled: false
+  db_path: "data/rag/chroma"
+  embedding_model: "openrouter/openai/text-embedding-3-small"
+```
+
+**Opt-in**: Disabled by default. Enable with `rag.enabled: true` in `local.yaml` and `uv add chromadb`.
+
+---
+
+### 9. Pricing (`packages/core/pricing.py`)
 
 **Purpose**: Track LLM costs across providers.
 
@@ -400,11 +442,16 @@ User types: /daily-summary
    ↓
 4. Initialize LLM client
    ↓
-5. Fetch pricing data (async)
+5. RAG initialization (if rag.enabled: true)
+   ├─ ConversationIndexer.index_new(conversations_dir)
+   │   Embed + upsert any new conversation files
+   └─ make_conversation_recall_tool() → extra_tools
    ↓
-6. Display startup info (model, pricing)
+6. Fetch pricing data (async)
    ↓
-7. Enter chat loop
+7. Display startup info (model, pricing)
+   ↓
+8. Enter chat loop
 ```
 
 ---
@@ -428,6 +475,14 @@ jarvis/
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── stream_handler.py       # Streaming + metrics + cost
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
+│   │   ├── rag/                    # Conversation recall (RAG)
+│   │   │   ├── indexer.py          # ConversationIndexer
+│   │   │   └── searcher.py         # ConversationSearcher + SearchResult
+│   │   ├── tools/                  # Function calling tools
+│   │   │   ├── base.py             # ToolDefinition + ToolRegistry
+│   │   │   ├── executor.py         # execute_tool_calls()
+│   │   │   ├── web_fetch.py        # fetch_url tool
+│   │   │   └── conversation_recall.py  # make_conversation_recall_tool()
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
@@ -469,6 +524,8 @@ jarvis/
 │   │   └── projects/               # Project-specific context
 │   ├── conversations/              # Session logs (gitignored)
 │   │   └── YYYY-MM-DD_HH-MM-SS.json
+│   ├── rag/                        # RAG vector store (gitignored)
+│   │   └── chroma/                 # ChromaDB persistent data
 │   ├── prompts/                    # LLM prompt templates
 │   │   └── obsidian/              # Obsidian-specific prompts
 │   └── learned_facts.md            # (Future) Extracted facts
@@ -539,10 +596,12 @@ jarvis/
 **Phase A (Current):**
 - Direct AppleScript - Things 3 task sync (no additional deps)
 
+**Optional:**
+- `chromadb` - Vector storage for conversation recall (via `uv add chromadb`, `rag.enabled: true`)
+
 **Future:**
 - `mcp` - Model Context Protocol SDK (Phase B: interactive task management)
-- `chromadb` or `faiss` - Vector storage (Phase 4)
-- `sentence-transformers` - Local embeddings (Phase 4)
+- `sentence-transformers` - Local embeddings (alternative to API embeddings)
 - `textual` - TUI (Phase 7)
 
 ---
@@ -633,4 +692,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-27*
