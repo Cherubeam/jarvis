@@ -141,6 +141,38 @@ chflags nohidden .venv/lib/python3.13/site-packages/_jarvis.pth
 rm -rf .venv && uv sync
 ```
 
+### Importing Conversations
+
+```bash
+# ChatGPT
+uv run python scripts/import_chatgpt.py imports/conversations.json --dry-run
+uv run python scripts/import_chatgpt.py imports/conversations.json
+uv run python scripts/import_chatgpt.py imports/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
+
+# Claude conversations
+uv run python scripts/import_claude.py imports/conversations.json --dry-run
+uv run python scripts/import_claude.py imports/conversations.json
+uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
+
+# Claude context (memories + projects)
+uv run python scripts/import_claude_context.py --dry-run
+uv run python scripts/import_claude_context.py
+uv run python scripts/import_claude_context.py --memories imports/memories.json --projects imports/projects.json
+```
+
+Imports are idempotent — re-running skips already-imported conversations.
+
+### Switching LLM Providers
+
+Edit `config/default.yaml` or `config/local.yaml`:
+
+```yaml
+openrouter:
+  default_model: "anthropic/claude-sonnet-4.5"  # Change to desired model
+```
+
+See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration.
+
 ## Project Structure
 
 ```
