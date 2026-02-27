@@ -197,6 +197,84 @@ class TestSearch:
         assert results[1].conv_id == "c_mid"
         assert results[2].conv_id == "c_old"
 
+    def test_dedup_keeps_best_per_conv_id(self, tmp_path):
+        """With deduplicate=True (default), only the best result per conv_id is kept."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=6)
+
+        # Two conversations, each with 3 chunks at varying distances
+        chroma_result = {
+            "documents": [["doc_a1", "doc_a2", "doc_a3", "doc_b1", "doc_b2", "doc_b3"]],
+            "metadatas": [[
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
+            ]],
+            "distances": [[0.01, 0.05, 0.10, 0.02, 0.06, 0.11]],
+        }
+        mock_collection.query.return_value = chroma_result
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            results = searcher.search("test query", n_results=5)
+
+        # Should have exactly 2 results (one per conv_id)
+        assert len(results) == 2
+        conv_ids = [r.conv_id for r in results]
+        assert "conv_a" in conv_ids
+        assert "conv_b" in conv_ids
+        # Best from conv_a (dist 0.01) should come first
+        assert results[0].conv_id == "conv_a"
+        assert results[0].document == "doc_a1"
+
+    def test_dedup_disabled_returns_all(self, tmp_path):
+        """With deduplicate=False, multiple results from the same conv are kept."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=4)
+
+        chroma_result = {
+            "documents": [["doc1", "doc2", "doc3", "doc4"]],
+            "metadatas": [[
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
+            ]],
+            "distances": [[0.01, 0.02, 0.03, 0.04]],
+        }
+        mock_collection.query.return_value = chroma_result
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            results = searcher.search("test query", n_results=4, deduplicate=False)
+
+        assert len(results) == 4
+
+    def test_over_fetch_multiplier_when_deduplicating(self, tmp_path):
+        """When deduplicate=True, ChromaDB should be asked for n_results*3."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=100)
+        mock_collection.query.return_value = _fake_chroma_result(2)
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            searcher.search("query", n_results=5, deduplicate=True)
+
+        call_kwargs = mock_collection.query.call_args[1]
+        assert call_kwargs["n_results"] == 15  # 5 * 3
+
+    def test_no_over_fetch_when_dedup_disabled(self, tmp_path):
+        """When deduplicate=False, ChromaDB should be asked for exactly n_results."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=100)
+        mock_collection.query.return_value = _fake_chroma_result(2)
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            searcher.search("query", n_results=5, deduplicate=False)
+
+        call_kwargs = mock_collection.query.call_args[1]
+        assert call_kwargs["n_results"] == 5
+
     def test_distance_still_dominates_over_recency(self, tmp_path):
         """A clearly closer result should rank first even if it's older."""
         searcher, mock_collection = _make_searcher(tmp_path, collection_count=2)

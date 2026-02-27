@@ -125,6 +125,9 @@ class TestRecallToolOutput:
         assert "query" in tool.parameters["properties"]
         assert "date_from" in tool.parameters["properties"]
         assert "date_to" in tool.parameters["properties"]
+        assert "n_results" in tool.parameters["properties"]
+        assert tool.parameters["properties"]["n_results"]["type"] == "integer"
+        assert tool.parameters["properties"]["n_results"]["default"] == 10
         assert tool.parameters["required"] == ["query"]
         assert callable(tool.execute)
 
