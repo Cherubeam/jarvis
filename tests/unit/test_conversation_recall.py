@@ -3,6 +3,8 @@ Unit tests for the make_conversation_recall_tool factory.
 """
 
 import sys
+from datetime import date
+
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -125,6 +127,21 @@ class TestRecallToolOutput:
         assert "date_to" in tool.parameters["properties"]
         assert tool.parameters["required"] == ["query"]
         assert callable(tool.execute)
+
+    def test_description_contains_todays_date(self, tmp_path):
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            from packages.core.tools.conversation_recall import make_conversation_recall_tool
+            tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
+
+        today = date.today().isoformat()
+        assert today in tool.description
+        assert "date_from" in tool.description
+        assert "date_to" in tool.description
 
     def test_no_results_returns_friendly_message(self, tmp_path):
         mock_chroma = MagicMock()

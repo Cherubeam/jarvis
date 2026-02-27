@@ -10,6 +10,16 @@ import litellm
 _MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
 
 
+def _invert_date(session_date: str) -> str:
+    """Return a string that sorts *descending* by date when sorted ascending.
+
+    We negate lexicographic order by replacing each digit d with 9-d.
+    E.g. "2026-02-27" → "7973-97-72".  This avoids importing datetime
+    and handles any ISO-8601 date string.
+    """
+    return "".join(chr(ord("9") - ord(c) + ord("0")) if c.isdigit() else c for c in session_date)
+
+
 @dataclass
 class SearchResult:
     """A single search result from ChromaDB."""
@@ -106,6 +116,12 @@ class ConversationSearcher:
                 title=meta.get("title", ""),
                 distance=float(dist),
             ))
+
+        # Recency tiebreaker: bucket distances to 2 decimal places so that
+        # results with similar relevance are ordered newest-first.
+        search_results.sort(
+            key=lambda r: (round(r.distance, 2), _invert_date(r.session_date)),
+        )
 
         return search_results
 

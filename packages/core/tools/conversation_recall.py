@@ -5,6 +5,7 @@ Factory function that creates a ToolDefinition backed by ConversationSearcher.
 Lazy-imports chromadb so the module is importable even without the rag extra.
 """
 
+from datetime import date
 from pathlib import Path
 
 from packages.core.tools.base import ToolDefinition
@@ -66,8 +67,10 @@ def make_conversation_recall_tool(
         name="recall_conversations",
         description=(
             "Search past conversations for relevant context. "
-            "Use this when the user asks about previous discussions, "
-            "what was talked about before, or needs context from earlier sessions. "
+            f"Today is {date.today().isoformat()}. "
+            "IMPORTANT: When the user asks about a time period "
+            "(this week, last month, yesterday, recently, etc.), "
+            "you MUST set date_from and/or date_to to restrict results to that period. "
             "Returns excerpts from the most semantically similar past exchanges."
         ),
         parameters={

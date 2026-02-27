@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from packages.core.rag.searcher import _MAX_EMBED_CHARS
+from packages.core.rag.searcher import _MAX_EMBED_CHARS, _invert_date
 
 
 # ---------------------------------------------------------------------------
@@ -170,3 +170,66 @@ class TestSearch:
         call_kwargs = mock_embed.call_args
         texts_sent = call_kwargs.kwargs.get("input") or call_kwargs[1].get("input")
         assert all(len(t) <= _MAX_EMBED_CHARS for t in texts_sent)
+
+    def test_recency_tiebreaker_prefers_newer_at_same_distance(self, tmp_path):
+        """When two results have the same bucketed distance, the newer one should come first."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=3)
+
+        # Three results with distances that round to the same bucket (0.05)
+        chroma_result = {
+            "documents": [["doc old", "doc mid", "doc new"]],
+            "metadatas": [[
+                {"conv_id": "c_old", "session_date": "2026-01-10", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "c_mid", "session_date": "2026-02-15", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "c_new", "session_date": "2026-02-27", "user_snippet": "", "assistant_snippet": "", "title": ""},
+            ]],
+            "distances": [[0.051, 0.054, 0.052]],  # all round to 0.05
+        }
+        mock_collection.query.return_value = chroma_result
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            results = searcher.search("test query")
+
+        assert len(results) == 3
+        # Newest first within same distance bucket
+        assert results[0].conv_id == "c_new"
+        assert results[1].conv_id == "c_mid"
+        assert results[2].conv_id == "c_old"
+
+    def test_distance_still_dominates_over_recency(self, tmp_path):
+        """A clearly closer result should rank first even if it's older."""
+        searcher, mock_collection = _make_searcher(tmp_path, collection_count=2)
+
+        chroma_result = {
+            "documents": [["doc close old", "doc far new"]],
+            "metadatas": [[
+                {"conv_id": "c_close", "session_date": "2026-01-01", "user_snippet": "", "assistant_snippet": "", "title": ""},
+                {"conv_id": "c_far", "session_date": "2026-02-27", "user_snippet": "", "assistant_snippet": "", "title": ""},
+            ]],
+            "distances": [[0.02, 0.15]],  # different buckets
+        }
+        mock_collection.query.return_value = chroma_result
+
+        with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            results = searcher.search("test query")
+
+        assert results[0].conv_id == "c_close"
+        assert results[1].conv_id == "c_far"
+
+
+# ---------------------------------------------------------------------------
+# _invert_date helper
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestInvertDate:
+    def test_inverts_digits(self):
+        assert _invert_date("2026-02-27") == "7973-97-72"
+
+    def test_preserves_sort_order(self):
+        dates = ["2026-01-10", "2026-02-15", "2026-02-27"]
+        inverted = [_invert_date(d) for d in dates]
+        # Ascending inverted should give descending original dates
+        assert sorted(inverted) == [_invert_date("2026-02-27"), _invert_date("2026-02-15"), _invert_date("2026-01-10")]
