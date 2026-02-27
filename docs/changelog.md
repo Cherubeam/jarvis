@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Tool Calling Infrastructure + Web Fetch**: LLM can now invoke tools via function calling
+  - `packages/core/tools/base.py`: `ToolDefinition` dataclass and `ToolRegistry` class
+  - `packages/core/tools/executor.py`: `execute_tool_calls()` — runs tool calls, returns formatted result messages
+  - `packages/core/tools/web_fetch.py`: `fetch_url` tool using `httpx` + `trafilatura` for clean article extraction
+    - 10s timeout, `follow_redirects=True`, 50KB content cap with truncation notice
+    - All errors (timeout, HTTP, network) returned as strings so LLM can reason about them
+  - `LLMClient.complete()`: non-streaming completion for agentic loop intermediate calls
+  - `StreamHandler.stream(tool_registry=...)`: agentic loop (max 5 iterations) — non-streaming tool calls then streaming final answer
+  - `JarvisAgent` now wires `FETCH_URL_TOOL` into its `AgentConfig.tools` list
+  - Backward compatible: no tool registry → existing code path unchanged
+  - 26 new unit tests across `test_tools_base.py`, `test_tools_executor.py`, `test_web_fetch.py`, plus additions to `test_stream_handler.py`
+  - Dependencies added: `httpx`, `trafilatura`
+
+### Changed
+- **`AgentConfig.tools`**: Type changed from `list[str]` → `list[ToolDefinition]`; `BaseAgent.__init__` builds `ToolRegistry` from config tools; `to_dict()` serializes as tool names
+- **`StreamHandler.stream()`**: Accepts optional `tool_registry` parameter (default `None` — fully backward compatible)
+- **`BaseAgent.run()`**: Passes `tool_registry` to `stream_handler.stream()` when tools are registered
+
+### Added
 - **Agent Framework**: Wired agent layer into CLI with slash-command routing and standalone mode
   - `StreamHandler` class extracted from `main.py` into `packages/core/stream_handler.py`
   - `BaseAgent.run()` method — primary entry point for agent execution with streaming
@@ -531,4 +550,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-27*

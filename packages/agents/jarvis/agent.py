@@ -5,10 +5,12 @@ This is the primary agent that coordinates other agents and handles
 direct user interactions. It can delegate tasks to specialized agents.
 """
 
+from pathlib import Path
+
 from packages.agents.base import BaseAgent, AgentConfig
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.context_builder import build_system_prompt
-from pathlib import Path
+from packages.core.tools.web_fetch import FETCH_URL_TOOL
 
 
 class JarvisAgent(BaseAgent):
@@ -46,7 +48,7 @@ class JarvisAgent(BaseAgent):
             description="Personal AI assistant with context awareness",
             model=model,
             system_prompt=system_prompt,
-            tools=[],  # Will be populated when function calling is added
+            tools=[FETCH_URL_TOOL],
         )
 
         super().__init__(config, llm_client)

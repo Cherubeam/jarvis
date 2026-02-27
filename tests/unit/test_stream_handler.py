@@ -131,3 +131,116 @@ class TestStreamHandler:
         handler.stream(messages)
 
         client.chat_stream.assert_called_once_with(messages)
+
+
+# ---------------------------------------------------------------------------
+# Agentic loop tests
+# ---------------------------------------------------------------------------
+
+def _make_tool_call_obj(call_id: str, name: str, args: str = "{}"):
+    """Build a mock tool call object matching LiteLLM's shape."""
+    call = Mock()
+    call.id = call_id
+    call.function.name = name
+    call.function.arguments = args
+    return call
+
+
+def _make_complete_response(finish_reason: str, tool_calls=None, content: str = ""):
+    """Build a mock non-streaming completion response."""
+    choice = Mock()
+    choice.finish_reason = finish_reason
+    choice.message.tool_calls = tool_calls or []
+    choice.message.model_dump.return_value = {
+        "role": "assistant",
+        "content": content,
+        "tool_calls": [],
+    }
+    response = Mock()
+    response.choices = [choice]
+    response.usage = None
+    return response
+
+
+@pytest.mark.unit
+class TestStreamHandlerAgenticLoop:
+    """Tests for the agentic tool-calling loop in StreamHandler.stream()."""
+
+    def _make_handler(self, client):
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        return StreamHandler(client, tracker, pricing, "test-model")
+
+    def test_no_tool_registry_uses_simple_path(self):
+        """When tool_registry is None, stream() skips the agentic loop."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+
+        handler = self._make_handler(client)
+        result = handler.stream([{"role": "user", "content": "hello"}], tool_registry=None)
+
+        client.complete.assert_not_called()
+        assert result.text == "hi"
+
+    def test_empty_registry_uses_simple_path(self):
+        """When tool_registry has no tools, stream() skips the agentic loop."""
+        from packages.core.tools.base import ToolRegistry
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "hello"}],
+            tool_registry=ToolRegistry(),
+        )
+
+        client.complete.assert_not_called()
+        assert result.text == "hi"
+
+    def test_tool_call_then_final_answer(self, capsys):
+        """One tool call followed by a final streaming answer."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        # Registry with one tool
+        tool = ToolDefinition(
+            name="fetch_url",
+            description="fetch",
+            parameters={},
+            execute=lambda url: f"content of {url}",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        # LLM first responds with a tool call
+        tool_call = _make_tool_call_obj("tc1", "fetch_url", json.dumps({"url": "https://example.com"}))
+        first_response = _make_complete_response("tool_calls", tool_calls=[tool_call])
+
+        # After tool result, LLM gives a plain response → handled by streaming
+        second_complete_response = _make_complete_response("stop")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [first_response, second_complete_response]
+        client.chat_stream.return_value = _make_streaming_response(["The article says: content of https://example.com"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "Read https://example.com"}],
+            print_chunks=True,
+            tool_registry=registry,
+        )
+
+        # Tool feedback printed to stdout
+        captured = capsys.readouterr()
+        assert "[Tool: fetch_url]" in captured.out
+
+        # Final streamed content printed too
+        assert "content of https://example.com" in captured.out
+
+        # complete() called twice: once for tool call, once to check stop
+        assert client.complete.call_count == 2
+
+        # chat_stream() called once for final answer
+        client.chat_stream.assert_called_once()
+
+        assert result.text == "The article says: content of https://example.com"

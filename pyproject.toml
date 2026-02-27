@@ -5,11 +5,13 @@ description = "Personal AI assistant with context awareness"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "httpx>=0.28.1",
     "litellm>=1.80.16",
     "mcp>=1.25.0",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
+    "trafilatura>=2.0.0",
 ]
 
 [project.optional-dependencies]

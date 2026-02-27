@@ -67,10 +67,43 @@ class LLMClient:
         else:
             self.default_model = default_model
 
+    def complete(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        tools: list[dict] | None = None,
+    ) -> object:
+        """
+        Non-streaming completion. Used in the agentic tool-calling loop.
+
+        Args:
+            messages: List of {"role": "...", "content": "..."} dicts
+            model: Override default model if needed
+            tools: LiteLLM-formatted tool definitions
+
+        Returns:
+            Raw LiteLLM ModelResponse object
+        """
+        model_to_use = model or self.default_model
+        if self.provider == "openrouter" and not model_to_use.startswith("openrouter/"):
+            model_to_use = f"openrouter/{model_to_use}"
+
+        kwargs: dict = dict(
+            model=model_to_use,
+            messages=messages,
+            stream=False,
+            api_key=self.api_key,
+        )
+        if tools:
+            kwargs["tools"] = tools
+
+        return litellm.completion(**kwargs)
+
     def chat_stream(
         self,
         messages: list[dict],
         model: str | None = None,
+        tools: list[dict] | None = None,
     ) -> StreamingResponse:
         """
         Stream a chat response, yielding chunks as they arrive.
@@ -78,16 +111,18 @@ class LLMClient:
         Args:
             messages: List of {"role": "...", "content": "..."} dicts
             model: Override default model if needed
+            tools: LiteLLM-formatted tool definitions
 
         Returns:
             StreamingResponse that yields text chunks and provides usage stats after completion
         """
-        return StreamingResponse(self._stream_response(messages, model))
+        return StreamingResponse(self._stream_response(messages, model, tools))
 
     def _stream_response(
         self,
         messages: list[dict],
-        model: str | None = None
+        model: str | None = None,
+        tools: list[dict] | None = None,
     ) -> Generator[str, None, tuple[TokenUsage, object]]:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
 
@@ -97,14 +132,17 @@ class LLMClient:
             model_to_use = f"openrouter/{model_to_use}"
 
         # LiteLLM will handle provider-specific auth and formatting
-        response = litellm.completion(
+        kwargs: dict = dict(
             model=model_to_use,
             messages=messages,
             stream=True,
             stream_options={"include_usage": True},  # Request usage in streaming
             api_key=self.api_key,
-            # fallbacks=[],  # Could specify fallbacks if desired
         )
+        if tools:
+            kwargs["tools"] = tools
+
+        response = litellm.completion(**kwargs)
 
         # Stream content chunks and extract usage from chunks
         usage = TokenUsage()

@@ -183,7 +183,12 @@
 
 #### Function Calling & Tools
 
-- [ ] Implement function calling support (via LiteLLM)
+- [x] Implement function calling support (via LiteLLM) — `feat/tool-calling-web-fetch`
+- [x] Web fetch tool (`fetch_url` via httpx + trafilatura) — `feat/tool-calling-web-fetch`
+- [ ] Playwright-based fetch tool for JS-rendered pages (job portals, SPAs)
+- [ ] Tool approval/permission UI (user confirms before execution)
+- [ ] Things 3 write operations as tools (task creation, completion)
+- [ ] Obsidian write operations as tools (create/update notes)
 - [ ] Web search integration
 - [ ] Code execution sandbox
 - [ ] File system operations
@@ -358,4 +363,4 @@
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-27*

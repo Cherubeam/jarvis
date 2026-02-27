@@ -11,6 +11,8 @@ from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
+_MAX_AGENTIC_ITERATIONS = 5
+
 
 @dataclass
 class StreamResult:
@@ -40,16 +42,67 @@ class StreamHandler:
         self,
         messages: list[dict],
         print_chunks: bool = False,
+        tool_registry=None,
     ) -> StreamResult:
         """Stream an LLM response, tracking metrics and cost.
+
+        When tool_registry is provided and non-empty, runs an agentic loop:
+        intermediate non-streaming calls handle tool invocations, then the
+        final answer is streamed as usual.
 
         Args:
             messages: Messages to send to the LLM.
             print_chunks: Whether to print chunks to stdout as they arrive.
+            tool_registry: Optional ToolRegistry. None or empty → simple path.
 
         Returns:
             StreamResult with full text, usage, cost, and metrics.
         """
+        # Import here to avoid circular imports at module load time
+        from packages.core.tools.base import ToolRegistry
+        from packages.core.tools.executor import execute_tool_calls
+
+        if tool_registry is not None and not tool_registry.is_empty():
+            messages = self._run_agentic_loop(messages, tool_registry, execute_tool_calls)
+
+        return self._stream_simple(messages, print_chunks)
+
+    def _run_agentic_loop(self, messages: list[dict], tool_registry, execute_tool_calls) -> list[dict]:
+        """Run agentic tool-calling loop. Returns messages ready for final streaming."""
+        tools_format = tool_registry.to_litellm_format()
+        accumulated_usage = TokenUsage()
+
+        for _ in range(_MAX_AGENTIC_ITERATIONS):
+            response = self.client.complete(messages, tools=tools_format)
+            choice = response.choices[0]
+
+            # Accumulate token usage from intermediate calls
+            if hasattr(response, "usage") and response.usage:
+                accumulated_usage = TokenUsage(
+                    prompt_tokens=accumulated_usage.prompt_tokens + (response.usage.prompt_tokens or 0),
+                    completion_tokens=accumulated_usage.completion_tokens + (response.usage.completion_tokens or 0),
+                    total_tokens=accumulated_usage.total_tokens + (response.usage.total_tokens or 0),
+                )
+
+            if choice.finish_reason != "tool_calls":
+                # No more tool calls — proceed to streaming the final answer
+                break
+
+            # Print UX feedback for each tool call
+            for call in choice.message.tool_calls:
+                print(f"[Tool: {call.function.name}]")
+
+            # Execute tool calls and append results
+            assistant_msg = choice.message.model_dump() if hasattr(choice.message, "model_dump") else dict(choice.message)
+            tool_results = execute_tool_calls(choice.message.tool_calls, tool_registry)
+            messages = [*messages, assistant_msg, *tool_results]
+
+        # Store accumulated intermediate usage so _stream_simple can add to it
+        self._intermediate_usage = accumulated_usage
+        return messages
+
+    def _stream_simple(self, messages: list[dict], print_chunks: bool) -> StreamResult:
+        """Stream the final response and return a StreamResult."""
         self.metrics_tracker.start_request()
         response = self.client.chat_stream(messages)
 
@@ -64,6 +117,16 @@ class StreamHandler:
             chunks.append(chunk)
 
         usage = response.usage
+
+        # Add any accumulated intermediate usage
+        intermediate = getattr(self, "_intermediate_usage", None)
+        if intermediate is not None:
+            usage = TokenUsage(
+                prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
+                completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
+                total_tokens=usage.total_tokens + intermediate.total_tokens,
+            )
+            self._intermediate_usage = None
 
         cost_usd = 0.0
         if self.pricing:

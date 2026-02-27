@@ -296,7 +296,31 @@ User types: /daily-summary
 
 ---
 
-### 7. Pricing (`packages/core/pricing.py`)
+### 7. Tool Calling (`packages/core/tools/`)
+
+**Purpose**: Provide a composable function-calling layer for LLM tool use.
+
+**Location**: `packages/core/tools/`
+
+**Modules:**
+- `base.py`: `ToolDefinition` dataclass + `ToolRegistry` class
+- `executor.py`: `execute_tool_calls()` — runs tool calls from LLM, returns formatted result messages
+- `web_fetch.py`: `FETCH_URL_TOOL` singleton — fetches URLs with `httpx`, extracts text with `trafilatura`
+
+**Agentic Loop** (in `StreamHandler`):
+1. `LLMClient.complete(tools=...)` (non-streaming) — check if LLM wants to call a tool
+2. If `finish_reason == "tool_calls"` → execute tool, append result, loop
+3. After at most 5 iterations → stream final answer as usual
+
+**Key Design Choices:**
+- Non-streaming intermediate calls (simpler delta parsing, no user-visible cost)
+- Errors returned as strings, never raised, so LLM can reason about failures
+- `ToolRegistry` built per-agent from `AgentConfig.tools` (no global singleton)
+- 50KB cap on extracted web content with truncation notice
+
+---
+
+### 8. Pricing (`packages/core/pricing.py`)
 
 **Purpose**: Track LLM costs across providers.
 

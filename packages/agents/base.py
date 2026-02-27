@@ -12,6 +12,7 @@ from pathlib import Path
 
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.stream_handler import StreamHandler, StreamResult
+from packages.core.tools.base import ToolDefinition, ToolRegistry
 
 
 @dataclass
@@ -21,7 +22,7 @@ class AgentConfig:
     description: str
     model: str
     system_prompt: str
-    tools: list[str] = field(default_factory=list)
+    tools: list[ToolDefinition] = field(default_factory=list)
     max_tokens: int = 4096
     temperature: float = 0.7
 
@@ -41,6 +42,11 @@ class BaseAgent(ABC):
         self.config = config
         self.llm_client = llm_client
         self.conversation_history: list[dict] = []
+
+        # Build tool registry from config
+        self.tool_registry = ToolRegistry()
+        for tool in config.tools:
+            self.tool_registry.register(tool)
 
     @property
     def name(self) -> str:
@@ -126,7 +132,8 @@ class BaseAgent(ABC):
             self.add_to_history("user", message)
             messages = self.get_messages_for_api()
 
-        return stream_handler.stream(messages, print_chunks=print_chunks)
+        registry = self.tool_registry if not self.tool_registry.is_empty() else None
+        return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry)
 
     def add_to_history(self, role: str, content: str):
         """Add a message to conversation history."""
@@ -152,5 +159,5 @@ class BaseAgent(ABC):
             "name": self.config.name,
             "description": self.config.description,
             "model": self.config.model,
-            "tools": self.config.tools,
+            "tools": [t.name for t in self.config.tools],
         }

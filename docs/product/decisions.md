@@ -1141,4 +1141,59 @@ Convention-based agent framework with filesystem discovery:
 
 ---
 
-*Last updated: 2026-02-13*
+---
+
+## ADR-015: Tool Calling — Non-Streaming Intermediate Calls + Streaming Final Answer
+
+**Date**: 2026-02-27
+**Status**: Accepted
+
+### Context
+
+JARVIS needed the ability to fetch and read web content (articles, docs, links) on demand. LiteLLM already supports function calling; the missing pieces were a tool execution layer and agentic loop wiring. The key design question: where to put the agentic loop and whether to use streaming for tool-calling turns.
+
+### Decision
+
+1. **Non-streaming for tool calls**: Intermediate LLM calls (those that produce `finish_reason == "tool_calls"`) use `LLMClient.complete()` (non-streaming). Only the final answer is streamed. This avoids complex delta-accumulation logic for detecting tool call boundaries in a stream.
+2. **Agentic loop in `StreamHandler`**: The loop lives in `stream_handler.py` (`_run_agentic_loop()`) rather than in individual agents or the CLI. All agents get tool calling "for free" without changing their `run()` signature.
+3. **`ToolRegistry` passed at call time**: Agents build a `ToolRegistry` in `__init__` from `AgentConfig.tools`; `BaseAgent.run()` passes it to `stream_handler.stream(tool_registry=...)`. No global registry.
+4. **Errors returned as strings**: All tool failures (network, HTTP, exception) are returned as error strings inside tool result messages — never raised — so the LLM can reason about and report them gracefully.
+5. **`httpx` + `trafilatura`** for web fetch: `trafilatura` extracts clean article text; raw HTML fallback used when extraction yields nothing. 50KB cap with truncation notice.
+6. **Max 5 iterations** per agentic loop to prevent runaway tool call chains.
+
+### Alternatives Considered
+
+1. **Streaming tool call detection** (parse `delta.tool_calls` chunks)
+   - More complex, error-prone across providers
+   - No user-visible benefit (tool call turns are fast, not streamed to user anyway)
+
+2. **CLI-level agentic loop** (in `main.py`)
+   - Duplicated across CLI and `--agent` mode
+   - Tool calling becomes CLI-specific, breaking agent reuse
+
+3. **Global tool registry** (singleton)
+   - Harder to test, implicit coupling
+   - Per-agent registries allow different tool sets per agent
+
+4. **Playwright for JS pages** (deferred)
+   - Not needed for the immediate use case (articles, docs)
+   - Added complexity; deferred to a future phase
+
+### Consequences
+
+**Benefits:**
+- Backward compatible: `tool_registry=None` (default) → existing code path unchanged
+- Clean separation: tool definition, execution, and looping are independent modules
+- Agents declare tools declaratively in `AgentConfig.tools`; no imperative wiring
+- All tool errors safe to show to the LLM and user
+
+**Drawbacks:**
+- Non-streaming intermediate calls add one round-trip latency per tool use
+- `_intermediate_usage` on `StreamHandler` is instance state (not thread-safe for concurrent use)
+
+### Related ADRs
+- Extends: ADR-014 (Agent Framework)
+
+---
+
+*Last updated: 2026-02-27*
