@@ -9,9 +9,11 @@ dependencies = [
     "httpx>=0.28.1",
     "litellm>=1.80.16",
     "mcp>=1.25.0",
+    "prompt-toolkit>=3.0.52",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
+    "rich>=14.3.3",
     "trafilatura>=2.0.0",
 ]
 
