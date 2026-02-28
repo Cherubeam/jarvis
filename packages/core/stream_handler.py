@@ -5,6 +5,7 @@ Extracts streaming, metrics tracking, and cost calculation into a
 reusable class shared by all agents.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from packages.core.llm_client import LLMClient, TokenUsage
@@ -32,11 +33,13 @@ class StreamHandler:
         metrics_tracker: MetricsTracker,
         pricing: ModelPricing | None,
         model_id: str,
+        on_tool_call: Callable[[str], None] | None = None,
     ):
         self.client = client
         self.metrics_tracker = metrics_tracker
         self.pricing = pricing
         self.model_id = model_id
+        self.on_tool_call = on_tool_call
 
     def stream(
         self,
@@ -88,9 +91,12 @@ class StreamHandler:
                     total_tokens=accumulated_usage.total_tokens + (response.usage.total_tokens or 0),
                 )
 
-            # Print UX feedback for each tool call
+            # UX feedback for each tool call
             for call in choice.message.tool_calls:
-                print(f"[Tool: {call.function.name}]")
+                if self.on_tool_call is not None:
+                    self.on_tool_call(call.function.name)
+                else:
+                    print(f"[Tool: {call.function.name}]")
 
             # Execute tool calls and append results
             assistant_msg = choice.message.model_dump() if hasattr(choice.message, "model_dump") else dict(choice.message)
