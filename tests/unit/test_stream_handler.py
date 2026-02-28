@@ -283,6 +283,70 @@ class TestStreamHandlerAgenticLoop:
         assert "[Tool: tool_b]" in captured.out
         assert result.text == "final answer"
 
+    def test_on_tool_call_callback_invoked(self, capsys):
+        """When on_tool_call is set, it is called instead of plain print()."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="my_tool", description="t", parameters={},
+            execute=lambda: "ok",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj("tc1", "my_tool")
+        resp1 = _make_complete_response("tool_calls", tool_calls=[call])
+        resp2 = _make_complete_response("stop")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [resp1, resp2]
+        client.chat_stream.return_value = _make_streaming_response(["done"])
+
+        callback = Mock()
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model", on_tool_call=callback)
+
+        handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        callback.assert_called_once_with("my_tool")
+        # Should NOT print the default "[Tool: ...]" text
+        captured = capsys.readouterr()
+        assert "[Tool: my_tool]" not in captured.out
+
+    def test_on_tool_call_default_prints(self, capsys):
+        """When on_tool_call is None, the default print() is used."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="my_tool", description="t", parameters={},
+            execute=lambda: "ok",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj("tc1", "my_tool")
+        resp1 = _make_complete_response("tool_calls", tool_calls=[call])
+        resp2 = _make_complete_response("stop")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [resp1, resp2]
+        client.chat_stream.return_value = _make_streaming_response(["done"])
+
+        handler = self._make_handler(client)
+        handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        captured = capsys.readouterr()
+        assert "[Tool: my_tool]" in captured.out
+
     def test_tools_passed_to_streaming_call(self):
         """chat_stream() receives the tools parameter after the agentic loop."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition
