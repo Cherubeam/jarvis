@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced CLI Terminal UX**: Colored output, markdown rendering, and robust input handling
+  - `apps/cli/display.py`: New display module centralizing all terminal formatting with `rich`
+  - Colored startup banner, assistant/agent prefixes, dim stats, styled errors and system messages
+  - Post-stream markdown rendering: fenced code blocks, headings, bold, lists render properly after streaming completes; plain-text responses left as-is
+  - `prompt_toolkit` replaces `input()` for paste support (no more ~4096 byte truncation) and input history (up-arrow recall)
+  - `StreamHandler.on_tool_call` callback decouples `packages/core/` from CLI display concerns
+  - `config/default.yaml`: new `cli:` section (`colors`, `history_file`)
+  - Blank line separator between token stats and next prompt (fixes cramped output)
+  - 26 new unit tests in `test_display.py`; 2 new `on_tool_call` tests in `test_stream_handler.py`
+
 ### Fixed
 - **RAG recall poor for broad queries**: Per-conversation deduplication prevents one verbose conversation from monopolizing all result slots. Searcher over-fetches 3x when deduplicating. New `n_results` tool parameter (default 10, max 20) lets the LLM request more results for broad queries like weekly summaries.
 - **RAG date filtering broken**: ChromaDB's `$gte`/`$lte` operators only support numeric types, so string-based `session_date` filters silently threw `ValueError`. Added integer `session_date_int` (YYYYMMDD) metadata field with automatic migration of existing records. Tool description now includes today's date and instructs the LLM to set `date_from`/`date_to` for temporal queries. Results with similar relevance scores now prefer newer conversations (recency tiebreaker).
