@@ -34,12 +34,14 @@ class StreamHandler:
         pricing: ModelPricing | None,
         model_id: str,
         on_tool_call: Callable[[str], None] | None = None,
+        on_chunk: Callable[[str], None] | None = None,
     ):
         self.client = client
         self.metrics_tracker = metrics_tracker
         self.pricing = pricing
         self.model_id = model_id
         self.on_tool_call = on_tool_call
+        self.on_chunk = on_chunk
 
     def stream(
         self,
@@ -118,7 +120,9 @@ class StreamHandler:
             if first_token:
                 self.metrics_tracker.record_first_token()
                 first_token = False
-            if print_chunks:
+            if self.on_chunk is not None:
+                self.on_chunk(chunk)
+            elif print_chunks:
                 print(chunk, end="", flush=True)
             chunks.append(chunk)
 
