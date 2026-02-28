@@ -7,11 +7,13 @@ prompt_toolkit for robust multi-line paste support.
 """
 
 import re
-import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
+from rich.text import Text
 from rich.theme import Theme
 
 from packages.core.pricing import format_cost
@@ -79,47 +81,45 @@ def print_startup(
 
 def print_assistant_prefix(agent_name: str = "JARVIS") -> None:
     """Print the assistant label before streaming begins."""
-    console.print(f"\n[prompt.assistant]{agent_name}:[/] ", end="")
+    console.print(f"\n[prompt.assistant]{agent_name}:[/]")
 
 
 def print_agent_prefix(agent_name: str) -> None:
     """Print a colored agent label for slash-command responses."""
-    console.print(f"\n[agent.name][{agent_name}]:[/] ", end="")
+    console.print(f"\n[agent.name][{agent_name}]:[/]")
 
 
 # ---------------------------------------------------------------------------
-# Post-stream markdown rendering
+# Live streaming display
 # ---------------------------------------------------------------------------
 
-def render_response(text: str) -> None:
-    """Render the completed response, optionally with markdown formatting.
+def start_live_stream() -> tuple[Live, list[str]]:
+    """Create and start a rich.Live context for streaming output.
 
-    After streaming finishes (raw chunks already on screen), this function
-    moves the cursor back, clears the raw text, and reprints with rich
-    Markdown rendering — but only when the response actually contains
-    markdown syntax.  Plain-text answers are left as-is with just a
-    trailing newline.
+    Returns (live, buffer) where buffer is a list that accumulates chunks.
     """
-    if not text.strip():
-        print()
-        return
+    live = Live(Text(""), console=console, refresh_per_second=8, vertical_overflow="visible")
+    live.start()
+    return live, []
 
-    if not _has_markdown(text):
-        # Plain text — just add a trailing newline after the streamed output
-        print("\n")
-        return
 
-    # Count lines of the raw streamed output so we can overwrite them.
-    # +1 accounts for the partial line that didn't end with \n.
-    raw_lines = text.count("\n") + 1
+def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]:
+    """Return a closure that appends chunks to *buf* and updates the Live display."""
+    def handler(chunk: str) -> None:
+        buf.append(chunk)
+        live.update(Text("".join(buf)))
+    return handler
 
-    # Move cursor up and clear each line
-    for _ in range(raw_lines):
-        sys.stdout.write("\033[A\033[2K")
-    sys.stdout.flush()
 
-    console.print(Markdown(text))
-    print()
+def finish_live_stream(live: Live, full_text: str) -> None:
+    """Finish the live display, rendering markdown if detected.
+
+    Replaces the raw streamed text with a rich Markdown rendering in-place
+    when markdown syntax is detected; otherwise leaves the plain text as-is.
+    """
+    if full_text.strip() and _has_markdown(full_text):
+        live.update(Markdown(full_text))
+    live.stop()
 
 
 # ---------------------------------------------------------------------------

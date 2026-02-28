@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from apps.cli.display import (
     console,
     create_prompt_session,
+    finish_live_stream,
+    make_live_chunk_handler,
     print_agent_prefix,
     print_assistant_prefix,
     print_error,
@@ -24,7 +26,7 @@ from apps.cli.display import (
     print_tool_feedback,
     print_usage_stats,
     prompt_user,
-    render_response,
+    start_live_stream,
 )
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.registry import discover_agents, get_by_command
@@ -239,8 +241,11 @@ def _handle_agent_command(
     logger.add_message("user", f"{command} {payload}")
 
     print_agent_prefix(meta.name)
+    live, buf = start_live_stream()
+    stream_handler.on_chunk = make_live_chunk_handler(live, buf)
     result = agent.run(payload, stream_handler, print_chunks=True)
-    render_response(result.text)
+    stream_handler.on_chunk = None
+    finish_live_stream(live, result.text)
 
     print_usage_stats(result)
     print_separator()
@@ -459,13 +464,16 @@ def main(argv: list[str] | None = None):
             logger.add_message("user", user_input)
 
             print_assistant_prefix(agent_name)
+            live, buf = start_live_stream()
+            stream_handler.on_chunk = make_live_chunk_handler(live, buf)
             result = active_agent.run(
                 user_input,
                 stream_handler,
                 print_chunks=True,
                 messages_override=history,
             )
-            render_response(result.text)
+            stream_handler.on_chunk = None
+            finish_live_stream(live, result.text)
 
             print_usage_stats(result)
             print_separator()
