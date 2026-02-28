@@ -7,6 +7,8 @@
 
 > A personal AI assistant built from first principles to solve the vendor lock-in problem in conversational AI.
 
+![Jarvis Header Image](/jarvis.png)
+
 ## Motivation
 
 Most professionals rely on ChatGPT, Claude, Gemini, or Copilot subscriptions to interact with AI. These tools are powerful, but they create a critical dependency: **all your context, conversation history, and learned preferences are locked within each provider's ecosystem.**
