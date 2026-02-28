@@ -85,6 +85,7 @@ class TestPrintUsageStats:
         result = self._make_result(cost=0.005, tokens=100)
         print_usage_stats(result)
         out = capsys.readouterr().out
+        assert out.startswith("\n"), "should have leading blank line"
         assert "100 tokens" in out
         assert "TTFT:" in out
         assert "Total:" in out
@@ -93,6 +94,7 @@ class TestPrintUsageStats:
         result = self._make_result(cost=0.0, tokens=50)
         print_usage_stats(result)
         out = capsys.readouterr().out
+        assert out.startswith("\n"), "should have leading blank line"
         assert "50 tokens" in out
         assert "TTFT:" in out
 

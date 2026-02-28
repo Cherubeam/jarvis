@@ -134,6 +134,7 @@ def print_usage_stats(result: StreamResult) -> None:
         line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"
     else:
         line = f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]"
+    console.print()
     console.print(line, style="stats")
 
 
