@@ -12,6 +12,20 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+from apps.cli.display import (
+    console,
+    create_prompt_session,
+    print_agent_prefix,
+    print_assistant_prefix,
+    print_error,
+    print_separator,
+    print_startup,
+    print_system,
+    print_tool_feedback,
+    print_usage_stats,
+    prompt_user,
+    render_response,
+)
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.registry import discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, parse_frontmatter
@@ -43,16 +57,6 @@ def stream_and_track(
     """
     handler = StreamHandler(client, metrics_tracker, pricing, model_id)
     return handler.stream(messages, print_chunks=print_chunks)
-
-
-def print_usage_stats(result: StreamResult) -> None:
-    """Format and print token usage, cost, and latency stats."""
-    ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms"
-    latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
-    if result.cost_usd > 0:
-        print(f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]")
-    else:
-        print(f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]")
 
 
 def get_project_root() -> Path:
@@ -115,8 +119,8 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     """Handle the /daily-summary command."""
     vault_config = load_vault_config(config)
     if vault_config is None:
-        print("\nObsidian integration is not configured or disabled.")
-        print("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
+        print_system("\nObsidian integration is not configured or disabled.")
+        print_system("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
         return
 
     # Get today's daily note
@@ -124,18 +128,18 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     try:
         note_content = read_note(note_path, vault_config)
     except FileNotFoundError:
-        print(f"\nDaily note not found: {note_path.name}")
-        print("Create the note with a > [!JARVIS] callout block first.\n")
+        print_error(f"\nDaily note not found: {note_path.name}")
+        print_system("Create the note with a > [!JARVIS] callout block first.\n")
         return
     except PermissionError as e:
-        print(f"\n{e}\n")
+        print_error(f"\n{e}\n")
         return
 
     # Check for JARVIS callout
     callout = find_jarvis_callout(note_content)
     if isinstance(callout, CalloutNotFound):
-        print(f"\nNo > [!JARVIS] callout block found in {note_path.name}")
-        print("Add a '> [!JARVIS]' line to your daily note first.\n")
+        print_error(f"\nNo > [!JARVIS] callout block found in {note_path.name}")
+        print_system("Add a '> [!JARVIS]' line to your daily note first.\n")
         return
 
     # Strip existing JARVIS callout from note content to avoid duplication
@@ -171,7 +175,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     ]
 
     # Collect streamed LLM response for the summary
-    print("\nGenerating daily summary...", flush=True)
+    print_system("\nGenerating daily summary...")
     result = stream_and_track(client, messages, metrics_tracker, pricing, model_id)
 
     # Log the exchange so save() writes conversation + prints session summary
@@ -228,17 +232,18 @@ def _handle_agent_command(
     agent = meta.agent_class(llm_client=client, model=model_id)
 
     if not payload:
-        print(f"\nUsage: {command} <text>")
-        print(f"  {meta.description}\n")
+        print_system(f"\nUsage: {command} <text>")
+        print_system(f"  {meta.description}\n")
         return True
 
     logger.add_message("user", f"{command} {payload}")
 
-    print(f"\n[{meta.name}]: ", end="", flush=True)
+    print_agent_prefix(meta.name)
     result = agent.run(payload, stream_handler, print_chunks=True)
-    print("\n")
+    render_response(result.text)
 
     print_usage_stats(result)
+    print_separator()
 
     logger.add_message(
         "assistant",
@@ -294,20 +299,20 @@ def main(argv: list[str] | None = None):
             indexer = ConversationIndexer(db_path, embedding_model, api_key)
             n_new = indexer.index_new(conversations_dir)
             if n_new:
-                print(f"[RAG] Indexed {n_new} new conversation(s).")
+                print_system(f"[RAG] Indexed {n_new} new conversation(s).")
 
             recall_tool = make_conversation_recall_tool(db_path, embedding_model, api_key)
             extra_tools.append(recall_tool)
         except ImportError:
-            print("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
+            print_system("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
         except Exception as e:
-            print(f"[RAG] Startup failed — recall disabled. ({e})")
+            print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
     # Build the active agent
     if args.agent:
         if args.agent not in agent_registry:
             available = ", ".join(sorted(agent_registry)) or "(none)"
-            print(f"Error: unknown agent '{args.agent}'. Available: {available}")
+            print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
         active_agent = meta.agent_class(llm_client=client, model=model_id)
@@ -393,21 +398,31 @@ def main(argv: list[str] | None = None):
     else:
         price_info = "(pricing unavailable)"
 
-    stream_handler = StreamHandler(client, metrics_tracker, pricing, model_id)
+    stream_handler = StreamHandler(
+        client, metrics_tracker, pricing, model_id,
+        on_tool_call=print_tool_feedback,
+    )
 
     # Print startup info
-    print("Personal Assistant")
-    print(f"Agent: {agent_name} | Model: {model_id} {price_info}")
+    commands = None
     if agent_registry:
-        cmds = " ".join(m.command for m in agent_registry.values())
-        print(f"Commands: {cmds} /daily-summary")
-    print("Type 'quit' or 'exit' to end. Ctrl+C also works.\n")
+        cmds = [m.command for m in agent_registry.values()]
+        cmds.append("/daily-summary")
+        commands = cmds
+    print_startup(agent_name, model_id, price_info, commands)
+
+    # Create prompt_toolkit session for robust input handling
+    cli_cfg = config.get("cli", {})
+    history_file = cli_cfg.get("history_file", "data/.cli_history")
+    if history_file:
+        history_file = str(jarvis_dir / history_file)
+    session = create_prompt_session(history_file)
 
     # Main chat loop
     try:
         while True:
             try:
-                user_input = input("You: ").strip()
+                user_input = prompt_user(session)
             except EOFError:
                 break
 
@@ -435,7 +450,7 @@ def main(argv: list[str] | None = None):
                 ):
                     continue
 
-                print(f"\nUnknown command: {command}\n")
+                print_error(f"\nUnknown command: {command}\n")
                 continue
 
             # Regular chat — route through active agent
@@ -443,16 +458,17 @@ def main(argv: list[str] | None = None):
             history = logger.get_messages_for_api()
             logger.add_message("user", user_input)
 
-            print("\nAssistant: ", end="", flush=True)
+            print_assistant_prefix(agent_name)
             result = active_agent.run(
                 user_input,
                 stream_handler,
                 print_chunks=True,
                 messages_override=history,
             )
-            print("\n")
+            render_response(result.text)
 
             print_usage_stats(result)
+            print_separator()
 
             logger.add_message(
                 "assistant",
