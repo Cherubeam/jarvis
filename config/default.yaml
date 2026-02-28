@@ -69,6 +69,11 @@ rag:
   # Uses the same OPENROUTER_API_KEY already configured for chat.
   # LiteLLM's openrouter/ prefix routes natively — no api_base needed.
 
+# CLI display settings
+cli:
+  colors: true
+  history_file: "data/.cli_history"
+
 # Obsidian vault integration
 obsidian:
   enabled: false
