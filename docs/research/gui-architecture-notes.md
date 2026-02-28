@@ -27,7 +27,7 @@ Gemini frames `async/await` as "practically a hard requirement." We disagree. Th
 - You could wrap just the web layer in `asyncio.to_thread()` calls.
 - LiteLLM's sync `completion()` with `stream=True` already yields chunks lazily — this plays fine with threading.
 
-Converting every function signature in `packages/` to `async def` is a **huge, invasive change** that touches every test (610+ of them), every agent, every tool executor. It's the kind of "rewrite everything at once" move that violates the project's own principle: "No premature optimization." You can add async later when you actually need concurrent request handling — a personal assistant likely won't need 100 concurrent WebSocket connections on day one.
+Converting every function signature in `packages/` to `async def` is a **huge, invasive change** that touches every test (679+ of them), every agent, every tool executor. It's the kind of "rewrite everything at once" move that violates the project's own principle: "No premature optimization." You can add async later when you actually need concurrent request handling — a personal assistant likely won't need 100 concurrent WebSocket connections on day one.
 
 **Recommendation:** Keep the core sync. Add async at the web boundary only, and only when you need it.
 

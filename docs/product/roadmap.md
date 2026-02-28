@@ -2,7 +2,7 @@
 
 ## Phase 1: Foundation & Metrics
 
-**Status**: 100% complete
+**Status**: ✅ Complete
 **Timeline**: Completed January 2026
 
 ### Features
@@ -15,300 +15,253 @@
 - [x] Session metrics saved to conversation JSON
 - [x] LiteLLM integration for provider flexibility
 - [x] Automatic cost fallback via LiteLLM pricing
-- [x] **Testing framework setup (pytest, coverage, fixtures)**
-- [x] **Comprehensive unit test suite (388 tests, 97.5% coverage)**
-- [x] **Integration tests (22 tests)**
-- [x] **8 golden test conversations defined**
+- [x] Testing framework setup (pytest, coverage, fixtures)
+- [x] Comprehensive test suite (679 tests as of 2026-02-28)
+- [x] 8 golden test conversations defined
 
 ---
 
 ## Phase 2: Evaluation & Quality Metrics
 
-**Timeline**: 2-3 weeks (Late January - Early February 2026)
-**Goal**: Systematic quality measurement and baseline establishment
-**Status**: Complete
+**Status**: ✅ Complete
+**Timeline**: Completed Late January 2026
 
 ### Features
 
 #### Testing Infrastructure
 
-- [x] Create golden test conversation suite (8 cases)
-- [x] Implement automated test runner (pytest)
-- [x] **Add LLM-as-judge for automated quality evaluation**
+- [x] Golden test conversation suite (8 cases)
+- [x] Automated test runner (pytest)
+- [x] LLM-as-judge for automated quality evaluation
   - 33 unit tests (evaluator + storage)
   - Structured JSON results + markdown reports
   - Historical trend tracking
   - Cost management (~$0.41/run)
   - On-demand via `--evaluate` flag
-- [x] ChatGPT conversation import (bulk import with CLI filters)
-- [x] Claude conversation import (bulk import with date filters)
 - [x] Baseline quality metrics across different models
 
-#### Things 3 Integration (Phase A - Context Awareness)
+#### Things 3 Integration (Phase A — Context Awareness)
 
 - [x] Task sync module with AppleScript integration
 - [x] Automatic language detection (German, French, Spanish, Italian, English)
 - [x] Auto-sync tasks to tasks.md on startup
 - [x] 5-minute task cache to optimize performance
-- [x] 43 tests for task sync (33 unit + 8 integration + 2 golden)
-- [ ] Phase B (Interactive management) - Moved to Phase 5
+- [ ] Phase B (Interactive management) — Moved to Phase 5C
 
 #### Metrics Implementation
 
-- [x] Latency tracking (Time to First Token - TTFT)
-  - MetricsTracker integrated into CLI
-  - TTFT and total latency displayed after each response
-  - Session summary with average latency metrics
-  - Conversation JSON logs include latency per message
+- [x] Latency tracking (TTFT, total latency per response)
 - [x] Response quality scoring (manual → automated)
-- [x] Context utilization analysis (does it reference personal context?)
+- [x] Context utilization analysis
 - [x] Cost per conversation type benchmarks
 
 #### Model Comparison
 
-- [x] Benchmark 3-5 models on test suite
+- [x] Benchmark 3-5 models on golden test suite
 - [x] Compare quality vs. cost tradeoffs
 - [x] Document model-specific behaviors
-- [x] Establish default model recommendation
-- [x] Cost estimation tooling for benchmark runs (OpenRouter pricing API)
-
-**Success Criteria:**
-- 10 golden test cases covering common scenarios
-- Latency < 1 second TTFT for 90% of requests
-- Cost per conversation documented for all tested models
-- Clear quality vs. cost recommendation chart
+- [x] Default model recommendation (Claude Sonnet 4.5)
 
 ---
 
-## Phase 3: Web Interface + Advanced Context Management
+## Phase 3: Context & Integrations
 
-**Timeline**: 1-2 months (February-March 2026)
-**Goal**: Add web interface and handle long conversations
-**Status**: Not Started
+**Status**: ✅ Complete
+**Timeline**: Completed February 2026
 
 ### Features
 
-#### Web Interface
+#### Context Builder Enhancements
 
-- [ ] FastAPI backend with SSE streaming (`apps/web/backend/`)
-- [ ] React frontend with chat UI (`apps/web/frontend/`)
-- [ ] Conversation history browser
-- [ ] Real-time streaming responses
-- [ ] Session switching between conversations
+- [x] Selective context loading via YAML frontmatter (`active`, `topics`, `summary`)
+- [x] Project index with active/inactive tiered loading
+- [x] Context utilization analyzer script
 
-#### Context Window Management
+#### Conversation Schema v1.0.0
 
-- [ ] Implement intelligent truncation strategies
-- [ ] Summarization for old conversation context
-- [ ] Token budget management (stay within context limits)
-- [ ] Smart context prioritization (recent + relevant)
+- [x] Schema versioning, typed content blocks, message identity
+- [x] `metadata: {}` escape hatches at every level
+- [x] Read-time migration for backward compatibility
+- [x] 52 unit tests for memory module
 
-#### Conversation Search
+#### Conversation Imports
 
-- [ ] Full-text search over conversation history
-- [ ] Filter by date, model, topic
-- [ ] Export conversations to readable formats
-- [ ] Conversation statistics and insights
+- [x] ChatGPT bulk import with CLI filters
+- [x] Claude conversation import with date filters
+- [x] Claude context import (memories, projects)
+- [x] Shared importer utilities (`ImportSummary`, `make_conv_id`)
 
-#### Fact Extraction
+#### Obsidian Integration
 
-- [ ] Implement learned_facts.md population
-- [ ] Extract key information from conversations
-- [ ] Periodic fact review and updates
-- [ ] Fact-based context enrichment
-
-**Success Criteria:**
-- Handle conversations > 50 turns without quality degradation
-- Search returns relevant conversations in < 1 second
-- 80% of learned facts are accurate and useful
-- Context window utilization optimized (< 80% of limit)
+- [x] Vault reader with path validation and symlink protection
+- [x] `> [!JARVIS]` callout block parser
+- [x] Diff computation with CLI (colored) and API (JSON) formatters
+- [x] `ConfirmationHandler` ABC for GUI-ready write confirmation
+- [x] `/daily-summary` CLI command
+- [x] Nested daily note paths (`path_format` with strftime)
+- [x] 83 tests (73 unit + 10 integration)
 
 ---
 
-## Phase 4: Semantic Search & RAG
+## Phase 4: Agent Framework
 
-**Timeline**: 2-3 months (April-June 2026)
-**Goal**: Enable semantic search over conversation history
-**Status**: Not Started
+**Status**: ✅ Complete
+**Timeline**: Completed February 2026
 
 ### Features
 
-#### Vector Store Integration
-
-- [ ] Embed past conversations locally
-- [ ] Implement semantic similarity search
-- [ ] Retrieve relevant past context for current query
-- [ ] Hybrid search (semantic + keyword)
-
-#### Retrieval Quality
-
-- [ ] Measure retrieval relevance
-- [ ] Track retrieval confidence scores
-- [ ] Optimize chunk size and overlap
-- [ ] A/B test retrieval strategies
-
-#### Performance
-
-- [ ] Sub-second retrieval latency
-- [ ] Efficient embedding generation
-- [ ] Incremental index updates
-- [ ] Local model for embeddings (no API calls)
-
-**Success Criteria:**
-- Relevant past conversations retrieved 85% of the time
-- Retrieval adds value without adding noise
-- No significant latency impact (< 200ms overhead)
-- Works fully offline (local embeddings)
+- [x] `StreamHandler` extracted from CLI into `packages/core/stream_handler.py`
+- [x] `BaseAgent.run()` and `BaseAgent.load_prompt()` methods
+- [x] Agent registry with filesystem-based auto-discovery
+- [x] Three specialized agents: Writing (`/write`), Research (`/research`), Clarity (`/clarity`)
+- [x] Slash-command routing in CLI via agent registry
+- [x] `--agent <name>` standalone mode
+- [x] Convention: folder in `packages/agents/` with `agent.py` + `prompts/system.md`
+- [x] JARVIS persona prompt (movie-inspired voice, guardrails against sycophancy)
+- [x] ADR-014: convention-based discovery
 
 ---
 
 ## Phase 5: Agent Capabilities
 
-**Timeline**: 3-6 months (July-December 2026)
-**Goal**: Tool use and multi-agent orchestration
-**Status**: In Progress
+**Status**: 🔄 In Progress
+**Timeline**: February–June 2026
 
-### Features
+### Done
 
-#### Agent Framework (Phase A - Infrastructure)
+- [x] Function calling & tool support (`ToolDefinition`, `ToolRegistry`, `execute_tool_calls()`)
+- [x] Web fetch tool (httpx + trafilatura, 50KB cap)
+- [x] Agentic loop in `StreamHandler` (max 5 iterations, non-streaming tools → streaming final answer)
+- [x] RAG / Conversation recall (ChromaDB + LiteLLM embeddings)
+- [x] Enhanced CLI terminal UX (rich rendering, prompt_toolkit, colored output)
+- [x] RAG date filtering fix (integer metadata migration)
+- [x] RAG deduplication (per-conversation, over-fetch 3x)
 
-- [x] Extract `StreamHandler` from CLI into shared module
-- [x] Add `BaseAgent.run()` and `BaseAgent.load_prompt()` methods
-- [x] Agent registry with filesystem-based auto-discovery
-- [x] Wire agents into CLI with slash-command routing
-- [x] `--agent <name>` standalone mode
-- [x] Writing agent (`/write`), Research agent (`/research`), Clarity agent (`/clarity`)
-- [ ] Phase B: JARVIS delegation — sub-conversations with specialist agents
-- [ ] Phase C: LLM-based intent detection and auto-routing
+### 5A: Skills / Capabilities
 
-#### Function Calling & Tools
+Mini-agents with their own prompt + tool configuration + execution flow, registered via convention.
 
-- [x] Implement function calling support (via LiteLLM) — `feat/tool-calling-web-fetch`
-- [x] Web fetch tool (`fetch_url` via httpx + trafilatura) — `feat/tool-calling-web-fetch`
-- [ ] Playwright-based fetch tool for JS-rendered pages (job portals, SPAs)
-- [ ] Tool approval/permission UI (user confirms before execution)
-- [ ] Things 3 write operations as tools (task creation, completion)
-- [ ] Obsidian write operations as tools (create/update notes)
-- [ ] Web search integration
-- [ ] Code execution sandbox
-- [ ] File system operations
+**Structure**: `packages/skills/` (separate from agents — agents are general-purpose conversational partners, skills are task-specific workflows with defined inputs and outputs)
 
-#### Things 3 Integration (Phase B - Interactive Management)
+```
+packages/skills/
+  base.py            # BaseSkill class
+  registry.py        # SkillRegistry — filesystem-based discovery
+  nano_banana_pro/
+    __init__.py      # SKILL_META: name, description, slash command
+    skill.py         # Skill logic: prompt assembly, tool config, execution
+    prompt.md        # Prompt template
+  content_evaluator/
+    __init__.py
+    skill.py
+    prompt.md
+```
 
-- [ ] Add MCP server integration for task creation
-- [ ] Implement task completion via MCP
-- [ ] Task search and filtering
-- [ ] Task updates and modifications
-- [ ] Localization support in MCP wrapper (if needed)
+- [ ] Skill definition format (prompt template + tool config + metadata)
+- [ ] Skill registry (filesystem-based discovery, mirrors agent pattern)
+- [ ] First skills:
+  - [ ] Nano Banana Pro image prompt generator (The Technical Humanist visual brand)
+  - [ ] Content evaluation workflow (marketing strategist debate, busy subscriber test)
+- [ ] Slash-command routing for skills (e.g., `/skill <name>` or dedicated commands)
+- [ ] Skill discovery and listing
 
-#### Agent Orchestration
+### 5B: Agent Orchestration
 
-- [x] Multi-agent architecture design (folder convention + registry)
-- [ ] Agent communication protocols (JARVIS delegation)
-- [ ] Task delegation and routing (LLM-based intent detection)
+- [ ] JARVIS delegation — sub-conversations with specialist agents
+- [ ] LLM-based intent detection and auto-routing
 - [ ] Error recovery and fallbacks
 
-#### Intelligent Model Routing
+### 5C: Extended Tools
 
-- [ ] Classify task complexity
-- [ ] Route simple tasks to cheap models (Haiku, GPT-4o-mini)
-- [ ] Route complex tasks to expensive models (Opus, o1)
-- [ ] Track cost savings from routing
+- [ ] Playwright-based fetch for JS-rendered pages
+- [ ] Tool approval/permission UI
+- [ ] Things 3 write operations as tools (Phase B)
+- [ ] Obsidian write operations as tools
+- [ ] Web search integration
 
-#### Monitoring
+### 5D: Intelligent Model Routing
 
-- [ ] Task completion rate tracking
-- [ ] Tool success rate metrics
-- [ ] Steps-to-completion analysis
-- [ ] Cost per task type
-
-**Success Criteria:**
-- 5+ tools integrated and working reliably
-- Model routing saves 30%+ on costs
-- Multi-step tasks complete successfully 80% of the time
-- Agent errors gracefully handled and logged
+- [ ] Task complexity classification
+- [ ] Route simple tasks → cheap models, complex → expensive models
+- [ ] Cost savings tracking
 
 ---
 
-## Phase 6: System Monitoring & Optimization
+## Phase 6: Web Interface
 
-**Timeline**: Ongoing (Throughout 2026)
-**Goal**: Production-grade reliability and observability
+**Status**: Not Started
+**Timeline**: Mid 2026
+**Goal**: Add a web UI following the 3-step approach from [gui-architecture-notes.md](../research/gui-architecture-notes.md)
+
+### 6A: Event Decoupling (prerequisite)
+
+- [ ] Make `StreamHandler.stream()` yield typed events (`TextChunk`, `ToolCallStarted`, `UsageReport`, etc.)
+- [ ] Define event dataclasses in `packages/core/events.py`
+- [ ] Move print statements from `StreamHandler` into CLI adapter
+- [ ] Extract shared bootstrapping from `main.py` → `packages/core/app.py`
+- [ ] Keep CLI working exactly as before (thin adapter consuming events)
+
+### 6B: API Layer
+
+- [ ] FastAPI backend with SSE streaming (`apps/web/`)
+- [ ] Single endpoint streaming events — verify with `curl`
+- [ ] Conversation history API
+- [ ] Session management
+
+### 6C: Frontend
+
+- [ ] Chat UI with streaming responses (framework decision deferred to implementation time)
+- [ ] Conversation history browser
+- [ ] Session switching
+
+**Design principle**: Keep the core sync. Add async at the web boundary only. See [gui-architecture-notes.md](../research/gui-architecture-notes.md) for rationale.
+
+---
+
+## Phase 7: Context Window Management & Search
+
 **Status**: Not Started
 
 ### Features
 
-#### Comprehensive Logging
+- [ ] Intelligent truncation strategies
+- [ ] Summarization for old conversation context
+- [ ] Token budget management
+- [ ] Full-text + semantic search over conversations
+- [ ] Conversation export and statistics
 
-- [ ] Structured logging for all requests
-- [ ] Error categorization and tracking
-- [ ] Performance profiling
-- [ ] User interaction analytics
+---
 
-#### Evaluation Framework
+## Phase 8: System Monitoring & Optimization
 
-- [ ] LLM-as-judge for response quality
-- [ ] Automated regression testing
+**Status**: Not Started
+
+### Features
+
+- [ ] Structured logging and error categorization
 - [ ] Continuous quality monitoring
-- [ ] Alert system for quality degradation
-
-#### Optimization
-
 - [ ] Prompt optimization based on metrics
-- [ ] Context compression techniques
-- [ ] Caching frequently used responses
 - [ ] Cost optimization recommendations
 
-**Success Criteria:**
-- < 2% error rate across all operations
-- Automated quality checks catch regressions
-- 95% confidence in prompt changes (A/B tested)
-- Observable, debuggable system behavior
-
 ---
 
-## Phase 7: User Experience Enhancements
+## Phase 9: UX Enhancements
 
-**Timeline**: 6-12 months (Mid-2026 onwards)
-**Goal**: Improve usability and interaction patterns
 **Status**: Not Started
 
 ### Features
 
-#### CLI Improvements
-
-- [ ] Rich TUI with textual or similar
-- [ ] Conversation history browser
-- [ ] Interactive context editor
-- [ ] Better formatting and syntax highlighting
-
-#### Configuration Management
-
-- [ ] Profile switching (work/personal contexts)
+- [ ] Rich TUI improvements
+- [ ] Profile switching (work/personal)
 - [ ] Model presets (fast/quality/balanced)
-- [ ] Easy provider switching commands
-- [ ] Session templates
-
-#### Export & Sharing
-
-- [ ] Export conversations to markdown/PDF
-- [ ] Share prompts and configurations
-- [ ] Agent configuration sharing
-- [ ] Anonymized usage reports
-
-**Success Criteria:**
-- TUI provides better UX than CLI alone
-- Context switching takes < 5 seconds
-- Users report improved satisfaction
-- Documentation guides cover all features
+- [ ] Export & sharing
 
 ---
 
-## Phase 8: Fine-tuning (Optional)
+## Phase 10: Fine-tuning (Optional)
 
-**Timeline**: 12+ months (2027+)
-**Goal**: Personalized model behavior (only if needed)
 **Status**: Not Started
+**Timeline**: Only if needed (2027+)
 
 ### Prerequisites
 
@@ -328,7 +281,7 @@
 
 ---
 
-## Backlog (Prioritized)
+## Backlog
 
 ### High Priority
 
@@ -339,10 +292,9 @@
 
 ### Medium Priority
 
-- [ ] Web interface (optional, after TUI)
-- [ ] API server mode (for integrations)
 - [ ] Mobile companion app
 - [ ] Voice input/output
+- [ ] API server mode (for integrations)
 
 ### Low Priority / Future Ideas
 
@@ -363,4 +315,4 @@
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-02-28*

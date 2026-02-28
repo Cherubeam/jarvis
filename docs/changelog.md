@@ -450,32 +450,25 @@ Changes are grouped by type:
 
 See [roadmap.md](product/roadmap.md) for detailed plans.
 
-### Phase 2: Evaluation & Metrics (Complete ✅)
-- ✅ Golden test suite (8 test conversations)
-- ✅ LLM-as-judge automated evaluation
-- ✅ TTFT tracking (integrated into CLI)
-- ✅ Model benchmarking
-- ✅ Context utilization analysis
-- ✅ Cost per conversation type benchmarks
-- ✅ Default model recommendation
+### Completed Phases
+- ✅ Phase 1: Foundation & Metrics
+- ✅ Phase 2: Evaluation & Quality Metrics
+- ✅ Phase 3: Context & Integrations
+- ✅ Phase 4: Agent Framework
 
-### Phase 3: Web Interface + Context Management (Next)
-- Web interface (FastAPI + React)
-- Conversation search
-- Context window management
-- Fact extraction (learned_facts.md)
+### Phase 5: Agent Capabilities (In Progress)
+- ✅ Function calling & tool support, web fetch tool, RAG
+- Skills / Capabilities (5A) — mini-agents with prompt + tool config
+- Agent orchestration (5B), extended tools (5C), model routing (5D)
 
-### Phase 4: RAG Implementation
-- Vector store integration (ChromaDB/FAISS)
-- Semantic search over conversation history
-- Hybrid retrieval (semantic + keyword)
+### Phase 6: Web Interface
+- Event decoupling (6A), API layer (6B), frontend (6C)
 
-### Phase 5: Agent Capabilities
-- Function calling support
-- Tool integrations (web search, code execution)
-- Multi-agent orchestration
-- Intelligent model routing
-- Things 3 interactive management (Phase B)
+### Future Phases
+- Phase 7: Context Window Management & Search
+- Phase 8: System Monitoring & Optimization
+- Phase 9: UX Enhancements
+- Phase 10: Fine-tuning (optional)
 
 ---
 
