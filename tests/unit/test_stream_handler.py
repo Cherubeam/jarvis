@@ -132,6 +132,38 @@ class TestStreamHandler:
 
         client.chat_stream.assert_called_once_with(messages, tools=None)
 
+    def test_on_chunk_callback_invoked_instead_of_print(self, capsys):
+        """When on_chunk is set, it receives chunks and print() is suppressed."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["Hello", " world"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        received = []
+        handler = StreamHandler(client, tracker, pricing, "test-model", on_chunk=received.append)
+        result = handler.stream([{"role": "user", "content": "hi"}], print_chunks=True)
+
+        assert received == ["Hello", " world"]
+        assert result.text == "Hello world"
+        # on_chunk takes priority — nothing printed to stdout
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_on_chunk_can_be_set_after_init(self, capsys):
+        """on_chunk can be assigned after construction (used by main.py)."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        received = []
+        handler.on_chunk = received.append
+        handler.stream([{"role": "user", "content": "hi"}], print_chunks=True)
+
+        assert received == ["hi"]
+        assert capsys.readouterr().out == ""
+
 
 # ---------------------------------------------------------------------------
 # Agentic loop tests

@@ -3,20 +3,22 @@ Unit tests for the CLI display module.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, call
 
 from apps.cli.display import (
     _has_markdown,
     create_prompt_session,
+    finish_live_stream,
+    make_live_chunk_handler,
     print_startup,
     print_usage_stats,
     print_separator,
     print_tool_feedback,
     print_error,
     print_system,
-    render_response,
     print_assistant_prefix,
     print_agent_prefix,
+    start_live_stream,
 )
 from packages.core.stream_handler import StreamResult
 from packages.core.llm_client import TokenUsage
@@ -139,35 +141,78 @@ class TestCreatePromptSession:
 
 
 # ---------------------------------------------------------------------------
-# render_response
+# Live streaming display
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
-class TestRenderResponse:
-    """Tests for post-stream markdown rendering."""
+class TestLiveStreamDisplay:
+    """Tests for the rich.Live-based streaming display."""
 
-    def test_plain_text_no_rerender(self, capsys):
-        render_response("Just a plain answer.")
-        out = capsys.readouterr().out
-        # Plain text should just get a trailing newline, no ANSI escape sequences for cursor movement
-        assert "\033[A" not in out
+    @patch("apps.cli.display.Live")
+    def test_start_live_stream_returns_live_and_buffer(self, MockLive):
+        mock_live = MagicMock()
+        MockLive.return_value = mock_live
 
-    def test_empty_text(self, capsys):
-        render_response("")
-        out = capsys.readouterr().out
-        assert out == "\n"
+        live, buf = start_live_stream()
 
-    def test_whitespace_only(self, capsys):
-        render_response("   \n  ")
-        out = capsys.readouterr().out
-        assert out == "\n"
+        assert live is mock_live
+        assert buf == []
+        mock_live.start.assert_called_once()
 
-    def test_markdown_triggers_rerender(self, capsys):
-        md_text = "## Title\n\nSome text with **bold**"
-        render_response(md_text)
-        out = capsys.readouterr().out
-        # Should contain ANSI escape sequences for cursor-up (clearing raw output)
-        assert "\033[A" in out
+    @patch("apps.cli.display.Live")
+    def test_make_live_chunk_handler_accumulates_and_updates(self, MockLive):
+        mock_live = MagicMock()
+        buf = []
+        handler = make_live_chunk_handler(mock_live, buf)
+
+        handler("Hello")
+        assert buf == ["Hello"]
+        assert mock_live.update.call_count == 1
+
+        handler(" world")
+        assert buf == ["Hello", " world"]
+        assert mock_live.update.call_count == 2
+
+    @patch("apps.cli.display.Live")
+    def test_finish_live_stream_renders_markdown_when_detected(self, MockLive):
+        mock_live = MagicMock()
+        md_text = "## Title\n\nSome **bold** text"
+
+        finish_live_stream(mock_live, md_text)
+
+        mock_live.update.assert_called_once()
+        # The argument should be a Markdown renderable
+        from rich.markdown import Markdown
+        arg = mock_live.update.call_args[0][0]
+        assert isinstance(arg, Markdown)
+        mock_live.stop.assert_called_once()
+
+    @patch("apps.cli.display.Live")
+    def test_finish_live_stream_skips_markdown_for_plain_text(self, MockLive):
+        mock_live = MagicMock()
+
+        finish_live_stream(mock_live, "Just a plain answer.")
+
+        mock_live.update.assert_not_called()
+        mock_live.stop.assert_called_once()
+
+    @patch("apps.cli.display.Live")
+    def test_finish_live_stream_handles_empty_text(self, MockLive):
+        mock_live = MagicMock()
+
+        finish_live_stream(mock_live, "")
+
+        mock_live.update.assert_not_called()
+        mock_live.stop.assert_called_once()
+
+    @patch("apps.cli.display.Live")
+    def test_finish_live_stream_handles_whitespace_only(self, MockLive):
+        mock_live = MagicMock()
+
+        finish_live_stream(mock_live, "   \n  ")
+
+        mock_live.update.assert_not_called()
+        mock_live.stop.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
