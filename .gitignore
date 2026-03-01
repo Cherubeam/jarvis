@@ -45,3 +45,7 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 tests/golden/results/
+
+# Individual skills (personal content, framework code is tracked)
+packages/skills/content-evaluator/
+packages/skills/nano_banana_pro/
