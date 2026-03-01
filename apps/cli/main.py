@@ -31,6 +31,8 @@ from apps.cli.display import (
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.registry import discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, parse_frontmatter
+from packages.skills.base import BaseSkill
+from packages.skills.registry import discover_skills, get_skill_by_command
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
@@ -214,6 +216,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Run a standalone agent instead of the default JARVIS orchestrator (e.g. --agent writing)",
     )
+    parser.add_argument(
+        "--skill",
+        type=str,
+        default=None,
+        help="Run a standalone skill (e.g. --skill nano-banana-pro)",
+    )
     return parser.parse_args(argv)
 
 
@@ -263,6 +271,52 @@ def _handle_agent_command(
     return True
 
 
+def _handle_skill_command(
+    command: str,
+    payload: str,
+    client: LLMClient,
+    stream_handler: StreamHandler,
+    logger: ConversationLogger,
+    model_id: str,
+    skill_registry: dict,
+) -> bool:
+    """Route a slash command to the matching skill. Returns True if handled."""
+    meta = get_skill_by_command(command, skill_registry)
+    if meta is None:
+        return False
+
+    if not payload:
+        print_system(f"\nUsage: {command} <text>")
+        print_system(f"  {meta.description}\n")
+        return True
+
+    skill = BaseSkill.from_skill_md(meta.path, client, model=model_id)
+
+    logger.add_message("user", f"{command} {payload}")
+
+    print_agent_prefix(meta.name)
+    live, buf = start_live_stream()
+    stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+    result = skill.run(payload, stream_handler, print_chunks=True)
+    stream_handler.on_chunk = None
+    finish_live_stream(live, result.text)
+
+    print_usage_stats(result)
+    print_separator()
+
+    logger.add_message(
+        "assistant",
+        result.text,
+        prompt_tokens=result.usage.prompt_tokens,
+        completion_tokens=result.usage.completion_tokens,
+        total_tokens=result.usage.total_tokens,
+        cost_usd=result.cost_usd,
+        ttft_ms=result.metrics.ttft_ms,
+        total_latency_ms=result.metrics.total_latency_ms,
+    )
+    return True
+
+
 def main(argv: list[str] | None = None):
     args = parse_args(argv)
     config = load_config()
@@ -286,8 +340,9 @@ def main(argv: list[str] | None = None):
         provider="openrouter"
     )
 
-    # Discover registered agents for slash-command routing
+    # Discover registered agents and skills for slash-command routing
     agent_registry = discover_agents()
+    skill_registry = discover_skills()
 
     # Initialize RAG if enabled
     api_key = config["openrouter"]["api_key"]
@@ -313,8 +368,19 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
-    # Build the active agent
-    if args.agent:
+    # Build the active agent (or skill in standalone mode)
+    active_skill = None
+    if args.skill:
+        if args.skill not in skill_registry:
+            available = ", ".join(sorted(skill_registry)) or "(none)"
+            print_error(f"Error: unknown skill '{args.skill}'. Available: {available}")
+            sys.exit(1)
+        skill_meta = skill_registry[args.skill]
+        active_skill = BaseSkill.from_skill_md(skill_meta.path, client, model=model_id)
+        agent_name = skill_meta.name
+        # Create a dummy active_agent config for logger compatibility
+        active_agent = active_skill
+    elif args.agent:
         if args.agent not in agent_registry:
             available = ", ".join(sorted(agent_registry)) or "(none)"
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
@@ -410,8 +476,10 @@ def main(argv: list[str] | None = None):
 
     # Print startup info
     commands = None
-    if agent_registry:
+    if agent_registry or skill_registry:
         cmds = [m.command for m in agent_registry.values()]
+        cmds.extend(m.command for m in skill_registry.values())
+        cmds.append("/skills")
         cmds.append("/daily-summary")
         commands = cmds
     print_startup(agent_name, model_id, price_info, commands)
@@ -448,10 +516,28 @@ def main(argv: list[str] | None = None):
                                          metrics_tracker, pricing, model_id)
                     continue
 
+                if command == "/skills":
+                    if not skill_registry:
+                        print_system("\nNo skills available.\n")
+                    else:
+                        print_system("\nAvailable skills:")
+                        for meta in skill_registry.values():
+                            py_marker = " [+py]" if meta.has_skill_py else ""
+                            print_system(f"  {meta.command}  — {meta.description}{py_marker}")
+                        print_system("")
+                    continue
+
                 # Agent-routed commands
                 if _handle_agent_command(
                     command, payload, client, stream_handler, logger,
                     model_id, agent_registry,
+                ):
+                    continue
+
+                # Skill-routed commands
+                if _handle_skill_command(
+                    command, payload, client, stream_handler, logger,
+                    model_id, skill_registry,
                 ):
                     continue
 
