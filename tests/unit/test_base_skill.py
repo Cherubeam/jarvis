@@ -107,7 +107,7 @@ class TestBaseSkillFromSkillMd:
         assert "Nano Banana Pro" in skill.config.system_prompt
 
     def test_loads_from_real_content_evaluator(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content_evaluator"
+        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
@@ -117,7 +117,7 @@ class TestBaseSkillFromSkillMd:
         assert skill.command == "/content-evaluator"
 
     def test_content_evaluator_has_custom_temperature(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content_evaluator"
+        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
