@@ -12,17 +12,17 @@ from packages.skills.registry import discover_skills, get_skill_by_command, Skil
 class TestDiscoverSkills:
     """Tests for discover_skills()."""
 
-    def test_discovers_nano_banana_pro(self):
+    def test_discovers_technical_humanist_image_architect(self):
         skills = discover_skills()
-        assert "nano-banana-pro" in skills
+        assert "technical-humanist-image-architect" in skills
 
     def test_discovers_content_evaluator(self):
         skills = discover_skills()
         assert "content-evaluator" in skills
 
-    def test_nano_banana_pro_has_no_skill_py(self):
+    def test_technical_humanist_image_architect_has_no_skill_py(self):
         skills = discover_skills()
-        assert skills["nano-banana-pro"].has_skill_py is False
+        assert skills["technical-humanist-image-architect"].has_skill_py is False
 
     def test_content_evaluator_has_skill_py(self):
         skills = discover_skills()
@@ -38,12 +38,12 @@ class TestDiscoverSkills:
 
     def test_commands_derived_from_name(self):
         skills = discover_skills()
-        assert skills["nano-banana-pro"].command == "/nano-banana-pro"
+        assert skills["technical-humanist-image-architect"].command == "/technical-humanist-image-architect"
         assert skills["content-evaluator"].command == "/content-evaluator"
 
     def test_descriptions_from_frontmatter(self):
         skills = discover_skills()
-        assert "image prompt" in skills["nano-banana-pro"].description.lower()
+        assert "header image" in skills["technical-humanist-image-architect"].description.lower()
         assert "evaluates" in skills["content-evaluator"].description.lower()
 
     def test_skips_directories_without_skill_md(self, tmp_path):
@@ -100,11 +100,11 @@ class TestDiscoverSkills:
 class TestGetSkillByCommand:
     """Tests for get_skill_by_command()."""
 
-    def test_finds_nano_banana_pro(self):
+    def test_finds_technical_humanist_image_architect(self):
         skills = discover_skills()
-        meta = get_skill_by_command("/nano-banana-pro", skills)
+        meta = get_skill_by_command("/technical-humanist-image-architect", skills)
         assert meta is not None
-        assert meta.name == "nano-banana-pro"
+        assert meta.name == "technical-humanist-image-architect"
 
     def test_finds_content_evaluator(self):
         skills = discover_skills()
@@ -118,6 +118,6 @@ class TestGetSkillByCommand:
         assert meta is None
 
     def test_discovers_skills_if_none_passed(self):
-        meta = get_skill_by_command("/nano-banana-pro")
+        meta = get_skill_by_command("/technical-humanist-image-architect")
         assert meta is not None
-        assert meta.name == "nano-banana-pro"
+        assert meta.name == "technical-humanist-image-architect"

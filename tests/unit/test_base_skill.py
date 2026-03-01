@@ -95,16 +95,16 @@ class TestBaseSkillRun:
 class TestBaseSkillFromSkillMd:
     """Tests for BaseSkill.from_skill_md()."""
 
-    def test_loads_from_real_nano_banana_pro(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "nano_banana_pro"
+    def test_loads_from_real_technical_humanist_image_architect(self):
+        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "technical-humanist-image-architect"
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
 
-        assert skill.name == "nano-banana-pro"
-        assert "image prompt" in skill.description.lower()
-        assert skill.command == "/nano-banana-pro"
-        assert "Nano Banana Pro" in skill.config.system_prompt
+        assert skill.name == "technical-humanist-image-architect"
+        assert "header image" in skill.description.lower()
+        assert skill.command == "/technical-humanist-image-architect"
+        assert "Technical Humanist" in skill.config.system_prompt
 
     def test_loads_from_real_content_evaluator(self):
         skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
@@ -124,7 +124,7 @@ class TestBaseSkillFromSkillMd:
         assert skill.config.temperature == 0.8
 
     def test_model_override_takes_precedence(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "nano_banana_pro"
+        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "technical-humanist-image-architect"
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client, model="custom/model")
