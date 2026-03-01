@@ -1344,4 +1344,60 @@ This preserves the full conversational context — the question and its answer t
 
 ---
 
-*Last updated: 2026-02-27*
+## ADR-017: Skills — SKILL.md-First, Vendor-Portable Design
+
+**Date**: 2026-03-01
+**Status**: Accepted
+
+### Context
+
+Phase 5A calls for task-specific skills (distinct from general-purpose agents). The initial plan mirrored the agent pattern: Python-class-centric modules with `SKILL_META` in `__init__.py`, a required `skill.py`, and a `prompt.md` for the prompt template. This would tightly couple skill definitions to the JARVIS Python runtime — you couldn't take a JARVIS skill and use it with Claude, ChatGPT, or hand it to a colleague.
+
+Meanwhile, Claude's SKILL.md format proves that markdown-first, YAML-frontmatter-driven skill definitions work in production.
+
+### Decision
+
+Make SKILL.md the primary artifact, not Python code:
+
+1. **SKILL.md is the portable capability spec.** YAML frontmatter has exactly two fields — `name` and `description` — matching Claude's specification. The markdown body serves as both documentation and system prompt.
+2. **Filesystem-based discovery.** Registry scans `packages/skills/*/SKILL.md` instead of importing Python modules. No `__init__.py` or `SKILL_META` dict needed.
+3. **Two modes.** Mode 1: SKILL.md only (zero Python, simple skills). Mode 2: SKILL.md + optional `skill.py` with `SKILL_CONFIG` dict for tools, model, temperature, command overrides.
+4. **No JARVIS-specific frontmatter.** Execution config lives in `skill.py`, not frontmatter. This keeps SKILL.md vendor-neutral.
+5. **Command derived from name.** `content-evaluator` → `/content-evaluator`. Override via `SKILL_CONFIG["command"]` if needed.
+
+### Alternatives Considered
+
+1. **Mirror agent pattern** (Python-import-based, `SKILL_META` dict)
+   - ✅ Consistent with agent conventions
+   - ❌ Not portable — useless outside JARVIS runtime
+   - ❌ Requires Python code for every skill, even simple ones
+
+2. **Extended frontmatter** (add `command`, `tools`, `version` to YAML)
+   - ✅ All metadata in one place
+   - ❌ Breaks compatibility with Claude's native SKILL.md format
+   - ❌ Mixes capability spec with execution config
+
+3. **JSON/YAML skill definitions** (structured config files)
+   - ✅ Machine-parseable
+   - ❌ Not human-readable as prompts
+   - ❌ Not compatible with any existing LLM skill format
+
+### Consequences
+
+**Benefits:**
+- Drop a SKILL.md into Claude's `.claude/skills/` — works without modification
+- Paste the markdown body into ChatGPT Custom GPT instructions — works directly
+- Adding a simple skill = create a folder with one markdown file, zero Python
+- Separates portable spec (what) from JARVIS-specific execution (how)
+
+**Drawbacks:**
+- Two places to look for skill config (SKILL.md + skill.py) in Mode 2
+- Dynamic import of `skill.py` modules adds a code path to maintain
+
+### Related
+- Extends: ADR-014 (Agent Framework — convention-based discovery)
+- Extends: ADR-009 (Scalable Monorepo Structure)
+
+---
+
+*Last updated: 2026-03-01*

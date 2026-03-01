@@ -16,7 +16,7 @@
 - [x] LiteLLM integration for provider flexibility
 - [x] Automatic cost fallback via LiteLLM pricing
 - [x] Testing framework setup (pytest, coverage, fixtures)
-- [x] Comprehensive test suite (679 tests as of 2026-02-28)
+- [x] Comprehensive test suite (698 tests as of 2026-03-01)
 - [x] 8 golden test conversations defined
 
 ---
@@ -139,31 +139,37 @@
 
 ### 5A: Skills / Capabilities
 
-Mini-agents with their own prompt + tool configuration + execution flow, registered via convention.
+**Status**: ✅ Complete
+
+Vendor-portable, SKILL.md-driven task specifications. Skills use markdown as the primary artifact — compatible with Claude, ChatGPT, and any LLM out of the box.
 
 **Structure**: `packages/skills/` (separate from agents — agents are general-purpose conversational partners, skills are task-specific workflows with defined inputs and outputs)
 
 ```
 packages/skills/
-  base.py            # BaseSkill class
-  registry.py        # SkillRegistry — filesystem-based discovery
+  base.py              # BaseSkill class (parses SKILL.md, optional skill.py)
+  registry.py          # Discovery: scans for SKILL.md files (not Python imports)
   nano_banana_pro/
-    __init__.py      # SKILL_META: name, description, slash command
-    skill.py         # Skill logic: prompt assembly, tool config, execution
-    prompt.md        # Prompt template
+    SKILL.md           # Capability spec — the portable artifact (Mode 1: SKILL.md only)
   content_evaluator/
-    __init__.py
-    skill.py
-    prompt.md
+    SKILL.md           # Capability spec
+    skill.py           # Optional: JARVIS execution config (Mode 2: SKILL.md + skill.py)
+    resources/
+      rubric.md
 ```
 
-- [ ] Skill definition format (prompt template + tool config + metadata)
-- [ ] Skill registry (filesystem-based discovery, mirrors agent pattern)
-- [ ] First skills:
-  - [ ] Nano Banana Pro image prompt generator (The Technical Humanist visual brand)
-  - [ ] Content evaluation workflow (marketing strategist debate, busy subscriber test)
-- [ ] Slash-command routing for skills (e.g., `/skill <name>` or dedicated commands)
-- [ ] Skill discovery and listing
+**Key design choice**: SKILL.md uses Claude's native format (YAML frontmatter with `name` + `description`, markdown body as prompt). No JARVIS-specific frontmatter fields — all execution config lives in the optional `skill.py`. See ADR-017.
+
+- [x] SKILL.md-first skill definition format (vendor-portable capability specs)
+- [x] Filesystem-based skill registry (scans for SKILL.md, not Python imports)
+- [x] Two modes: SKILL.md only (zero Python) and SKILL.md + skill.py (custom execution)
+- [x] First skills:
+  - [x] Nano Banana Pro image prompt generator (SKILL.md only)
+  - [x] Content evaluation workflow (SKILL.md + skill.py with rubric resource)
+- [x] Slash-command routing for skills (e.g., `/content-evaluator <text>`)
+- [x] `/skills` listing command
+- [x] `--skill <name>` standalone mode
+- [x] 30 unit tests (698 total, 11 skipped)
 
 ### 5B: Agent Orchestration
 
@@ -315,4 +321,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-02-28*
+*Last updated: 2026-03-01*

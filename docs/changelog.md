@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Skills Framework (Phase 5A)**: Vendor-portable, SKILL.md-driven task specifications
+  - `packages/skills/base.py`: `BaseSkill` class with two modes — SKILL.md only (zero Python) and SKILL.md + `skill.py` (custom execution config)
+  - `packages/skills/registry.py`: Filesystem-based discovery scanning for `SKILL.md` files (not Python imports)
+  - SKILL.md format matches Claude's native spec: `name` + `description` frontmatter, markdown body as prompt
+  - Two example skills: Nano Banana Pro (Mode 1, SKILL.md only) and Content Evaluator (Mode 2, with `skill.py` + rubric resource)
+  - Slash-command routing: `/nano-banana-pro`, `/content-evaluator`, `/skills` listing
+  - `--skill <name>` standalone mode (mirrors `--agent <name>`)
+  - ADR-017 documenting the vendor-portable design decision
+  - 30 new unit tests; total: 698 pass, 11 skip
 - **Enhanced CLI Terminal UX**: Colored output, markdown rendering, and robust input handling
   - `apps/cli/display.py`: New display module centralizing all terminal formatting with `rich`
   - Colored startup banner, assistant/agent prefixes, dim stats, styled errors and system messages
