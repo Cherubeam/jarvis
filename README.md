@@ -38,8 +38,16 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 └────────┬────────┘
          │
          ▼
+┌─────────────────┐     ┌─────────────────┐
+│     Agent       │     │     Skill       │  SKILL.md-driven task specs
+│  (Orchestrator  │     │  (vendor-portable│  (zero-code or Python-backed)
+│  or Specialist) │     │   workflows)    │
+└────────┬────────┘     └─────────────────┘
+         │
+         ▼
 ┌─────────────────┐
-│     Agent       │  JARVIS orchestrator or specialist (Writing / Research / Clarity)
+│     Tools       │  Web fetch, conversation recall, etc.
+│  (Agentic Loop) │  Max 5 iterations per request
 └────────┬────────┘
          │
          ▼
@@ -48,10 +56,11 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 └────────┬────────┘
          │
          ▼
-┌─────────────────┐
-│ Conversation    │  Logs all interactions to timestamped JSON files
-│ Memory          │
-└─────────────────┘
+┌─────────────────┐     ┌─────────────────┐
+│ Conversation    │────▶│   RAG Index     │  Semantic search over history
+│ Memory          │     │  (ChromaDB,     │  (optional, opt-in)
+│                 │     │   optional)     │
+└─────────────────┘     └─────────────────┘
 ```
 
 ### Key Design Principles
@@ -65,6 +74,11 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 - **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity)
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
+- **Skills Framework**: Vendor-portable skills via SKILL.md (zero-code or Python-backed), slash-command routing, `--skill <name>` standalone mode
+- **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
+- **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
+- **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
+- **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
@@ -89,7 +103,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/jarvis.git
+git clone https://github.com/Cherubeam/jarvis.git
 cd jarvis
 
 # Install dependencies using uv (https://github.com/astral-sh/uv)
@@ -118,13 +132,21 @@ uv run jarvis --agent research
 uv run jarvis --agent clarity
 ```
 
-During a chat session, you can use slash commands to delegate to a specialist:
+During a chat session, you can use slash commands:
 
 ```
 /write <text>           Delegates to Writing agent (prose, editing, rewriting)
 /research <text>        Delegates to Research agent (analysis, synthesis)
 /clarity <text>         Delegates to Clarity agent (explains complex ideas simply)
 /daily-summary          Generates an Obsidian daily note summary
+/skills                 List available skills
+/<skill-name> <text>    Run a skill (e.g., /content-evaluator)
+```
+
+Skills can also be run standalone:
+
+```bash
+uv run jarvis --skill content-evaluator
 ```
 
 Type `quit` or `exit` to end the session.
@@ -170,7 +192,7 @@ Edit `config/default.yaml` or `config/local.yaml`:
 
 ```yaml
 openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"  # Change to desired model
+  default_model: "anthropic/claude-sonnet-4.6"  # Change to desired model
 ```
 
 See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration.
@@ -181,20 +203,27 @@ See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full pr
 jarvis/
 ├── apps/                               # Deployable applications
 │   ├── cli/                            # CLI entry point
-│   │   └── main.py                     # Command-line interface
-│   └── web/                            # Web application (Phase 3)
-│       ├── backend/                    # FastAPI backend
-│       └── frontend/                   # React frontend
+│   │   ├── main.py                     # Command-line interface
+│   │   └── display.py                  # Rich terminal formatting
+│   └── web/                            # Web application (Phase 6, placeholder)
 │
 ├── packages/                           # Shared libraries
 │   ├── core/                           # Core functionality
 │   │   ├── llm_client.py               # Unified LLM provider interface
 │   │   ├── context_builder.py          # Assembles system prompts from context
-│   │   ├── stream_handler.py           # Streaming response handler
-│   │   ├── memory.py                   # Conversation logging
+│   │   ├── stream_handler.py           # Streaming response handler with agentic loop
+│   │   ├── memory.py                   # Conversation logging (schema v1.0.0)
 │   │   ├── pricing.py                  # Cost calculation and tracking
 │   │   ├── benchmark_costs.py          # Benchmark cost estimation
-│   │   └── importers/                  # Conversation importers (ChatGPT, etc.)
+│   │   ├── importers/                  # Conversation importers (ChatGPT, Claude)
+│   │   ├── rag/                        # Conversation recall (optional, ChromaDB)
+│   │   │   ├── indexer.py              # Startup scan, message-pair chunking
+│   │   │   └── searcher.py             # Cosine similarity search with date filters
+│   │   └── tools/                      # Tool calling infrastructure
+│   │       ├── base.py                 # ToolDefinition + ToolRegistry
+│   │       ├── executor.py             # Tool call execution
+│   │       ├── web_fetch.py            # URL fetch (httpx + trafilatura)
+│   │       └── conversation_recall.py  # RAG search tool
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class
 │   │   ├── registry.py                 # Filesystem-based agent auto-discovery
@@ -202,8 +231,19 @@ jarvis/
 │   │   ├── writing/                    # Writing specialist (prose, editing)
 │   │   ├── research/                   # Research specialist (analysis, synthesis)
 │   │   └── clarity/                    # Clarity specialist (simplify complex ideas)
+│   ├── skills/                         # Skills framework
+│   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
+│   │   ├── registry.py                 # Filesystem-based skill discovery
+│   │   ├── content-evaluator/          # Content evaluation (SKILL.md + skill.py)
+│   │   └── .../                        # Additional skills (each has SKILL.md)
 │   ├── integrations/                   # External service integrations
-│   │   └── things3/                    # Things 3 task sync
+│   │   ├── things3/                    # Things 3 task sync
+│   │   └── obsidian/                   # Obsidian daily note integration
+│   │       ├── vault.py                # Vault reader with symlink protection
+│   │       ├── callout.py              # Callout block parser
+│   │       ├── diff.py                 # Diff computation and formatting
+│   │       ├── writer.py               # Note writer with confirmation
+│   │       └── prompts.py              # Prompt loader
 │   └── telemetry/                      # Metrics and evaluation
 │
 ├── data/                               # User data
@@ -214,7 +254,20 @@ jarvis/
 │   │   ├── current_focus.md            # Current projects and priorities
 │   │   ├── tasks.md                    # Auto-synced from Things 3
 │   │   └── projects/                   # Project-specific context
-│   └── conversations/                  # Timestamped conversation logs
+│   ├── conversations/                  # Timestamped conversation logs
+│   ├── prompts/                        # Prompt templates
+│   │   └── obsidian/                   # Obsidian-specific prompts
+│   └── rag/                            # ChromaDB vector store (runtime, gitignored)
+│
+├── scripts/                            # Utility scripts
+│   ├── import_chatgpt.py               # ChatGPT conversation importer
+│   ├── import_claude.py                # Claude conversation importer
+│   ├── import_claude_context.py        # Claude context importer
+│   ├── model_benchmark.py              # Model benchmark runner
+│   ├── benchmark_report.py             # Benchmark report generator
+│   ├── analyze_costs.py                # Cost analysis
+│   ├── analyze_context.py              # Context utilization analyzer
+│   └── link_skills.sh                  # Symlink private skills repo
 │
 ├── config/                             # Configuration
 │   ├── default.yaml                    # Default configuration
@@ -267,11 +320,20 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Slash-command routing and standalone `--agent` mode
 - [x] StreamHandler extraction from CLI
 
-**Future Phases:**
+**Phase 5: Agent Capabilities (In Progress)**
+- [x] Tool calling infrastructure (`ToolDefinition`, `ToolRegistry`, agentic loop)
+- [x] Web fetch tool (httpx + trafilatura)
+- [x] Conversation recall via RAG (ChromaDB, opt-in)
+- [x] Enhanced CLI UX (rich rendering, prompt_toolkit)
+- [x] Skills framework (SKILL.md-driven, vendor-portable, `/skills` and `--skill`)
 - [ ] JARVIS delegation (orchestrator auto-routes to specialists)
-- [ ] Context window management (truncation strategies)
-- [ ] Semantic search over conversation history (RAG)
-- [ ] Web interface (FastAPI + React)
+- [ ] Extended tools (web search, Playwright, write operations)
+- [ ] Intelligent model routing (task complexity → model selection)
+
+**Future Phases:**
+- [ ] Web interface (Phase 6 — FastAPI + event-driven architecture)
+- [ ] Context window management (truncation, summarization)
+- [ ] System monitoring and optimization
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
 
@@ -315,7 +377,10 @@ This project demonstrates several things I value as an engineer:
 
 - **Language**: Python 3.13
 - **LLM Provider**: LiteLLM + OpenRouter (unified API for Claude, GPT-4, Gemini, etc.)
+- **Terminal UI**: rich + prompt_toolkit
 - **Storage**: Local filesystem (markdown + JSON)
+- **Vector DB**: ChromaDB (optional, for conversation recall / RAG)
+- **HTTP**: httpx + trafilatura (web fetch tool)
 - **Configuration**: YAML + environment variables
 - **Testing**: pytest ([details](docs/engineering/testing.md))
 - **Package Management**: uv (fast Python package installer)
