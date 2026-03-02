@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock
 from pathlib import Path
 
-from packages.skills.base import BaseSkill, SkillConfig
+from packages.skills.base import BaseSkill, SkillConfig, _import_skill_module
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.telemetry.metrics import ResponseMetrics
@@ -181,3 +181,37 @@ class TestBaseSkillFromSkillMd:
         assert skill.name == "props"
         assert skill.description == "test properties"
         assert skill.command == "/props"
+
+
+@pytest.mark.unit
+class TestImportSkillModuleSymlink:
+    """Tests for _import_skill_module with symlinked skill directories."""
+
+    def test_symlinked_skill_dir_loads_skill_py(self, tmp_path):
+        """Verify _import_skill_module works when skill_dir is a symlink
+        pointing outside the packages/ tree (e.g. a private skills repo)."""
+        # Create a fake skill.py outside the packages tree
+        external = tmp_path / "external-repo" / "my-skill"
+        external.mkdir(parents=True)
+        (external / "skill.py").write_text(
+            'SKILL_CONFIG = {"temperature": 0.9, "max_tokens": 2048}\n'
+        )
+
+        # Create a packages/skills/ tree with a symlink to the external skill
+        packages = tmp_path / "packages" / "skills" / "my-skill"
+        packages.parent.mkdir(parents=True)
+        packages.symlink_to(external)
+
+        # Import via the symlink path — should succeed
+        module = _import_skill_module(packages)
+        assert module.SKILL_CONFIG["temperature"] == 0.9
+        assert module.SKILL_CONFIG["max_tokens"] == 2048
+
+    def test_non_packages_path_raises_import_error(self, tmp_path):
+        """Paths that don't contain 'packages' should raise ImportError."""
+        bogus = tmp_path / "somewhere" / "else"
+        bogus.mkdir(parents=True)
+        (bogus / "skill.py").write_text("SKILL_CONFIG = {}\n")
+
+        with pytest.raises(ImportError, match="Cannot determine module path"):
+            _import_skill_module(bogus)
