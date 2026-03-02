@@ -47,5 +47,5 @@ htmlcov/
 tests/golden/results/
 
 # Individual skills (personal content, framework code is tracked)
-packages/skills/content-evaluator/
-packages/skills/technical-humanist-image-architect/
+packages/skills/content-evaluator
+packages/skills/technical-humanist-image-architect
