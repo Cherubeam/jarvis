@@ -16,6 +16,7 @@ the capability spec and the prompt.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -174,14 +175,25 @@ class BaseSkill:
 
 
 def _import_skill_module(skill_dir: Path):
-    """Import a skill's skill.py module by path."""
-    # Build dotted module path: packages.skills.<skill_name>.skill
-    parts = skill_dir.resolve().parts
-    # Find 'packages' in path to build the module name
+    """Import a skill's skill.py module by path.
+
+    Uses absolute() instead of resolve() so symlinked skill directories
+    keep their logical path within the packages/ tree. The actual file is
+    loaded via spec_from_file_location so Python finds the real module on
+    disk regardless of symlink indirection.
+    """
+    # absolute() preserves symlinks; resolve() follows them
+    parts = skill_dir.absolute().parts
     try:
         pkg_idx = parts.index("packages")
     except ValueError:
         raise ImportError(f"Cannot determine module path for {skill_dir}")
 
     module_name = ".".join(parts[pkg_idx:]) + ".skill"
-    return importlib.import_module(module_name)
+    skill_py = skill_dir / "skill.py"
+    spec = importlib.util.spec_from_file_location(module_name, skill_py)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot create module spec for {skill_py}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
