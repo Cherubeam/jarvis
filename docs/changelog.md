@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.8.0] - 2026-03-02
+
 ### Added
 - **Skills Framework (Phase 5A)**: Vendor-portable, SKILL.md-driven task specifications
   - `packages/skills/base.py`: `BaseSkill` class with two modes — SKILL.md only (zero Python) and SKILL.md + `skill.py` (custom execution config)
@@ -19,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--skill <name>` standalone mode (mirrors `--agent <name>`)
   - ADR-017 documenting the vendor-portable design decision
   - 30 new unit tests; total: 698 pass, 11 skip
+
+---
+
+## [0.7.0] - 2026-02-28
+
+### Added
 - **Enhanced CLI Terminal UX**: Colored output, markdown rendering, and robust input handling
   - `apps/cli/display.py`: New display module centralizing all terminal formatting with `rich`
   - Colored startup banner, assistant/agent prefixes, dim stats, styled errors and system messages
@@ -28,13 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `config/default.yaml`: new `cli:` section (`colors`, `history_file`)
   - Blank line separator between token stats and next prompt (fixes cramped output)
   - 26 new unit tests in `test_display.py`; 2 new `on_tool_call` tests in `test_stream_handler.py`
-
-### Fixed
-- **RAG recall poor for broad queries**: Per-conversation deduplication prevents one verbose conversation from monopolizing all result slots. Searcher over-fetches 3x when deduplicating. New `n_results` tool parameter (default 10, max 20) lets the LLM request more results for broad queries like weekly summaries.
-- **RAG date filtering broken**: ChromaDB's `$gte`/`$lte` operators only support numeric types, so string-based `session_date` filters silently threw `ValueError`. Added integer `session_date_int` (YYYYMMDD) metadata field with automatic migration of existing records. Tool description now includes today's date and instructs the LLM to set `date_from`/`date_to` for temporal queries. Results with similar relevance scores now prefer newer conversations (recency tiebreaker).
-- **RAG startup failure with OpenRouter**: Explicitly pass `encoding_format="float"` in `_embed_batch()` (`indexer.py`) and `search()` (`searcher.py`) to satisfy OpenRouter's strict Zod schema validation, which rejects requests missing or sending an unexpected `encoding_format` value.
-
-### Added
 - **Conversation Recall (RAG)**: Semantic search over past conversations via ChromaDB + LiteLLM embeddings
   - `packages/core/rag/indexer.py`: `ConversationIndexer` — startup scan of `data/conversations/*.json`, incremental embedding + upsert to ChromaDB
   - `packages/core/rag/searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — cosine similarity search with optional date filters
@@ -45,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pyproject.toml`: new optional `[rag]` dependency group with `chromadb>=0.6.0`
   - 27 new unit tests across `test_rag_indexer.py`, `test_rag_searcher.py`, `test_conversation_recall.py`
   - Opt-in: set `rag.enabled: true` in `config/local.yaml` and `uv add chromadb`; disabled by default
-
 - **Tool Calling Infrastructure + Web Fetch**: LLM can now invoke tools via function calling
   - `packages/core/tools/base.py`: `ToolDefinition` dataclass and `ToolRegistry` class
   - `packages/core/tools/executor.py`: `execute_tool_calls()` — runs tool calls, returns formatted result messages
@@ -60,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dependencies added: `httpx`, `trafilatura`
 
 ### Fixed
+- **RAG recall poor for broad queries**: Per-conversation deduplication prevents one verbose conversation from monopolizing all result slots. Searcher over-fetches 3x when deduplicating. New `n_results` tool parameter (default 10, max 20) lets the LLM request more results for broad queries like weekly summaries.
+- **RAG date filtering broken**: ChromaDB's `$gte`/`$lte` operators only support numeric types, so string-based `session_date` filters silently threw `ValueError`. Added integer `session_date_int` (YYYYMMDD) metadata field with automatic migration of existing records. Tool description now includes today's date and instructs the LLM to set `date_from`/`date_to` for temporal queries. Results with similar relevance scores now prefer newer conversations (recency tiebreaker).
+- **RAG startup failure with OpenRouter**: Explicitly pass `encoding_format="float"` in `_embed_batch()` (`indexer.py`) and `search()` (`searcher.py`) to satisfy OpenRouter's strict Zod schema validation, which rejects requests missing or sending an unexpected `encoding_format` value.
 - **Agentic loop double-counting bug** (`StreamHandler._run_agentic_loop()`):
   - Usage accumulation now only happens for `"tool_calls"` responses; `"stop"` responses are covered by `chat_stream()` and were previously double-counted
   - Eliminated a redundant `complete()` call (the "stop check") that was immediately discarded when `chat_stream()` regenerated the same answer — saves one billable API call per tool-use turn
@@ -69,6 +74,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`AgentConfig.tools`**: Type changed from `list[str]` → `list[ToolDefinition]`; `BaseAgent.__init__` builds `ToolRegistry` from config tools; `to_dict()` serializes as tool names
 - **`StreamHandler.stream()`**: Accepts optional `tool_registry` parameter (default `None` — fully backward compatible)
 - **`BaseAgent.run()`**: Passes `tool_registry` to `stream_handler.stream()` when tools are registered
+
+---
+
+## [0.6.0] - 2026-02-13
 
 ### Added
 - **Agent Framework**: Wired agent layer into CLI with slash-command routing and standalone mode
@@ -81,6 +90,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Slash-command routing in CLI via agent registry lookup
   - 44 new tests for StreamHandler, registry, BaseAgent, agents, and CLI routing
   - Convention: drop a folder in `packages/agents/` with `agent.py` + `prompts/system.md` and it works
+- **Nested Daily Note Paths**: `daily_note_path_format` replaces `daily_notes_dir` + `daily_note_format`
+  - Single `strftime`-based path format supports date-derived subdirectories (e.g., `Journals/%Y/%Y-%m/%Y-%m-%d`)
+  - Config key: `obsidian.daily_notes.path_format` (default: `"Daily Notes/%Y-%m-%d"`)
+- **Obsidian Vault Integration**: Read from and write to Obsidian vaults, starting with daily notes
+  - Five-module architecture: `vault.py`, `callout.py`, `diff.py`, `writer.py`, `prompts.py`
+  - `VaultConfig` with path validation and symlink/traversal protection
+  - `> [!JARVIS]` callout block parser and content builder (pure string ops, no I/O)
+  - UI-agnostic diff computation with CLI (colored) and API (JSON) formatters
+  - `ConfirmationHandler` ABC for GUI-ready write confirmation (CLI implementation included)
+  - `/daily-summary` CLI command: generates end-of-day summary via LLM, appends to daily note callout
+  - Prompt files in `data/prompts/obsidian/` loaded on demand (not in system prompt)
+  - 83 new tests (73 unit + 10 integration) covering all modules and security boundaries
+  - Configuration in `config/default.yaml` (disabled by default, user enables in `local.yaml`)
 
 ### Changed
 - **JARVIS Persona Prompt**: Replaced generic `system_prompt_prefix` with movie-inspired JARVIS voice
@@ -95,20 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/daily-summary` session tracking**: Command now logs the exchange via `logger.add_message()` so `save()` writes the conversation file and prints the session summary on exit
 - **`/daily-summary` content duplication**: Existing JARVIS callout entries are stripped from the note content sent to the LLM and passed separately with a "DO NOT repeat" instruction, preventing duplicated bullets on re-runs
 
+---
+
+## [0.5.0] - 2026-02-08
+
 ### Added
-- **Nested Daily Note Paths**: `daily_note_path_format` replaces `daily_notes_dir` + `daily_note_format`
-  - Single `strftime`-based path format supports date-derived subdirectories (e.g., `Journals/%Y/%Y-%m/%Y-%m-%d`)
-  - Config key: `obsidian.daily_notes.path_format` (default: `"Daily Notes/%Y-%m-%d"`)
-- **Obsidian Vault Integration**: Read from and write to Obsidian vaults, starting with daily notes
-  - Five-module architecture: `vault.py`, `callout.py`, `diff.py`, `writer.py`, `prompts.py`
-  - `VaultConfig` with path validation and symlink/traversal protection
-  - `> [!JARVIS]` callout block parser and content builder (pure string ops, no I/O)
-  - UI-agnostic diff computation with CLI (colored) and API (JSON) formatters
-  - `ConfirmationHandler` ABC for GUI-ready write confirmation (CLI implementation included)
-  - `/daily-summary` CLI command: generates end-of-day summary via LLM, appends to daily note callout
-  - Prompt files in `data/prompts/obsidian/` loaded on demand (not in system prompt)
-  - 83 new tests (73 unit + 10 integration) covering all modules and security boundaries
-  - Configuration in `config/default.yaml` (disabled by default, user enables in `local.yaml`)
 - **Selective Context Loading via Frontmatter**: Project files support YAML frontmatter for tiered loading
   - `active: true/false` controls whether full content is loaded into system prompt
   - `topics` list for future topic-based auto-activation
@@ -144,18 +157,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Skips starter/template projects automatically
   - Context builder updated to load split profile files + project context
   - CLI context snapshot includes project files
-
-### Fixed
-- **8 Stale Unit Tests**: Aligned test mocks with current MCP SDK and AppleScript direct architecture across `test_benchmark_costs.py`, `test_cli.py`, `test_task_sync.py`
-
-### Changed
-- **Test Suite**: Expanded from 246 to 512 tests (482 unit + 32 integration + 10 golden)
-- **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
-  - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Project Index -> Active Projects
-  - Loads `projects/*.md` files alphabetically with frontmatter-based filtering
-  - Project index lists all projects; only `active: true` projects get full context
-- **CLI Context Snapshot**: Now includes `projects/*.md` in context file tracking with `active` and `frontmatter` metadata
-
 - **Claude Conversation Import**: Bulk import of Claude conversation exports into Jarvis schema v1.0.0
   - Conversion module at `packages/core/importers/claude.py`
   - CLI script at `scripts/import_claude.py` with `--dry-run`, `--date-from/to` filters
@@ -194,6 +195,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New utility functions: `generate_conversation_id()`, `hash_content()`
   - 52 unit tests for memory module (expanded from 15)
   - 2 new integration tests for schema verification
+
+### Fixed
+- **8 Stale Unit Tests**: Aligned test mocks with current MCP SDK and AppleScript direct architecture across `test_benchmark_costs.py`, `test_cli.py`, `test_task_sync.py`
+
+### Changed
+- **Test Suite**: Expanded from 246 to 512 tests (482 unit + 32 integration + 10 golden)
+- **Context Builder**: Now loads `personal_context.md` + `professional_context.md` instead of `profile.md`
+  - Section order: Personal -> Professional -> Preferences -> Current Focus -> Tasks -> Project Index -> Active Projects
+  - Loads `projects/*.md` files alphabetically with frontmatter-based filtering
+  - Project index lists all projects; only `active: true` projects get full context
+- **CLI Context Snapshot**: Now includes `projects/*.md` in context file tracking with `active` and `frontmatter` metadata
 
 ### Documentation
 - Added branching guideline to AGENTS.md (`git switch -c <type>/<description>`)
@@ -585,4 +597,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-03-02*

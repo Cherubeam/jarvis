@@ -254,6 +254,32 @@ docs: restructure documentation into organized /docs directory
 
 ---
 
+## Releasing
+
+### When to Release
+
+Cut a new version when a coherent set of features is complete and merged to `main`.
+A release doesn't need to be large — even a single meaningful feature warrants a version bump.
+
+### How to Release
+
+1. **Update changelog**: Move items from `[Unreleased]` into a new `[X.Y.Z] - YYYY-MM-DD` section in `docs/changelog.md`
+2. **Bump version**: Update `version` in `pyproject.toml`
+3. **Commit**: `chore: release vX.Y.Z`
+4. **Tag**: `git tag -a vX.Y.Z -m "Release X.Y.Z - <short description>"`
+5. **Push**: `git push origin main --tags`
+6. **GitHub Release**: `gh release create vX.Y.Z --title "vX.Y.Z - <theme>" --notes-file <changelog_excerpt>`
+
+### Version Numbering (SemVer)
+
+- **PATCH** (0.0.X): Bug fixes only
+- **MINOR** (0.X.0): New features (backward compatible)
+- **MAJOR** (X.0.0): Breaking changes
+
+While pre-1.0, minor bumps may include breaking changes.
+
+---
+
 ## Resources
 
 - **Full docs**: See `docs/` directory
@@ -277,4 +303,4 @@ docs: restructure documentation into organized /docs directory
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-03-02*
