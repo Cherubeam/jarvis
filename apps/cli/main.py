@@ -363,6 +363,25 @@ def main(argv: list[str] | None = None):
 
             recall_tool = make_conversation_recall_tool(db_path, embedding_model, api_key)
             extra_tools.append(recall_tool)
+
+            # Index deck-skill cards if any deck-skills have a deck.yaml
+            if rag_cfg.get("index_cards", True):
+                deck_dirs = [
+                    meta.path for meta in skill_registry.values()
+                    if (meta.path / "deck.yaml").is_file()
+                ]
+                if deck_dirs:
+                    from packages.core.rag.card_indexer import CardIndexer
+                    from packages.core.tools.card_search import make_card_search_tool
+
+                    card_indexer = CardIndexer(db_path, embedding_model, api_key)
+                    n_cards = card_indexer.index_new(deck_dirs)
+                    if n_cards:
+                        print_system(f"[RAG] Indexed {n_cards} new card(s).")
+
+                    card_search_tool = make_card_search_tool(db_path, embedding_model, api_key)
+                    extra_tools.append(card_search_tool)
+
         except ImportError:
             print_system("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
         except Exception as e:
@@ -386,7 +405,13 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        active_agent = meta.agent_class(llm_client=client, model=model_id)
+        # Pass extra_tools to agents that accept them (e.g. TacticsAgent)
+        import inspect
+        sig = inspect.signature(meta.agent_class.__init__)
+        if "extra_tools" in sig.parameters and extra_tools:
+            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
+        else:
+            active_agent = meta.agent_class(llm_client=client, model=model_id)
         agent_name = meta.name
     else:
         active_agent = JarvisAgent(
