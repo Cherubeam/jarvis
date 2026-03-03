@@ -1400,4 +1400,60 @@ Make SKILL.md the primary artifact, not Python code:
 
 ---
 
-*Last updated: 2026-03-01*
+## ADR-018: Pip Decks Integration — Deck-Skills + RAG + TacticsAgent
+
+**Date**: 2026-03-03
+**Status**: Accepted
+
+### Context
+
+Pip Decks (Storyteller Tactics, Workshop Tactics, Idea Tactics — 200+ cards total) are structured reference content ideal for RAG. Primary use cases are multi-turn: iterating on narratives, developing pitches, refining business ideas. Card content is proprietary and lives in a private repository, symlinked via `link_skills.sh`.
+
+### Decision
+
+Three-layer architecture:
+
+1. **Each deck = a skill** (private repo, symlinked). `SKILL.md` for deck-specific coaching personality, `skill.py` with `retrieve_cards` tool, `deck.yaml` for card index metadata, `resources/cards/*.md` for individual card content.
+2. **TacticsAgent = cross-deck orchestrator** (main repo). A `BaseAgent` subclass that uses `search_tactics` RAG tool to find cards across all decks and coach users through multi-turn sessions.
+3. **CardIndexer + CardSearcher** (main repo). Separate ChromaDB collection (`"pip_deck_cards"`), auto-discovers deck-skills by `deck.yaml` presence, embeds full card markdown.
+
+### Key Tradeoff
+
+Deck-skills include a `skill.py` (JARVIS-specific) rather than being pure markdown (portable). Chose depth over portability: standalone mode with `retrieve_cards` tool provides richer card retrieval than a plain SKILL.md prompt could offer.
+
+### Alternatives Considered
+
+1. **Cards as context files** (data/context/)
+   - ❌ No semantic search — all cards in prompt = token bloat
+   - ❌ Can't scale to 200+ cards
+
+2. **Cards embedded in SKILL.md body**
+   - ❌ Single-deck only, no cross-deck search
+   - ❌ Context window limits at ~50 cards
+
+3. **Agent-to-skill delegation** for cross-deck queries
+   - ✅ Leverages deck-specific coaching personality
+   - ❌ Adds complexity and LLM API cost per delegation
+   - ⏳ Deferred to separate branch (`feat/agent-skill-delegation`)
+
+### Consequences
+
+**Benefits:**
+- Deck-skills auto-discovered — adding a new deck = copy template + add content + run `link_skills.sh`
+- RAG search finds relevant cards across 200+ without token bloat
+- Multi-turn coaching with conversation context
+- Standalone mode (`/storyteller-tactics`) and orchestrated mode (`--agent tactics`) both work
+
+**Drawbacks:**
+- Proprietary content requires private repo + symlink workflow
+- ChromaDB dependency for card indexing (already required for conversation recall)
+- `skill.py` pattern is JARVIS-specific (SKILL.md body remains portable)
+
+### Related
+- Extends: ADR-016 (Conversation Recall via ChromaDB + RAG)
+- Extends: ADR-017 (Skills — SKILL.md-First Design)
+- Extends: ADR-014 (Agent Framework — Convention-Based Discovery)
+
+---
+
+*Last updated: 2026-03-03*

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Pip Decks Integration (Phase 5E)**: Deck-skills + RAG + TacticsAgent
+  - `packages/core/rag/card_indexer.py`: `CardIndexer` and `CardSearcher` for indexing deck-skill card content into ChromaDB (`"pip_deck_cards"` collection)
+  - `packages/core/tools/card_search.py`: `make_card_search_tool()` factory — `search_tactics` tool for cross-deck semantic card search
+  - `packages/agents/tactics/`: TacticsAgent (`/tactics`, `--agent tactics`) — cross-deck Pip Decks coaching orchestrator with multi-turn session support
+  - Deck-skill pattern: `SKILL.md` + `skill.py` + `deck.yaml` + `resources/cards/*.md` per deck
+  - Auto-discovery of deck-skills via `deck.yaml` presence in skill directories
+  - `config/default.yaml`: new `rag.index_cards` option (default: true)
+  - `apps/cli/main.py`: card indexing startup wiring, `extra_tools` passthrough for agents
+  - ADR-018: Pip Decks Integration architecture decision
+  - 25 new tests (19 card indexer/searcher/tool + 6 TacticsAgent); total: 725 pass, 11 skip
+
 ---
 
 ## [0.8.0] - 2026-03-02

@@ -171,9 +171,20 @@ packages/skills/
 - [x] `--skill <name>` standalone mode
 - [x] 30 unit tests (698 total, 11 skipped)
 
+### 5E: Knowledge Base / Deck-Skills
+
+- [x] CardIndexer + CardSearcher (RAG for static reference content in ChromaDB)
+- [x] TacticsAgent (cross-deck Pip Decks coaching orchestrator)
+- [x] Deck-skill pattern (SKILL.md + skill.py + deck.yaml + resources/cards/)
+- [x] `search_tactics` tool for cross-deck card search
+- [x] Auto-discovery of deck-skills via `deck.yaml` presence
+- [x] 25 new tests; total: 725 pass, 11 skip
+- [ ] Agent-to-skill delegation (future, separate branch)
+
 ### 5B: Agent Orchestration
 
 - [ ] JARVIS delegation — sub-conversations with specialist agents
+- [ ] Agent-to-skill delegation (`BaseSkill.execute()` + `make_skill_tool()`)
 - [ ] LLM-based intent detection and auto-routing
 - [ ] Error recovery and fallbacks
 
@@ -321,4 +332,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-03-01*
+*Last updated: 2026-03-03*
