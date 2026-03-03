@@ -66,6 +66,7 @@ rag:
   enabled: false          # set to true in local.yaml to activate
   db_path: "data/rag/chroma"
   embedding_model: "openrouter/openai/text-embedding-3-small"
+  index_cards: true       # index deck-skill cards (deck.yaml) when rag is enabled
   # Uses the same OPENROUTER_API_KEY already configured for chat.
   # LiteLLM's openrouter/ prefix routes natively — no api_base needed.
 
