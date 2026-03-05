@@ -225,6 +225,62 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _run_agent_session(
+    agent,
+    agent_name: str,
+    stream_handler: StreamHandler,
+    logger: ConversationLogger,
+    session,
+) -> None:
+    """Run a multi-turn agent session until the user types /exit or /back."""
+    print_system(f"\nEntering {agent_name} session. Type /exit to return to JARVIS.\n")
+
+    session_history: list[dict] = []
+
+    while True:
+        try:
+            user_input = prompt_user(session)
+        except EOFError:
+            break
+
+        if not user_input:
+            continue
+        if user_input.strip().lower() in ("/exit", "/back"):
+            break
+
+        logger.add_message("user", user_input)
+        session_history.append({"role": "user", "content": user_input})
+
+        print_agent_prefix(agent_name)
+        live, buf = start_live_stream()
+        stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+        result = agent.run(
+            user_input,
+            stream_handler,
+            print_chunks=True,
+            messages_override=session_history[:-1],
+        )
+        stream_handler.on_chunk = None
+        finish_live_stream(live, result.text)
+
+        print_usage_stats(result)
+        print_separator()
+
+        session_history.append({"role": "assistant", "content": result.text})
+        logger.add_message(
+            "assistant",
+            result.text,
+            prompt_tokens=result.usage.prompt_tokens,
+            completion_tokens=result.usage.completion_tokens,
+            total_tokens=result.usage.total_tokens,
+            cost_usd=result.cost_usd,
+            ttft_ms=result.metrics.ttft_ms,
+            total_latency_ms=result.metrics.total_latency_ms,
+        )
+
+    print_system(f"\nReturning to JARVIS.\n")
+
+
 def _handle_agent_command(
     command: str,
     payload: str,
@@ -233,17 +289,28 @@ def _handle_agent_command(
     logger: ConversationLogger,
     model_id: str,
     agent_registry: dict,
+    extra_tools: list | None = None,
+    session=None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
     meta = get_by_command(command, agent_registry)
     if meta is None:
         return False
 
-    agent = meta.agent_class(llm_client=client, model=model_id)
+    # Pass extra_tools to agents that accept them (e.g. TacticsAgent)
+    import inspect
+    sig = inspect.signature(meta.agent_class.__init__)
+    if "extra_tools" in sig.parameters and extra_tools:
+        agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
+    else:
+        agent = meta.agent_class(llm_client=client, model=model_id)
 
     if not payload:
-        print_system(f"\nUsage: {command} <text>")
-        print_system(f"  {meta.description}\n")
+        if session is not None:
+            _run_agent_session(agent, meta.name, stream_handler, logger, session)
+        else:
+            print_system(f"\nUsage: {command} <text>")
+            print_system(f"  {meta.description}\n")
         return True
 
     logger.add_message("user", f"{command} {payload}")
@@ -556,6 +623,8 @@ def main(argv: list[str] | None = None):
                 if _handle_agent_command(
                     command, payload, client, stream_handler, logger,
                     model_id, agent_registry,
+                    extra_tools=extra_tools or None,
+                    session=session,
                 ):
                     continue
 
