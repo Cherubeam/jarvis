@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Skills vs Agents Guide** (`docs/engineering/skills-vs-agents.md`): Standalone document explaining the skill/agent distinction, promotion criteria, migration path, and assessment of expert personas
 - **Pip Decks Integration (Phase 5E)**: Deck-skills + RAG + TacticsAgent
   - `packages/core/rag/card_indexer.py`: `CardIndexer` and `CardSearcher` for indexing deck-skill card content into ChromaDB (`"pip_deck_cards"` collection)
   - `packages/core/tools/card_search.py`: `make_card_search_tool()` factory — `search_tactics` tool for cross-deck semantic card search
