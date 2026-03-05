@@ -5,13 +5,14 @@ Tests parse_args, _handle_agent_command, and --agent flag behavior.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, call, ANY
 
-from apps.cli.main import parse_args, _handle_agent_command
+from apps.cli.main import parse_args, _handle_agent_command, _run_agent_session
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.memory import ConversationLogger
+from packages.core.tools.base import ToolDefinition
 from packages.telemetry.metrics import ResponseMetrics
 
 
@@ -135,3 +136,159 @@ class TestHandleAgentCommand:
             ttft_ms=50,
             total_latency_ms=200,
         )
+
+    def test_passes_extra_tools_to_agent(self):
+        """extra_tools are forwarded to agent classes that accept them."""
+        dummy_tool = ToolDefinition(
+            name="search_tactics", description="Search",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda: "r",
+        )
+
+        # Real class with extra_tools in __init__ so inspect.signature works
+        created_with = {}
+
+        class FakeAgent:
+            def __init__(self, *, llm_client, model, extra_tools=None):
+                created_with["extra_tools"] = extra_tools
+
+            def run(self, *args, **kwargs):
+                return _make_stream_result()
+
+        registry = {
+            "tactics": AgentMeta(
+                name="tactics", description="desc",
+                command="/tactics", agent_class=FakeAgent,
+            )
+        }
+
+        _handle_agent_command(
+            "/tactics", "help me pitch", Mock(), Mock(), Mock(), "model",
+            registry, extra_tools=[dummy_tool],
+        )
+
+        assert created_with["extra_tools"] == [dummy_tool]
+
+    def test_no_payload_starts_session_when_session_provided(self):
+        """No-payload + session triggers _run_agent_session instead of usage."""
+        agent_class, _ = self._make_mock_agent_class()
+        registry = {
+            "tactics": AgentMeta(
+                name="tactics", description="desc",
+                command="/tactics", agent_class=agent_class,
+            )
+        }
+
+        with patch("apps.cli.main._run_agent_session") as mock_session:
+            result = _handle_agent_command(
+                "/tactics", "", Mock(), Mock(), Mock(), "model",
+                registry, session=Mock(),
+            )
+
+        assert result is True
+        mock_session.assert_called_once()
+
+    def test_no_payload_shows_usage_when_no_session(self, capsys):
+        """No-payload + no session falls back to usage text."""
+        agent_class, _ = self._make_mock_agent_class()
+        registry = {
+            "tactics": AgentMeta(
+                name="tactics", description="Pip Decks coaching",
+                command="/tactics", agent_class=agent_class,
+            )
+        }
+
+        result = _handle_agent_command(
+            "/tactics", "", Mock(), Mock(), Mock(), "model",
+            registry, session=None,
+        )
+        assert result is True
+        captured = capsys.readouterr()
+        assert "Usage: /tactics" in captured.out
+
+
+@pytest.mark.unit
+class TestRunAgentSession:
+    """Tests for the _run_agent_session helper."""
+
+    @patch("apps.cli.main.prompt_user")
+    def test_exit_returns_to_jarvis(self, mock_prompt, capsys):
+        """Typing /exit breaks the session loop."""
+        mock_prompt.side_effect = ["/exit"]
+        agent = Mock()
+        logger = Mock(spec=ConversationLogger)
+        handler = Mock(spec=StreamHandler)
+
+        _run_agent_session(agent, "tactics", handler, logger, Mock())
+
+        agent.run.assert_not_called()
+        captured = capsys.readouterr()
+        assert "Entering tactics session" in captured.out
+        assert "Returning to JARVIS" in captured.out
+
+    @patch("apps.cli.main.prompt_user")
+    def test_back_returns_to_jarvis(self, mock_prompt, capsys):
+        """/back also exits the session."""
+        mock_prompt.side_effect = ["/back"]
+        agent = Mock()
+
+        _run_agent_session(agent, "tactics", Mock(), Mock(), Mock())
+
+        agent.run.assert_not_called()
+
+    @patch("apps.cli.main.finish_live_stream")
+    @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
+    @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
+    @patch("apps.cli.main.prompt_user")
+    def test_multi_turn_conversation(
+        self, mock_prompt, mock_chunk, mock_start, mock_finish, capsys
+    ):
+        """Multiple turns accumulate history and log messages."""
+        mock_prompt.side_effect = ["hello", "follow up", "/exit"]
+
+        result1 = _make_stream_result("response 1")
+        result2 = _make_stream_result("response 2")
+        agent = Mock()
+        agent.run.side_effect = [result1, result2]
+        logger = Mock(spec=ConversationLogger)
+        handler = Mock(spec=StreamHandler)
+
+        _run_agent_session(agent, "tactics", handler, logger, Mock())
+
+        # Agent was called twice
+        assert agent.run.call_count == 2
+
+        # First call: empty history (messages_override=[])
+        first_call = agent.run.call_args_list[0]
+        assert first_call[0][0] == "hello"
+        assert first_call[1]["messages_override"] == []
+
+        # Second call: history contains the first exchange
+        second_call = agent.run.call_args_list[1]
+        assert second_call[0][0] == "follow up"
+        assert len(second_call[1]["messages_override"]) == 2
+        assert second_call[1]["messages_override"][0]["content"] == "hello"
+        assert second_call[1]["messages_override"][1]["content"] == "response 1"
+
+        # All messages logged
+        assert logger.add_message.call_count == 4  # 2 user + 2 assistant
+
+    @patch("apps.cli.main.prompt_user")
+    def test_empty_input_skipped(self, mock_prompt):
+        """Empty input lines are ignored."""
+        mock_prompt.side_effect = ["", "", "/exit"]
+        agent = Mock()
+
+        _run_agent_session(agent, "tactics", Mock(), Mock(), Mock())
+
+        agent.run.assert_not_called()
+
+    @patch("apps.cli.main.prompt_user")
+    def test_eof_exits_session(self, mock_prompt, capsys):
+        """EOFError (Ctrl-D) cleanly exits the session."""
+        mock_prompt.side_effect = EOFError
+
+        _run_agent_session(Mock(), "tactics", Mock(), Mock(), Mock())
+
+        captured = capsys.readouterr()
+        assert "Returning to JARVIS" in captured.out
