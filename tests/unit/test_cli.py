@@ -29,9 +29,6 @@ openrouter:
 paths:
   context_dir: "data/context"
   conversations_dir: "data/conversations"
-
-system_prompt_prefix: |
-  You are Jarvis, an advanced personal AI assistant.
 """
         (config_dir / "default.yaml").write_text(config_content)
 

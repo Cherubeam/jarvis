@@ -15,11 +15,13 @@ class TestContextIntegration:
 
     def test_context_files_loaded_into_prompt(self, sample_context_all_files: Path):
         """Test that all context files are loaded and included in prompt."""
-        prefix = "You are Jarvis, a personal AI assistant."
+        (sample_context_all_files / "soul.md").write_text(
+            "You are Jarvis, a personal AI assistant."
+        )
 
-        result = build_system_prompt(sample_context_all_files, prefix)
+        result = build_system_prompt(sample_context_all_files)
 
-        # Check prefix
+        # Check soul
         assert "You are Jarvis" in result
 
         # Check all sections present
@@ -48,25 +50,20 @@ class TestContextIntegration:
     def test_missing_context_files_graceful(self, temp_context_dir: Path):
         """Test that system works gracefully with missing context files."""
         # Don't create any context files, directory is empty
-        prefix = "You are a helpful assistant."
+        result = build_system_prompt(temp_context_dir)
 
-        result = build_system_prompt(temp_context_dir, prefix)
-
-        # Should still have prefix
-        assert "You are a helpful assistant." in result
+        # Should be empty
+        assert result == ""
 
         # Should not have any section headers since no files exist
         assert "## About this person" not in result
         assert "## Their preferences" not in result
         assert "## Current focus" not in result
 
-        # Result should basically be just the prefix
-        assert len(result) < 100  # Minimal content
-
     def test_context_order_preserved(self, sample_context_all_files: Path):
-        """Test that context sections appear in correct order: personal → professional → preferences → focus."""
-        prefix = "Test"
-        result = build_system_prompt(sample_context_all_files, prefix)
+        """Test that context sections appear in correct order: personal -> professional -> preferences -> focus."""
+        (sample_context_all_files / "soul.md").write_text("Test soul")
+        result = build_system_prompt(sample_context_all_files)
 
         # Find positions
         personal_pos = result.find("## About this person")
@@ -87,19 +84,19 @@ class TestContextIntegration:
         # Personal content should come before preferences content
         software_eng_pos = result.find("software engineer")
         concise_pos = result.find("Be concise")
-        jarvis_pos = result.find("Jarvis")
+        jarvis_pos = result.find("testing framework")
 
         assert software_eng_pos < concise_pos < jarvis_pos
 
     def test_system_prompt_format(self, sample_context_all_files: Path):
         """Test proper formatting of system prompt with sections and separators."""
-        prefix = "You are Jarvis."
-        result = build_system_prompt(sample_context_all_files, prefix)
+        (sample_context_all_files / "soul.md").write_text("You are Jarvis.")
+        result = build_system_prompt(sample_context_all_files)
 
         # Check structure
         lines = result.split("\n")
 
-        # Should start with prefix (stripped)
+        # Should start with soul content (stripped)
         assert lines[0] == "You are Jarvis."
 
         # Should have section separators

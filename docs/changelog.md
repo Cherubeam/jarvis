@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **SOUL.md** (`data/context/soul.md`): Consolidated Jarvis identity file — single source of truth for personality, communication style, values, guardrails, and persistent directives
+  - `context_builder.py` loads `soul.md` from `context_dir` as the prompt prefix (replaces `system_prompt_prefix` config key)
+  - New sections: Values & Principles, Guardrails, Persistent Directives
+  - Behavioral rules moved from `preferences.md` to `soul.md` (preferences.md retains user-facing preferences only)
+
+### Removed
+- `system_prompt_prefix` from `config/default.yaml` and all callers — soul.md is now the identity source
+- `prefix` parameter from `build_system_prompt()` and `JarvisAgent.__init__()`
+
 ---
 
 ## [0.9.0] - 2026-03-05

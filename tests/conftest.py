@@ -140,7 +140,6 @@ def sample_config(tmp_path: Path) -> dict:
             "conversations_dir": "data/conversations",
             "learned_facts": "data/learned_facts.md"
         },
-        "system_prompt_prefix": "You are Jarvis, an advanced personal AI assistant.",
         "_paths": {
             "jarvis_dir": tmp_path,
         }
@@ -259,7 +258,6 @@ def sample_context_snapshot() -> dict:
         "files_loaded": [
             {"path": "data/context/personal_context.md", "hash": "sha256:abcdef1234567890", "size_bytes": 342},
         ],
-        "system_prompt_prefix": "You are Jarvis...",
         "metadata": {},
     }
 

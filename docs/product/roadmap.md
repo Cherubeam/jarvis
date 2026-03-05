@@ -315,6 +315,7 @@ packages/skills/
 
 ### Low Priority / Future Ideas
 
+- [ ] HEARTBEAT.md — Proactive agent loop (cron-triggered task monitoring, inspired by OpenClaw pattern). Requires daemon/scheduler component; Jarvis is currently CLI-only.
 - [ ] Multi-user support
 - [ ] Cloud sync (optional, end-to-end encrypted)
 - [ ] Plugin system for community extensions

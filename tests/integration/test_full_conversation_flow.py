@@ -31,7 +31,8 @@ class TestFullConversationFlow:
             provider="test"
         )
         logger = ConversationLogger(temp_conversations_dir)
-        system_prompt = build_system_prompt(sample_context_all_files, "You are helpful.")
+        (sample_context_all_files / "soul.md").write_text("You are helpful.")
+        system_prompt = build_system_prompt(sample_context_all_files)
 
         # Mock LiteLLM completion
         with patch('litellm.completion') as mock_completion:
@@ -151,10 +152,8 @@ class TestFullConversationFlow:
         client = LLMClient(api_key="test-key", default_model="test-model", provider="test")
         logger = ConversationLogger(temp_conversations_dir)
 
-        system_prompt = build_system_prompt(
-            sample_context_all_files,
-            "You are Jarvis."
-        )
+        (sample_context_all_files / "soul.md").write_text("You are Jarvis.")
+        system_prompt = build_system_prompt(sample_context_all_files)
 
         with patch('litellm.completion') as mock_completion:
             chunk = Mock()

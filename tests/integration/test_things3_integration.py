@@ -44,7 +44,7 @@ class TestThings3Integration:
         )
 
         # Build system prompt
-        prompt = build_system_prompt(context_dir, "You are Jarvis.")
+        prompt = build_system_prompt(context_dir)
 
         # Verify all sections present
         assert "Test User" in prompt
@@ -64,10 +64,9 @@ class TestThings3Integration:
         (context_dir / "preferences.md").write_text("# Preferences")
 
         # Don't create tasks.md
-        prompt = build_system_prompt(context_dir, "You are Jarvis.")
+        prompt = build_system_prompt(context_dir)
 
         # Should work fine without tasks
-        assert "You are Jarvis" in prompt
         assert "Test User" in prompt
         assert "Their tasks" not in prompt  # Section shouldn't appear if no tasks
 
@@ -104,7 +103,7 @@ class TestThings3Integration:
         assert content.startswith("# Tasks from Things 3")
 
         # Verify can be included in context
-        prompt = build_system_prompt(context_dir, "You are Jarvis.")
+        prompt = build_system_prompt(context_dir)
         assert "Inbox task 1" in prompt
         assert "Today task 1" in prompt
 
@@ -140,8 +139,8 @@ class TestThings3Integration:
 
         # Context should still work without tasks
         (context_dir / "personal_context.md").write_text("# User")
-        prompt = build_system_prompt(context_dir, "You are Jarvis.")
-        assert "You are Jarvis" in prompt
+        prompt = build_system_prompt(context_dir)
+        assert "# User" in prompt
 
     @patch("packages.integrations.things3.task_sync.asyncio.run")
     def test_large_task_list_truncation(self, mock_run, tmp_path):
@@ -196,10 +195,10 @@ class TestThings3Integration:
                 "sync_on_startup": True,
                 "max_tasks_per_list": 50,
             },
-            "system_prompt_prefix": "You are Jarvis.",
         }
 
         # Create context files
+        (context_dir / "soul.md").write_text("You are Jarvis.")
         (context_dir / "personal_context.md").write_text("# Marco\nSoftware engineer")
         (context_dir / "preferences.md").write_text("# Preferences\nBe concise")
         (context_dir / "current_focus.md").write_text("# Focus\nBuilding Jarvis")
@@ -213,7 +212,7 @@ class TestThings3Integration:
 
         # Simulate CLI startup
         sync_tasks_to_file(context_dir / "tasks.md", config)
-        prompt = build_system_prompt(context_dir, config["system_prompt_prefix"])
+        prompt = build_system_prompt(context_dir)
 
         # Verify complete system prompt
         assert "You are Jarvis" in prompt

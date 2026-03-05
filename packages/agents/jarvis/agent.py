@@ -29,7 +29,6 @@ class JarvisAgent(BaseAgent):
         self,
         llm_client: LLMClient,
         context_dir: Path,
-        system_prompt_prefix: str,
         model: str = "anthropic/claude-sonnet-4",
         extra_tools: list[ToolDefinition] | None = None,
     ):
@@ -39,12 +38,11 @@ class JarvisAgent(BaseAgent):
         Args:
             llm_client: LLM client for API calls
             context_dir: Path to context files
-            system_prompt_prefix: Prefix for system prompt
             model: Model to use
             extra_tools: Additional tools to register beyond the defaults
         """
-        # Build system prompt from context
-        system_prompt = build_system_prompt(context_dir, system_prompt_prefix)
+        # Build system prompt from context (soul.md is loaded internally)
+        system_prompt = build_system_prompt(context_dir)
 
         tools = [FETCH_URL_TOOL]
         if extra_tools:
@@ -81,9 +79,6 @@ class JarvisAgent(BaseAgent):
         # Get streaming response
         return self.llm_client.chat_stream(messages)
 
-    def refresh_context(self, system_prompt_prefix: str):
+    def refresh_context(self):
         """Reload context files and rebuild system prompt."""
-        self.config.system_prompt = build_system_prompt(
-            self.context_dir,
-            system_prompt_prefix
-        )
+        self.config.system_prompt = build_system_prompt(self.context_dir)

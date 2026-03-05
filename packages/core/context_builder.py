@@ -33,16 +33,19 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     return {}, text
 
 
-def build_system_prompt(context_dir: Path, prefix: str) -> str:
+def build_system_prompt(context_dir: Path) -> str:
     """
     Assemble the full system prompt from context files.
 
-    Order: personal → professional → preferences → current focus → tasks →
+    Identity comes from soul.md (placed first in the prompt).
+    Order: soul → personal → professional → preferences → current focus → tasks →
            project index → active project contexts.
 
     Project files with frontmatter `active: false` appear only in the
     project index (summary line). Files without frontmatter default to active.
     """
+    soul = load_context_file(context_dir / "soul.md")
+
     sections = []
 
     # Load split profile files (replaces old profile.md)
@@ -112,4 +115,6 @@ def build_system_prompt(context_dir: Path, prefix: str) -> str:
 
     context_block = "\n\n---\n\n".join(sections)
 
-    return f"{prefix.strip()}\n\n{context_block}"
+    if soul:
+        return f"{soul.strip()}\n\n{context_block}" if context_block else soul.strip()
+    return context_block

@@ -398,8 +398,7 @@ def main(argv: list[str] | None = None):
     # Sync tasks from Things 3 (if enabled)
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
-    system_prompt_prefix = config.get("system_prompt_prefix", "You are a helpful assistant.")
-    system_prompt = build_system_prompt(context_dir, system_prompt_prefix)
+    system_prompt = build_system_prompt(context_dir)
 
     client = LLMClient(
         api_key=config["openrouter"]["api_key"],
@@ -484,7 +483,6 @@ def main(argv: list[str] | None = None):
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,
-            system_prompt_prefix=system_prompt_prefix,
             model=model_id,
             extra_tools=extra_tools or None,
         )
@@ -533,7 +531,6 @@ def main(argv: list[str] | None = None):
 
     context_snapshot = {
         "files_loaded": context_files,
-        "system_prompt_prefix": system_prompt_prefix,
         "metadata": {},
     }
 
