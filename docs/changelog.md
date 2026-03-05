@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.9.0] - 2026-03-05
+
 ### Added
 - **Skills vs Agents Guide** (`docs/engineering/skills-vs-agents.md`): Standalone document explaining the skill/agent distinction, promotion criteria, migration path, and assessment of expert personas
 - **Pip Decks Integration (Phase 5E)**: Deck-skills + RAG + TacticsAgent
@@ -21,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `apps/cli/main.py`: card indexing startup wiring, `extra_tools` passthrough for agents
   - ADR-018: Pip Decks Integration architecture decision
   - 25 new tests (19 card indexer/searcher/tool + 6 TacticsAgent); total: 725 pass, 11 skip
+- **Agent Sessions**: Multi-turn agent sessions with `/exit` command
+  - `_run_agent_session()` in `apps/cli/main.py` for multi-turn agent loop
+  - `/tactics` (no args) enters coaching session instead of showing usage
+  - 8 new tests (extra_tools forwarding, session lifecycle, multi-turn)
+
+### Fixed
+- **/tactics extra_tools not forwarded**: `_handle_agent_command` now inspects agent's `run()` signature and forwards `extra_tools` when supported — fixes `/tactics` single-turn mode missing `search_tactics` tool
 
 ---
 
@@ -492,7 +503,8 @@ See [roadmap.md](product/roadmap.md) for detailed plans.
 
 ### Phase 5: Agent Capabilities (In Progress)
 - ✅ Function calling & tool support, web fetch tool, RAG
-- Skills / Capabilities (5A) — mini-agents with prompt + tool config
+- ✅ Skills / Capabilities (5A) — mini-agents with prompt + tool config
+- ✅ Pip Decks Integration (5E) — deck-skills + RAG + TacticsAgent + agent sessions
 - Agent orchestration (5B), extended tools (5C), model routing (5D)
 
 ### Phase 6: Web Interface
@@ -610,4 +622,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-03-02*
+*Last updated: 2026-03-05*
