@@ -1,10 +1,10 @@
-"""Writing agent — refined prose, editing, and rewriting."""
+"""Writing agent — write and edit in Marco's authentic voice."""
 
 from packages.agents.writing.agent import WritingAgent
 
 AGENT_META = {
     "name": "writing",
-    "description": "Refined prose, editing, and rewriting",
+    "description": "Write and edit in Marco's authentic voice",
     "command": "/write",
     "agent_class": WritingAgent,
 }

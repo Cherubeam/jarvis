@@ -1,5 +1,5 @@
 """
-Writing agent — refined prose, editing, and rewriting.
+Writing agent — write and edit in Marco's authentic voice.
 """
 
 from packages.agents.base import BaseAgent, AgentConfig
@@ -10,10 +10,15 @@ class WritingAgent(BaseAgent):
     """Specialized agent for writing, editing, and rewriting text."""
 
     def __init__(self, llm_client: LLMClient, model: str = "anthropic/claude-sonnet-4"):
-        system_prompt = self.load_prompt("system")
+        system_template = self.load_prompt("system")
+        voice_profile = self.load_prompt("voice-profile")
+        anti_patterns = self.load_prompt("anti-patterns")
+        system_prompt = system_template.replace(
+            "{voice_profile}", voice_profile
+        ).replace("{anti_patterns}", anti_patterns)
         config = AgentConfig(
             name="writing",
-            description="Refined prose, editing, and rewriting",
+            description="Write and edit in Marco's authentic voice",
             model=model,
             system_prompt=system_prompt,
         )

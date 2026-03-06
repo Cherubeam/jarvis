@@ -23,7 +23,16 @@ class TestWritingAgent:
         client = Mock(spec=LLMClient)
         agent = WritingAgent(llm_client=client)
         assert "writing specialist" in agent.config.system_prompt.lower()
+        assert "burstiness" in agent.config.system_prompt.lower()
+        assert "banned vocabulary" in agent.config.system_prompt.lower()
         assert agent.name == "writing"
+
+    def test_prompt_has_no_raw_placeholders(self):
+        from packages.agents.writing.agent import WritingAgent
+        client = Mock(spec=LLMClient)
+        agent = WritingAgent(llm_client=client)
+        assert "{voice_profile}" not in agent.config.system_prompt
+        assert "{anti_patterns}" not in agent.config.system_prompt
 
     def test_process_message_streams(self):
         from packages.agents.writing.agent import WritingAgent

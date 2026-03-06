@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Writing Agent Voice Profile**: Enhanced `/write` agent with Marco's authentic voice DNA and AI anti-pattern detection
+  - `voice-profile.md`: Core persona, tone, sentence rhythm (burstiness mandate), vocabulary, opening/closing patterns, vulnerability markers, structural preferences
+  - `anti-patterns.md`: Banned vocabulary, banned structural/style patterns, Humanizer's Checklist for self-verification
+  - System prompt rewritten as composable template loading voice profile and anti-patterns at init
+  - Agent description updated: "Refined prose, editing, and rewriting" -> "Write and edit in Marco's authentic voice"
+
 ### Added
 - **Pattern Language Expert Agent** (`/pattern-language-expert`): Promoted from skill to agent for multi-turn pattern coaching sessions
   - Draft-review-refine cycle for iterative pattern development
