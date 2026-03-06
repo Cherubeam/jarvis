@@ -16,7 +16,7 @@
 - [x] LiteLLM integration for provider flexibility
 - [x] Automatic cost fallback via LiteLLM pricing
 - [x] Testing framework setup (pytest, coverage, fixtures)
-- [x] Comprehensive test suite (698 tests as of 2026-03-01)
+- [x] Comprehensive test suite (run `uv run pytest` for current counts)
 - [x] 8 golden test conversations defined
 
 ---
@@ -169,7 +169,7 @@ packages/skills/
 - [x] Slash-command routing for skills (e.g., `/content-evaluator <text>`)
 - [x] `/skills` listing command
 - [x] `--skill <name>` standalone mode
-- [x] 30 unit tests (698 total, 11 skipped)
+- [x] 30 unit tests
 
 ### 5E: Knowledge Base / Deck-Skills
 
@@ -178,7 +178,8 @@ packages/skills/
 - [x] Deck-skill pattern (SKILL.md + skill.py + deck.yaml + resources/cards/)
 - [x] `search_tactics` tool for cross-deck card search
 - [x] Auto-discovery of deck-skills via `deck.yaml` presence
-- [x] 25 new tests; total: 725 pass, 11 skip
+- [x] 25 new tests
+- [x] Navigator Agent (`/navigator`) — personal alignment and structured review coaching
 - [ ] Agent-to-skill delegation (future, separate branch)
 
 ### 5B: Agent Orchestration
@@ -333,4 +334,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-03-03*
+*Last updated: 2026-03-06*

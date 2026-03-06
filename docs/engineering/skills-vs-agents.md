@@ -47,7 +47,7 @@ tactics/
 
 Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and implement custom `process_message()` logic.
 
-**Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`).
+**Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
 
 ## The Key Difference
 

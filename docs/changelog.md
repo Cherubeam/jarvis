@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Agent description updated: "Refined prose, editing, and rewriting" -> "Write and edit in Marco's authentic voice"
 
 ### Added
+- **Navigator Agent** (`/navigator`): Personal alignment and structured review agent for weekly reviews and life-direction coaching
+  - Structured review cycles: reflection, alignment check, priority setting
+  - Session awareness: tracks topics reviewed and commitments made
+  - Multi-turn coaching for values-based decision making
 - **Pattern Language Expert Agent** (`/pattern-language-expert`): Promoted from skill to agent for multi-turn pattern coaching sessions
   - Draft-review-refine cycle for iterative pattern development
   - Session awareness: tracks patterns discussed and maps relationships across the session
@@ -25,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Structured facilitation cycle: objectives, key results, alignment check, refinement
   - Session awareness: tracks drafted/pending/rejected OKRs
   - Challenges weak formulations and checks cross-OKR alignment
-- 6 new tests in `test_promoted_agents.py`; total: 742 pass, 11 skip
+- 13 new tests; total: 749 pass, 11 skip
 
 ### Removed
 - Skill symlinks for `pattern-language-expert` and `okr-architect` from `packages/skills/` (replaced by agents)

@@ -25,7 +25,11 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • Memory       │  • Writing Agent │  • (Future: Calendar)     │
 │  • Pricing      │  • Research Agent│                           │
 │  • Stream       │  • Clarity Agent │                           │
-│    Handler      │  • Registry      │                           │
+│    Handler      │  • Navigator     │                           │
+│  • Tools        │  • Tactics Agent │                           │
+│  • RAG          │  • OKR Architect │                           │
+│                 │  • Pattern Lang. │                           │
+│                 │  • Registry      │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
 │  • Metrics tracking (TTFT, latency)                            │
@@ -499,7 +503,19 @@ jarvis/
 │   │   ├── research/               # Research agent (/research)
 │   │   │   ├── agent.py
 │   │   │   └── prompts/system.md
-│   │   └── clarity/                # Clarity agent (/clarity)
+│   │   ├── clarity/                # Clarity agent (/clarity)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   ├── navigator/              # Navigator agent (/navigator)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   ├── tactics/                # Tactics agent (/tactics)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   ├── okr_architect/          # OKR Architect agent (/okr-architect)
+│   │   │   ├── agent.py
+│   │   │   └── prompts/system.md
+│   │   └── pattern_language_expert/ # Pattern Language Expert (/pattern-language-expert)
 │   │       ├── agent.py
 │   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
@@ -692,4 +708,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-03-06*

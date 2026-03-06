@@ -72,7 +72,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity)
+- **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity, Navigator, Tactics, OKR Architect, Pattern Language Expert)
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Skills Framework**: Vendor-portable skills via SKILL.md (zero-code or Python-backed), slash-command routing, `--skill <name>` standalone mode
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -130,6 +130,8 @@ uv run jarvis
 uv run jarvis --agent writing
 uv run jarvis --agent research
 uv run jarvis --agent clarity
+uv run jarvis --agent navigator
+uv run jarvis --agent tactics
 ```
 
 During a chat session, you can use slash commands:
@@ -138,6 +140,10 @@ During a chat session, you can use slash commands:
 /write <text>           Delegates to Writing agent (prose, editing, rewriting)
 /research <text>        Delegates to Research agent (analysis, synthesis)
 /clarity <text>         Delegates to Clarity agent (explains complex ideas simply)
+/navigator              Enters Navigator agent session (alignment, weekly reviews)
+/tactics                Enters Tactics agent session (Pip Decks coaching)
+/okr-architect          Enters OKR Architect agent session
+/pattern-language-expert  Enters Pattern Language Expert session
 /daily-summary          Generates an Obsidian daily note summary
 /skills                 List available skills
 /<skill-name> <text>    Run a skill (e.g., /content-evaluator)
@@ -230,7 +236,11 @@ jarvis/
 │   │   ├── jarvis/                     # Main JARVIS orchestrator agent
 │   │   ├── writing/                    # Writing specialist (prose, editing)
 │   │   ├── research/                   # Research specialist (analysis, synthesis)
-│   │   └── clarity/                    # Clarity specialist (simplify complex ideas)
+│   │   ├── clarity/                    # Clarity specialist (simplify complex ideas)
+│   │   ├── navigator/                  # Navigator (alignment, weekly reviews)
+│   │   ├── tactics/                    # Tactics (Pip Decks coaching)
+│   │   ├── okr_architect/              # OKR Architect (OKR facilitation)
+│   │   └── pattern_language_expert/    # Pattern Language Expert
 │   ├── skills/                         # Skills framework
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
 │   │   ├── registry.py                 # Filesystem-based skill discovery

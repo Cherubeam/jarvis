@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 583 total (549 unit + 32 integration + 10 golden)
+**Tests**: Run `uv run pytest` for current counts
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -48,7 +48,7 @@
 **Test Structure:**
 ```
 tests/
-├── unit/              # 408 tests - Fast, isolated (includes evaluator tests)
+├── unit/              # Fast, isolated (includes evaluator tests)
 ├── integration/       # 22 tests - With mocked dependencies
 ├── golden/            # LLM-as-judge evaluation system
 │   ├── conversations/ # 8 YAML test cases
@@ -63,7 +63,7 @@ tests/
 
 ### Automated Test Coverage
 
-**Unit Tests (408 tests, 97.5% coverage on core):**
+**Unit Tests (97.5% coverage on core):**
 - ✅ `context_builder.py` - 40 tests, 100% coverage (incl. frontmatter parsing, filtering, project index)
 - ✅ `memory.py` - 52 tests, 97% coverage (schema v1.0.0 expansion)
 - ✅ `pricing.py` - 16 tests, 98% coverage
@@ -79,14 +79,14 @@ tests/
 - ✅ `analyze_context.py` - 31 tests (context utilization analysis)
 - ✅ `analyze_costs.py` - 32 tests (cost-by-type analysis)
 
-**Integration Tests (22 tests):**
+**Integration Tests:**
 - ✅ Full conversation flow (5 tests)
 - ✅ Context system integration (4 tests)
 - ✅ Pricing system integration (3 tests)
 - ✅ Task sync integration (8 tests)
 - ✅ Configuration integration (2 tests)
 
-**Golden Test Cases (26 tests):**
+**Golden Test Cases:**
 - ✅ 8 conversation scenarios (YAML format):
   - Basic Q&A without context
   - Profile information recall
@@ -666,7 +666,7 @@ Notes:
 
 ### Phase 1 (Complete ✅)
 - ✅ Testing framework setup
-- ✅ Unit tests for all core modules (408 tests)
+- ✅ Unit tests for all core modules
 - ✅ Integration tests (22 tests)
 - ✅ Golden test case definitions (8 scenarios)
 - ✅ 97.5% code coverage on core modules
@@ -720,4 +720,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-02-08*
+*Last updated: 2026-03-06*
