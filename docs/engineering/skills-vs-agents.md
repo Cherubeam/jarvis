@@ -24,7 +24,7 @@ The SKILL.md format uses YAML frontmatter (`name`, `description`) followed by a 
 
 A skill with a `skill.py` can declare tools, override the model, or adjust temperature, but it remains fundamentally one-shot: the user sends a message, the skill responds, done.
 
-**Examples in JARVIS:** Content Evaluator (`/content-evaluator`), OKR Architect (`/okr-architect`), Flow Master (`/flow-master`).
+**Examples in JARVIS:** Content Evaluator (`/content-evaluator`), Flow Master (`/flow-master`), PM Strategist (`/pm-strategist`).
 
 ## What Is an Agent?
 
@@ -47,7 +47,7 @@ tactics/
 
 Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and implement custom `process_message()` logic.
 
-**Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`).
+**Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`).
 
 ## The Key Difference
 
@@ -99,14 +99,14 @@ The six expert personas recently ported to JARVIS were evaluated against these c
 
 | Persona | Multi-Turn? | Complex Tools? | Context-Dependent? | Session State? | Verdict |
 |---|---|---|---|---|---|
-| OKR Architect | Beneficial but not required | No | No | No | **Skill** |
+| OKR Architect | Yes (iterative refinement) | No | Yes (tracks OKR state) | No | **Promoted to Agent** |
 | Content Evaluator | No (single evaluation) | No | No | No | **Skill** |
 | Flow Master | Beneficial but not required | No | No | No | **Skill** |
-| Pattern Language Expert | No (analysis is one-shot) | No | No | No | **Skill** |
+| Pattern Language Expert | Yes (draft-review-refine) | No | Yes (tracks patterns) | No | **Promoted to Agent** |
 | PM Strategist | Beneficial but not required | No | No | No | **Skill** |
 | Flight Navigator | No (recommendation is one-shot) | No | No | No | **Skill** |
 
-All six are correctly implemented as skills. While some (OKR Architect, Flow Master, PM Strategist) could benefit from multi-turn coaching, none *require* it -- each can deliver value in a single exchange. If usage patterns show that users consistently need follow-up turns, that's the signal to promote.
+OKR Architect and Pattern Language Expert were promoted to agents based on observed interaction patterns: both benefit from iterative refinement cycles and context-dependent responses across turns. The remaining four are correctly implemented as skills -- each can deliver value in a single exchange. If usage patterns show that users consistently need follow-up turns, that's the signal to promote.
 
 ## Migration Path
 

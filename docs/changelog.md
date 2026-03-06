@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Pattern Language Expert Agent** (`/pattern-language-expert`): Promoted from skill to agent for multi-turn pattern coaching sessions
+  - Draft-review-refine cycle for iterative pattern development
+  - Session awareness: tracks patterns discussed and maps relationships across the session
+  - Full pattern anatomy reference (essential/valuable/optional elements)
+- **OKR Architect Agent** (`/okr-architect`): Promoted from skill to agent for multi-turn OKR facilitation
+  - Structured facilitation cycle: objectives, key results, alignment check, refinement
+  - Session awareness: tracks drafted/pending/rejected OKRs
+  - Challenges weak formulations and checks cross-OKR alignment
+- 6 new tests in `test_promoted_agents.py`; total: 742 pass, 11 skip
+
+### Removed
+- Skill symlinks for `pattern-language-expert` and `okr-architect` from `packages/skills/` (replaced by agents)
+
+### Added
 - **SOUL.md** (`data/context/soul.md`): Consolidated Jarvis identity file — single source of truth for personality, communication style, values, guardrails, and persistent directives
   - `context_builder.py` loads `soul.md` from `context_dir` as the prompt prefix (replaces `system_prompt_prefix` config key)
   - New sections: Values & Principles, Guardrails, Persistent Directives
