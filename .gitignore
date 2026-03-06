@@ -46,6 +46,9 @@ htmlcov/
 .pytest_cache/
 tests/golden/results/
 
+# Personal voice profile
+packages/agents/writing/prompts/voice-profile.md
+
 # Individual skills (personal content, framework code is tracked)
 packages/skills/*
 !packages/skills/*.py
