@@ -13,6 +13,7 @@ class ToolDefinition:
     description: str
     parameters: dict          # JSON Schema for the tool's arguments
     execute: Callable[..., str]
+    terminal: bool = False    # If True, skip streaming after this tool fires
 
     def to_litellm_format(self) -> dict:
         """Convert to LiteLLM/OpenAI function-calling format."""

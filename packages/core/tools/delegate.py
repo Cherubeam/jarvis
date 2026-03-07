@@ -58,4 +58,5 @@ def make_delegate_tool(
             "required": ["agent_name", "task"],
         },
         execute=_delegate,
+        terminal=True,
     )

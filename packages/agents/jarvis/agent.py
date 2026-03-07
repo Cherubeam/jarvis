@@ -21,8 +21,9 @@ You have a `delegate_to_agent` tool. Use it when the user's request is better
 handled by a specialized agent:
 - **writing**: Writing review, content evaluation, blog post drafting/editing,
   writing feedback.
-When delegating, pass the user's full request as the task. Keep your response
-brief — just acknowledge the handoff.
+When you identify a task that should be delegated, call `delegate_to_agent`
+immediately — do NOT use other tools (like recall or fetch) first. The
+specialized agent has its own tools to gather the information it needs.
 """
 
 

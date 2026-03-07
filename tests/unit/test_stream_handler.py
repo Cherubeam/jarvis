@@ -432,6 +432,48 @@ class TestStreamHandlerAgenticLoop:
         assert result.delegate_to is None
         assert result.delegate_task is None
 
+    def test_terminal_tool_skips_streaming(self):
+        """When a terminal tool fires, stream() returns without calling chat_stream()."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="delegate_to_agent",
+            description="delegate",
+            parameters={},
+            execute=lambda agent_name, task: f"Delegating to {agent_name}",
+            terminal=True,
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj(
+            "tc1", "delegate_to_agent",
+            json.dumps({"agent_name": "writing", "task": "review blog"}),
+        )
+        resp1 = _make_complete_response("tool_calls", tool_calls=[call])
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [resp1]
+        # chat_stream should NOT be called
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "review my blog"}],
+            tool_registry=registry,
+        )
+
+        # No streaming call made
+        client.chat_stream.assert_not_called()
+        # Only one complete() call — no second call after terminal tool
+        assert client.complete.call_count == 1
+        # Result has empty text
+        assert result.text == ""
+        # Tool messages are preserved
+        assert len(result.tool_messages) >= 2
+        assert result.tool_messages[0]["role"] == "assistant"
+        assert result.tool_messages[1]["role"] == "tool"
+
     def test_tools_passed_to_streaming_call(self):
         """chat_stream() receives the tools parameter after the agentic loop."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition

@@ -55,6 +55,12 @@ class TestDelegateTool:
         assert "Unknown agent" in result
         assert "writing" in result
 
+    def test_terminal_flag_is_true(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+
+        assert tool.terminal is True
+
     def test_enum_constraint_matches_agents(self):
         state = DelegationState()
         agents = [{"name": "a", "description": "A agent"}]

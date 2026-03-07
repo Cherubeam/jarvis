@@ -71,8 +71,35 @@ class StreamHandler:
         from packages.core.tools.executor import execute_tool_calls
 
         tools_format = None
+        self._terminal_tool_fired = False
+        self.metrics_tracker.start_request()
         if tool_registry is not None and not tool_registry.is_empty():
             messages, tools_format = self._run_agentic_loop(messages, tool_registry, execute_tool_calls)
+
+        if self._terminal_tool_fired:
+            # Terminal tool fired — skip streaming, return accumulated results
+            usage = getattr(self, "_intermediate_usage", TokenUsage())
+            tool_messages = getattr(self, "_tool_messages", [])
+            self._intermediate_usage = None
+            self._tool_messages = []
+
+            cost_usd = 0.0
+            if self.pricing:
+                cost_usd = self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+
+            response_metrics = self.metrics_tracker.finish_request(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+            )
+            return StreamResult(
+                text="",
+                usage=usage,
+                cost_usd=cost_usd,
+                metrics=response_metrics,
+                tool_messages=tool_messages,
+            )
 
         return self._stream_simple(messages, print_chunks, tools=tools_format)
 
@@ -112,6 +139,14 @@ class StreamHandler:
             # Track tool messages for history persistence
             tool_messages.append(assistant_msg)
             tool_messages.extend(tool_results)
+
+            # Check if any executed tool is terminal (e.g. delegation)
+            if any(
+                (t := tool_registry.get(call.function.name)) and t.terminal
+                for call in choice.message.tool_calls
+            ):
+                self._terminal_tool_fired = True
+                break
 
         # Store accumulated intermediate usage so _stream_simple can add to it
         self._intermediate_usage = accumulated_usage
