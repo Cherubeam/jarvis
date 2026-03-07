@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Writing Agent File Access**: `/write` agent can now read, create, and edit Obsidian blog posts
+  - Four new tools: `list_blog_posts`, `read_blog_post`, `create_blog_post`, `edit_blog_post`
+  - Diff-based confirmation with reasoning before any write
+  - Template support for new blog posts
+  - Write-guarded template directory (read-only)
+  - `write_note()` added to `writer.py` for full-file replacement with diff confirmation
+  - 27 new tests
+
 ### Changed
 - **Writing Agent Voice Profile**: Enhanced `/write` agent with Marco's authentic voice DNA and AI anti-pattern detection
   - `voice-profile.md`: Core persona, tone, sentence rhythm (burstiness mandate), vocabulary, opening/closing patterns, vulnerability markers, structural preferences

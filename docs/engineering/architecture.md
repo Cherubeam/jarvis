@@ -278,7 +278,7 @@ Files without frontmatter default to `active: true` (backwards compatible).
 - `vault.py`: `VaultConfig`, path validation, read/list/get daily note
 - `callout.py`: `CalloutBlock`, `find_jarvis_callout()`, `build_updated_content()` (no I/O)
 - `diff.py`: `VaultDiff`, `compute_diff()`, CLI/API formatters
-- `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`
+- `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`, `write_note()`
 - `prompts.py`: Load `.md` prompt files from `data/prompts/obsidian/`
 
 **Key Design Decisions:**
@@ -310,6 +310,7 @@ User types: /daily-summary
 - `base.py`: `ToolDefinition` dataclass + `ToolRegistry` class
 - `executor.py`: `execute_tool_calls()` — runs tool calls from LLM, returns formatted result messages
 - `web_fetch.py`: `FETCH_URL_TOOL` singleton — fetches URLs with `httpx`, extracts text with `trafilatura`
+- `blog_tools.py`: `make_blog_tools()` factory — scoped blog post tools for the Writing Agent (list, read, create, edit)
 
 **Agentic Loop** (in `StreamHandler`):
 1. `LLMClient.complete(tools=...)` (non-streaming) — check if LLM wants to call a tool
@@ -451,6 +452,9 @@ rag:
    │   Embed + upsert any new conversation files
    └─ make_conversation_recall_tool() → extra_tools
    ↓
+5b. Blog tools initialization (if obsidian.enabled: true)
+   └─ make_blog_tools(vault_config, ...) → extra_tools
+   ↓
 6. Fetch pricing data (async)
    ↓
 7. Display startup info (model, pricing)
@@ -486,7 +490,8 @@ jarvis/
 │   │   │   ├── base.py             # ToolDefinition + ToolRegistry
 │   │   │   ├── executor.py         # execute_tool_calls()
 │   │   │   ├── web_fetch.py        # fetch_url tool
-│   │   │   └── conversation_recall.py  # make_conversation_recall_tool()
+│   │   │   ├── conversation_recall.py  # make_conversation_recall_tool()
+│   │   │   └── blog_tools.py      # make_blog_tools() for Writing Agent
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
@@ -708,4 +713,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-06*
+*Last updated: 2026-03-07*

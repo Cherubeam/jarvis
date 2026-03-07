@@ -1456,4 +1456,52 @@ Deck-skills include a `skill.py` (JARVIS-specific) rather than being pure markdo
 
 ---
 
-*Last updated: 2026-03-03*
+## ADR-019: Writing Agent File Access via Scoped Vault Tools
+
+**Date**: 2026-03-07
+**Status**: ✅ Accepted
+
+### Context
+
+The writing agent (`/write`) can help draft and edit text but has no access to the Obsidian vault where blog posts live. Marco must manually copy-paste content between JARVIS and Obsidian. Adding file access tools lets the agent read, create, and edit blog posts directly, with diff-based confirmation before any write.
+
+### Decision
+
+Reuse existing `vault.py` path validation + add tool-level write guards. Factory pattern (`make_blog_tools()`) with closures captures `VaultConfig` and `ConfirmationHandler` — same pattern as `make_conversation_recall_tool()`.
+
+Four tools scoped to the blog directory:
+- `list_blog_posts`: List `.md` files (recursive)
+- `read_blog_post`: Read file content
+- `create_blog_post`: Create new post (optional template prepend)
+- `edit_blog_post`: Full-file replacement with diff + reasoning
+
+Write guards:
+1. `validate_path()` enforces `allowed_dirs` from config
+2. Template directory is additionally write-guarded at the tool level (`is_relative_to` check)
+3. All writes go through `write_note()` which shows a diff and requires y/N confirmation
+
+### Alternatives Considered
+
+1. **General-purpose file tools for all agents**
+   - ❌ Too broad — security risk, every agent would need scoping
+   - ❌ Deferred to a separate feature
+
+2. **Hardcoded paths in agent**
+   - ❌ Not configurable
+   - ❌ Breaks for different vault structures
+
+### Consequences
+
+- Writing agent can read/write blog posts without copy-paste
+- Scoped, secure pattern reusable for future agent file access
+- `extra_tools` injection via existing `_handle_agent_command` mechanism
+- Template directory is read-only (protected from accidental edits)
+
+### Related
+- Extends: ADR-013 (Obsidian Vault Integration Architecture)
+- Extends: ADR-014 (Agent Framework — Convention-Based Discovery)
+- Extends: ADR-015 (Tool Calling)
+
+---
+
+*Last updated: 2026-03-07*
