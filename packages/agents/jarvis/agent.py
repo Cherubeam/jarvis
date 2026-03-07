@@ -10,8 +10,20 @@ from pathlib import Path
 from packages.agents.base import BaseAgent, AgentConfig
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.context_builder import build_system_prompt
+from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
+from packages.core.tools.delegate import DelegationState, make_delegate_tool
 from packages.core.tools.web_fetch import FETCH_URL_TOOL
+
+_DELEGATION_DIRECTIVE = """
+## Agent Delegation
+You have a `delegate_to_agent` tool. Use it when the user's request is better
+handled by a specialized agent:
+- **writing**: Writing review, content evaluation, blog post drafting/editing,
+  writing feedback.
+When delegating, pass the user's full request as the task. Keep your response
+brief — just acknowledge the handoff.
+"""
 
 
 class JarvisAgent(BaseAgent):
@@ -21,7 +33,7 @@ class JarvisAgent(BaseAgent):
     This agent:
     - Handles direct user conversations
     - Incorporates personal context
-    - Can delegate to specialized agents (future)
+    - Can delegate to specialized agents
     - Tracks conversation history
     """
 
@@ -31,6 +43,7 @@ class JarvisAgent(BaseAgent):
         context_dir: Path,
         model: str = "anthropic/claude-sonnet-4",
         extra_tools: list[ToolDefinition] | None = None,
+        available_agents: list[dict] | None = None,
     ):
         """
         Initialize JARVIS.
@@ -40,6 +53,7 @@ class JarvisAgent(BaseAgent):
             context_dir: Path to context files
             model: Model to use
             extra_tools: Additional tools to register beyond the defaults
+            available_agents: List of {"name": ..., "description": ...} for delegation
         """
         # Build system prompt from context (soul.md is loaded internally)
         system_prompt = build_system_prompt(context_dir)
@@ -47,6 +61,13 @@ class JarvisAgent(BaseAgent):
         tools = [FETCH_URL_TOOL]
         if extra_tools:
             tools.extend(extra_tools)
+
+        # Set up delegation if agents are available
+        self._delegation_state = DelegationState()
+        if available_agents:
+            delegate_tool = make_delegate_tool(available_agents, self._delegation_state)
+            tools.append(delegate_tool)
+            system_prompt += _DELEGATION_DIRECTIVE
 
         config = AgentConfig(
             name="JARVIS",
@@ -58,6 +79,27 @@ class JarvisAgent(BaseAgent):
 
         super().__init__(config, llm_client)
         self.context_dir = context_dir
+
+    def run(
+        self,
+        message: str,
+        stream_handler: StreamHandler,
+        print_chunks: bool = False,
+        messages_override: list[dict] | None = None,
+    ) -> StreamResult:
+        """Run JARVIS, then check for delegation."""
+        # Reset delegation state before each run
+        self._delegation_state.agent_name = None
+        self._delegation_state.task = None
+
+        result = super().run(message, stream_handler, print_chunks, messages_override)
+
+        # Propagate delegation info to the result
+        if self._delegation_state.agent_name:
+            result.delegate_to = self._delegation_state.agent_name
+            result.delegate_task = self._delegation_state.task
+
+        return result
 
     def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
         """
