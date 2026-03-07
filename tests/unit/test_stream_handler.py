@@ -379,6 +379,48 @@ class TestStreamHandlerAgenticLoop:
         captured = capsys.readouterr()
         assert "[Tool: my_tool]" in captured.out
 
+    def test_tool_messages_populated_after_tool_calls(self):
+        """StreamResult.tool_messages contains assistant+tool messages from the agentic loop."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="my_tool", description="t", parameters={},
+            execute=lambda: "result_value",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj("tc1", "my_tool")
+        resp1 = _make_complete_response("tool_calls", tool_calls=[call])
+        resp2 = _make_complete_response("stop")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [resp1, resp2]
+        client.chat_stream.return_value = _make_streaming_response(["done"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        assert len(result.tool_messages) >= 2
+        # First message is the assistant with tool_calls
+        assert result.tool_messages[0]["role"] == "assistant"
+        # Second message is the tool result
+        assert result.tool_messages[1]["role"] == "tool"
+
+    def test_tool_messages_empty_when_no_tools(self):
+        """StreamResult.tool_messages is empty when no tool_registry is used."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+
+        handler = self._make_handler(client)
+        result = handler.stream([{"role": "user", "content": "hello"}])
+
+        assert result.tool_messages == []
+
     def test_tools_passed_to_streaming_call(self):
         """chat_stream() receives the tools parameter after the agentic loop."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition

@@ -251,6 +251,40 @@ class ConversationLogger:
             "metadata": kwargs,
         }
 
+    def add_tool_messages(self, tool_messages: list[dict]) -> None:
+        """Store tool-calling messages (assistant with tool_calls + tool results).
+
+        Preserves tool_calls and tool_call_id fields so that
+        get_messages_for_api() can reconstruct the full tool context.
+        """
+        for msg in tool_messages:
+            self._message_counter += 1
+            msg_id = f"msg_{self._message_counter:03d}"
+
+            stored = {
+                "id": msg_id,
+                "parent_id": None,
+                "role": msg["role"],
+                "timestamp": datetime.now().isoformat(),
+                "content": _normalize_content(msg.get("content") or ""),
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            }
+
+            # Preserve tool_calls on assistant messages
+            if "tool_calls" in msg:
+                stored["tool_calls"] = msg["tool_calls"]
+
+            # Preserve tool_call_id on tool result messages
+            if "tool_call_id" in msg:
+                stored["tool_call_id"] = msg["tool_call_id"]
+
+            self.current_conversation.append(stored)
+
     def add_message(
         self,
         role: str,
@@ -366,7 +400,12 @@ class ConversationLogger:
             )
 
     def get_messages_for_api(self) -> list[dict]:
-        """Return messages in the format the API expects (role + content string)."""
+        """Return messages in the format the API expects.
+
+        Regular messages get {role, content}. Tool-calling assistant messages
+        include tool_calls and set content to None when empty. Tool result
+        messages include tool_call_id.
+        """
         result = []
         for m in self.current_conversation:
             content = m["content"]
@@ -375,7 +414,21 @@ class ConversationLogger:
                 text = _extract_text_from_content(content)
             else:
                 text = content
-            result.append({"role": m["role"], "content": text})
+
+            api_msg: dict = {"role": m["role"], "content": text}
+
+            # Preserve tool_calls on assistant messages
+            if "tool_calls" in m:
+                api_msg["tool_calls"] = m["tool_calls"]
+                # API requires content=None when tool_calls present and no text
+                if not text:
+                    api_msg["content"] = None
+
+            # Preserve tool_call_id on tool result messages
+            if "tool_call_id" in m:
+                api_msg["tool_call_id"] = m["tool_call_id"]
+
+            result.append(api_msg)
         return result
 
     @staticmethod
