@@ -230,6 +230,40 @@ class TestLLMClient:
             assert call_kwargs["model"] == "openrouter/custom-model"
 
 
+    def test_complete_passes_temperature(self):
+        """complete() passes temperature kwarg to litellm when set."""
+        client = LLMClient(
+            api_key="test-key",
+            default_model="test-model",
+            provider="test"
+        )
+
+        with patch('litellm.completion') as mock_completion:
+            mock_completion.return_value = Mock()
+            client.complete(
+                [{"role": "user", "content": "hello"}],
+                temperature=0.8,
+            )
+
+            call_kwargs = mock_completion.call_args[1]
+            assert call_kwargs["temperature"] == 0.8
+
+    def test_complete_omits_temperature_when_none(self):
+        """complete() does not pass temperature when not set."""
+        client = LLMClient(
+            api_key="test-key",
+            default_model="test-model",
+            provider="test"
+        )
+
+        with patch('litellm.completion') as mock_completion:
+            mock_completion.return_value = Mock()
+            client.complete([{"role": "user", "content": "hello"}])
+
+            call_kwargs = mock_completion.call_args[1]
+            assert "temperature" not in call_kwargs
+
+
 @pytest.mark.unit
 class TestStreamingResponse:
     """Tests for StreamingResponse class."""
