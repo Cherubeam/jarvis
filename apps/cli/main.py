@@ -473,7 +473,11 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
+    # Initialize agent-only tools list (tools available to delegated agents but not JARVIS)
+    agent_only_tools: list = []
+
     # Initialize blog tools for writing agent (if obsidian enabled)
+    # Blog tools are agent-only so JARVIS delegates instead of reading/reviewing directly.
     vault_config = load_vault_config(config)
     if vault_config is not None:
         try:
@@ -488,14 +492,13 @@ def main(argv: list[str] | None = None):
                 blog_tools = make_blog_tools(
                     vault_config, CLIConfirmationHandler(), blog_dir, template_path,
                 )
-                extra_tools.extend(blog_tools)
+                agent_only_tools.extend(blog_tools)
                 print_system(f"[Blog] {len(blog_tools)} blog tools loaded.")
         except Exception as e:
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
     # Initialize content-evaluator tool (if skill directory exists)
     # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
-    agent_only_tools: list = []
     skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
     if (skill_dir / "SKILL.md").is_file():
         try:
