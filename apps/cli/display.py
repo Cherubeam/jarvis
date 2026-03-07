@@ -98,7 +98,7 @@ def start_live_stream() -> tuple[Live, list[str]]:
 
     Returns (live, buffer) where buffer is a list that accumulates chunks.
     """
-    live = Live(Text(""), console=console, refresh_per_second=8, vertical_overflow="visible")
+    live = Live(Text(""), console=console, refresh_per_second=8, vertical_overflow="crop")
     live.start()
     return live, []
 
