@@ -324,6 +324,22 @@ User types: /daily-summary
 - `ToolRegistry` built per-agent from `AgentConfig.tools` (no global singleton)
 - 50KB cap on extracted web content with truncation notice
 
+**Tool Scoping for Agent Delegation:**
+
+Tools are split into two lists at startup, each with different forwarding rules:
+
+| List | Examples | Given to JARVIS | Standalone `--agent` | Delegated agent |
+|---|---|---|---|---|
+| `extra_tools` | `recall_conversations` | Yes | Yes | **No** |
+| `agent_only_tools` | blog tools, `evaluate_content` | **No** | Yes | Yes |
+
+- **`extra_tools`** — Orchestration tools (conversation recall, card search). Wired at startup, passed to `JarvisAgent`. These are NOT forwarded when JARVIS delegates to a specialist agent, because JARVIS already gathered context before delegating.
+- **`agent_only_tools`** — Specialist tools (blog tools, content evaluator). NOT given to JARVIS (so it delegates content work instead of handling it directly). Forwarded to delegated agents via the `extra_tools` parameter.
+- **Standalone `--agent` mode** — Receives `extra_tools + agent_only_tools` (intentional — standalone agents benefit from recall since there is no JARVIS to gather context first).
+- **Delegation path** — Receives only `agent_only_tools` (JARVIS has already gathered context; sub-agents don't need orchestration tools).
+
+See `apps/cli/main.py` lines 476–481 (initialization), 532 (standalone), 740 (delegation).
+
 ---
 
 ### 8. RAG / Conversation Recall (`packages/core/rag/`)
@@ -454,7 +470,7 @@ rag:
    └─ make_conversation_recall_tool() → extra_tools
    ↓
 5b. Blog tools initialization (if obsidian.enabled: true)
-   └─ make_blog_tools(vault_config, ...) → extra_tools
+   └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
 6. Fetch pricing data (async)
    ↓

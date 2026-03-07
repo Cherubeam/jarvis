@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Recall Tool Delegation Leak**: `extra_tools` (like `recall_conversations`) no longer leak to delegated agents. Introduced `agent_only_tools` list to separate orchestration tools from specialist tools.
+
+### Docs
+- **Tool Scoping for Delegation**: Documented the `extra_tools` vs `agent_only_tools` distinction in architecture.md and ADR-020. Fixed startup flow diagram (blog tools → `agent_only_tools`).
+
 ### Added
 - **Content-Evaluator Tool**: The content-evaluator skill is now available as a callable tool (`evaluate_content`) for agents. When asked to review content, the writing agent uses the structured 5-lens framework directly instead of improvising.
 - **Agent Delegation**: JARVIS can now delegate tasks to specialized agents via a `delegate_to_agent` tool. When a user asks JARVIS to review content, it hands off to the writing agent, which enters a multi-turn session with the initial task pre-loaded.

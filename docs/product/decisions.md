@@ -1545,6 +1545,7 @@ Key components:
 - Delegation is LLM-driven (the model decides when to delegate), not rule-based
 - Agent sessions from delegation support Ctrl+C to return to JARVIS
 - Content-evaluator skill remains usable as a standalone slash command
+- Delegated agents receive only `agent_only_tools` (specialist tools), not `extra_tools` (orchestration tools like recall). JARVIS gathers context before delegating; sub-agents don't need orchestration tools.
 
 ### Related
 - Extends: ADR-014 (Agent Framework — Convention-Based Discovery)
