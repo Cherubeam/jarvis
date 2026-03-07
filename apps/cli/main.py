@@ -737,7 +737,7 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                all_delegate_tools = extra_tools + agent_only_tools
+                all_delegate_tools = agent_only_tools
                 import inspect as _inspect
                 _sig = _inspect.signature(delegate_meta.agent_class.__init__)
                 if "extra_tools" in _sig.parameters and all_delegate_tools:
