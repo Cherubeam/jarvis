@@ -231,23 +231,23 @@ def _run_agent_session(
     stream_handler: StreamHandler,
     logger: ConversationLogger,
     session,
+    initial_message: str | None = None,
 ) -> None:
-    """Run a multi-turn agent session until the user types /exit or /back."""
+    """Run a multi-turn agent session until the user types /exit or /back.
+
+    Args:
+        agent: The agent instance to run.
+        agent_name: Display name for the agent.
+        stream_handler: StreamHandler for streaming + metrics.
+        logger: ConversationLogger for persistence.
+        session: prompt_toolkit session for user input.
+        initial_message: If set, process this as the first message before prompting.
+    """
     print_system(f"\nEntering {agent_name} session. Type /exit to return to JARVIS.\n")
 
     session_history: list[dict] = []
 
-    while True:
-        try:
-            user_input = prompt_user(session)
-        except EOFError:
-            break
-
-        if not user_input:
-            continue
-        if user_input.strip().lower() in ("/exit", "/back"):
-            break
-
+    def _process_message(user_input: str) -> None:
         logger.add_message("user", user_input)
         session_history.append({"role": "user", "content": user_input})
 
@@ -277,6 +277,26 @@ def _run_agent_session(
             ttft_ms=result.metrics.ttft_ms,
             total_latency_ms=result.metrics.total_latency_ms,
         )
+
+    # Process initial message if provided (e.g. from delegation)
+    if initial_message:
+        _process_message(initial_message)
+
+    try:
+        while True:
+            try:
+                user_input = prompt_user(session)
+            except EOFError:
+                break
+
+            if not user_input:
+                continue
+            if user_input.strip().lower() in ("/exit", "/back"):
+                break
+
+            _process_message(user_input)
+    except KeyboardInterrupt:
+        pass
 
     print_system(f"\nReturning to JARVIS.\n")
 
@@ -473,6 +493,20 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
+    # Initialize content-evaluator tool (if skill directory exists)
+    # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
+    agent_only_tools: list = []
+    skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
+    if (skill_dir / "SKILL.md").is_file():
+        try:
+            from packages.core.tools.content_evaluator import make_content_evaluator_tool
+
+            evaluator_tool = make_content_evaluator_tool(skill_dir, client, model_id)
+            agent_only_tools.append(evaluator_tool)
+            print_system("[Tools] Content evaluator loaded.")
+        except Exception as e:
+            print_system(f"[Tools] Content evaluator failed: {e}")
+
     # Build the active agent (or skill in standalone mode)
     active_skill = None
     if args.skill:
@@ -491,20 +525,26 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        # Pass extra_tools to agents that accept them (e.g. TacticsAgent)
+        # Pass extra_tools + agent_only_tools to agents that accept them
+        all_agent_tools = extra_tools + agent_only_tools
         import inspect
         sig = inspect.signature(meta.agent_class.__init__)
-        if "extra_tools" in sig.parameters and extra_tools:
-            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
+        if "extra_tools" in sig.parameters and all_agent_tools:
+            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=all_agent_tools)
         else:
             active_agent = meta.agent_class(llm_client=client, model=model_id)
         agent_name = meta.name
     else:
+        available_agents = [
+            {"name": meta.name, "description": meta.description}
+            for meta in agent_registry.values()
+        ]
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,
             model=model_id,
             extra_tools=extra_tools or None,
+            available_agents=available_agents or None,
         )
         agent_name = "JARVIS"
 
@@ -637,10 +677,11 @@ def main(argv: list[str] | None = None):
                     continue
 
                 # Agent-routed commands
+                all_agent_tools = extra_tools + agent_only_tools
                 if _handle_agent_command(
                     command, payload, client, stream_handler, logger,
                     model_id, agent_registry,
-                    extra_tools=extra_tools or None,
+                    extra_tools=all_agent_tools or None,
                     session=session,
                 ):
                     continue
@@ -689,6 +730,25 @@ def main(argv: list[str] | None = None):
                 ttft_ms=result.metrics.ttft_ms,
                 total_latency_ms=result.metrics.total_latency_ms,
             )
+
+            # Handle delegation to a specialized agent
+            if result.delegate_to and result.delegate_to in agent_registry:
+                delegate_meta = agent_registry[result.delegate_to]
+                all_delegate_tools = extra_tools + agent_only_tools
+                import inspect as _inspect
+                _sig = _inspect.signature(delegate_meta.agent_class.__init__)
+                if "extra_tools" in _sig.parameters and all_delegate_tools:
+                    delegate_agent = delegate_meta.agent_class(
+                        llm_client=client, model=model_id, extra_tools=all_delegate_tools,
+                    )
+                else:
+                    delegate_agent = delegate_meta.agent_class(
+                        llm_client=client, model=model_id,
+                    )
+                _run_agent_session(
+                    delegate_agent, delegate_meta.name, stream_handler,
+                    logger, session, initial_message=result.delegate_task,
+                )
 
     except KeyboardInterrupt:
         print("\n")

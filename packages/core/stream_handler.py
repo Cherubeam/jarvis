@@ -23,6 +23,8 @@ class StreamResult:
     cost_usd: float
     metrics: ResponseMetrics
     tool_messages: list[dict] = field(default_factory=list)
+    delegate_to: str | None = None
+    delegate_task: str | None = None
 
 
 class StreamHandler:

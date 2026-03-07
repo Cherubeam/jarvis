@@ -421,6 +421,17 @@ class TestStreamHandlerAgenticLoop:
 
         assert result.tool_messages == []
 
+    def test_stream_result_delegation_fields_default_none(self):
+        """StreamResult delegation fields default to None."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+
+        handler = self._make_handler(client)
+        result = handler.stream([{"role": "user", "content": "hello"}])
+
+        assert result.delegate_to is None
+        assert result.delegate_task is None
+
     def test_tools_passed_to_streaming_call(self):
         """chat_stream() receives the tools parameter after the agentic loop."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition

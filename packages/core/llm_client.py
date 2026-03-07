@@ -72,6 +72,7 @@ class LLMClient:
         messages: list[dict],
         model: str | None = None,
         tools: list[dict] | None = None,
+        temperature: float | None = None,
     ) -> object:
         """
         Non-streaming completion. Used in the agentic tool-calling loop.
@@ -80,6 +81,7 @@ class LLMClient:
             messages: List of {"role": "...", "content": "..."} dicts
             model: Override default model if needed
             tools: LiteLLM-formatted tool definitions
+            temperature: Sampling temperature override
 
         Returns:
             Raw LiteLLM ModelResponse object
@@ -96,6 +98,8 @@ class LLMClient:
         )
         if tools:
             kwargs["tools"] = tools
+        if temperature is not None:
+            kwargs["temperature"] = temperature
 
         return litellm.completion(**kwargs)
 
