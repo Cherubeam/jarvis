@@ -1504,4 +1504,53 @@ Write guards:
 
 ---
 
+## ADR-020: Agent Delegation via Tool Calling
+
+**Date**: 2026-03-07
+**Status**: ✅ Accepted
+
+### Context
+
+When a user asks JARVIS to review a blog post, JARVIS improvises a review instead of using the structured 5-lens content-evaluator skill. Two gaps cause this: (1) skills are CLI-only slash commands — agents can't invoke them programmatically, and (2) JARVIS has no mechanism to hand off tasks to specialized agents like the writing agent.
+
+### Decision
+
+**Delegation via tool calling**: JARVIS gets a `delegate_to_agent` tool with an enum constraint listing available agents. When the LLM decides a task is better handled by a specialist, it calls the tool. Post-stream, `main.py` checks `StreamResult.delegate_to` and launches the target agent session with `initial_message` pre-loaded.
+
+**Skills as tools**: Skills can be wrapped as `ToolDefinition` objects via factory functions (e.g., `make_content_evaluator_tool()`). The tool calls `LLMClient.complete()` with the skill's system prompt and temperature — a nested LLM call within the agentic loop.
+
+Key components:
+- `DelegationState` dataclass — mutable state set by the delegate tool closure
+- `make_delegate_tool()` factory — creates the tool with agent enum constraint
+- `JarvisAgent.run()` override — resets state before, reads state after
+- `StreamResult.delegate_to` / `delegate_task` — propagates delegation to main.py
+
+### Alternatives Considered
+
+1. **Rule-based routing (keyword matching)**
+   - ❌ Brittle — can't handle nuanced or ambiguous requests
+   - ❌ Requires maintaining keyword lists
+
+2. **Direct agent invocation in JarvisAgent**
+   - ❌ Couples JARVIS to agent instantiation logic
+   - ❌ Breaks the clean separation between agents and CLI orchestration
+
+3. **Two-pass classification (separate LLM call to decide routing)**
+   - ❌ Extra latency and cost
+   - ❌ Tool calling already provides this "classification" for free
+
+### Consequences
+
+- JARVIS delegates content work to the writing agent, which uses `evaluate_content` for structured reviews
+- Delegation is LLM-driven (the model decides when to delegate), not rule-based
+- Agent sessions from delegation support Ctrl+C to return to JARVIS
+- Content-evaluator skill remains usable as a standalone slash command
+
+### Related
+- Extends: ADR-014 (Agent Framework — Convention-Based Discovery)
+- Extends: ADR-015 (Tool Calling)
+- Extends: ADR-017 (Skills — SKILL.md-First Design)
+
+---
+
 *Last updated: 2026-03-07*

@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Content-Evaluator Tool**: The content-evaluator skill is now available as a callable tool (`evaluate_content`) for agents. When asked to review content, the writing agent uses the structured 5-lens framework directly instead of improvising.
+- **Agent Delegation**: JARVIS can now delegate tasks to specialized agents via a `delegate_to_agent` tool. When a user asks JARVIS to review content, it hands off to the writing agent, which enters a multi-turn session with the initial task pre-loaded.
+- **LLMClient Temperature Support**: `LLMClient.complete()` now accepts an optional `temperature` parameter, enabling tools like the content evaluator to use skill-specific temperature settings.
+
 ### Fixed
 - **Streaming Output Duplication**: Long responses no longer duplicate in the terminal. Changed `Rich.Live` overflow from `visible` to `crop` — only the last screenful shows during streaming, then `finish_live_stream` renders the full markdown.
 - **Tool Call History Loss**: Tool call context (assistant `tool_calls` + tool results) is now persisted in conversation history via `StreamResult.tool_messages` and `ConversationLogger.add_tool_messages()`. Follow-up questions no longer cause redundant tool re-invocation.
-- **Content-Evaluator Discovery**: Writing agent now suggests `/content-evaluator` when asked to review content, ensuring the structured 5-lens framework is used.
 
 ### Added
 - **Writing Agent File Access**: `/write` agent can now read, create, and edit Obsidian blog posts

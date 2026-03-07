@@ -60,6 +60,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - Display streamed responses
 - Show token usage, costs, and latency metrics (TTFT, total latency)
 - Handle session lifecycle (start, interrupt, end)
+- Route delegation results to agent sessions
 - Track response latency using MetricsTracker
 
 **Key Functions:**

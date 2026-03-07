@@ -163,6 +163,28 @@ AGENT_META = {
 
 If the agent fully replaces the skill's use case within JARVIS, remove the skill directory from `packages/skills/` to avoid duplicate slash commands. The SKILL.md can live in the agent's directory or in a shared specifications repo for cross-vendor use.
 
+## Skills as Tools
+
+Skills can be wrapped as `ToolDefinition` objects, making them callable by agents during the agentic tool-calling loop. This bridges the gap between the one-shot skill model and the multi-turn agent model: an agent can invoke a skill's structured evaluation without the user switching contexts.
+
+**How it works:**
+
+A factory function (e.g., `make_content_evaluator_tool()`) loads the skill's `SKILL.md` as a system prompt and its `skill.py` config (temperature, etc.), then wraps the whole thing in a `ToolDefinition`. The tool calls `LLMClient.complete()` with the skill's prompt — a nested LLM call within the agent's agentic loop.
+
+**Current examples:** Content Evaluator (`evaluate_content` tool).
+
+**When to use this pattern:**
+
+- The skill's output is useful *within* a larger agent workflow (e.g., reviewing content as part of an editing session)
+- The user shouldn't need to manually switch to a different slash command mid-conversation
+- The skill's one-shot nature is preserved — it still runs as a single prompt/response, just invoked by an agent
+
+| | Skill (standalone) | Skill as Tool | Agent |
+|---|---|---|---|
+| Invocation | Slash command (`/content-evaluator`) | Tool call by agent | Slash command or delegation |
+| State | None | None (tool is stateless) | Conversation history |
+| Portability | Vendor-portable | JARVIS-native wrapper | JARVIS-native |
+
 ## Design Principles
 
 1. **Start as a skill.** Skills are simpler, portable, and faster to build. Default to a skill unless you have evidence that multi-turn interaction is needed.
