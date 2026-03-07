@@ -446,6 +446,61 @@ class TestConversationLogger:
         assert api_messages[1]["role"] == "tool"
         assert api_messages[1]["content"] == "Weather is 3°C in Berlin"
 
+    def test_add_tool_messages_stores_tool_calls(self, temp_conversations_dir: Path):
+        """Test that add_tool_messages stores assistant tool_calls and tool results."""
+        logger = ConversationLogger(temp_conversations_dir)
+
+        tool_msgs = [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}],
+            },
+            {
+                "role": "tool",
+                "content": "fetched data",
+                "tool_call_id": "tc1",
+            },
+        ]
+        logger.add_tool_messages(tool_msgs)
+
+        assert len(logger.current_conversation) == 2
+        assert logger.current_conversation[0]["tool_calls"] == tool_msgs[0]["tool_calls"]
+        assert logger.current_conversation[1]["tool_call_id"] == "tc1"
+
+    def test_get_messages_for_api_roundtrip_with_tool_messages(self, temp_conversations_dir: Path):
+        """Test that tool messages survive add_tool_messages -> get_messages_for_api."""
+        logger = ConversationLogger(temp_conversations_dir)
+
+        logger.add_message("user", "fetch example.com")
+        logger.add_tool_messages([
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}],
+            },
+            {
+                "role": "tool",
+                "content": "page content",
+                "tool_call_id": "tc1",
+            },
+        ])
+        logger.add_message("assistant", "Here is the content", prompt_tokens=10, completion_tokens=5, total_tokens=15)
+
+        api_msgs = logger.get_messages_for_api()
+
+        assert len(api_msgs) == 4
+        # Assistant tool_calls message
+        assert api_msgs[1]["tool_calls"] == [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}]
+        assert api_msgs[1]["content"] is None
+        # Tool result message
+        assert api_msgs[2]["role"] == "tool"
+        assert api_msgs[2]["tool_call_id"] == "tc1"
+        assert api_msgs[2]["content"] == "page content"
+        # Final assistant message
+        assert api_msgs[3]["role"] == "assistant"
+        assert api_msgs[3]["content"] == "Here is the content"
+
     @freeze_time("2026-01-15 14:30:00")
     def test_save_conversation_json_structure(self, temp_conversations_dir: Path):
         """Test that save creates correct JSON structure with all new top-level keys."""

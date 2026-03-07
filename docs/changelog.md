@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Streaming Output Duplication**: Long responses no longer duplicate in the terminal. Changed `Rich.Live` overflow from `visible` to `crop` — only the last screenful shows during streaming, then `finish_live_stream` renders the full markdown.
+- **Tool Call History Loss**: Tool call context (assistant `tool_calls` + tool results) is now persisted in conversation history via `StreamResult.tool_messages` and `ConversationLogger.add_tool_messages()`. Follow-up questions no longer cause redundant tool re-invocation.
+- **Content-Evaluator Discovery**: Writing agent now suggests `/content-evaluator` when asked to review content, ensuring the structured 5-lens framework is used.
+
 ### Added
 - **Writing Agent File Access**: `/write` agent can now read, create, and edit Obsidian blog posts
   - Four new tools: `list_blog_posts`, `read_blog_post`, `create_blog_post`, `edit_blog_post`

@@ -675,6 +675,10 @@ def main(argv: list[str] | None = None):
             print_usage_stats(result)
             print_separator()
 
+            # Persist tool call context before the final assistant message
+            if result.tool_messages:
+                logger.add_tool_messages(result.tool_messages)
+
             logger.add_message(
                 "assistant",
                 result.text,

@@ -6,7 +6,7 @@ reusable class shared by all agents.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
@@ -22,6 +22,7 @@ class StreamResult:
     usage: TokenUsage
     cost_usd: float
     metrics: ResponseMetrics
+    tool_messages: list[dict] = field(default_factory=list)
 
 
 class StreamHandler:
@@ -77,6 +78,7 @@ class StreamHandler:
         """Run agentic tool-calling loop. Returns (messages, tools_format) for final streaming."""
         tools_format = tool_registry.to_litellm_format()
         accumulated_usage = TokenUsage()
+        tool_messages: list[dict] = []
 
         for _ in range(_MAX_AGENTIC_ITERATIONS):
             response = self.client.complete(messages, tools=tools_format)
@@ -105,8 +107,13 @@ class StreamHandler:
             tool_results = execute_tool_calls(choice.message.tool_calls, tool_registry)
             messages = [*messages, assistant_msg, *tool_results]
 
+            # Track tool messages for history persistence
+            tool_messages.append(assistant_msg)
+            tool_messages.extend(tool_results)
+
         # Store accumulated intermediate usage so _stream_simple can add to it
         self._intermediate_usage = accumulated_usage
+        self._tool_messages = tool_messages
         return messages, tools_format
 
     def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
@@ -151,9 +158,14 @@ class StreamHandler:
             model=self.model_id,
         )
 
+        # Collect any tool messages from the agentic loop
+        tool_messages = getattr(self, "_tool_messages", [])
+        self._tool_messages = []
+
         return StreamResult(
             text="".join(chunks),
             usage=usage,
             cost_usd=cost_usd,
             metrics=response_metrics,
+            tool_messages=tool_messages,
         )

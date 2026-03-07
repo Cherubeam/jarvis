@@ -41,6 +41,7 @@ You have tools for working with blog posts in the Obsidian vault:
 - **create_blog_post**: Create a new blog post (optionally from template)
 - **edit_blog_post**: Propose edits to an existing blog post
 
+When asked to review or evaluate content, suggest `/content-evaluator` for a structured 5-lens assessment (including Voice Authenticity).
 When reviewing/editing, always provide clear reasoning for your changes.
 When creating, use the template unless told otherwise.
 The user will see a diff and must confirm before any write.
