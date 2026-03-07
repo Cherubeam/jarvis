@@ -453,6 +453,26 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
+    # Initialize blog tools for writing agent (if obsidian enabled)
+    vault_config = load_vault_config(config)
+    if vault_config is not None:
+        try:
+            from packages.core.tools.blog_tools import make_blog_tools
+
+            obsidian_cfg = config.get("obsidian", {})
+            writing_cfg = obsidian_cfg.get("writing", {})
+            blog_dir = writing_cfg.get("blog_dir", "")
+            template_path = writing_cfg.get("template_path", "")
+
+            if blog_dir:
+                blog_tools = make_blog_tools(
+                    vault_config, CLIConfirmationHandler(), blog_dir, template_path,
+                )
+                extra_tools.extend(blog_tools)
+                print_system(f"[Blog] {len(blog_tools)} blog tools loaded.")
+        except Exception as e:
+            print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
+
     # Build the active agent (or skill in standalone mode)
     active_skill = None
     if args.skill:

@@ -69,6 +69,11 @@ obsidian:
   vault_path: ""                    # User sets in local.yaml
   allowed_dirs:
     - "Daily Notes"
+    - "03 – Areas/02 – Substack"
+    - "99 – Meta/00 – Templates"
   daily_notes:
     path_format: "Daily Notes/%Y-%m-%d"
+  writing:
+    blog_dir: "03 – Areas/02 – Substack"
+    template_path: "99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md"
   prompts_dir: "data/prompts/obsidian"

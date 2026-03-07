@@ -70,6 +70,97 @@ class WriteResult:
     diff: VaultDiff | None = None
 
 
+def write_note(
+    note_path: Path,
+    proposed_content: str,
+    vault_config: VaultConfig,
+    confirmation_handler: ConfirmationHandler,
+    reasoning: str = "",
+) -> WriteResult:
+    """Write full content to a note with diff-based confirmation.
+
+    For existing files: shows diff against current content.
+    For new files: shows diff against empty string (all additions).
+
+    Args:
+        note_path: Absolute path to the note file.
+        proposed_content: Full file content to write.
+        vault_config: Vault configuration.
+        confirmation_handler: Handler for diff display and confirmation.
+        reasoning: Optional explanation shown before the diff.
+
+    Returns:
+        WriteResult describing the outcome.
+    """
+    rel_path = str(note_path.relative_to(vault_config.vault_path))
+
+    # Validate path
+    if not validate_path(note_path, vault_config):
+        return WriteResult(
+            success=False,
+            file_path=rel_path,
+            action="error",
+            message=f"Access denied: {rel_path} is outside allowed directories",
+        )
+
+    # Read current content (empty string for new files)
+    is_new = not note_path.exists()
+    if is_new:
+        original = ""
+    else:
+        try:
+            original = read_note(note_path, vault_config)
+        except PermissionError as e:
+            return WriteResult(
+                success=False,
+                file_path=rel_path,
+                action="error",
+                message=str(e),
+            )
+
+    # Compute diff
+    diff = compute_diff(rel_path, original, proposed_content)
+
+    # Print reasoning before diff if provided
+    if reasoning:
+        print(f"\n{reasoning}")
+
+    # Present diff and get confirmation
+    confirmation_handler.present_diff(diff)
+    if not confirmation_handler.get_confirmation():
+        return WriteResult(
+            success=False,
+            file_path=rel_path,
+            action="rejected",
+            message="Write cancelled by user",
+            diff=diff,
+        )
+
+    # Create parent directories if needed
+    note_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write the file
+    try:
+        note_path.write_text(proposed_content, encoding="utf-8")
+        action = "created" if is_new else "written"
+        logger.info(f"{'Created' if is_new else 'Wrote'} {rel_path}")
+        return WriteResult(
+            success=True,
+            file_path=rel_path,
+            action=action,
+            message=f"Successfully {'created' if is_new else 'wrote'} {rel_path}",
+            diff=diff,
+        )
+    except OSError as e:
+        return WriteResult(
+            success=False,
+            file_path=rel_path,
+            action="error",
+            message=f"Write failed: {e}",
+            diff=diff,
+        )
+
+
 def append_to_daily_note(
     content: str,
     vault_config: VaultConfig,
