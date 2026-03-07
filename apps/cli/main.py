@@ -494,13 +494,15 @@ def main(argv: list[str] | None = None):
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
     # Initialize content-evaluator tool (if skill directory exists)
+    # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
+    agent_only_tools: list = []
     skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
     if (skill_dir / "SKILL.md").is_file():
         try:
             from packages.core.tools.content_evaluator import make_content_evaluator_tool
 
             evaluator_tool = make_content_evaluator_tool(skill_dir, client, model_id)
-            extra_tools.append(evaluator_tool)
+            agent_only_tools.append(evaluator_tool)
             print_system("[Tools] Content evaluator loaded.")
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
@@ -523,11 +525,12 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        # Pass extra_tools to agents that accept them (e.g. TacticsAgent)
+        # Pass extra_tools + agent_only_tools to agents that accept them
+        all_agent_tools = extra_tools + agent_only_tools
         import inspect
         sig = inspect.signature(meta.agent_class.__init__)
-        if "extra_tools" in sig.parameters and extra_tools:
-            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
+        if "extra_tools" in sig.parameters and all_agent_tools:
+            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=all_agent_tools)
         else:
             active_agent = meta.agent_class(llm_client=client, model=model_id)
         agent_name = meta.name
@@ -674,10 +677,11 @@ def main(argv: list[str] | None = None):
                     continue
 
                 # Agent-routed commands
+                all_agent_tools = extra_tools + agent_only_tools
                 if _handle_agent_command(
                     command, payload, client, stream_handler, logger,
                     model_id, agent_registry,
-                    extra_tools=extra_tools or None,
+                    extra_tools=all_agent_tools or None,
                     session=session,
                 ):
                     continue
@@ -730,11 +734,12 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
+                all_delegate_tools = extra_tools + agent_only_tools
                 import inspect as _inspect
                 _sig = _inspect.signature(delegate_meta.agent_class.__init__)
-                if "extra_tools" in _sig.parameters and extra_tools:
+                if "extra_tools" in _sig.parameters and all_delegate_tools:
                     delegate_agent = delegate_meta.agent_class(
-                        llm_client=client, model=model_id, extra_tools=extra_tools,
+                        llm_client=client, model=model_id, extra_tools=all_delegate_tools,
                     )
                 else:
                     delegate_agent = delegate_meta.agent_class(
