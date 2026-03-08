@@ -510,6 +510,19 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
 
+    # Initialize suggest-improvements tool (if vault is configured)
+    if vault_config is not None:
+        try:
+            from packages.core.tools.suggest_improvements import make_suggest_improvements_tool
+
+            suggest_tool = make_suggest_improvements_tool(
+                vault_config, CLIConfirmationHandler(),
+            )
+            agent_only_tools.append(suggest_tool)
+            print_system("[Tools] Suggest improvements loaded.")
+        except Exception as e:
+            print_system(f"[Tools] Suggest improvements failed: {e}")
+
     # Build the active agent (or skill in standalone mode)
     active_skill = None
     if args.skill:
