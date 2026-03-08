@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Suggest Improvements Tool**: New `suggest_improvements` tool shows proposed changes as a colored preview diff without writing to disk. Available to any delegated agent. The writing agent's review workflow now runs evaluate → suggest → discuss → apply.
+
 ### Fixed
 - **Recall Tool Delegation Leak**: `extra_tools` (like `recall_conversations`) no longer leak to delegated agents. Introduced `agent_only_tools` list to separate orchestration tools from specialist tools.
 
