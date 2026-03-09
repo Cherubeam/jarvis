@@ -1603,4 +1603,55 @@ Replace `allowed_dirs` with `FilesystemGuard`, a per-path access control layer:
 
 ---
 
+## ADR-022: Capability Distribution — Orchestrator vs Subagent Tools
+
+**Date**: 2026-03-09
+**Status**: ✅ Accepted
+
+### Context
+
+As JARVIS gains integrations (vault, calendar, email), each new capability raises the question: does it belong on JARVIS directly, or on a specialized subagent? Without a clear framework, every integration becomes an ad-hoc decision.
+
+### Decision
+
+Four criteria determine where a capability belongs:
+
+| Criterion | → JARVIS tool | → Subagent tool |
+|-----------|--------------|-----------------|
+| **Data direction** | Read (information gathering) | Write (content creation) |
+| **Judgment required** | Mechanical / deterministic | Creative / voice-aware |
+| **Interaction pattern** | One-shot (single tool call) | Multi-turn (refinement loop) |
+| **Parallelism benefit** | Safe to parallelize (reads) | Needs sequencing (writes) |
+
+**Core principle:** JARVIS owns general-purpose information retrieval; subagents own domain-specific creative transformation.
+
+A capability meeting ≥3 left-column criteria → JARVIS. One meeting ≥2 right-column criteria → subagent.
+
+**Refinement — downstream intent:** If a read operation only makes sense in the context of a creative task a subagent owns, it belongs with that subagent. Example: `search_tactics` is mechanically a read, but its purpose is always creative synthesis → TacticsAgent, not JARVIS. Contrast: `read_note` has many non-creative uses → general-purpose → JARVIS.
+
+### Applying the Framework
+
+| Capability | Owner | Rationale |
+|-----------|-------|-----------|
+| `read_note`, `search_notes`, `read_daily_note` | **JARVIS** (Tier 1) | General-purpose reads, mechanical, one-shot |
+| `search_tactics` | **TacticsAgent** (agent-only) | Downstream intent is creative synthesis |
+| Blog read/write tools | **WritingAgent** (agent-only) | Writing/editing context |
+| `/daily-summary` | **CLI command** | LLM-generated write, stays as CLI command |
+
+### Consequences
+
+**Benefits:**
+- ✅ JARVIS can answer "what's in my daily note?" without delegation overhead
+- ✅ Clear, repeatable framework for future integrations (calendar, email, etc.)
+- ✅ Tool count stays manageable: 6 JARVIS tools (well within ~10-tool accuracy threshold)
+
+**Drawbacks:**
+- ⚠️ `search_tactics` moved from JARVIS → agent-only; users must delegate or use `/tactics`
+
+### Related
+- Extends: ADR-020 (Agent Delegation), ADR-021 (Filesystem Access Control)
+- Informs: future calendar/email integration decisions
+
+---
+
 *Last updated: 2026-03-09*

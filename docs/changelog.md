@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Vault Read Tools**: Three new read-only tools (`read_note`, `search_notes`, `read_daily_note`) give JARVIS direct access to the Obsidian vault for information retrieval. 50KB content cap, 100-entry search cap. Inherits FilesystemGuard access control.
+- **Capability Ownership Framework** (ADR-022): Four-criteria decision framework for placing capabilities on JARVIS vs subagents. Core principle: JARVIS owns general-purpose reads; subagents own creative transformation.
+
+### Changed
+- **search_tactics moved to agent-only**: `card_search_tool` now in `agent_only_tools` (TacticsAgent) instead of `extra_tools` (JARVIS). Per ADR-022, its downstream intent is creative synthesis.
+- **Delegation directive updated**: JARVIS system prompt now mentions vault read tools and tactics delegation.
+
+### Added
 - **Filesystem Access Control**: `FilesystemGuard` with per-path read/write/deny rules replaces flat `allowed_dirs`. Most-specific-path-wins resolution enables whole-vault read access with selective write permissions. Breaking change: `allowed_dirs` removed from `VaultConfig`.
 - **Suggest Improvements Tool**: New `suggest_improvements` tool shows proposed changes as a colored preview diff without writing to disk. Available to any delegated agent. The writing agent's review workflow now runs evaluate → suggest → discuss → apply.
 
