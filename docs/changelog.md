@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Filesystem Access Control**: `FilesystemGuard` with per-path read/write/deny rules replaces flat `allowed_dirs`. Most-specific-path-wins resolution enables whole-vault read access with selective write permissions. Breaking change: `allowed_dirs` removed from `VaultConfig`.
 - **Suggest Improvements Tool**: New `suggest_improvements` tool shows proposed changes as a colored preview diff without writing to disk. Available to any delegated agent. The writing agent's review workflow now runs evaluate → suggest → discuss → apply.
 
 ### Fixed
@@ -684,4 +685,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-03-05*
+*Last updated: 2026-03-09*

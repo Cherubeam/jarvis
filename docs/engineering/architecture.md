@@ -283,6 +283,7 @@ Files without frontmatter default to `active: true` (backwards compatible).
 - `prompts.py`: Load `.md` prompt files from `data/prompts/obsidian/`
 
 **Key Design Decisions:**
+- **FilesystemGuard**: Per-path access control layer replacing flat `allowed_dirs`. Rules use `AccessLevel` (read/write/deny) with most-specific-path-wins resolution. Shared across all vault tools for consistent enforcement. See ADR-021.
 - **ConfirmationHandler ABC**: CLI and future GUI each implement this interface
 - **Pure string callout parsing**: No I/O in callout module, testable in isolation
 - **Path validation**: All vault I/O goes through `vault.py`, uses `Path.resolve()` to block traversal
@@ -730,4 +731,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-07*
+*Last updated: 2026-03-09*

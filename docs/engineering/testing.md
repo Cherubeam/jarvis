@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: Run `uv run pytest` for current counts
+**Tests**: 842 passed, 11 skipped (run `uv run pytest` for current counts)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -78,6 +78,7 @@ tests/
 - ✅ `cli.py` - 8 tests
 - ✅ `analyze_context.py` - 31 tests (context utilization analysis)
 - ✅ `analyze_costs.py` - 32 tests (cost-by-type analysis)
+- ✅ `filesystem_access` - 24 tests (FilesystemGuard access control)
 
 **Integration Tests:**
 - ✅ Full conversation flow (5 tests)
@@ -720,4 +721,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-03-06*
+*Last updated: 2026-03-09*

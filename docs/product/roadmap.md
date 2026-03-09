@@ -171,6 +171,14 @@ packages/skills/
 - [x] `--skill <name>` standalone mode
 - [x] 30 unit tests
 
+### 5F: Filesystem Access Control
+
+- [x] `FilesystemGuard` with `AccessLevel` enum and `AccessRule` dataclass
+- [x] Most-specific-path-wins resolution replacing flat `allowed_dirs`
+- [x] `load_filesystem_guard()` factory for YAML config
+- [x] `VaultConfig` updated (`filesystem_guard` replaces `allowed_dirs`)
+- [x] 24 tests in `test_filesystem_access.py`
+
 ### 5E: Knowledge Base / Deck-Skills
 
 - [x] CardIndexer + CardSearcher (RAG for static reference content in ChromaDB)
@@ -334,4 +342,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-03-06*
+*Last updated: 2026-03-09*

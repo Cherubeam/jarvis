@@ -280,6 +280,70 @@ Format cost for display with appropriate precision.
 
 ---
 
+## Module: `integrations.obsidian.vault` — Filesystem Access Control
+
+### `class AccessLevel(Enum)`
+
+Access level for a filesystem path.
+
+**Values:**
+- `deny` — No access
+- `read` — Read-only access
+- `write` — Read and write access
+
+---
+
+### `class AccessRule`
+
+Dataclass pairing a path with an access level.
+
+**Attributes:**
+- `path: Path` — Absolute resolved path
+- `level: AccessLevel` — Access level for this path and its descendants
+
+---
+
+### `class FilesystemGuard`
+
+Per-path access control with most-specific-path-wins resolution.
+
+**Constructor:**
+
+#### `__init__(rules: list[AccessRule])`
+
+**Parameters:**
+- `rules` — Access rules ordered by specificity (ordering is handled internally)
+
+**Methods:**
+
+#### `check_read(path: Path) -> bool`
+
+Return `True` if the path has at least `read` access.
+
+#### `check_write(path: Path) -> bool`
+
+Return `True` if the path has `write` access.
+
+---
+
+### `load_filesystem_guard(config: dict) -> FilesystemGuard`
+
+Factory that builds a `FilesystemGuard` from YAML config.
+
+**Parameters:**
+- `config` — Dict with `filesystem_rules` list (each entry has `path` and `access` keys)
+
+**Returns:**
+- `FilesystemGuard` instance
+
+---
+
+### Updated `VaultConfig`
+
+The `allowed_dirs: list[Path]` field has been replaced by `filesystem_guard: FilesystemGuard`. All vault I/O methods delegate access checks to the guard.
+
+---
+
 ## Configuration
 
 ### `config/default.yaml`
@@ -392,4 +456,4 @@ def chat_stream(
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-03-09*

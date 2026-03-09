@@ -1554,4 +1554,53 @@ Key components:
 
 ---
 
-*Last updated: 2026-03-07*
+## ADR-021: General Filesystem Access Control
+
+**Date**: 2026-03-09
+**Status**: ✅ Accepted
+
+### Context
+
+Obsidian vault access used a flat `allowed_dirs` list in `VaultConfig`. This provided coarse-grained path validation but no distinction between read and write access — a directory was either fully allowed or fully blocked. Use cases like "read the entire vault but only write to the blog directory" were impossible to express.
+
+### Decision
+
+Replace `allowed_dirs` with `FilesystemGuard`, a per-path access control layer:
+
+1. **`AccessLevel` enum**: `read`, `write`, `deny` — where `write` implies `read`.
+2. **`AccessRule` dataclass**: Pairs a `Path` with an `AccessLevel`.
+3. **`FilesystemGuard` class**: Accepts a list of `AccessRule` entries. `check_read(path)` and `check_write(path)` resolve access using **most-specific-path-wins** — the rule whose path is the longest prefix of the target path determines the access level.
+4. **`load_filesystem_guard(config)` factory**: Builds a `FilesystemGuard` from YAML config.
+5. **`VaultConfig`**: `allowed_dirs` field replaced by `filesystem_guard: FilesystemGuard`.
+
+### Alternatives Considered
+
+1. **Extend `allowed_dirs` with per-entry modes** (e.g., `{"path": "...", "mode": "read"}`)
+   - ✅ Backward-compatible shape
+   - ❌ No path specificity resolution — ambiguous when paths overlap
+   - ❌ Still a flat list with no hierarchy awareness
+
+2. **OS-level ACLs** (delegate to filesystem permissions)
+   - ✅ Zero application code
+   - ❌ Requires system-level configuration per user
+   - ❌ Not portable across macOS/Linux setups
+   - ❌ Can't express JARVIS-specific rules (e.g., template dir read-only for agents)
+
+### Consequences
+
+**Benefits:**
+- ✅ Whole-vault read access with selective write — enables agents to browse freely while restricting edits to specific directories
+- ✅ Most-specific-path-wins is intuitive and predictable
+- ✅ Single guard instance shared across all tools — consistent enforcement
+
+**Drawbacks:**
+- ⚠️ Breaking change: `allowed_dirs` removed from config and `VaultConfig`
+- ⚠️ Existing `local.yaml` configs need migration to the new `filesystem_rules` format
+
+### Related
+- Replaces: ADR-019 (Writing Agent File Access — `allowed_dirs` + tool-level guards)
+- Extends: ADR-013 (Obsidian Vault Integration Architecture)
+
+---
+
+*Last updated: 2026-03-09*
