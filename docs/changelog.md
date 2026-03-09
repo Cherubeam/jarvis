@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Vault Read Tools**: Three new read-only tools (`read_note`, `search_notes`, `read_daily_note`) give JARVIS direct access to the Obsidian vault for information retrieval. 50KB content cap, 100-entry search cap. Inherits FilesystemGuard access control.
+- **Vault Search Sorting**: `search_notes` tool now supports `sort_by` (`"name"` or `"modified"`) and `limit` (1–100) parameters. `sort_by="modified"` returns most-recent-first with timestamps (`YYYY-MM-DD HH:MM  path`).
 - **Capability Ownership Framework** (ADR-022): Four-criteria decision framework for placing capabilities on JARVIS vs subagents. Core principle: JARVIS owns general-purpose reads; subagents own creative transformation.
 
 ### Changed

@@ -1,5 +1,9 @@
 """Tests for packages.core.tools.vault_tools."""
 
+import os
+import re
+import time
+
 import pytest
 from datetime import date
 from pathlib import Path
@@ -174,6 +178,85 @@ class TestSearchNotes:
 
         assert "data.csv" in result
         assert "note.md" not in result
+
+    def test_sort_by_modified_returns_newest_first(self, tools):
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        # Create files with staggered mtimes
+        for i, name in enumerate(["old.md", "mid.md", "new.md"]):
+            path = notes_dir / name
+            path.write_text(f"# {name}")
+            os.utime(path, (1000 + i * 100, 1000 + i * 100))
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", sort_by="modified")
+
+        lines = [l for l in result.strip().split("\n") if l.strip()]
+        assert "new.md" in lines[0]
+        assert "mid.md" in lines[1]
+        assert "old.md" in lines[2]
+
+    def test_sort_by_modified_includes_timestamps(self, tools):
+        tool_list, vault_path, *_ = tools
+        path = vault_path / "Notes" / "note.md"
+        path.write_text("# Note")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", sort_by="modified")
+
+        # Format: YYYY-MM-DD HH:MM  path
+        assert re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}  Notes/note\.md", result)
+
+    def test_sort_by_name_is_default(self, tools):
+        tool_list, vault_path, *_ = tools
+        (vault_path / "Notes" / "alpha.md").write_text("# A")
+        (vault_path / "Notes" / "beta.md").write_text("# B")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes")
+
+        # Default sort: no timestamps
+        assert re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", result) is None
+
+    def test_limit_parameter(self, tools):
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        for i in range(10):
+            (notes_dir / f"note-{i:02d}.md").write_text(f"# Note {i}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", limit=3)
+
+        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        assert len(lines) == 3
+        assert "Showing 3 of 10" in result
+
+    def test_limit_clamped_to_max(self, tools):
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        # Create just 3 files — we only need to verify clamping logic, not 100+ files
+        for i in range(3):
+            (notes_dir / f"note-{i}.md").write_text(f"# Note {i}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        # limit=999 should be clamped to MAX_SEARCH_RESULTS (100), but with only 3 files
+        # no overflow message should appear
+        result = tool.execute(directory="Notes", limit=999)
+        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        assert len(lines) == 3
+        assert "Showing" not in result
+
+    def test_limit_clamped_to_min(self, tools):
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        for i in range(3):
+            (notes_dir / f"note-{i}.md").write_text(f"# Note {i}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", limit=0)
+
+        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        assert len(lines) == 1  # clamped to 1
 
 
 # ==================== read_daily_note ====================

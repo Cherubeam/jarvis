@@ -5,7 +5,7 @@ Factory function that creates read-only tools for accessing Obsidian vault
 notes. Uses the closure pattern to capture VaultConfig.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import (
@@ -62,7 +62,12 @@ def make_vault_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     # --- search_notes ---
 
-    def _search_notes(directory: str = "", pattern: str = "**/*.md") -> str:
+    def _search_notes(
+        directory: str = "",
+        pattern: str = "**/*.md",
+        sort_by: str = "name",
+        limit: int = MAX_SEARCH_RESULTS,
+    ) -> str:
         target = vault_config.vault_path / directory if directory else vault_config.vault_path
         target = target.resolve()
         try:
@@ -73,19 +78,28 @@ def make_vault_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
         if not notes:
             return "No notes found."
 
+        limit = max(1, min(limit, MAX_SEARCH_RESULTS))
+
+        if sort_by == "modified":
+            notes.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
         lines = []
-        for note in notes[:MAX_SEARCH_RESULTS]:
+        for note in notes[:limit]:
             rel = note.relative_to(vault_config.vault_path)
-            lines.append(str(rel))
+            if sort_by == "modified":
+                mtime = datetime.fromtimestamp(note.stat().st_mtime)
+                lines.append(f"{mtime:%Y-%m-%d %H:%M}  {rel}")
+            else:
+                lines.append(str(rel))
 
         result = "\n".join(lines)
-        if len(notes) > MAX_SEARCH_RESULTS:
-            result += f"\n\n[Showing {MAX_SEARCH_RESULTS} of {len(notes)} results]"
+        if len(notes) > limit:
+            result += f"\n\n[Showing {limit} of {len(notes)} results]"
         return result
 
     search_tool = ToolDefinition(
         name="search_notes",
-        description="List notes in the Obsidian vault matching a glob pattern. Returns paths relative to the vault root.",
+        description="List notes in the Obsidian vault matching a glob pattern. Returns paths relative to the vault root. Supports sorting by name or modification time.",
         parameters={
             "type": "object",
             "properties": {
@@ -96,6 +110,15 @@ def make_vault_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
                 "pattern": {
                     "type": "string",
                     "description": "Glob pattern to match files (default: '**/*.md').",
+                },
+                "sort_by": {
+                    "type": "string",
+                    "enum": ["name", "modified"],
+                    "description": "Sort order: 'name' (alphabetical, default) or 'modified' (most recent first, includes timestamps).",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default: 100, clamped 1–100).",
                 },
             },
             "required": [],
