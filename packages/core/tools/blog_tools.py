@@ -9,7 +9,7 @@ to capture VaultConfig and ConfirmationHandler.
 from pathlib import Path
 
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note
+from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note, validate_write
 from packages.integrations.obsidian.writer import ConfirmationHandler, WriteResult, write_note
 
 
@@ -32,11 +32,6 @@ def make_blog_tools(
     """
     blog_path = vault_config.vault_path / blog_dir
     template_full_path = vault_config.vault_path / template_path
-    template_dir = template_full_path.parent.resolve()
-
-    def _is_in_template_dir(path: Path) -> bool:
-        """Check if a path is inside the template directory (write-guarded)."""
-        return path.resolve().is_relative_to(template_dir)
 
     # --- list_blog_posts ---
 
@@ -157,9 +152,9 @@ def make_blog_tools(
     def _edit_blog_post(path: str, new_content: str, reasoning: str = "") -> str:
         full_path = (vault_config.vault_path / path).resolve()
 
-        # Write guard: reject edits to template directory
-        if _is_in_template_dir(full_path):
-            return "Error: Cannot edit files in the template directory (read-only)."
+        # Write guard: reject edits to paths without write access
+        if not validate_write(full_path, vault_config):
+            return "Error: Cannot edit this file (read-only)."
 
         if not full_path.exists():
             return f"Error: File not found: {path}. Use create_blog_post for new files."

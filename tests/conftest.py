@@ -298,11 +298,15 @@ def temp_vault(tmp_path: Path) -> Path:
 def sample_vault_config(temp_vault: Path):
     """Sample VaultConfig pointing at the temp vault."""
     from packages.integrations.obsidian.vault import VaultConfig
+    from packages.core.filesystem_access import FilesystemGuard, AccessRule, AccessLevel
 
     daily_dir = temp_vault / "Daily Notes"
+    guard = FilesystemGuard([
+        AccessRule(path=daily_dir, access=AccessLevel.READ_WRITE),
+    ])
     return VaultConfig(
         vault_path=temp_vault,
-        allowed_dirs=[daily_dir],
+        filesystem_guard=guard,
         daily_note_path_format="Daily Notes/%Y-%m-%d",
         enabled=True,
     )

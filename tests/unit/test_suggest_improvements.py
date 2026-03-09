@@ -3,6 +3,7 @@
 import pytest
 from pathlib import Path
 
+from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import ConfirmationHandler
@@ -30,9 +31,12 @@ def vault(tmp_path):
     sample = content_dir / "post.md"
     sample.write_text("# Hello\n\nThis is the original content.\n", encoding="utf-8")
 
+    guard = FilesystemGuard([
+        AccessRule(path=content_dir.resolve(), access=AccessLevel.READ),
+    ])
     config = VaultConfig(
         vault_path=tmp_path,
-        allowed_dirs=[content_dir.resolve()],
+        filesystem_guard=guard,
     )
     return config, content_dir, sample
 

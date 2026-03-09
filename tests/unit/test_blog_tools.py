@@ -3,6 +3,7 @@
 import pytest
 from pathlib import Path
 
+from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import ConfirmationHandler
@@ -21,6 +22,10 @@ class MockConfirmationHandler(ConfirmationHandler):
         return self.confirm
 
 
+def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:
+    return FilesystemGuard([AccessRule(path=p, access=a) for p, a in rules])
+
+
 @pytest.fixture
 def blog_vault(tmp_path):
     """Create a vault with blog dir and template."""
@@ -31,9 +36,13 @@ def blog_vault(tmp_path):
     template = template_dir / "(TEMPLATE) Blog Post.md"
     template.write_text("---\ntitle: \"\"\ntags: []\n---\n\n", encoding="utf-8")
 
+    guard = _guard(
+        (blog_dir.resolve(), AccessLevel.READ_WRITE),
+        (template_dir.resolve(), AccessLevel.READ),  # templates are read-only
+    )
     config = VaultConfig(
         vault_path=tmp_path,
-        allowed_dirs=[blog_dir.resolve(), template_dir.resolve()],
+        filesystem_guard=guard,
     )
     return config, blog_dir, template
 
@@ -226,13 +235,13 @@ class TestEditBlogPost:
         assert "not found" in result.lower()
 
     def test_rejects_template_edit(self, tools):
+        """Template dir has read-only access — edits are blocked by validate_write."""
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "edit_blog_post")
         result = tool.execute(
             path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
             new_content="hacked template",
         )
-        assert "template" in result.lower()
         assert "read-only" in result.lower()
 
     def test_rejected_by_user(self, blog_vault):

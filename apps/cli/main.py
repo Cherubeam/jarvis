@@ -38,6 +38,7 @@ from packages.core.memory import ConversationLogger, hash_content
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
+from packages.core.filesystem_access import load_filesystem_guard
 from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
 from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
@@ -121,7 +122,8 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
                          system_prompt: str, metrics_tracker: MetricsTracker,
                          pricing: ModelPricing | None, model_id: str) -> None:
     """Handle the /daily-summary command."""
-    vault_config = load_vault_config(config)
+    fs_guard = load_filesystem_guard(config)
+    vault_config = load_vault_config(config, filesystem_guard=fs_guard)
     if vault_config is None:
         print_system("\nObsidian integration is not configured or disabled.")
         print_system("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
@@ -478,7 +480,8 @@ def main(argv: list[str] | None = None):
 
     # Initialize blog tools for writing agent (if obsidian enabled)
     # Blog tools are agent-only so JARVIS delegates instead of reading/reviewing directly.
-    vault_config = load_vault_config(config)
+    fs_guard = load_filesystem_guard(config)
+    vault_config = load_vault_config(config, filesystem_guard=fs_guard)
     if vault_config is not None:
         try:
             from packages.core.tools.blog_tools import make_blog_tools

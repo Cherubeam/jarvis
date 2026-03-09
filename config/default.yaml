@@ -63,11 +63,15 @@ cli:
   colors: true
   history_file: "data/.cli_history"
 
+# Filesystem access control (used by Obsidian and future integrations)
+# Configure per-path permissions in local.yaml
+filesystem:
+  access_rules: []                  # User sets in local.yaml
+
 # Obsidian vault integration
 obsidian:
   enabled: false
   vault_path: ""                    # User sets in local.yaml
-  allowed_dirs: []                  # User sets in local.yaml
   daily_notes:
     path_format: "Daily Notes/%Y-%m-%d"
   writing:

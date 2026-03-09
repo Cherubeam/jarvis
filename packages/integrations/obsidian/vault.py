@@ -6,9 +6,11 @@ No other module should touch the filesystem for vault operations.
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+
+from packages.core.filesystem_access import FilesystemGuard
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +20,19 @@ class VaultConfig:
     """Configuration for Obsidian vault access."""
 
     vault_path: Path
-    allowed_dirs: list[Path] = field(default_factory=list)
+    filesystem_guard: FilesystemGuard
     daily_note_path_format: str = "Daily Notes/%Y-%m-%d"
     enabled: bool = True
 
 
-def load_vault_config(config: dict) -> VaultConfig | None:
+def load_vault_config(
+    config: dict, filesystem_guard: FilesystemGuard | None = None
+) -> VaultConfig | None:
     """Load vault configuration from config dictionary.
+
+    Args:
+        config: Full application config dictionary.
+        filesystem_guard: Pre-built guard. If None, a guard with no rules is used.
 
     Returns None if obsidian is disabled or not configured.
     """
@@ -43,48 +51,40 @@ def load_vault_config(config: dict) -> VaultConfig | None:
         logger.warning(f"Vault path does not exist: {vault_path}")
         return None
 
-    # Resolve allowed_dirs relative to vault
-    raw_allowed = obsidian_config.get("allowed_dirs", [])
-    allowed_dirs = [(vault_path / d).resolve() for d in raw_allowed]
+    if filesystem_guard is None:
+        filesystem_guard = FilesystemGuard([])
 
     daily_notes = obsidian_config.get("daily_notes", {})
     path_format = daily_notes.get("path_format", "Daily Notes/%Y-%m-%d")
 
     return VaultConfig(
         vault_path=vault_path,
-        allowed_dirs=allowed_dirs,
+        filesystem_guard=filesystem_guard,
         daily_note_path_format=path_format,
         enabled=True,
     )
 
 
-def validate_path(path: Path, vault_config: VaultConfig) -> bool:
-    """Check whether a path is inside one of the allowed vault directories.
+def validate_read(path: Path, vault_config: VaultConfig) -> bool:
+    """Check whether read access is allowed for a path via the filesystem guard."""
+    return vault_config.filesystem_guard.check_read(path)
 
-    Uses Path.resolve() to block symlink/traversal attacks.
-    """
-    resolved = path.resolve()
 
-    for allowed_dir in vault_config.allowed_dirs:
-        try:
-            resolved.relative_to(allowed_dir)
-            return True
-        except ValueError:
-            continue
-
-    return False
+def validate_write(path: Path, vault_config: VaultConfig) -> bool:
+    """Check whether write access is allowed for a path via the filesystem guard."""
+    return vault_config.filesystem_guard.check_write(path)
 
 
 def read_note(path: Path, vault_config: VaultConfig) -> str:
     """Read a note from the vault.
 
     Raises:
-        PermissionError: If path is outside allowed directories.
+        PermissionError: If path is not readable.
         FileNotFoundError: If note does not exist.
     """
-    if not validate_path(path, vault_config):
+    if not validate_read(path, vault_config):
         raise PermissionError(
-            f"Access denied: {path} is outside allowed vault directories"
+            f"Access denied: {path} is not readable"
         )
 
     return path.read_text(encoding="utf-8")
@@ -96,11 +96,11 @@ def list_notes(
     """List notes in a directory within the vault.
 
     Raises:
-        PermissionError: If directory is outside allowed directories.
+        PermissionError: If directory is not readable.
     """
-    if not validate_path(directory, vault_config):
+    if not validate_read(directory, vault_config):
         raise PermissionError(
-            f"Access denied: {directory} is outside allowed vault directories"
+            f"Access denied: {directory} is not readable"
         )
 
     if not directory.is_dir():

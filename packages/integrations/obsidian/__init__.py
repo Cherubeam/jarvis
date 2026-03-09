@@ -27,7 +27,8 @@ from packages.integrations.obsidian.vault import (
     list_notes,
     load_vault_config,
     read_note,
-    validate_path,
+    validate_read,
+    validate_write,
 )
 from packages.integrations.obsidian.writer import (
     CLIConfirmationHandler,
@@ -41,7 +42,8 @@ __all__ = [
     # vault
     "VaultConfig",
     "load_vault_config",
-    "validate_path",
+    "validate_read",
+    "validate_write",
     "read_note",
     "list_notes",
     "get_daily_note_path",

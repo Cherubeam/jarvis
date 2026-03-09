@@ -3,6 +3,7 @@
 import pytest
 from pathlib import Path
 
+from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import (
@@ -26,11 +27,16 @@ class MockConfirmationHandler(ConfirmationHandler):
         return self.confirm
 
 
+def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:
+    return FilesystemGuard([AccessRule(path=p, access=a) for p, a in rules])
+
+
 @pytest.fixture
 def vault(tmp_path):
     blog_dir = tmp_path / "Blog"
     blog_dir.mkdir()
-    config = VaultConfig(vault_path=tmp_path, allowed_dirs=[blog_dir])
+    guard = _guard((blog_dir, AccessLevel.READ_WRITE))
+    config = VaultConfig(vault_path=tmp_path, filesystem_guard=guard)
     return config, blog_dir
 
 
@@ -128,10 +134,24 @@ class TestWriteNotePathValidation:
         allowed.mkdir()
         secret = tmp_path / "secret"
         secret.mkdir()
-        config = VaultConfig(vault_path=tmp_path, allowed_dirs=[allowed])
+        guard = _guard((allowed, AccessLevel.READ_WRITE))
+        config = VaultConfig(vault_path=tmp_path, filesystem_guard=guard)
         handler = MockConfirmationHandler(confirm=True)
 
         result = write_note(secret / "hack.md", "bad", config, handler)
+
+        assert result.success is False
+        assert result.action == "error"
+        assert "denied" in result.message.lower()
+
+    def test_rejects_read_only_path(self, tmp_path):
+        read_dir = tmp_path / "readonly"
+        read_dir.mkdir()
+        guard = _guard((read_dir, AccessLevel.READ))
+        config = VaultConfig(vault_path=tmp_path, filesystem_guard=guard)
+        handler = MockConfirmationHandler(confirm=True)
+
+        result = write_note(read_dir / "file.md", "content", config, handler)
 
         assert result.success is False
         assert result.action == "error"

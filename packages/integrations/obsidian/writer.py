@@ -22,7 +22,7 @@ from packages.integrations.obsidian.diff import (
     compute_diff,
     format_diff_for_cli,
 )
-from packages.integrations.obsidian.vault import VaultConfig, read_note, validate_path
+from packages.integrations.obsidian.vault import VaultConfig, validate_write
 
 logger = logging.getLogger(__name__)
 
@@ -94,13 +94,13 @@ def write_note(
     """
     rel_path = str(note_path.relative_to(vault_config.vault_path))
 
-    # Validate path
-    if not validate_path(note_path, vault_config):
+    # Validate write access
+    if not validate_write(note_path, vault_config):
         return WriteResult(
             success=False,
             file_path=rel_path,
             action="error",
-            message=f"Access denied: {rel_path} is outside allowed directories",
+            message=f"Access denied: {rel_path} is not writable",
         )
 
     # Read current content (empty string for new files)
@@ -109,8 +109,8 @@ def write_note(
         original = ""
     else:
         try:
-            original = read_note(note_path, vault_config)
-        except PermissionError as e:
+            original = note_path.read_text(encoding="utf-8")
+        except OSError as e:
             return WriteResult(
                 success=False,
                 file_path=rel_path,
@@ -203,18 +203,18 @@ def append_to_note(
     """
     rel_path = str(note_path.relative_to(vault_config.vault_path))
 
-    # Validate path
-    if not validate_path(note_path, vault_config):
+    # Validate write access
+    if not validate_write(note_path, vault_config):
         return WriteResult(
             success=False,
             file_path=rel_path,
             action="error",
-            message=f"Access denied: {rel_path} is outside allowed directories",
+            message=f"Access denied: {rel_path} is not writable",
         )
 
     # Read current content
     try:
-        original = read_note(note_path, vault_config)
+        original = note_path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return WriteResult(
             success=False,

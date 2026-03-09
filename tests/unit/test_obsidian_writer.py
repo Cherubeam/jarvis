@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
+from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import (
@@ -32,6 +33,10 @@ class MockConfirmationHandler(ConfirmationHandler):
         return self.confirm
 
 
+def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:
+    return FilesystemGuard([AccessRule(path=p, access=a) for p, a in rules])
+
+
 @pytest.fixture
 def vault_with_daily_note(tmp_path):
     """Create a vault with a daily note containing a JARVIS callout."""
@@ -42,9 +47,10 @@ def vault_with_daily_note(tmp_path):
         "# 2026-02-09\n\nSome notes here.\n\n> [!JARVIS]\n> Previous entry\n\n## Tasks\n- Buy milk",
         encoding="utf-8",
     )
+    guard = _guard((daily_dir, AccessLevel.READ_WRITE))
     config = VaultConfig(
         vault_path=tmp_path,
-        allowed_dirs=[daily_dir],
+        filesystem_guard=guard,
     )
     return config, note
 
@@ -56,9 +62,10 @@ def vault_no_callout(tmp_path):
     daily_dir.mkdir()
     note = daily_dir / "2026-02-09.md"
     note.write_text("# 2026-02-09\n\nJust notes.", encoding="utf-8")
+    guard = _guard((daily_dir, AccessLevel.READ_WRITE))
     config = VaultConfig(
         vault_path=tmp_path,
-        allowed_dirs=[daily_dir],
+        filesystem_guard=guard,
     )
     return config, note
 
@@ -99,9 +106,10 @@ class TestAppendToNote:
     def test_file_not_found(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
         daily_dir.mkdir()
+        guard = _guard((daily_dir, AccessLevel.READ_WRITE))
         config = VaultConfig(
             vault_path=tmp_path,
-            allowed_dirs=[daily_dir],
+            filesystem_guard=guard,
         )
         handler = MockConfirmationHandler()
         result = append_to_note(
@@ -117,11 +125,24 @@ class TestAppendToNote:
         secret.mkdir()
         note = secret / "note.md"
         note.write_text("> [!JARVIS]\n> content")
-        config = VaultConfig(vault_path=tmp_path, allowed_dirs=[allowed])
+        guard = _guard((allowed, AccessLevel.READ_WRITE))
+        config = VaultConfig(vault_path=tmp_path, filesystem_guard=guard)
         handler = MockConfirmationHandler()
         result = append_to_note(note, "Hack", config, handler)
         assert result.success is False
         assert result.action == "error"
+        assert "denied" in result.message.lower()
+
+    def test_read_only_path_denies_append(self, tmp_path):
+        daily_dir = tmp_path / "Daily Notes"
+        daily_dir.mkdir()
+        note = daily_dir / "2026-02-09.md"
+        note.write_text("> [!JARVIS]\n> entry")
+        guard = _guard((daily_dir, AccessLevel.READ))
+        config = VaultConfig(vault_path=tmp_path, filesystem_guard=guard)
+        handler = MockConfirmationHandler()
+        result = append_to_note(note, "Content", config, handler)
+        assert result.success is False
         assert "denied" in result.message.lower()
 
     def test_diff_attached_to_result(self, vault_with_daily_note):
@@ -160,9 +181,10 @@ class TestAppendToDailyNote:
     def test_missing_daily_note(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
         daily_dir.mkdir()
+        guard = _guard((daily_dir, AccessLevel.READ_WRITE))
         config = VaultConfig(
             vault_path=tmp_path,
-            allowed_dirs=[daily_dir],
+            filesystem_guard=guard,
         )
         handler = MockConfirmationHandler()
         result = append_to_daily_note(
