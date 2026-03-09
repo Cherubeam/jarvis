@@ -435,6 +435,8 @@ def main(argv: list[str] | None = None):
     # Initialize RAG if enabled
     api_key = config["openrouter"]["api_key"]
     extra_tools = []
+    # Agent-only tools: available to delegated agents but not JARVIS
+    agent_only_tools: list = []
     rag_cfg = config.get("rag", {})
     if rag_cfg.get("enabled", False):
         try:
@@ -468,20 +470,29 @@ def main(argv: list[str] | None = None):
                         print_system(f"[RAG] Indexed {n_cards} new card(s).")
 
                     card_search_tool = make_card_search_tool(db_path, embedding_model, api_key)
-                    extra_tools.append(card_search_tool)
+                    agent_only_tools.append(card_search_tool)
 
         except ImportError:
             print_system("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
         except Exception as e:
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
-    # Initialize agent-only tools list (tools available to delegated agents but not JARVIS)
-    agent_only_tools: list = []
-
-    # Initialize blog tools for writing agent (if obsidian enabled)
-    # Blog tools are agent-only so JARVIS delegates instead of reading/reviewing directly.
+    # Initialize vault tools
     fs_guard = load_filesystem_guard(config)
     vault_config = load_vault_config(config, filesystem_guard=fs_guard)
+
+    # Vault read tools — Tier 1 (available to JARVIS and all delegated agents)
+    if vault_config is not None:
+        try:
+            from packages.core.tools.vault_tools import make_vault_tools
+
+            vault_read_tools = make_vault_tools(vault_config)
+            extra_tools.extend(vault_read_tools)
+            print_system(f"[Vault] {len(vault_read_tools)} vault read tools loaded.")
+        except Exception as e:
+            print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
+
+    # Blog tools are agent-only so JARVIS delegates instead of reading/reviewing directly.
     if vault_config is not None:
         try:
             from packages.core.tools.blog_tools import make_blog_tools

@@ -17,13 +17,14 @@ from packages.core.tools.web_fetch import FETCH_URL_TOOL
 
 _DELEGATION_DIRECTIVE = """
 ## Agent Delegation
-You have a `delegate_to_agent` tool. Use it when the user's request is better
-handled by a specialized agent:
-- **writing**: Writing review, content evaluation, blog post drafting/editing,
-  writing feedback.
-When you identify a task that should be delegated, call `delegate_to_agent`
-immediately — do NOT use other tools (like recall or fetch) first. The
-specialized agent has its own tools to gather the information it needs.
+You can read vault notes directly with `read_note`, `search_notes`, and
+`read_daily_note`. Delegate to specialized agents for creative tasks:
+- **writing**: creative writing, editing, content evaluation, blog posts
+- **tactics**: tactics search, combining tactics into workflows or ideas
+
+Use `delegate_to_agent` when a task is better handled by a specialist.
+When delegating, call `delegate_to_agent` immediately — do NOT use other
+tools (like recall or fetch) first. The specialized agent has its own tools.
 """
 
 
