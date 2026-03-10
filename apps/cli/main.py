@@ -35,6 +35,7 @@ from packages.skills.base import BaseSkill
 from packages.skills.registry import discover_skills, get_skill_by_command
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
+from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
@@ -100,15 +101,6 @@ def load_config() -> dict:
             local_config = yaml.safe_load(f) or {}
             # Deep merge would be better, but shallow works for now
             config.update(local_config)
-
-    # Get API key from environment
-    if "openrouter" not in config:
-        config["openrouter"] = {}
-    config["openrouter"]["api_key"] = os.getenv("OPENROUTER_API_KEY")
-
-    if not config["openrouter"]["api_key"]:
-        print("Error: OPENROUTER_API_KEY not found in .env file")
-        sys.exit(1)
 
     # Store paths for later use
     config["_paths"] = {
@@ -209,6 +201,66 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     print_usage_stats(result)
 
 
+def handle_model_command(
+    payload: str,
+    config: dict,
+    client: LLMClient,
+    model_id: str,
+    stream_handler: StreamHandler,
+) -> tuple[str, ModelPricing | None]:
+    """Handle the /model slash command.
+
+    Returns (new_model_id, new_pricing) so the caller can update its state.
+    """
+    api_keys = client.api_keys
+    models_config = config.get("models", {})
+    presets = models_config.get("presets", {})
+
+    if not payload:
+        # Show current model + available presets
+        print_system(f"\nCurrent model: {model_id}")
+        if presets:
+            print_system("\nAvailable presets:")
+            for name, mid in presets.items():
+                marker = " (active)" if mid == model_id else ""
+                print_system(f"  {name}: {mid}{marker}")
+        print_system("\nUsage: /model <preset-or-model-id>\n")
+        pricing = get_model_pricing(model_id)
+        return model_id, pricing
+
+    # Resolve the requested model
+    resolved = resolve_model(payload, config)
+
+    # Check API key
+    key = get_api_key(resolved.provider, api_keys)
+    if not key:
+        print_error(
+            f"\nNo API key for provider '{resolved.provider}'. "
+            f"Set {resolved.provider.upper()}_API_KEY in your .env file.\n"
+        )
+        pricing = get_model_pricing(model_id)
+        return model_id, pricing
+
+    # Switch
+    client.set_model(resolved.model_id)
+    new_pricing = get_model_pricing(resolved.model_id)
+
+    # Update stream handler
+    stream_handler.model_id = resolved.model_id
+    stream_handler.pricing = new_pricing
+
+    if new_pricing:
+        price_info = (
+            f"${new_pricing.prompt_cost * 1_000_000:.2f}/"
+            f"${new_pricing.completion_cost * 1_000_000:.2f} per 1M tokens"
+        )
+    else:
+        price_info = "pricing unavailable"
+
+    print_system(f"\nSwitched to {resolved.display_name} ({price_info})\n")
+    return resolved.model_id, new_pricing
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="JARVIS personal assistant")
@@ -223,6 +275,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default=None,
         help="Run a standalone skill (e.g. --skill nano-banana-pro)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Model preset or LiteLLM model ID (e.g. --model fast, --model anthropic/claude-sonnet-4.6)",
     )
     return parser.parse_args(argv)
 
@@ -411,7 +469,21 @@ def main(argv: list[str] | None = None):
     config = load_config()
 
     jarvis_dir = config["_paths"]["jarvis_dir"]
-    model_id = config["openrouter"]["default_model"]
+
+    # Collect API keys from environment
+    api_keys = collect_api_keys()
+
+    # Resolve model: CLI flag > config default
+    models_config = config.get("models", {})
+    model_source = args.model or models_config.get("default", "openrouter/anthropic/claude-sonnet-4.6")
+    resolved = resolve_model(model_source, config)
+    model_id = resolved.model_id
+
+    # Validate that we have an API key for the resolved provider
+    if not get_api_key(resolved.provider, api_keys):
+        print(f"Error: No API key for provider '{resolved.provider}'. "
+              f"Set {resolved.provider.upper()}_API_KEY in your .env file.")
+        sys.exit(1)
 
     # Initialize components - paths now relative to jarvis root
     context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
@@ -423,9 +495,8 @@ def main(argv: list[str] | None = None):
     system_prompt = build_system_prompt(context_dir)
 
     client = LLMClient(
-        api_key=config["openrouter"]["api_key"],
+        api_keys=api_keys,
         default_model=model_id,
-        provider="openrouter"
     )
 
     # Discover registered agents and skills for slash-command routing
@@ -433,7 +504,6 @@ def main(argv: list[str] | None = None):
     skill_registry = discover_skills()
 
     # Initialize RAG if enabled
-    api_key = config["openrouter"]["api_key"]
     extra_tools = []
     # Agent-only tools: available to delegated agents but not JARVIS
     agent_only_tools: list = []
@@ -446,12 +516,15 @@ def main(argv: list[str] | None = None):
             db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
             embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
 
-            indexer = ConversationIndexer(db_path, embedding_model, api_key)
+            # Use the OpenRouter key for RAG embeddings (backward compatible)
+            rag_api_key = get_api_key("openrouter", api_keys) or ""
+
+            indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
             n_new = indexer.index_new(conversations_dir)
             if n_new:
                 print_system(f"[RAG] Indexed {n_new} new conversation(s).")
 
-            recall_tool = make_conversation_recall_tool(db_path, embedding_model, api_key)
+            recall_tool = make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
             extra_tools.append(recall_tool)
 
             # Index deck-skill cards if any deck-skills have a deck.yaml
@@ -464,12 +537,12 @@ def main(argv: list[str] | None = None):
                     from packages.core.rag.card_indexer import CardIndexer
                     from packages.core.tools.card_search import make_card_search_tool
 
-                    card_indexer = CardIndexer(db_path, embedding_model, api_key)
+                    card_indexer = CardIndexer(db_path, embedding_model, rag_api_key)
                     n_cards = card_indexer.index_new(deck_dirs)
                     if n_cards:
                         print_system(f"[RAG] Indexed {n_cards} new card(s).")
 
-                    card_search_tool = make_card_search_tool(db_path, embedding_model, api_key)
+                    card_search_tool = make_card_search_tool(db_path, embedding_model, rag_api_key)
                     agent_only_tools.append(card_search_tool)
 
         except ImportError:
@@ -581,7 +654,7 @@ def main(argv: list[str] | None = None):
     # Build schema config dicts for ConversationLogger
     model_config = {
         "id": model_id,
-        "provider": "openrouter",
+        "provider": resolved.provider,
         "parameters": {},
     }
 
@@ -660,6 +733,7 @@ def main(argv: list[str] | None = None):
         cmds.extend(m.command for m in skill_registry.values())
         cmds.append("/skills")
         cmds.append("/daily-summary")
+        cmds.append("/model")
         commands = cmds
     print_startup(agent_name, model_id, price_info, commands)
 
@@ -693,6 +767,12 @@ def main(argv: list[str] | None = None):
                 if command == "/daily-summary":
                     handle_daily_summary(config, client, logger, system_prompt,
                                          metrics_tracker, pricing, model_id)
+                    continue
+
+                if command == "/model":
+                    model_id, pricing = handle_model_command(
+                        payload, config, client, model_id, stream_handler,
+                    )
                     continue
 
                 if command == "/skills":

@@ -1,11 +1,9 @@
 """
 Handles model pricing and cost calculation.
-Fetches pricing from OpenRouter API for upfront display.
-Can also use LiteLLM's built-in cost tracking as fallback.
+Uses LiteLLM's built-in cost map — works offline, covers all providers.
 """
 
 import warnings
-import requests
 import litellm
 from dataclasses import dataclass
 from functools import lru_cache
@@ -29,59 +27,50 @@ class ModelPricing:
 
 
 @lru_cache(maxsize=1)
-def fetch_all_pricing() -> dict[str, ModelPricing]:
-    """
-    Fetch pricing for all models from OpenRouter.
-    Cached to avoid repeated API calls during a session.
-    """
+def _get_litellm_cost_map() -> dict:
+    """Load LiteLLM's built-in cost map (cached)."""
     try:
-        response = requests.get(
-            "https://openrouter.ai/api/v1/models",
-            timeout=10
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        pricing_map = {}
-        for model in data.get("data", []):
-            model_id = model.get("id")
-            pricing = model.get("pricing", {})
-
-            if model_id and pricing:
-                pricing_map[model_id] = ModelPricing(
-                    prompt_cost=float(pricing.get("prompt", 0)),
-                    completion_cost=float(pricing.get("completion", 0)),
-                    model_id=model_id,
-                )
-
-        return pricing_map
-
-    except (requests.RequestException, ValueError) as e:
-        print(f"Warning: Could not fetch pricing data: {e}")
+        return litellm.get_model_cost_map(url="")
+    except Exception:
         return {}
 
 
 def get_model_pricing(model_id: str) -> ModelPricing | None:
     """
-    Get pricing for a specific model.
+    Get pricing for a specific model using LiteLLM's built-in cost data.
 
     Args:
-        model_id: Model identifier (without provider prefix)
+        model_id: LiteLLM-routable model ID (e.g. "openrouter/anthropic/claude-sonnet-4.6")
 
     Returns:
         ModelPricing object or None if not found
     """
-    # Strip "openrouter/" prefix if present for OpenRouter API lookup
-    clean_model_id = model_id.replace("openrouter/", "")
+    cost_map = _get_litellm_cost_map()
 
-    pricing_map = fetch_all_pricing()
-    return pricing_map.get(clean_model_id)
+    # Try the full model ID first, then without provider prefix
+    candidates = [model_id]
+    if "/" in model_id:
+        # Strip first prefix: "openrouter/anthropic/claude-sonnet-4.6" -> "anthropic/claude-sonnet-4.6"
+        candidates.append(model_id.split("/", 1)[1])
+
+    for candidate in candidates:
+        info = cost_map.get(candidate)
+        if info:
+            input_cost = info.get("input_cost_per_token", 0)
+            output_cost = info.get("output_cost_per_token", 0)
+            return ModelPricing(
+                prompt_cost=input_cost,
+                completion_cost=output_cost,
+                model_id=model_id,
+            )
+
+    return None
 
 
 def calculate_cost_from_litellm(response) -> float:
     """
     Calculate cost using LiteLLM's built-in cost tracking.
-    Useful as a fallback or for non-OpenRouter providers.
+    Useful as a fallback when pricing data isn't available upfront.
 
     Args:
         response: LiteLLM response object

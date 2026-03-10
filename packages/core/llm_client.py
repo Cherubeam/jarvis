@@ -1,11 +1,13 @@
 """
 Thin wrapper around LiteLLM for unified LLM access.
-Supports OpenRouter and can easily switch to other providers.
+Supports multiple providers via LiteLLM's routing conventions.
 """
 
 from dataclasses import dataclass
 from typing import Generator
 import litellm
+
+from packages.core.model_resolver import infer_provider, get_api_key
 
 
 @dataclass
@@ -48,24 +50,27 @@ class StreamingResponse:
 class LLMClient:
     """Handles communication with LLM providers via LiteLLM."""
 
-    def __init__(self, api_key: str, default_model: str, provider: str = "openrouter"):
+    def __init__(self, api_keys: dict[str, str], default_model: str):
         """
         Initialize the LLM client.
 
         Args:
-            api_key: API key for the provider
-            default_model: Default model ID (provider-specific format)
-            provider: Provider name ("openrouter", "anthropic", "openai", etc.)
+            api_keys: Mapping of provider name -> API key
+                      (e.g. {"openrouter": "sk-...", "anthropic": "sk-ant-..."})
+            default_model: Default LiteLLM-routable model ID
+                           (e.g. "openrouter/anthropic/claude-sonnet-4.6")
         """
-        self.api_key = api_key
-        self.provider = provider
+        self.api_keys = api_keys
+        self.default_model = default_model
 
-        # Format model name for LiteLLM
-        # OpenRouter models need "openrouter/" prefix
-        if provider == "openrouter" and not default_model.startswith("openrouter/"):
-            self.default_model = f"openrouter/{default_model}"
-        else:
-            self.default_model = default_model
+    def set_model(self, model_id: str) -> None:
+        """Switch the default model mid-session."""
+        self.default_model = model_id
+
+    def _resolve_api_key(self, model: str) -> str | None:
+        """Pick the right API key based on the model's provider prefix."""
+        provider = infer_provider(model)
+        return get_api_key(provider, self.api_keys)
 
     def complete(
         self,
@@ -87,14 +92,12 @@ class LLMClient:
             Raw LiteLLM ModelResponse object
         """
         model_to_use = model or self.default_model
-        if self.provider == "openrouter" and not model_to_use.startswith("openrouter/"):
-            model_to_use = f"openrouter/{model_to_use}"
 
         kwargs: dict = dict(
             model=model_to_use,
             messages=messages,
             stream=False,
-            api_key=self.api_key,
+            api_key=self._resolve_api_key(model_to_use),
         )
         if tools:
             kwargs["tools"] = tools
@@ -130,10 +133,7 @@ class LLMClient:
     ) -> Generator[str, None, tuple[TokenUsage, object]]:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
 
-        # Prepare model name
         model_to_use = model or self.default_model
-        if self.provider == "openrouter" and not model_to_use.startswith("openrouter/"):
-            model_to_use = f"openrouter/{model_to_use}"
 
         # LiteLLM will handle provider-specific auth and formatting
         kwargs: dict = dict(
@@ -141,7 +141,7 @@ class LLMClient:
             messages=messages,
             stream=True,
             stream_options={"include_usage": True},  # Request usage in streaming
-            api_key=self.api_key,
+            api_key=self._resolve_api_key(model_to_use),
         )
         if tools:
             kwargs["tools"] = tools
