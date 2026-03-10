@@ -1,5 +1,5 @@
 """
-Estimate model benchmarking costs using OpenRouter pricing.
+Estimate model benchmarking costs using LiteLLM pricing data.
 """
 
 from dataclasses import dataclass
@@ -7,7 +7,7 @@ from pathlib import Path
 import json
 import warnings
 
-from packages.core.pricing import fetch_all_pricing, ModelPricing
+from packages.core.pricing import get_model_pricing, ModelPricing
 
 
 @dataclass
@@ -139,8 +139,7 @@ def estimate_benchmark_costs(
     run_dir = get_run_dir(results_dir, run_id)
     token_baseline = _load_run_token_totals(run_dir)
 
-    pricing_map = fetch_all_pricing()
-    judge_pricing = pricing_map.get(judge_model.replace("openrouter/", ""))
+    judge_pricing = get_model_pricing(judge_model)
     if not judge_pricing:
         warnings.warn(
             f"Pricing unavailable for judge model {judge_model}.",
@@ -150,7 +149,7 @@ def estimate_benchmark_costs(
 
     estimates: dict[str, BenchmarkCostEstimate] = {}
     for model_id in models:
-        model_pricing = pricing_map.get(model_id.replace("openrouter/", ""))
+        model_pricing = get_model_pricing(model_id)
         if not model_pricing:
             warnings.warn(
                 f"Pricing unavailable for model {model_id}; skipping.",

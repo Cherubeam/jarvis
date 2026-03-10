@@ -26,9 +26,8 @@ class TestFullConversationFlow:
         """Test a single user→assistant conversation turn."""
         # Setup
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
         logger = ConversationLogger(temp_conversations_dir)
         (sample_context_all_files / "soul.md").write_text("You are helpful.")
@@ -94,7 +93,7 @@ class TestFullConversationFlow:
         temp_context_dir: Path
     ):
         """Test multiple back-and-forth exchanges."""
-        client = LLMClient(api_key="test-key", default_model="test-model", provider="test")
+        client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
         logger = ConversationLogger(temp_conversations_dir)
 
         with patch('litellm.completion') as mock_completion:
@@ -149,7 +148,7 @@ class TestFullConversationFlow:
         sample_context_all_files: Path
     ):
         """Test that system prompt with context is sent to LLM."""
-        client = LLMClient(api_key="test-key", default_model="test-model", provider="test")
+        client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
         logger = ConversationLogger(temp_conversations_dir)
 
         (sample_context_all_files / "soul.md").write_text("You are Jarvis.")
@@ -218,7 +217,7 @@ class TestFullConversationFlow:
 
     def test_cost_calculation_integrated(self, temp_conversations_dir: Path):
         """Test that pricing is fetched and used for cost calculation."""
-        client = LLMClient(api_key="test-key", default_model="test-model", provider="test")
+        client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
         logger = ConversationLogger(temp_conversations_dir)
 
         # Mock pricing

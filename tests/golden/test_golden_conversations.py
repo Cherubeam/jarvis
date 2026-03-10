@@ -180,7 +180,8 @@ class TestGoldenConversations:
         from evaluator import EvaluationCriteria
 
         model_client = LLMClient(
-            api_key=api_key, default_model=self.model_tested, provider="openrouter"
+            api_keys={"openrouter": api_key},
+            default_model=f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested,
         )
 
         # Extract context from test case

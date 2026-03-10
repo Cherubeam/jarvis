@@ -340,15 +340,10 @@ def reset_lru_cache():
     yield
     # Clear pricing cache after each test
     try:
-        from packages.core.pricing import fetch_all_pricing
-        fetch_all_pricing.cache_clear()
+        from packages.core.pricing import _get_litellm_cost_map
+        _get_litellm_cost_map.cache_clear()
     except ImportError:
-        # Try old import path during migration
-        try:
-            from pricing import fetch_all_pricing
-            fetch_all_pricing.cache_clear()
-        except ImportError:
-            pass
+        pass
 
 
 # ==================== LLM-as-Judge Evaluation ====================
@@ -423,9 +418,8 @@ def evaluator(evaluation_config):
 
     # Create judge client
     judge_client = LLMClient(
-        api_key=api_key,
-        default_model=evaluation_config["judge_model"],
-        provider="openrouter"
+        api_keys={"openrouter": api_key},
+        default_model=f"openrouter/{evaluation_config['judge_model']}",
     )
 
     return JudgeEvaluator(

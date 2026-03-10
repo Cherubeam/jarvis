@@ -23,8 +23,10 @@ class TestLoadConfig:
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         config_content = """
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
+  presets:
+    fast: "openrouter/google/gemini-2.0-flash"
 
 paths:
   context_dir: "data/context"
@@ -41,51 +43,9 @@ paths:
 
         config = load_config()
 
-        assert config["openrouter"]["api_key"] == "test-api-key-12345"
-        assert config["openrouter"]["default_model"] == "anthropic/claude-sonnet-4.5"
+        assert config["models"]["default"] == "openrouter/anthropic/claude-sonnet-4.6"
         assert "paths" in config
         assert "_paths" in config
-
-    def test_load_config_missing_api_key(self, tmp_path: Path, monkeypatch):
-        """Test that missing API key causes sys.exit."""
-        config_content = """
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
-paths:
-  context_dir: "personal-context/context"
-  conversations_dir: "personal-context/memory/conversations"
-"""
-
-        # Ensure API key is not in environment
-        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-
-        # Create mock path hierarchy
-        mock_src_dir = Mock()
-        mock_personal_context_dir = Mock()
-        mock_jarvis_dir = tmp_path
-
-        mock_src_dir.parent = mock_personal_context_dir
-        mock_personal_context_dir.parent = mock_jarvis_dir
-
-        with patch('apps.cli.main.Path') as mock_path_class:
-            mock_path_class.return_value = mock_src_dir
-
-            with patch('apps.cli.main.load_dotenv'):
-                with patch('builtins.open', mock_open(read_data=config_content)):
-                    with patch('yaml.safe_load') as mock_yaml:
-                        mock_yaml.return_value = {
-                            "openrouter": {"default_model": "anthropic/claude-sonnet-4.5"},
-                            "paths": {
-                                "context_dir": "personal-context/context",
-                                "conversations_dir": "personal-context/memory/conversations"
-                            }
-                        }
-
-                        # Should call sys.exit(1)
-                        with pytest.raises(SystemExit) as exc_info:
-                            load_config()
-
-                        assert exc_info.value.code == 1
 
     def test_load_config_missing_yaml(self, tmp_path: Path, monkeypatch):
         """Test that missing config.yaml falls back to empty config gracefully."""
@@ -94,14 +54,16 @@ paths:
 
         config = load_config()
 
-        assert config["openrouter"]["api_key"] == "test-key"
-        assert "default_model" not in config["openrouter"]
+        # Should still have _paths
+        assert "_paths" in config
+        # No models section since no config file exists
+        assert "models" not in config
 
     def test_load_config_paths_resolved(self, tmp_path: Path, monkeypatch):
         """Test that paths are resolved correctly."""
         config_content = """
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
 paths:
   context_dir: "personal-context/context"
   conversations_dir: "personal-context/memory/conversations"
@@ -123,7 +85,7 @@ paths:
                 with patch('builtins.open', mock_open(read_data=config_content)):
                     with patch('yaml.safe_load') as mock_yaml:
                         mock_yaml.return_value = {
-                            "openrouter": {"default_model": "anthropic/claude-sonnet-4.5"},
+                            "models": {"default": "openrouter/anthropic/claude-sonnet-4.6"},
                             "paths": {
                                 "context_dir": "personal-context/context",
                                 "conversations_dir": "personal-context/memory/conversations"
@@ -137,40 +99,22 @@ paths:
                         assert "jarvis_dir" in config["_paths"]
 
     def test_load_config_env_override(self, tmp_path: Path, monkeypatch):
-        """Test that environment variables are used for API key."""
-        config_content = """
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
+        """Test that config loads correctly with env vars set."""
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "default.yaml").write_text("""
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
 paths:
   context_dir: "personal-context/context"
-"""
+""")
 
-        # Set API key in environment
         monkeypatch.setenv("OPENROUTER_API_KEY", "env-api-key-from-env")
+        monkeypatch.setattr("apps.cli.main.get_project_root", lambda: tmp_path)
 
-        # Create mock path hierarchy
-        mock_src_dir = Mock()
-        mock_personal_context_dir = Mock()
-        mock_jarvis_dir = tmp_path
+        config = load_config()
 
-        mock_src_dir.parent = mock_personal_context_dir
-        mock_personal_context_dir.parent = mock_jarvis_dir
-
-        with patch('apps.cli.main.Path') as mock_path_class:
-            mock_path_class.return_value = mock_src_dir
-
-            with patch('apps.cli.main.load_dotenv'):
-                with patch('builtins.open', mock_open(read_data=config_content)):
-                    with patch('yaml.safe_load') as mock_yaml:
-                        mock_yaml.return_value = {
-                            "openrouter": {"default_model": "anthropic/claude-sonnet-4.5"},
-                            "paths": {"context_dir": "personal-context/context"}
-                        }
-
-                        config = load_config()
-
-                        # API key should come from environment
-                        assert config["openrouter"]["api_key"] == "env-api-key-from-env"
+        assert config["models"]["default"] == "openrouter/anthropic/claude-sonnet-4.6"
 
 
 @pytest.mark.unit

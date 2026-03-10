@@ -1,18 +1,16 @@
 """
 Integration tests for pricing system.
 
-Tests pricing API interaction and cost calculation in realistic scenarios.
+Tests LiteLLM cost map integration and cost calculation in realistic scenarios.
 """
 
 import pytest
-import requests
 from unittest.mock import Mock, patch
 from packages.core.pricing import (
     ModelPricing,
-    fetch_all_pricing,
     get_model_pricing,
     calculate_cost_from_litellm,
-    format_cost
+    format_cost,
 )
 
 
@@ -20,23 +18,17 @@ from packages.core.pricing import (
 class TestPricingIntegration:
     """Integration tests for pricing system."""
 
-    def test_pricing_fetch_and_calculate(self, sample_pricing_data):
-        """Test fetching pricing from API and calculating cost."""
-        with patch('requests.get') as mock_get:
-            # Mock successful API response
-            mock_response = Mock()
-            mock_response.json.return_value = sample_pricing_data
-            mock_response.raise_for_status = Mock()
-            mock_get.return_value = mock_response
-
-            # Clear cache
-            fetch_all_pricing.cache_clear()
-
-            # Fetch pricing
-            pricing_map = fetch_all_pricing()
-
+    def test_pricing_fetch_and_calculate(self):
+        """Test fetching pricing from LiteLLM cost map and calculating cost."""
+        mock_cost_map = {
+            "anthropic/claude-sonnet-4.6": {
+                "input_cost_per_token": 0.000003,
+                "output_cost_per_token": 0.000015,
+            }
+        }
+        with patch('packages.core.pricing._get_litellm_cost_map', return_value=mock_cost_map):
             # Get specific model pricing
-            claude_pricing = pricing_map.get("anthropic/claude-sonnet-4.5")
+            claude_pricing = get_model_pricing("anthropic/claude-sonnet-4.6")
             assert claude_pricing is not None
 
             # Calculate cost for a request
@@ -54,24 +46,13 @@ class TestPricingIntegration:
             assert formatted == "$0.01"  # Rounded from 0.0105
 
     def test_pricing_fallback_to_litellm(self):
-        """Test fallback to LiteLLM cost calculation when OpenRouter unavailable."""
-        # Mock OpenRouter API failure with requests.RequestException
-        with patch('requests.get') as mock_get:
-            # Raise a RequestException instead of generic Exception
-            mock_get.side_effect = requests.RequestException("API unavailable")
-
-            # Clear cache
-            fetch_all_pricing.cache_clear()
-
-            # Try to get pricing (will fail gracefully and return {})
-            pricing_map = fetch_all_pricing()
-            assert pricing_map == {}
-
-            # Pricing lookup will return None
-            pricing = get_model_pricing("anthropic/claude-sonnet-4.5")
+        """Test fallback to LiteLLM cost calculation when pricing unavailable."""
+        with patch('packages.core.pricing._get_litellm_cost_map', return_value={}):
+            # Pricing lookup will return None for unknown model
+            pricing = get_model_pricing("anthropic/claude-sonnet-4.6")
             assert pricing is None
 
-        # Now try fallback via LiteLLM
+        # Now try fallback via LiteLLM completion_cost
         mock_response = Mock()
 
         with patch('litellm.completion_cost') as mock_cost:

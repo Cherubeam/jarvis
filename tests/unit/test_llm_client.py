@@ -43,48 +43,54 @@ class TestTokenUsage:
 class TestLLMClient:
     """Tests for LLMClient class."""
 
-    def test_llm_client_init_openrouter(self):
-        """Test that OpenRouter model names get proper prefix."""
+    def test_llm_client_init(self):
+        """Test that LLMClient stores api_keys and default_model."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="anthropic/claude-sonnet-4.5",
-            provider="openrouter"
+            api_keys={"openrouter": "test-key"},
+            default_model="openrouter/anthropic/claude-sonnet-4.6",
         )
 
-        assert client.api_key == "test-key"
-        assert client.provider == "openrouter"
-        assert client.default_model == "openrouter/anthropic/claude-sonnet-4.5"
+        assert client.api_keys == {"openrouter": "test-key"}
+        assert client.default_model == "openrouter/anthropic/claude-sonnet-4.6"
 
-    def test_llm_client_init_openrouter_already_prefixed(self):
-        """Test that OpenRouter prefix is not duplicated."""
+    def test_set_model(self):
+        """Test that set_model switches the default model."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="openrouter/anthropic/claude-sonnet-4.5",
-            provider="openrouter"
+            api_keys={"openrouter": "test-key"},
+            default_model="openrouter/anthropic/claude-sonnet-4.6",
         )
+        client.set_model("anthropic/claude-opus-4.6")
+        assert client.default_model == "anthropic/claude-opus-4.6"
 
-        # Should not have double prefix
-        assert client.default_model == "openrouter/anthropic/claude-sonnet-4.5"
-        assert client.default_model.count("openrouter/") == 1
-
-    def test_llm_client_init_other_provider(self):
-        """Test that other providers don't get openrouter prefix."""
+    def test_resolve_api_key_openrouter(self):
+        """Test that _resolve_api_key picks the right key for openrouter models."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="claude-sonnet-4.5",
-            provider="anthropic"
+            api_keys={"openrouter": "or-key", "anthropic": "ant-key"},
+            default_model="openrouter/anthropic/claude-sonnet-4.6",
         )
+        assert client._resolve_api_key("openrouter/anthropic/claude-sonnet-4.6") == "or-key"
 
-        assert client.provider == "anthropic"
-        assert client.default_model == "claude-sonnet-4.5"
-        assert not client.default_model.startswith("openrouter/")
+    def test_resolve_api_key_anthropic(self):
+        """Test that _resolve_api_key picks the right key for anthropic models."""
+        client = LLMClient(
+            api_keys={"openrouter": "or-key", "anthropic": "ant-key"},
+            default_model="anthropic/claude-sonnet-4.6",
+        )
+        assert client._resolve_api_key("anthropic/claude-sonnet-4.6") == "ant-key"
+
+    def test_resolve_api_key_missing(self):
+        """Test that _resolve_api_key returns None for unknown provider."""
+        client = LLMClient(
+            api_keys={"openrouter": "or-key"},
+            default_model="openrouter/anthropic/claude-sonnet-4.6",
+        )
+        assert client._resolve_api_key("anthropic/claude-sonnet-4.6") is None
 
     def test_chat_stream_returns_streaming_response(self):
         """Test that chat_stream returns a StreamingResponse object."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -114,9 +120,8 @@ class TestLLMClient:
     def test_chat_stream_yields_chunks(self):
         """Test that chat_stream yields text chunks correctly."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -152,9 +157,8 @@ class TestLLMClient:
     def test_chat_stream_usage_after_completion(self):
         """Test that usage is available after stream completion."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -197,9 +201,8 @@ class TestLLMClient:
     def test_chat_stream_custom_model(self):
         """Test that custom model parameter overrides default."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="default-model",
-            provider="openrouter"
+            api_keys={"openrouter": "test-key"},
+            default_model="openrouter/default-model",
         )
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -221,7 +224,7 @@ class TestLLMClient:
             mock_completion.return_value = mock_stream_obj
 
             # Call with custom model
-            stream = client.chat_stream(messages, model="custom-model")
+            stream = client.chat_stream(messages, model="openrouter/custom-model")
             list(stream)  # Consume stream
 
             # Check that litellm.completion was called with custom model
@@ -229,13 +232,35 @@ class TestLLMClient:
             call_kwargs = mock_completion.call_args[1]
             assert call_kwargs["model"] == "openrouter/custom-model"
 
+    def test_chat_stream_passes_correct_api_key(self):
+        """Test that the correct API key is passed based on model provider."""
+        client = LLMClient(
+            api_keys={"openrouter": "or-key", "anthropic": "ant-key"},
+            default_model="openrouter/anthropic/claude-sonnet-4.6",
+        )
+
+        with patch('litellm.completion') as mock_completion:
+            mock_chunk = Mock()
+            mock_chunk.choices = [Mock()]
+            mock_chunk.choices[0].delta = Mock()
+            mock_chunk.choices[0].delta.content = "Hi"
+
+            mock_stream_obj = Mock()
+            mock_stream_obj.__iter__ = Mock(return_value=iter([mock_chunk]))
+
+            mock_completion.return_value = mock_stream_obj
+
+            stream = client.chat_stream([{"role": "user", "content": "Hi"}])
+            list(stream)
+
+            call_kwargs = mock_completion.call_args[1]
+            assert call_kwargs["api_key"] == "or-key"
 
     def test_complete_passes_temperature(self):
         """complete() passes temperature kwarg to litellm when set."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
 
         with patch('litellm.completion') as mock_completion:
@@ -251,9 +276,8 @@ class TestLLMClient:
     def test_complete_omits_temperature_when_none(self):
         """complete() does not pass temperature when not set."""
         client = LLMClient(
-            api_key="test-key",
-            default_model="test-model",
-            provider="test"
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
         )
 
         with patch('litellm.completion') as mock_completion:

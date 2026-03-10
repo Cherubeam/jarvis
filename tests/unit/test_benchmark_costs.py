@@ -88,7 +88,12 @@ def test_estimate_benchmark_costs_calculates(tmp_path: Path, monkeypatch):
         ),
     }
 
-    monkeypatch.setattr(benchmark_costs, "fetch_all_pricing", lambda: pricing_map)
+    def _mock_get_pricing(model_id):
+        # Strip openrouter/ prefix if present for lookup
+        clean = model_id.replace("openrouter/", "")
+        return pricing_map.get(clean)
+
+    monkeypatch.setattr(benchmark_costs, "get_model_pricing", _mock_get_pricing)
 
     estimates, baseline = benchmark_costs.estimate_benchmark_costs(
         models=["anthropic/claude-sonnet-4.5"],
@@ -128,7 +133,11 @@ def test_estimate_benchmark_costs_warns_on_missing_pricing(
         ),
     }
 
-    monkeypatch.setattr(benchmark_costs, "fetch_all_pricing", lambda: pricing_map)
+    def _mock_get_pricing(model_id):
+        clean = model_id.replace("openrouter/", "")
+        return pricing_map.get(clean)
+
+    monkeypatch.setattr(benchmark_costs, "get_model_pricing", _mock_get_pricing)
 
     with warnings.catch_warnings(record=True) as caught:
         estimates, _ = benchmark_costs.estimate_benchmark_costs(

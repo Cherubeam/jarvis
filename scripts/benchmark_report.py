@@ -9,12 +9,11 @@ import json
 from pathlib import Path
 import warnings
 import sys
-from typing import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.core.pricing import fetch_all_pricing, format_cost, ModelPricing
+from packages.core.pricing import get_model_pricing, format_cost, ModelPricing
 
 
 @dataclass
@@ -73,14 +72,13 @@ def _load_token_totals(run_dir: Path) -> tuple[TokenTotals, TokenTotals, int]:
 
 
 def _estimate_cost(
-    pricing_map: Mapping[str, ModelPricing],
     model: str,
     judge_model: str,
     response_tokens: TokenTotals,
     judge_tokens: TokenTotals,
 ) -> float | None:
-    model_pricing = pricing_map.get(model.replace("openrouter/", ""))
-    judge_pricing = pricing_map.get(judge_model.replace("openrouter/", ""))
+    model_pricing = get_model_pricing(model)
+    judge_pricing = get_model_pricing(judge_model)
     if not model_pricing or not judge_pricing:
         if not model_pricing:
             warnings.warn(
@@ -108,7 +106,6 @@ def _load_run_stats(results_dir: Path) -> list[RunStats]:
     if not runs_dir.exists():
         raise ValueError(f"Runs directory not found: {runs_dir}")
 
-    pricing_map = fetch_all_pricing()
     stats: list[RunStats] = []
 
     for summary_file in runs_dir.glob("*/run_summary.json"):
@@ -118,7 +115,6 @@ def _load_run_stats(results_dir: Path) -> list[RunStats]:
 
         response_tokens, judge_tokens, total_tests = _load_token_totals(run_dir)
         estimated_cost = _estimate_cost(
-            pricing_map,
             summary["model_tested"],
             summary["judge_model"],
             response_tokens,
