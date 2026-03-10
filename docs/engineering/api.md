@@ -220,7 +220,33 @@ Orchestrate bulk import with filters. Idempotent — skips already-imported conv
 
 ### `class ImportSummary`
 
-Dataclass with import results: `total`, `imported`, `skipped_existing`, `skipped_archived`, `skipped_filter`, `errors`, `error_details`.
+Dataclass with import results: `total`, `imported`, `updated`, `skipped_existing`, `skipped_archived`, `skipped_filter`, `errors`, `error_details`.
+
+---
+
+## Module: `importers.claude`
+
+### Functions
+
+#### `convert_content_blocks(blocks, attachments, files) -> list[dict]`
+
+Convert Claude content blocks to Jarvis content blocks. Handles: text, thinking, tool_use, tool_result, token_budget. Also converts attachments and assistant-generated files.
+
+#### `convert_conversation(claude_conv: dict) -> dict`
+
+Convert a single Claude conversation to Jarvis schema v1.0.0.
+
+#### `update_conversation(existing_path, claude_conv, *, dry_run=False) -> bool`
+
+Incrementally sync an existing JARVIS conversation with new data from Claude. Syncs title, session_end, and appends new messages. Never removes existing messages (additive-only). Returns `True` if changes were made.
+
+#### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to) -> ImportSummary`
+
+Orchestrate bulk import with date filters. For existing conversations, calls `update_conversation` instead of skipping. New conversations are converted and written. Idempotent — unchanged conversations are skipped.
+
+### `class ImportSummary`
+
+Dataclass with import results: `total`, `imported`, `updated`, `skipped_existing`, `skipped_archived`, `skipped_filter`, `errors`, `error_details`.
 
 ---
 

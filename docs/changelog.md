@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Claude Importer Incremental Sync**: Re-importing a Claude export now updates existing conversations with new messages (appended), title changes, and session timestamps. Additive-only — JARVIS never removes messages even if deleted in Claude. New `Updated: N` count in import summary output.
 - **Runtime Model Switching** (ADR-023): `--model` CLI flag and `/model` slash command for switching models at startup or mid-session. Named presets (`fast`, `quality`, `balanced`) configurable in `config/default.yaml`. Multi-provider support — API keys collected from env vars, provider inferred from model ID prefix.
 - **Vault Read Tools**: Three new read-only tools (`read_note`, `search_notes`, `read_daily_note`) give JARVIS direct access to the Obsidian vault for information retrieval. 50KB content cap, 100-entry search cap. Inherits FilesystemGuard access control.
 - **Vault Search Sorting**: `search_notes` tool now supports `sort_by` (`"name"` or `"modified"`) and `limit` (1–100) parameters. `sort_by="modified"` returns most-recent-first with timestamps (`YYYY-MM-DD HH:MM  path`).

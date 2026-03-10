@@ -453,6 +453,24 @@ rag:
    └─ Write to data/conversations/YYYY-MM-DD_HH-MM-SS.json
 ```
 
+### Import Flow (Claude)
+
+```
+1. Load Claude conversations.json
+   |
+2. Apply filters (date range)
+   |
+3. For each conversation:
+   ├─ Check if already imported (by claude_id → file path)
+   │   ├─ Exists: call update_conversation()
+   │   │   ├─ Sync title, session_end, append new messages
+   │   │   └─ Write updated JSON (or skip if unchanged)
+   │   └─ New: convert_conversation() → write new file
+   ├─ Convert content blocks (text, thinking, tool_use, etc.)
+   ├─ Generate deterministic conv_id
+   └─ Write to data/conversations/YYYY-MM-DD_HH-MM-SS.json
+```
+
 ### Startup Flow
 
 ```

@@ -190,7 +190,7 @@ uv run python scripts/import_claude_context.py
 uv run python scripts/import_claude_context.py --memories imports/memories.json --projects imports/projects.json
 ```
 
-Imports are idempotent — re-running skips already-imported conversations.
+Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude), or skips unchanged conversations (ChatGPT).
 
 ### Switching LLM Providers
 

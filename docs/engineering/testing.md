@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 842 passed, 11 skipped (run `uv run pytest` for current counts)
+**Tests**: 893 passed, 11 skipped (run `uv run pytest` for current counts)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -72,7 +72,7 @@ tests/
 - ✅ `evaluator.py` - 16 tests, 100% coverage (LLM-as-judge)
 - ✅ `result_storage.py` - 17 tests, 100% coverage (evaluation results)
 - ✅ `chatgpt importer` - 54 tests, 100% coverage
-- ✅ `claude importer` - 59 tests, 100% coverage
+- ✅ `claude importer` - 68 tests, 100% coverage
 - ✅ `claude context importer` - 41 tests, 100% coverage
 - ✅ `benchmark_costs.py` - 4 tests
 - ✅ `cli.py` - 8 tests
