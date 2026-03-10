@@ -1654,4 +1654,47 @@ A capability meeting ≥3 left-column criteria → JARVIS. One meeting ≥2 righ
 
 ---
 
-*Last updated: 2026-03-09*
+## ADR-023: Runtime Model Switching
+
+**Date**: 2026-03-10
+**Status**: ✅ Accepted
+
+### Context
+
+Changing the GenAI model required editing `config/default.yaml` and restarting JARVIS. Users wanted to switch models at startup via a CLI flag and mid-session via a `/model` command. Additionally, supporting direct provider APIs (not just OpenRouter) and named presets (fast/quality/balanced) was desirable.
+
+### Decision
+
+1. **New `model_resolver.py` module** — Resolves preset names or literal model IDs into `ResolvedModel` objects with provider inference.
+2. **`LLMClient` refactored** — Accepts `api_keys: dict[str, str]` instead of single `api_key`/`provider`. Provider inferred from model ID prefix. Added `set_model()` for mid-session switching.
+3. **Config restructured** — Replaced `openrouter:` section with `models:` section containing `default` and `presets` map. Model IDs use full LiteLLM-routable format with provider prefix.
+4. **LiteLLM pricing** — Replaced OpenRouter HTTP pricing call with `litellm.get_model_cost_map()`. Works offline, covers all providers.
+5. **`--model` CLI flag** — Overrides config default at startup.
+6. **`/model` slash command** — Shows current model + presets; `/model <name>` switches mid-session.
+
+### Alternatives Considered
+
+1. **Keep single provider** — Rejected; provider independence is a core principle.
+2. **Separate provider flag** — Rejected; provider is redundant when model ID includes prefix.
+3. **Keep OpenRouter HTTP pricing** — Rejected; network dependency, only covers OpenRouter models.
+
+### Consequences
+
+**Benefits:**
+- ✅ Switch models without restarting
+- ✅ Multi-provider support with zero code changes
+- ✅ Offline pricing via LiteLLM cost map
+- ✅ Named presets for common workflows (fast/quality/balanced)
+- ✅ `requests` no longer needed in pricing module
+
+**Drawbacks:**
+- ⚠️ Breaking change: `LLMClient` constructor signature changed (all callers updated)
+- ⚠️ Breaking change: `config/default.yaml` `openrouter:` → `models:` (local.yaml may need manual update)
+
+### Related
+- Extends: ADR-003 (LiteLLM for provider abstraction)
+- Implements: Phase 9 model presets from roadmap
+
+---
+
+*Last updated: 2026-03-10*

@@ -159,43 +159,57 @@ Goodbye!
 
 ---
 
-## Switching Providers
+## Switching Models and Providers
 
-### Using OpenRouter (Default)
+Model IDs use full LiteLLM-routable format with provider prefix (e.g. `openrouter/anthropic/claude-sonnet-4.6`). The provider is inferred from the prefix — no code changes needed.
 
-Already configured. Just ensure `OPENROUTER_API_KEY` is set.
+### At Startup (CLI Flag)
 
-### Using Anthropic Directly
+```bash
+# Use a preset
+uv run python -m apps.cli.main --model quality   # → openrouter/anthropic/claude-opus-4.6
+uv run python -m apps.cli.main --model fast       # → openrouter/google/gemini-2.0-flash
 
-1. Get API key from [Anthropic Console](https://console.anthropic.com/)
-2. Add to `.env`:
+# Use a literal model ID
+uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
+```
+
+### Mid-Session (`/model` Command)
+
+```
+/model                    # Show current model + available presets
+/model fast               # Switch to fast preset
+/model openai/gpt-4o      # Switch to a specific model
+```
+
+### Configuring Presets
+
+Edit `config/default.yaml` (or `config/local.yaml`):
+```yaml
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
+  presets:
+    fast: "openrouter/google/gemini-2.0-flash"
+    quality: "openrouter/anthropic/claude-opus-4.6"
+    balanced: "openrouter/anthropic/claude-sonnet-4.6"
+```
+
+### Using Different Providers
+
+1. Add the provider's API key to `.env`:
    ```
-   ANTHROPIC_API_KEY=your_key_here
+   OPENROUTER_API_KEY=your_key_here    # OpenRouter (default)
+   ANTHROPIC_API_KEY=your_key_here     # Direct Anthropic
+   OPENAI_API_KEY=your_key_here        # Direct OpenAI
+   GOOGLE_API_KEY=your_key_here        # Direct Google
    ```
-3. Update `apps/cli/main.py`:
-   ```python
-   client = LLMClient(
-       api_key=config["anthropic"]["api_key"],
-       default_model="claude-3-5-sonnet-20241022",
-       provider="anthropic"
-   )
+2. Use the corresponding model prefix:
+   ```bash
+   uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
+   uv run python -m apps.cli.main --model openai/gpt-4o
    ```
 
-### Using OpenAI Directly
-
-1. Get API key from [OpenAI Platform](https://platform.openai.com/)
-2. Add to `.env`:
-   ```
-   OPENAI_API_KEY=your_key_here
-   ```
-3. Update `apps/cli/main.py`:
-   ```python
-   client = LLMClient(
-       api_key=config["openai"]["api_key"],
-       default_model="gpt-4o",
-       provider="openai"
-   )
-   ```
+Only the API key for the resolved provider is required.
 
 ---
 

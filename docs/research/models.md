@@ -346,29 +346,39 @@ Override per-session in `config/local.yaml` or via future CLI flags (Phase 7).
 - [ ] Track cost savings from routing
 
 **Phase 7:**
-- [ ] CLI option to choose model at session start
-- [ ] Model presets (fast/quality/balanced)
-- [ ] Easy model switching UI
+- [x] CLI option to choose model at session start (`--model`) ✅
+- [x] Model presets (fast/quality/balanced) ✅
+- [x] Mid-session model switching (`/model`) ✅
 
 ---
 
 ## Switching Models
 
-### Via Config (Current)
+### Via Config
 
 Edit `config/default.yaml` (or override in `config/local.yaml`):
 ```yaml
-openrouter:
-  default_model: "anthropic/claude-haiku-3.5"  # Change this line
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
+  presets:
+    fast: "openrouter/google/gemini-2.0-flash"
+    quality: "openrouter/anthropic/claude-opus-4.6"
+    balanced: "openrouter/anthropic/claude-sonnet-4.6"
 ```
 
-### Via CLI (Future)
+### Via CLI Flag
 
 ```bash
-# Not yet implemented
-jarvis --model claude-opus-4.5
-jarvis --preset quality  # Uses Opus
-jarvis --preset fast     # Uses Haiku
+uv run python -m apps.cli.main --model quality            # Use a preset
+uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6  # Direct provider
+```
+
+### Mid-Session
+
+```
+/model              # Show current model + presets
+/model fast         # Switch to fast preset
+/model openai/gpt-4o  # Switch to literal model
 ```
 
 ---

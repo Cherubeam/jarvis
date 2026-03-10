@@ -65,7 +65,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Key Functions:**
 - `load_config()`: Load YAML config and environment variables
-- `parse_args()`: Parse CLI arguments (including `--agent`)
+- `parse_args()`: Parse CLI arguments (`--agent`, `--skill`, `--model`)
 - `main()`: Main chat loop with agent routing and metrics tracking
 - `_handle_agent_command()`: Route slash commands to registered agents
 
@@ -458,26 +458,30 @@ rag:
 ```
 1. Load config.yaml + .env
    ↓
-2. Sync Things 3 tasks → tasks.md
+2. Collect API keys from env (collect_api_keys())
    ↓
-3. Build system prompt from context/*.md
+3. Resolve model: --model flag > config models.default
+   ↓
+4. Sync Things 3 tasks → tasks.md
+   ↓
+5. Build system prompt from context/*.md
    (includes auto-generated tasks.md)
    ↓
-4. Initialize LLM client
+6. Initialize LLM client (api_keys dict, resolved model)
    ↓
-5. RAG initialization (if rag.enabled: true)
+7. RAG initialization (if rag.enabled: true)
    ├─ ConversationIndexer.index_new(conversations_dir)
    │   Embed + upsert any new conversation files
    └─ make_conversation_recall_tool() → extra_tools
    ↓
-5b. Blog tools initialization (if obsidian.enabled: true)
+7b. Blog tools initialization (if obsidian.enabled: true)
    └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
-6. Fetch pricing data (async)
+8. Load pricing from LiteLLM cost map (offline, no HTTP)
    ↓
-7. Display startup info (model, pricing)
+9. Display startup info (model, pricing)
    ↓
-8. Enter chat loop
+10. Enter chat loop (handles /model for mid-session switching)
 ```
 
 ---

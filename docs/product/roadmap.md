@@ -279,7 +279,7 @@ packages/skills/
 
 - [ ] Rich TUI improvements
 - [ ] Profile switching (work/personal)
-- [ ] Model presets (fast/quality/balanced)
+- [x] Model presets (fast/quality/balanced) ✅ — `--model` flag + `/model` command
 - [ ] Export & sharing
 
 ---

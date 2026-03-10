@@ -10,11 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Runtime Model Switching** (ADR-023): `--model` CLI flag and `/model` slash command for switching models at startup or mid-session. Named presets (`fast`, `quality`, `balanced`) configurable in `config/default.yaml`. Multi-provider support — API keys collected from env vars, provider inferred from model ID prefix.
 - **Vault Read Tools**: Three new read-only tools (`read_note`, `search_notes`, `read_daily_note`) give JARVIS direct access to the Obsidian vault for information retrieval. 50KB content cap, 100-entry search cap. Inherits FilesystemGuard access control.
 - **Vault Search Sorting**: `search_notes` tool now supports `sort_by` (`"name"` or `"modified"`) and `limit` (1–100) parameters. `sort_by="modified"` returns most-recent-first with timestamps (`YYYY-MM-DD HH:MM  path`).
 - **Capability Ownership Framework** (ADR-022): Four-criteria decision framework for placing capabilities on JARVIS vs subagents. Core principle: JARVIS owns general-purpose reads; subagents own creative transformation.
 
 ### Changed
+- **LLMClient signature** (breaking): `LLMClient(api_key, default_model, provider)` → `LLMClient(api_keys, default_model)`. Provider inferred from model ID prefix. All callers updated.
+- **Config structure** (breaking): `openrouter:` section replaced by `models:` with `default` and `presets` map. Model IDs now use full LiteLLM-routable format with provider prefix.
+- **Pricing source**: Replaced OpenRouter HTTP pricing call (`fetch_all_pricing()`) with `litellm.get_model_cost_map()`. Works offline, covers all providers. Removed `requests` dependency from pricing module.
 - **search_tactics moved to agent-only**: `card_search_tool` now in `agent_only_tools` (TacticsAgent) instead of `extra_tools` (JARVIS). Per ADR-022, its downstream intent is creative synthesis.
 - **Delegation directive updated**: JARVIS system prompt now mentions vault read tools and tactics delegation.
 

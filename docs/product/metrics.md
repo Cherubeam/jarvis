@@ -37,7 +37,7 @@
 | Metric | Target | Current | Measurement Method | Status |
 |--------|--------|---------|-------------------|--------|
 | TTFT (Time to First Token) | <1s | Tracked | MetricsTracker timestamps in CLI | ✅ **Implemented** |
-| Cost per conversation | <$0.10 | ~$0.07 avg | OpenRouter pricing + LiteLLM fallback | ✅ **Implemented** |
+| Cost per conversation | <$0.10 | ~$0.07 avg | LiteLLM cost map (offline, all providers) | ✅ **Implemented** |
 | Error rate | <2% | Not tracked | Failed API calls / total calls | 🔴 Need logging |
 | Token efficiency | >70% useful | Tracked | System prompt + context / total tokens | ✅ **Implemented** |
 | Uptime / Availability | 99% | Not tracked | Failed vs. successful sessions | 🔴 Need logging |

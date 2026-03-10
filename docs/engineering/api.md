@@ -62,14 +62,17 @@ Main client for LLM provider interactions.
 
 **Constructor:**
 
-#### `__init__(api_key: str, default_model: str, provider: str = "openrouter")`
+#### `__init__(api_keys: dict[str, str], default_model: str)`
 
 **Parameters:**
-- `api_key` - API key for the provider
-- `default_model` - Model ID (provider format)
-- `provider` - Provider name ("openrouter", "anthropic", "openai")
+- `api_keys` - Mapping of provider name → API key (e.g. `{"openrouter": "sk-...", "anthropic": "sk-ant-..."}`)
+- `default_model` - LiteLLM-routable model ID (e.g. `"openrouter/anthropic/claude-sonnet-4.6"`)
 
 **Methods:**
+
+#### `set_model(model_id: str) -> None`
+
+Switch the default model mid-session.
 
 #### `chat_stream(messages: list[dict], model: str | None = None) -> StreamingResponse`
 
@@ -82,9 +85,15 @@ Stream a chat completion.
 **Returns:**
 - `StreamingResponse` - Iterator yielding content chunks
 
+#### `complete(messages, model=None, tools=None, temperature=None) -> object`
+
+Non-streaming completion for agentic tool-calling loops.
+
 **Usage Example:**
 ```python
-client = LLMClient(api_key="sk-...", default_model="anthropic/claude-sonnet-4.5")
+from packages.core.model_resolver import collect_api_keys
+
+client = LLMClient(api_keys=collect_api_keys(), default_model="openrouter/anthropic/claude-sonnet-4.6")
 messages = [
     {"role": "system", "content": "You are helpful"},
     {"role": "user", "content": "Hello!"}
@@ -350,23 +359,19 @@ The `allowed_dirs: list[Path]` field has been replaced by `filesystem_guard: Fil
 
 **Structure:**
 ```yaml
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
-
-system_prompt_prefix: |
-  You are a helpful personal assistant.
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"
+  presets:
+    fast: "openrouter/google/gemini-2.0-flash"
+    quality: "openrouter/anthropic/claude-opus-4.6"
+    balanced: "openrouter/anthropic/claude-sonnet-4.6"
 
 paths:
   context_dir: "data/context"
   conversations_dir: "data/conversations"
 ```
 
-**Loading:**
-```python
-import yaml
-with open("config.yaml") as f:
-    config = yaml.safe_load(f)
-```
+Model IDs use full LiteLLM-routable format with provider prefix. API keys are read from environment variables (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, etc.).
 
 ---
 
@@ -386,7 +391,7 @@ Estimated costs for running the golden suite on a model.
 
 ### `estimate_benchmark_costs(models, judge_model, results_dir, run_id=None)`
 
-Estimate costs for a benchmark run using OpenRouter pricing and the latest golden test token baseline.
+Estimate costs for a benchmark run using LiteLLM pricing data and the latest golden test token baseline.
 
 **Parameters:**
 - `models` - Model IDs to evaluate
@@ -403,18 +408,17 @@ Estimate costs for a benchmark run using OpenRouter pricing and the latest golde
 
 ### `.env` File
 
-**Required:**
-- `OPENROUTER_API_KEY` - OpenRouter API key
+At least one provider key is required. All are loaded automatically by `collect_api_keys()`:
 
-**Optional (future):**
+- `OPENROUTER_API_KEY` - OpenRouter API key (default provider)
 - `ANTHROPIC_API_KEY` - Direct Anthropic access
 - `OPENAI_API_KEY` - Direct OpenAI access
+- `GOOGLE_API_KEY` - Direct Google access
 
 **Loading:**
 ```python
-from dotenv import load_dotenv
-load_dotenv()
-api_key = os.getenv("OPENROUTER_API_KEY")
+from packages.core.model_resolver import collect_api_keys
+api_keys = collect_api_keys()  # {"openrouter": "sk-...", "anthropic": "sk-ant-...", ...}
 ```
 
 ---
