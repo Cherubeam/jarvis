@@ -75,8 +75,11 @@ def main() -> int:
     )
 
     action = "Would import" if args.dry_run else "Imported"
+    update_action = "Would update" if args.dry_run else "Updated"
     print(f"  Total conversations in file: {summary.total}")
     print(f"  {action}: {summary.imported}")
+    if summary.updated:
+        print(f"  {update_action}: {summary.updated}")
     if summary.skipped_filter:
         print(f"  Skipped (filtered): {summary.skipped_filter}")
     if summary.skipped_existing:

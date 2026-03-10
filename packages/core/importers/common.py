@@ -16,6 +16,7 @@ class ImportSummary:
     skipped_existing: int = 0
     skipped_archived: int = 0
     skipped_filter: int = 0
+    updated: int = 0
     errors: int = 0
     error_details: list[str] = field(default_factory=list)
 

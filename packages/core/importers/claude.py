@@ -214,6 +214,90 @@ def convert_conversation(claude_conv: dict) -> dict:
     }
 
 
+def _convert_new_messages(
+    claude_conv: dict, start_index: int
+) -> list[dict]:
+    """Convert Claude messages starting from start_index to Jarvis format.
+
+    Message IDs continue from start_index (1-based).
+    """
+    raw_messages = claude_conv.get("chat_messages", [])
+    messages = []
+    for i, raw_msg in enumerate(raw_messages[start_index:], start=start_index + 1):
+        sender = raw_msg.get("sender", "")
+        role = _ROLE_MAP.get(sender, "system")
+
+        content_blocks = raw_msg.get("content", [])
+        attachments = raw_msg.get("attachments", []) or []
+        files = raw_msg.get("files", []) or []
+        jarvis_content = convert_content_blocks(content_blocks, attachments, files)
+
+        msg_created = raw_msg.get("created_at")
+        msg_updated = raw_msg.get("updated_at")
+        timestamp = msg_created or msg_updated
+
+        messages.append({
+            "id": f"msg_{i:03d}",
+            "parent_id": None,
+            "role": role,
+            "timestamp": timestamp,
+            "content": jarvis_content,
+            "usage": None,
+            "latency": None,
+            "stop_reason": None,
+            "status": "completed",
+            "error": None,
+            "metadata": {},
+        })
+    return messages
+
+
+def update_conversation(
+    existing_path: Path, claude_conv: dict, *, dry_run: bool = False
+) -> bool:
+    """Update an existing JARVIS conversation with new data from Claude.
+
+    Syncs title, session_end, and appends new messages. Never removes
+    existing JARVIS messages (additive-only).
+
+    Returns True if changes were made, False if no changes needed.
+    """
+    jarvis_data = json.loads(existing_path.read_text())
+    changed = False
+
+    # Title sync — Claude is source of truth
+    claude_title = claude_conv.get("name")
+    if claude_title and claude_title != jarvis_data.get("title"):
+        jarvis_data["title"] = claude_title
+        changed = True
+
+    # Session end — use newer timestamp
+    claude_updated = claude_conv.get("updated_at")
+    if claude_updated:
+        jarvis_end = jarvis_data.get("session_end")
+        if not jarvis_end or claude_updated > jarvis_end:
+            jarvis_data["session_end"] = claude_updated
+            changed = True
+
+    # Append new messages
+    claude_msg_count = len(claude_conv.get("chat_messages", []))
+    jarvis_msg_count = len(jarvis_data.get("messages", []))
+    if claude_msg_count > jarvis_msg_count:
+        new_messages = _convert_new_messages(claude_conv, jarvis_msg_count)
+        jarvis_data["messages"].extend(new_messages)
+        changed = True
+
+    if changed:
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        jarvis_data.setdefault("metadata", {})["last_sync_timestamp"] = now_iso
+        if not dry_run:
+            existing_path.write_text(
+                json.dumps(jarvis_data, indent=2, ensure_ascii=False)
+            )
+
+    return changed
+
+
 def import_conversations(
     source_path: Path,
     target_dir: Path,
@@ -252,8 +336,8 @@ def import_conversations(
 
     # Track filenames for collision handling within this run
     used_filenames: set[str] = set()
-    # Track already-imported claude IDs for idempotent skip
-    existing_claude_ids: set[str] = set()
+    # Track already-imported claude IDs → file path for incremental sync
+    existing_claude_ids: dict[str, Path] = {}
     if not dry_run:
         used_filenames = {f.name for f in target_dir.glob("*.json")}
         for f in target_dir.glob("*.json"):
@@ -261,7 +345,7 @@ def import_conversations(
                 data = json.loads(f.read_text())
                 cid = data.get("metadata", {}).get("claude_id")
                 if cid:
-                    existing_claude_ids.add(cid)
+                    existing_claude_ids[cid] = f
             except (json.JSONDecodeError, OSError):
                 pass
 
@@ -279,10 +363,14 @@ def import_conversations(
                     summary.skipped_filter += 1
                     continue
 
-            # Skip already imported (idempotent by claude_id)
+            # Incremental sync for existing conversations
             claude_id = conv.get("uuid", "")
             if claude_id and claude_id in existing_claude_ids:
-                summary.skipped_existing += 1
+                existing_path = existing_claude_ids[claude_id]
+                if update_conversation(existing_path, conv, dry_run=dry_run):
+                    summary.updated += 1
+                else:
+                    summary.skipped_existing += 1
                 continue
 
             # Generate filename

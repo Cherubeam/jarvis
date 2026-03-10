@@ -11,6 +11,7 @@ from packages.core.importers.claude import (
     convert_content_blocks,
     convert_conversation,
     import_conversations,
+    update_conversation,
 )
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
 from packages.core.memory import ConversationLogger
@@ -371,6 +372,7 @@ class TestCommonUtilities:
         assert s.skipped_existing == 0
         assert s.skipped_archived == 0
         assert s.skipped_filter == 0
+        assert s.updated == 0
         assert s.errors == 0
         assert s.error_details == []
 
@@ -509,3 +511,215 @@ class TestLoadRoundTrip:
             data = ConversationLogger.load(f)
             assert "imported" in data["tags"]
             assert "claude" in data["tags"]
+
+
+# ==================== Incremental sync ====================
+
+
+def _make_claude_conv(
+    uuid: str = "test-uuid-001",
+    name: str = "My Chat",
+    created_at: str = "2025-12-10T10:30:00.000000Z",
+    updated_at: str = "2025-12-10T10:35:00.000000Z",
+    messages: list[dict] | None = None,
+) -> dict:
+    """Helper to build a minimal Claude conversation dict."""
+    if messages is None:
+        messages = [
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "Hello"}],
+                "created_at": "2025-12-10T10:30:00.000000Z",
+                "updated_at": "2025-12-10T10:30:00.000000Z",
+            },
+            {
+                "sender": "assistant",
+                "content": [{"type": "text", "text": "Hi there!"}],
+                "created_at": "2025-12-10T10:31:00.000000Z",
+                "updated_at": "2025-12-10T10:31:00.000000Z",
+            },
+        ]
+    return {
+        "uuid": uuid,
+        "name": name,
+        "created_at": created_at,
+        "updated_at": updated_at,
+        "chat_messages": messages,
+    }
+
+
+def _import_and_get_path(claude_conv: dict, tmp_path: Path) -> Path:
+    """Import a single Claude conv and return the written file path."""
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps([claude_conv]))
+    target = tmp_path / "out"
+    import_conversations(source, target)
+    files = list(target.glob("*.json"))
+    assert len(files) == 1
+    return files[0]
+
+
+class TestIncrementalSync:
+    def test_update_appends_new_messages(self, tmp_path):
+        """2 msgs → 4 msgs, verify all 4 present."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        # Add 2 more messages to the Claude conv
+        conv["chat_messages"].extend([
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "Follow-up question"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            },
+            {
+                "sender": "assistant",
+                "content": [{"type": "text", "text": "Here's the answer"}],
+                "created_at": "2025-12-10T10:33:00.000000Z",
+                "updated_at": "2025-12-10T10:33:00.000000Z",
+            },
+        ])
+        conv["updated_at"] = "2025-12-10T10:33:00.000000Z"
+
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert len(data["messages"]) == 4
+        assert data["messages"][2]["content"][0]["text"] == "Follow-up question"
+        assert data["messages"][3]["content"][0]["text"] == "Here's the answer"
+
+    def test_update_title_sync(self, tmp_path):
+        """Title change is synced."""
+        conv = _make_claude_conv(name="My Chat")
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["name"] = "[X] My Chat"
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert data["title"] == "[X] My Chat"
+
+    def test_update_no_change_skips(self, tmp_path):
+        """Identical re-import returns False (no changes)."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        changed = update_conversation(path, conv)
+        assert changed is False
+
+    def test_update_session_end(self, tmp_path):
+        """Newer updated_at replaces older session_end."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["updated_at"] = "2025-12-10T12:00:00.000000Z"
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert data["session_end"] == "2025-12-10T12:00:00.000000Z"
+
+    def test_update_no_message_removal(self, tmp_path):
+        """If Claude has fewer messages, JARVIS keeps all its messages."""
+        conv = _make_claude_conv()
+        conv["chat_messages"].extend([
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "Extra msg 1"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            },
+            {
+                "sender": "assistant",
+                "content": [{"type": "text", "text": "Extra msg 2"}],
+                "created_at": "2025-12-10T10:33:00.000000Z",
+                "updated_at": "2025-12-10T10:33:00.000000Z",
+            },
+        ])
+        path = _import_and_get_path(conv, tmp_path)
+        data_before = json.loads(path.read_text())
+        assert len(data_before["messages"]) == 4
+
+        # Now "sync" with only 2 messages in Claude (simulating deletion)
+        conv_fewer = _make_claude_conv()  # only 2 messages
+        changed = update_conversation(path, conv_fewer)
+        assert changed is False
+
+        data_after = json.loads(path.read_text())
+        assert len(data_after["messages"]) == 4  # All preserved
+
+    def test_update_message_ids_continue_sequence(self, tmp_path):
+        """New messages get sequential IDs continuing from existing."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["chat_messages"].append({
+            "sender": "human",
+            "content": [{"type": "text", "text": "Another question"}],
+            "created_at": "2025-12-10T10:32:00.000000Z",
+            "updated_at": "2025-12-10T10:32:00.000000Z",
+        })
+        conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
+
+        update_conversation(path, conv)
+        data = json.loads(path.read_text())
+        assert data["messages"][0]["id"] == "msg_001"
+        assert data["messages"][1]["id"] == "msg_002"
+        assert data["messages"][2]["id"] == "msg_003"
+
+    def test_update_dry_run(self, tmp_path):
+        """Dry run detects changes but writes nothing."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+        original_content = path.read_text()
+
+        conv["name"] = "[>] My Chat"
+        conv["chat_messages"].append({
+            "sender": "human",
+            "content": [{"type": "text", "text": "New msg"}],
+            "created_at": "2025-12-10T10:32:00.000000Z",
+            "updated_at": "2025-12-10T10:32:00.000000Z",
+        })
+
+        changed = update_conversation(path, conv, dry_run=True)
+        assert changed is True
+        assert path.read_text() == original_content  # File unchanged
+
+    def test_update_sync_metadata(self, tmp_path):
+        """last_sync_timestamp is set after update."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["name"] = "Updated Title"
+        update_conversation(path, conv)
+
+        data = json.loads(path.read_text())
+        assert "last_sync_timestamp" in data["metadata"]
+
+    def test_incremental_sync_via_import(self, tmp_path):
+        """Full round-trip: import, then re-import with new messages uses update path."""
+        conv = _make_claude_conv()
+        source = tmp_path / "source.json"
+        source.write_text(json.dumps([conv]))
+        target = tmp_path / "out"
+
+        summary1 = import_conversations(source, target)
+        assert summary1.imported == 1
+
+        # Add messages and re-import
+        conv["chat_messages"].append({
+            "sender": "human",
+            "content": [{"type": "text", "text": "New question"}],
+            "created_at": "2025-12-10T10:32:00.000000Z",
+            "updated_at": "2025-12-10T10:32:00.000000Z",
+        })
+        conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
+        source.write_text(json.dumps([conv]))
+
+        summary2 = import_conversations(source, target)
+        assert summary2.updated == 1
+        assert summary2.skipped_existing == 0
+        assert summary2.imported == 0
