@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Suggest Improvements Tool**: New `suggest_improvements` tool shows proposed changes as a colored preview diff without writing to disk. Available to any delegated agent. The writing agent's review workflow now runs evaluate → suggest → discuss → apply.
 
 ### Fixed
+- **Pricing Unavailable for claude-sonnet-4.6**: Upgraded LiteLLM from 1.80.16 to 1.82+ which includes claude-sonnet-4.6 in its cost map. Also added bare model name as a third lookup candidate in `get_model_pricing()` for extra resilience against missing entries.
 - **Recall Tool Delegation Leak**: `extra_tools` (like `recall_conversations`) no longer leak to delegated agents. Introduced `agent_only_tools` list to separate orchestration tools from specialist tools.
 
 ### Docs

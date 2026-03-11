@@ -392,23 +392,22 @@ rag:
 **Location**: `packages/core/pricing.py`
 
 **Responsibilities:**
-- Fetch pricing from OpenRouter API
+- Look up pricing from LiteLLM's built-in cost map (offline, all providers)
 - Calculate per-request costs
-- Fallback to LiteLLM pricing if needed
+- Fallback cost calculation via LiteLLM response objects
 - Format costs for display
 
 **Key Functions:**
-- `fetch_all_pricing()`: Get pricing map (cached)
-- `get_model_pricing(model_id)`: Get specific model pricing
-- `calculate_cost_from_litellm(response)`: Fallback cost calculation
+- `get_model_pricing(model_id)`: Get specific model pricing (tries full ID, stripped prefix, bare model name)
+- `calculate_cost_from_litellm(response)`: Fallback cost calculation from response object
 - `format_cost(cost_usd)`: Human-readable formatting
 
 **Related Module:**
 - `packages/core/benchmark_costs.py`: Estimate benchmark costs from golden test baselines
 
 **Pricing Strategy:**
-1. **Primary**: OpenRouter API (upfront, accurate)
-2. **Fallback**: LiteLLM internal pricing database
+1. **Primary**: LiteLLM cost map lookup with progressive prefix stripping
+2. **Fallback**: LiteLLM `completion_cost()` on response object
 3. **Degraded**: Show token count only
 
 ---
