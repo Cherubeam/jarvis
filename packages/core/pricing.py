@@ -47,11 +47,13 @@ def get_model_pricing(model_id: str) -> ModelPricing | None:
     """
     cost_map = _get_litellm_cost_map()
 
-    # Try the full model ID first, then without provider prefix
+    # Try the full model ID first, then progressively stripped prefixes
     candidates = [model_id]
     if "/" in model_id:
         # Strip first prefix: "openrouter/anthropic/claude-sonnet-4.6" -> "anthropic/claude-sonnet-4.6"
         candidates.append(model_id.split("/", 1)[1])
+        # Bare model name: "openrouter/anthropic/claude-sonnet-4.6" -> "claude-sonnet-4.6"
+        candidates.append(model_id.rsplit("/", 1)[-1])
 
     for candidate in candidates:
         info = cost_map.get(candidate)
