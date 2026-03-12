@@ -12,6 +12,7 @@ class DelegationState:
     """Mutable state set by the delegate tool during the agentic loop."""
     agent_name: str | None = None
     task: str | None = None
+    context: str | None = None
 
 
 def make_delegate_tool(
@@ -29,11 +30,12 @@ def make_delegate_tool(
     """
     agent_names = [a["name"] for a in available_agents]
 
-    def _delegate(agent_name: str, task: str) -> str:
+    def _delegate(agent_name: str, task: str, context: str = "") -> str:
         if agent_name not in agent_names:
             return f"Unknown agent '{agent_name}'. Available: {', '.join(agent_names)}"
         state.agent_name = agent_name
         state.task = task
+        state.context = context or None
         return f"Delegating to {agent_name} agent."
 
     return ToolDefinition(
@@ -53,6 +55,14 @@ def make_delegate_tool(
                 "task": {
                     "type": "string",
                     "description": "The full task description to pass to the agent.",
+                },
+                "context": {
+                    "type": "string",
+                    "description": (
+                        "Relevant conversation context for the agent. "
+                        "Summarize key details, preferences, and constraints "
+                        "the user mentioned that are relevant to this task."
+                    ),
                 },
             },
             "required": ["agent_name", "task"],
