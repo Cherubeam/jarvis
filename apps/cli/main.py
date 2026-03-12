@@ -28,8 +28,9 @@ from apps.cli.display import (
     prompt_user,
     start_live_stream,
 )
+from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
-from packages.agents.registry import discover_agents, get_by_command
+from packages.agents.registry import AgentMeta, discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, parse_frontmatter
 from packages.skills.base import BaseSkill
 from packages.skills.registry import discover_skills, get_skill_by_command
@@ -47,6 +48,25 @@ from packages.integrations.obsidian.prompts import get_daily_note_instructions
 from packages.telemetry.metrics import MetricsTracker
 
 CLIENT_VERSION = "0.4.0"
+
+
+def _instantiate_agent(
+    meta: AgentMeta,
+    client: LLMClient,
+    model_id: str,
+    extra_tools: list | None = None,
+):
+    """Create an agent from AgentMeta, handling both Python-class and data-driven agents."""
+    if meta.agent_class is None:
+        # Data-driven agent: build from meta.yaml
+        return agent_from_meta(meta.meta_path, client, model_id, extra_tools=extra_tools or None)
+
+    # Python-class agent: check if it accepts extra_tools
+    import inspect
+    sig = inspect.signature(meta.agent_class.__init__)
+    if "extra_tools" in sig.parameters and extra_tools:
+        return meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
+    return meta.agent_class(llm_client=client, model=model_id)
 
 
 def stream_and_track(
@@ -377,13 +397,7 @@ def _handle_agent_command(
     if meta is None:
         return False
 
-    # Pass extra_tools to agents that accept them (e.g. TacticsAgent)
-    import inspect
-    sig = inspect.signature(meta.agent_class.__init__)
-    if "extra_tools" in sig.parameters and extra_tools:
-        agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
-    else:
-        agent = meta.agent_class(llm_client=client, model=model_id)
+    agent = _instantiate_agent(meta, client, model_id, extra_tools)
 
     if not payload:
         if session is not None:
@@ -650,14 +664,8 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        # Pass extra_tools + agent_only_tools to agents that accept them
         all_agent_tools = extra_tools + agent_only_tools
-        import inspect
-        sig = inspect.signature(meta.agent_class.__init__)
-        if "extra_tools" in sig.parameters and all_agent_tools:
-            active_agent = meta.agent_class(llm_client=client, model=model_id, extra_tools=all_agent_tools)
-        else:
-            active_agent = meta.agent_class(llm_client=client, model=model_id)
+        active_agent = _instantiate_agent(meta, client, model_id, all_agent_tools)
         agent_name = meta.name
     else:
         available_agents = [
@@ -867,16 +875,9 @@ def main(argv: list[str] | None = None):
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
                 all_delegate_tools = extra_tools + agent_only_tools
-                import inspect as _inspect
-                _sig = _inspect.signature(delegate_meta.agent_class.__init__)
-                if "extra_tools" in _sig.parameters and all_delegate_tools:
-                    delegate_agent = delegate_meta.agent_class(
-                        llm_client=client, model=model_id, extra_tools=all_delegate_tools,
-                    )
-                else:
-                    delegate_agent = delegate_meta.agent_class(
-                        llm_client=client, model=model_id,
-                    )
+                delegate_agent = _instantiate_agent(
+                    delegate_meta, client, model_id, all_delegate_tools,
+                )
                 _run_agent_session(
                     delegate_agent, delegate_meta.name, stream_handler,
                     logger, session, initial_message=result.delegate_task,
