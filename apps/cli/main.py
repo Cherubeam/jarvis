@@ -54,11 +54,18 @@ def _instantiate_agent(
     client: LLMClient,
     model_id: str,
     extra_tools: list | None = None,
+    skill_registry: dict | None = None,
+    card_search_tool=None,
 ):
     """Create an agent from AgentMeta, handling both Python-class and data-driven agents."""
     if meta.agent_class is None:
         # Data-driven agent: build from meta.yaml
-        return agent_from_meta(meta.meta_path, client, model_id, extra_tools=extra_tools or None)
+        return agent_from_meta(
+            meta.meta_path, client, model_id,
+            extra_tools=extra_tools or None,
+            skill_registry=skill_registry,
+            card_search_tool=card_search_tool,
+        )
 
     # Python-class agent: check if it accepts extra_tools
     import inspect
@@ -384,13 +391,19 @@ def _handle_agent_command(
     agent_registry: dict,
     extra_tools: list | None = None,
     session=None,
+    skill_registry: dict | None = None,
+    card_search_tool=None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
     meta = get_by_command(command, agent_registry)
     if meta is None:
         return False
 
-    agent = _instantiate_agent(meta, client, model_id, extra_tools)
+    agent = _instantiate_agent(
+        meta, client, model_id, extra_tools,
+        skill_registry=skill_registry,
+        card_search_tool=card_search_tool,
+    )
 
     if not payload:
         if session is not None:
@@ -468,6 +481,7 @@ def main(argv: list[str] | None = None):
     extra_tools = []
     # Agent-only tools: available to delegated agents but not JARVIS
     agent_only_tools: list = []
+    card_search_tool = None  # Set by RAG card indexing if available
     rag_cfg = config.get("rag", {})
     if rag_cfg.get("enabled", False):
         try:
@@ -601,7 +615,11 @@ def main(argv: list[str] | None = None):
             sys.exit(1)
         meta = agent_registry[args.agent]
         all_agent_tools = extra_tools + agent_only_tools
-        active_agent = _instantiate_agent(meta, client, model_id, all_agent_tools)
+        active_agent = _instantiate_agent(
+            meta, client, model_id, all_agent_tools,
+            skill_registry=skill_registry,
+            card_search_tool=card_search_tool,
+        )
         agent_name = meta.name
     else:
         available_agents = [
@@ -746,6 +764,8 @@ def main(argv: list[str] | None = None):
                     model_id, agent_registry,
                     extra_tools=all_agent_tools or None,
                     session=session,
+                    skill_registry=skill_registry,
+                    card_search_tool=card_search_tool,
                 ):
                     continue
 
@@ -793,6 +813,8 @@ def main(argv: list[str] | None = None):
                 all_delegate_tools = extra_tools + agent_only_tools
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,
+                    skill_registry=skill_registry,
+                    card_search_tool=card_search_tool,
                 )
                 _run_agent_session(
                     delegate_agent, delegate_meta.name, stream_handler,

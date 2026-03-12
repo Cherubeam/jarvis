@@ -182,6 +182,8 @@ def agent_from_meta(
     llm_client: LLMClient,
     model: str,
     extra_tools: list[ToolDefinition] | None = None,
+    skill_registry: dict | None = None,
+    card_search_tool: ToolDefinition | None = None,
 ) -> DataDrivenAgent:
     """Build an agent from a meta.yaml + prompts/system.md.
 
@@ -190,6 +192,8 @@ def agent_from_meta(
         llm_client: LLM client for API calls.
         model: Model ID to use.
         extra_tools: Optional tools to register on the agent.
+        skill_registry: Optional skill registry for resolving bound skills.
+        card_search_tool: Optional card search tool for deck-skills.
 
     Returns:
         A fully configured DataDrivenAgent.
@@ -201,12 +205,24 @@ def agent_from_meta(
     system_prompt_path = agent_dir / "prompts" / "system.md"
     system_prompt = system_prompt_path.read_text(encoding="utf-8")
 
+    tools = list(extra_tools) if extra_tools else []
+
+    # Resolve bound skills if declared in meta.yaml
+    skill_names = meta.get("skills", [])
+    if skill_names and skill_registry is not None:
+        from packages.skills.resolver import resolve_skills
+
+        resolved = resolve_skills(skill_names, skill_registry, card_search_tool)
+        if resolved.prompt_appendix:
+            system_prompt += "\n\n" + resolved.prompt_appendix
+        tools.extend(resolved.tools)
+
     config = AgentConfig(
         name=meta["name"],
         description=meta.get("description", ""),
         model=model,
         system_prompt=system_prompt,
-        tools=extra_tools or [],
+        tools=tools,
         temperature=meta.get("temperature", 0.7),
         max_tokens=meta.get("max_tokens", 4096),
     )
