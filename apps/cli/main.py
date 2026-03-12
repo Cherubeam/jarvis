@@ -584,6 +584,28 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
+    # Vault write tools (patterns) — agent-only so JARVIS delegates to pattern agent
+    if vault_config is not None:
+        try:
+            from packages.core.tools.vault_write_tools import make_vault_write_tools
+
+            obsidian_cfg = config.get("obsidian", {})
+            writing_cfg = obsidian_cfg.get("writing", {})
+            patterns_cfg = writing_cfg.get("patterns", {})
+            patterns_target_dir = patterns_cfg.get("target_dir", "")
+            patterns_template_path = patterns_cfg.get("template_path", "")
+
+            if patterns_target_dir:
+                vault_write_tools = make_vault_write_tools(
+                    vault_config, CLIConfirmationHandler(),
+                    target_dir=patterns_target_dir,
+                    template_path=patterns_template_path,
+                )
+                agent_only_tools.extend(vault_write_tools)
+                print_system(f"[Vault] {len(vault_write_tools)} vault write tools loaded.")
+        except Exception as e:
+            print_system(f"[Vault] Vault write tools failed: {e}")
+
     # Initialize content-evaluator tool (if skill directory exists)
     # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
     skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
@@ -844,7 +866,7 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                all_delegate_tools = agent_only_tools
+                all_delegate_tools = extra_tools + agent_only_tools
                 import inspect as _inspect
                 _sig = _inspect.signature(delegate_meta.agent_class.__init__)
                 if "extra_tools" in _sig.parameters and all_delegate_tools:

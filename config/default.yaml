@@ -81,4 +81,7 @@ obsidian:
   writing:
     blog_dir: ""                    # User sets in local.yaml
     template_path: ""               # User sets in local.yaml
+    patterns:
+      target_dir: ""                # User sets in local.yaml
+      template_path: ""             # User sets in local.yaml
   prompts_dir: "data/prompts/obsidian"
