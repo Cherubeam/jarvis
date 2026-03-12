@@ -23,13 +23,11 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • LLM Client   │  • Base Agent    │  • Things 3               │
 │  • Context      │  • JARVIS Agent  │  • Obsidian               │
 │  • Memory       │  • Writing Agent │  • (Future: Calendar)     │
-│  • Pricing      │  • Research Agent│                           │
-│  • Stream       │  • Clarity Agent │                           │
-│    Handler      │  • Navigator     │                           │
-│  • Tools        │  • Tactics Agent │                           │
-│  • RAG          │  • OKR Architect │                           │
-│                 │  • Pattern Lang. │                           │
-│                 │  • Registry      │                           │
+│  • Pricing      │  • Tactics Agent │                           │
+│  • Stream       │  • Data-driven   │                           │
+│    Handler      │    agents (6)    │                           │
+│  • Tools        │  • Registry      │                           │
+│  • RAG          │                  │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
 │  • Metrics tracking (TTFT, latency)                            │
@@ -65,7 +63,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 **Key Functions:**
 - `load_config()`: Load YAML config and environment variables
-- `parse_args()`: Parse CLI arguments (`--agent`, `--skill`, `--model`)
+- `parse_args()`: Parse CLI arguments (`--agent`, `--model`)
 - `main()`: Main chat loop with agent routing and metrics tracking
 - `_handle_agent_command()`: Route slash commands to registered agents
 
@@ -413,6 +411,31 @@ rag:
 
 ---
 
+### 10. Agent Discovery (`packages/agents/registry.py`)
+
+**Purpose**: Discover and instantiate agents via a dual-path registry.
+
+**Location**: `packages/agents/registry.py`, `packages/agents/base.py`
+
+**Discovery Paths** (in order of preference):
+
+1. **Data-driven agents via `meta.yaml`** (preferred): Agent directories containing a `meta.yaml` file are loaded as `DataDrivenAgent` instances. The `meta.yaml` declares the agent's name, description, command, and optional parameters (temperature, max_tokens). The system prompt is loaded from `prompts/system.md` in the same directory. No Python code is required.
+
+2. **Legacy Python-class agents via `__init__.py` AGENT_META**: Agent directories containing an `__init__.py` with an `AGENT_META` dict are loaded using the class specified in the metadata. This path supports agents that need custom behavior (e.g., Writing Agent's prompt composition, Tactics Agent's custom temperature).
+
+**Key Components:**
+
+- **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` using only `meta.yaml` + `prompts/system.md`. No per-agent Python code needed.
+- **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent instance from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, and returns a configured `DataDrivenAgent` (or a custom class if `agent_class` is specified in the YAML).
+- **`AgentMeta`** dataclass: Extended with `agent_class: type | None` (the Python class to instantiate, or `None` for data-driven agents) and `meta_path: Path | None` (path to the `meta.yaml` file).
+- **`_instantiate_agent()`** (in `apps/cli/main.py`): Helper that instantiates an agent from `AgentMeta`, choosing between `agent_from_meta()` for data-driven agents and direct class construction for legacy agents.
+
+**Data-driven agents** (6 total): clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert.
+
+**Python-class agents** (3 total): writing (custom prompt composition), tactics (custom temperature handling), jarvis (orchestrator with delegation).
+
+---
+
 ## Data Flow
 
 ### Typical Request Flow
@@ -495,11 +518,15 @@ rag:
 7b. Blog tools initialization (if obsidian.enabled: true)
    └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
-8. Load pricing from LiteLLM cost map (offline, no HTTP)
+8. Agent discovery (dual-path registry)
+   ├─ Scan agent directories for meta.yaml (data-driven agents)
+   └─ Fall back to __init__.py AGENT_META (legacy Python-class agents)
    ↓
-9. Display startup info (model, pricing)
+9. Load pricing from LiteLLM cost map (offline, no HTTP)
    ↓
-10. Enter chat loop (handles /model for mid-session switching)
+10. Display startup info (model, pricing)
+   ↓
+11. Enter chat loop (handles /model for mid-session switching)
 ```
 
 ---
@@ -531,37 +558,41 @@ jarvis/
 │   │   │   ├── executor.py         # execute_tool_calls()
 │   │   │   ├── web_fetch.py        # fetch_url tool
 │   │   │   ├── conversation_recall.py  # make_conversation_recall_tool()
-│   │   │   └── blog_tools.py      # make_blog_tools() for Writing Agent
+│   │   │   ├── blog_tools.py      # make_blog_tools() for Writing Agent
+│   │   │   └── vault_write_tools.py # make_vault_write_tools() for any agent
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
 │   │       ├── claude.py           # Claude export converter
 │   │       └── claude_context.py   # Claude memories/projects importer
 │   ├── agents/                     # Agent implementations
-│   │   ├── base.py                 # Base agent class (run, load_prompt)
-│   │   ├── registry.py             # Agent discovery + slash-command lookup
+│   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
+│   │   ├── registry.py             # Dual-path agent discovery + slash-command lookup
 │   │   ├── jarvis/                 # Main JARVIS orchestrator
 │   │   │   └── agent.py
-│   │   ├── writing/                # Writing agent (/write)
+│   │   ├── writing/                # Writing agent (/write) — custom Python class
 │   │   │   ├── agent.py
 │   │   │   └── prompts/system.md
-│   │   ├── research/               # Research agent (/research)
+│   │   ├── tactics/                # Tactics agent (/tactics) — custom Python class
 │   │   │   ├── agent.py
 │   │   │   └── prompts/system.md
-│   │   ├── clarity/                # Clarity agent (/clarity)
-│   │   │   ├── agent.py
+│   │   ├── clarity/                # Data-driven agent (/clarity)
+│   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   ├── navigator/              # Navigator agent (/navigator)
-│   │   │   ├── agent.py
+│   │   ├── research/               # Data-driven agent (/research)
+│   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   ├── tactics/                # Tactics agent (/tactics)
-│   │   │   ├── agent.py
+│   │   ├── navigator/              # Data-driven agent (/navigator)
+│   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   ├── okr_architect/          # OKR Architect agent (/okr-architect)
-│   │   │   ├── agent.py
+│   │   ├── okr_architect/          # Data-driven agent (/okr-architect)
+│   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   └── pattern_language_expert/ # Pattern Language Expert (/pattern-language-expert)
-│   │       ├── agent.py
+│   │   ├── obsidian_note_creator/  # Data-driven agent (/obsidian-note-creator)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   └── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
+│   │       ├── meta.yaml
 │   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
@@ -753,4 +784,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-12*

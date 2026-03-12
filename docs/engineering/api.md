@@ -379,6 +379,82 @@ The `allowed_dirs: list[Path]` field has been replaced by `filesystem_guard: Fil
 
 ---
 
+## Module: `agents.base` — Agent Framework
+
+### `class DataDrivenAgent`
+
+Subclass of `BaseAgent` for agents defined entirely via `meta.yaml` + `prompts/system.md`. No per-agent Python code is required.
+
+**Constructor:**
+
+#### `__init__(name, system_prompt, config, tools=None, extra_tools=None)`
+
+**Parameters:**
+- `name: str` — Agent name (from `meta.yaml`)
+- `system_prompt: str` — System prompt loaded from `prompts/system.md`
+- `config: AgentConfig` — Agent configuration (model, temperature, max_tokens, tools)
+- `tools: list[ToolDefinition] | None` — Agent-specific tools
+- `extra_tools: list[ToolDefinition] | None` — Shared tools (conversation recall, vault read)
+
+**Methods:**
+
+#### `process_message(user_message, conversation_history, stream_handler) -> str`
+
+Process a user message using the standard agent flow: build messages, stream response, return assistant text.
+
+---
+
+### `agent_from_meta(meta_path, llm_client, extra_tools=None) -> BaseAgent`
+
+Factory function that builds an agent instance from a `meta.yaml` file.
+
+**Parameters:**
+- `meta_path: Path` — Path to the agent's `meta.yaml` file
+- `llm_client: LLMClient` — Shared LLM client instance
+- `extra_tools: list[ToolDefinition] | None` — Additional tools to provide
+
+**Returns:**
+- `BaseAgent` — A `DataDrivenAgent` instance (or custom class if `agent_class` is specified in the YAML)
+
+**Behavior:**
+1. Reads `meta.yaml` for agent configuration
+2. Loads `prompts/system.md` from the same directory
+3. Builds an `AgentConfig` with specified temperature, max_tokens
+4. Returns a configured agent instance ready for `process_message()`
+
+---
+
+### `class AgentMeta`
+
+Dataclass describing a discovered agent for registry purposes.
+
+**Attributes:**
+- `name: str` — Agent name (e.g., `"clarity"`)
+- `description: str` — Human-readable description
+- `command: str` — Slash command (e.g., `"/clarity"`)
+- `agent_class: type | None` — Python class to instantiate, or `None` for data-driven agents
+- `module_path: str` — Dotted module path (e.g., `"packages.agents.clarity"`)
+- `meta_path: Path | None` — Path to `meta.yaml` file, or `None` for legacy agents
+
+---
+
+### `meta.yaml` Schema
+
+Data-driven agents are configured via a `meta.yaml` file in their directory:
+
+```yaml
+name: agent-name           # required — agent identifier
+description: What it does   # required — shown in help/registry
+command: /agent-name        # required — slash command to invoke
+temperature: 0.7            # optional, default 0.7
+max_tokens: 4096            # optional, default 4096
+agent_class: ClassName      # optional — for hybrid agents needing custom Python class
+```
+
+The system prompt is loaded from `prompts/system.md` in the same directory as `meta.yaml`.
+
+---
+
 ## Configuration
 
 ### `config/default.yaml`
@@ -486,4 +562,4 @@ def chat_stream(
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-12*
