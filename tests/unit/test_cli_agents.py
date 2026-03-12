@@ -295,6 +295,85 @@ class TestRunAgentSession:
 
 
 @pytest.mark.unit
+class TestRunAgentSessionHandoff:
+    """Tests for context and prior_session handoff in _run_agent_session."""
+
+    @patch("apps.cli.main.prompt_user")
+    def test_returns_session_history(self, mock_prompt, capsys):
+        """_run_agent_session returns the session history list."""
+        mock_prompt.side_effect = ["/exit"]
+        result = _run_agent_session(Mock(), "test", Mock(), Mock(), Mock())
+        assert isinstance(result, list)
+        assert result == []
+
+    @patch("apps.cli.main.finish_live_stream")
+    @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
+    @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
+    @patch("apps.cli.main.prompt_user")
+    def test_returns_history_with_messages(
+        self, mock_prompt, mock_chunk, mock_start, mock_finish
+    ):
+        """Session with messages returns populated history."""
+        mock_prompt.side_effect = ["hello", "/exit"]
+        agent = Mock()
+        agent.run.return_value = _make_stream_result("reply")
+
+        result = _run_agent_session(agent, "test", Mock(), Mock(), Mock())
+
+        assert len(result) == 2
+        assert result[0] == {"role": "user", "content": "hello"}
+        assert result[1] == {"role": "assistant", "content": "reply"}
+
+    @patch("apps.cli.main.prompt_user")
+    def test_context_prepends_exchange(self, mock_prompt, capsys):
+        """context param prepends a context exchange to session_history."""
+        mock_prompt.side_effect = ["/exit"]
+        result = _run_agent_session(
+            Mock(), "test", Mock(), Mock(), Mock(),
+            context="User wants formal tone",
+        )
+        assert len(result) == 2
+        assert "[Context from JARVIS]" in result[0]["content"]
+        assert "formal tone" in result[0]["content"]
+        assert result[1]["role"] == "assistant"
+
+    @patch("apps.cli.main.prompt_user")
+    def test_prior_session_prepended(self, mock_prompt, capsys):
+        """prior_session messages appear at the start of session_history."""
+        mock_prompt.side_effect = ["/exit"]
+        prior = [
+            {"role": "user", "content": "previous question"},
+            {"role": "assistant", "content": "previous answer"},
+        ]
+        result = _run_agent_session(
+            Mock(), "test", Mock(), Mock(), Mock(),
+            prior_session=prior,
+        )
+        assert len(result) == 2
+        assert result[0]["content"] == "previous question"
+        assert result[1]["content"] == "previous answer"
+
+    @patch("apps.cli.main.prompt_user")
+    def test_prior_session_and_context_combined(self, mock_prompt, capsys):
+        """Both prior_session and context are included, prior first."""
+        mock_prompt.side_effect = ["/exit"]
+        prior = [
+            {"role": "user", "content": "q1"},
+            {"role": "assistant", "content": "a1"},
+        ]
+        result = _run_agent_session(
+            Mock(), "test", Mock(), Mock(), Mock(),
+            context="some context",
+            prior_session=prior,
+        )
+        # prior_session (2) + context exchange (2) = 4
+        assert len(result) == 4
+        assert result[0]["content"] == "q1"
+        assert result[1]["content"] == "a1"
+        assert "[Context from JARVIS]" in result[2]["content"]
+
+
+@pytest.mark.unit
 class TestInstantiateAgent:
     """Tests for the _instantiate_agent helper (data-driven + Python-class paths)."""
 

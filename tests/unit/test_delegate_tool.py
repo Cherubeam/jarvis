@@ -20,6 +20,7 @@ class TestDelegationState:
         state = DelegationState()
         assert state.agent_name is None
         assert state.task is None
+        assert state.context is None
 
 
 @pytest.mark.unit
@@ -67,3 +68,34 @@ class TestDelegateTool:
         tool = make_delegate_tool(agents, state)
 
         assert tool.parameters["properties"]["agent_name"]["enum"] == ["a"]
+
+    def test_context_param_stored_on_state(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+
+        tool.execute(agent_name="writing", task="Write post", context="User prefers formal tone")
+
+        assert state.context == "User prefers formal tone"
+
+    def test_missing_context_defaults_to_none(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+
+        tool.execute(agent_name="writing", task="Write post")
+
+        assert state.context is None
+
+    def test_empty_context_defaults_to_none(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+
+        tool.execute(agent_name="writing", task="Write post", context="")
+
+        assert state.context is None
+
+    def test_context_in_tool_schema(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+
+        assert "context" in tool.parameters["properties"]
+        assert tool.parameters["properties"]["context"]["type"] == "string"
