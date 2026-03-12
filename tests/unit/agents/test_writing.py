@@ -1,5 +1,5 @@
 """
-Unit tests for specialized agents (Writing, Research, Clarity).
+Unit tests for the WritingAgent (Python-class agent with custom prompt composition).
 """
 
 import pytest

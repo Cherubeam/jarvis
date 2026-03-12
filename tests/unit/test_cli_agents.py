@@ -7,7 +7,7 @@ Tests parse_args, _handle_agent_command, and --agent flag behavior.
 import pytest
 from unittest.mock import Mock, MagicMock, patch, call, ANY
 
-from apps.cli.main import parse_args, _handle_agent_command, _run_agent_session
+from apps.cli.main import parse_args, _handle_agent_command, _instantiate_agent, _run_agent_session
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
@@ -292,3 +292,138 @@ class TestRunAgentSession:
 
         captured = capsys.readouterr()
         assert "Returning to JARVIS" in captured.out
+
+
+@pytest.mark.unit
+class TestInstantiateAgent:
+    """Tests for the _instantiate_agent helper (data-driven + Python-class paths)."""
+
+    def test_data_driven_agent_from_meta_path(self, tmp_path):
+        """agent_class=None uses agent_from_meta()."""
+        import yaml as _yaml
+
+        # Create a minimal meta.yaml + system prompt
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        meta_path = agent_dir / "meta.yaml"
+        meta_path.write_text(_yaml.dump({
+            "name": "test-agent",
+            "description": "A test agent",
+            "command": "/test-agent",
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        meta = AgentMeta(
+            name="test-agent", description="A test agent",
+            command="/test-agent", agent_class=None, meta_path=meta_path,
+        )
+        client = Mock(spec=LLMClient)
+        agent = _instantiate_agent(meta, client, "test-model")
+
+        from packages.agents.base import DataDrivenAgent
+        assert isinstance(agent, DataDrivenAgent)
+        assert agent.config.name == "test-agent"
+
+    def test_data_driven_agent_receives_extra_tools(self, tmp_path):
+        """Data-driven agents get extra_tools passed through."""
+        import yaml as _yaml
+
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        meta_path = agent_dir / "meta.yaml"
+        meta_path.write_text(_yaml.dump({
+            "name": "test-agent",
+            "description": "desc",
+            "command": "/test",
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        dummy_tool = ToolDefinition(
+            name="test_tool", description="test",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda: "ok",
+        )
+
+        meta = AgentMeta(
+            name="test-agent", description="desc",
+            command="/test", agent_class=None, meta_path=meta_path,
+        )
+        agent = _instantiate_agent(meta, Mock(spec=LLMClient), "model", [dummy_tool])
+        assert len(agent.config.tools) == 1
+
+    def test_python_class_agent_without_extra_tools(self):
+        """Python-class agent without extra_tools param gets simple instantiation."""
+        created_with = {}
+
+        class SimpleAgent:
+            def __init__(self, *, llm_client, model):
+                created_with["model"] = model
+
+            config = Mock()
+
+        meta = AgentMeta(
+            name="simple", description="desc",
+            command="/simple", agent_class=SimpleAgent,
+        )
+        _instantiate_agent(meta, Mock(), "test-model")
+        assert created_with["model"] == "test-model"
+
+    def test_python_class_agent_with_extra_tools(self):
+        """Python-class agent with extra_tools param receives them."""
+        created_with = {}
+
+        class ToolAgent:
+            def __init__(self, *, llm_client, model, extra_tools=None):
+                created_with["extra_tools"] = extra_tools
+
+            config = Mock()
+
+        dummy_tool = ToolDefinition(
+            name="tool", description="test",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda: "ok",
+        )
+
+        meta = AgentMeta(
+            name="tool-agent", description="desc",
+            command="/tool", agent_class=ToolAgent,
+        )
+        _instantiate_agent(meta, Mock(), "model", [dummy_tool])
+        assert created_with["extra_tools"] == [dummy_tool]
+
+    def test_handle_agent_command_with_data_driven_agent(self, tmp_path):
+        """_handle_agent_command works with data-driven agents (agent_class=None)."""
+        import yaml as _yaml
+
+        agent_dir = tmp_path / "clarity"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(_yaml.dump({
+            "name": "clarity", "description": "Explains things", "command": "/clarity",
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You explain things clearly." * 5)
+
+        meta = AgentMeta(
+            name="clarity", description="Explains things",
+            command="/clarity", agent_class=None,
+            meta_path=agent_dir / "meta.yaml",
+        )
+        registry = {"clarity": meta}
+
+        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+            mock_agent = Mock()
+            mock_agent.run.return_value = _make_stream_result()
+            mock_factory.return_value = mock_agent
+
+            result = _handle_agent_command(
+                "/clarity", "explain this", Mock(), Mock(), Mock(),
+                "model", registry,
+            )
+
+        assert result is True
+        mock_factory.assert_called_once()
