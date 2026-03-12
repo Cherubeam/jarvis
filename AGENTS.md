@@ -146,6 +146,33 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md#project-
 
 ---
 
+## Creating a New Agent
+
+### Data-Driven Agent (recommended for simple agents)
+
+1. Create a directory under `packages/agents/<name>/`
+2. Add `meta.yaml`:
+   ```yaml
+   name: my-agent
+   description: What this agent does
+   command: /my-agent
+   ```
+3. Add `prompts/system.md` with the system prompt
+4. Done — the registry discovers it automatically
+
+### Python-Class Agent (for custom logic)
+
+Use this when you need custom prompt composition, non-default temperature, or custom `process_message()` logic.
+
+1. Create `packages/agents/<name>/`
+2. Add `__init__.py` with `AGENT_META` dict
+3. Add `agent.py` extending `BaseAgent`
+4. Add `prompts/system.md`
+
+See `packages/agents/writing/` (custom prompt composition) or `packages/agents/tactics/` (custom temperature + tools) for examples.
+
+---
+
 ## Before Committing Code
 
 ```bash

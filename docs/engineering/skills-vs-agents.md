@@ -2,6 +2,8 @@
 
 JARVIS has two abstractions for giving an LLM a specialized persona: **skills** and **agents**. They solve different problems and sit at different points on the complexity spectrum. This document explains when to use each, how to tell them apart, and how to promote a skill to an agent when it outgrows its original design.
 
+> **Note (2026-03-12):** Skills are no longer standalone-invokable. The `--skill`, `/skills`, and skill slash commands have been removed. Skills remain as passive knowledge packs for card indexing and can be wrapped as tools for agent use. Most agents now use data-driven `meta.yaml` definitions instead of Python classes.
+
 ## What Is a Skill?
 
 A skill is a portable, one-shot persona prompt. The unit of exchange is a single file: `SKILL.md`.
@@ -21,14 +23,32 @@ The SKILL.md format uses YAML frontmatter (`name`, `description`) followed by a 
 - **Portable** -- SKILL.md works with any LLM provider. No JARVIS-specific code required.
 - **Zero Python possible** -- a SKILL.md-only skill needs no `skill.py`. Drop a markdown file in a directory and it works.
 - **Discovery is filesystem-based** -- the [skill registry](../../packages/skills/registry.py) scans for `SKILL.md` files, not Python imports.
+- **Not standalone-invokable** -- skills cannot be run directly by users. They serve as passive knowledge packs for card indexing, and can be wrapped as tools for agent use.
 
-A skill with a `skill.py` can declare tools, override the model, or adjust temperature, but it remains fundamentally one-shot: the user sends a message, the skill responds, done.
+A skill with a `skill.py` can declare tools, override the model, or adjust temperature, but it remains fundamentally one-shot: when invoked as a tool by an agent, the user sends a message, the skill responds, done.
 
-**Examples in JARVIS:** Content Evaluator (`/content-evaluator`), Flow Master (`/flow-master`), PM Strategist (`/pm-strategist`).
+**Examples in JARVIS:** Content Evaluator (wrapped as `evaluate_content` tool), Flow Master, PM Strategist.
 
 ## What Is an Agent?
 
-An agent is a stateful, multi-turn Python class that inherits from [`BaseAgent`](../../packages/agents/base.py). It maintains conversation history, supports custom orchestration, and can wire in tools at construction time.
+An agent is a stateful, multi-turn entity that maintains conversation history, supports custom orchestration, and can wire in tools at construction time. Agents come in two forms:
+
+### Data-Driven Agents (meta.yaml)
+
+Most agents are now defined declaratively via a `meta.yaml` file and a `prompts/system.md` prompt. No Python class is needed. The `agent_from_meta()` factory creates a `DataDrivenAgent` instance at runtime.
+
+```
+clarity/
+  meta.yaml         # name, description, command, model (optional)
+  prompts/
+    system.md       # system prompt
+```
+
+This is the preferred approach for agents that follow the standard pattern: load a system prompt, maintain conversation history, stream responses. Six agents use this pattern: Clarity, Research, Navigator, OKR Architect, Obsidian Note Creator, and Pattern Language Expert.
+
+### Python-Class Agents
+
+Agents that need custom logic -- such as custom prompt composition, non-standard temperature, or orchestration -- use a Python class that inherits from [`BaseAgent`](../../packages/agents/base.py).
 
 ```
 tactics/
@@ -38,14 +58,16 @@ tactics/
     system.md       # system prompt loaded via load_prompt()
 ```
 
-**Key properties:**
+Only WritingAgent (custom prompt composition), TacticsAgent (custom temperature), and JarvisAgent (orchestrator) use this pattern.
+
+**Key properties (both forms):**
 
 - **Stateful** -- maintains `conversation_history` across turns within a session.
 - **Multi-turn** -- designed for back-and-forth interaction where context accumulates.
-- **Python-native** -- requires a Python class, making it JARVIS-specific.
-- **Convention-based discovery** -- the [agent registry](../../packages/agents/registry.py) scans for `AGENT_META` in `__init__.py` files.
+- **JARVIS-native** -- whether data-driven or Python-class, agents are JARVIS-specific.
+- **Dual-path discovery** -- the [agent registry](../../packages/agents/registry.py) scans for both `meta.yaml` files and `AGENT_META` in `__init__.py` files.
 
-Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and implement custom `process_message()` logic.
+Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and (for Python-class agents) implement custom `process_message()` logic.
 
 **Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
 
@@ -59,9 +81,10 @@ This is not about complexity. A skill can have a sophisticated prompt, tools, an
 |---|---|---|
 | State across turns | None | Conversation history |
 | Typical interaction | Single request/response | Multi-turn dialogue |
-| Implementation | SKILL.md (+ optional Python) | Python class |
+| Implementation | SKILL.md (+ optional Python) | `meta.yaml` (data-driven) or Python class |
 | Portability | Vendor-portable | JARVIS-native |
-| Discovery | Filesystem scan for SKILL.md | Python module scan for AGENT_META |
+| User invocation | Not standalone-invokable; used as tool by agents | Slash command or `--agent` flag |
+| Discovery | Filesystem scan for SKILL.md | Filesystem scan for `meta.yaml` or `AGENT_META` |
 
 If the user's task can be fully addressed in one exchange -- "evaluate this blog post", "draft OKRs for Q3" -- it's a skill. If the task requires follow-up questions, iterative refinement, or accumulated context -- "coach me through building a workshop agenda" -- it's an agent.
 
@@ -106,7 +129,7 @@ The six expert personas recently ported to JARVIS were evaluated against these c
 | PM Strategist | Beneficial but not required | No | No | No | **Skill** |
 | Flight Navigator | No (recommendation is one-shot) | No | No | No | **Skill** |
 
-OKR Architect and Pattern Language Expert were promoted to agents based on observed interaction patterns: both benefit from iterative refinement cycles and context-dependent responses across turns. The remaining four are correctly implemented as skills -- each can deliver value in a single exchange. If usage patterns show that users consistently need follow-up turns, that's the signal to promote.
+OKR Architect and Pattern Language Expert were promoted to agents based on observed interaction patterns: both benefit from iterative refinement cycles and context-dependent responses across turns. The remaining four are correctly implemented as skills -- each can deliver value in a single exchange and are available as passive knowledge packs or wrapped as tools for agent use.
 
 ## Migration Path
 
@@ -114,19 +137,41 @@ When a skill earns its promotion, here's how to convert it while preserving port
 
 ### Step 1: Keep the SKILL.md
 
-The original SKILL.md remains the canonical prompt specification. It stays portable and can still be used standalone with other LLM providers.
+The original SKILL.md remains the canonical prompt specification. It stays portable and can still be used with other LLM providers.
 
-### Step 2: Create the Agent Directory
+### Step 2: Create a `meta.yaml` (Preferred)
+
+The preferred path for most agents is a data-driven `meta.yaml` definition. No Python class needed.
+
+```
+packages/agents/<name>/
+  meta.yaml         # name, description, command, model (optional)
+  prompts/
+    system.md       # can reuse or extend the SKILL.md content
+```
+
+Example `meta.yaml`:
+
+```yaml
+name: my-agent
+description: "A short description of what this agent does"
+command: /my-agent
+# model: anthropic/claude-sonnet-4.6  # optional, uses default if omitted
+```
+
+The `agent_from_meta()` factory will create a `DataDrivenAgent` instance automatically.
+
+### Step 3: Use a Python Class (Only If Needed)
+
+Only create a Python class if the agent needs custom logic (e.g., custom prompt composition, non-standard temperature, tool orchestration). In that case, use the traditional pattern:
 
 ```
 packages/agents/<name>/
   __init__.py       # AGENT_META = {"name": ..., "description": ..., "command": ...}
   agent.py          # Agent class extending BaseAgent
   prompts/
-    system.md       # can reuse or extend the SKILL.md content
+    system.md       # system prompt loaded via load_prompt()
 ```
-
-### Step 3: Implement the Agent Class
 
 ```python
 from packages.agents.base import BaseAgent, AgentConfig
@@ -147,50 +192,40 @@ class MyAgent(BaseAgent):
         return self.llm_client.chat_stream(self.get_messages_for_api())
 ```
 
-### Step 4: Wire Up Discovery
+### Step 4: Retire the Skill (Optional)
 
-Add `AGENT_META` to `__init__.py` so the agent registry finds it:
-
-```python
-AGENT_META = {
-    "name": "my-agent",
-    "description": "...",
-    "command": "/my-agent",
-}
-```
-
-### Step 5: Retire the Skill (Optional)
-
-If the agent fully replaces the skill's use case within JARVIS, remove the skill directory from `packages/skills/` to avoid duplicate slash commands. The SKILL.md can live in the agent's directory or in a shared specifications repo for cross-vendor use.
+If the agent fully replaces the skill's use case within JARVIS, remove the skill directory from `packages/skills/`. The SKILL.md can live in the agent's directory or in a shared specifications repo for cross-vendor use.
 
 ## Skills as Tools
 
-Skills can be wrapped as `ToolDefinition` objects, making them callable by agents during the agentic tool-calling loop. This bridges the gap between the one-shot skill model and the multi-turn agent model: an agent can invoke a skill's structured evaluation without the user switching contexts.
+Since skills are no longer standalone-invokable, wrapping them as `ToolDefinition` objects is now the **only** way skills are used at runtime. This makes them callable by agents during the agentic tool-calling loop: an agent can invoke a skill's structured evaluation without the user switching contexts.
 
 **How it works:**
 
-A factory function (e.g., `make_content_evaluator_tool()`) loads the skill's `SKILL.md` as a system prompt and its `skill.py` config (temperature, etc.), then wraps the whole thing in a `ToolDefinition`. The tool calls `LLMClient.complete()` with the skill's prompt — a nested LLM call within the agent's agentic loop.
+A factory function (e.g., `make_content_evaluator_tool()`) loads the skill's `SKILL.md` as a system prompt and its `skill.py` config (temperature, etc.), then wraps the whole thing in a `ToolDefinition`. The tool calls `LLMClient.complete()` with the skill's prompt -- a nested LLM call within the agent's agentic loop.
 
 **Current examples:** Content Evaluator (`evaluate_content` tool).
 
 **When to use this pattern:**
 
 - The skill's output is useful *within* a larger agent workflow (e.g., reviewing content as part of an editing session)
-- The user shouldn't need to manually switch to a different slash command mid-conversation
-- The skill's one-shot nature is preserved — it still runs as a single prompt/response, just invoked by an agent
+- The skill's one-shot nature is preserved -- it still runs as a single prompt/response, just invoked by an agent
+- The SKILL.md remains vendor-portable even though the tool wrapper is JARVIS-native
 
-| | Skill (standalone) | Skill as Tool | Agent |
-|---|---|---|---|
-| Invocation | Slash command (`/content-evaluator`) | Tool call by agent | Slash command or delegation |
-| State | None | None (tool is stateless) | Conversation history |
-| Portability | Vendor-portable | JARVIS-native wrapper | JARVIS-native |
+| | Skill as Tool | Agent |
+|---|---|---|
+| Invocation | Tool call by agent | Slash command or delegation |
+| State | None (tool is stateless) | Conversation history |
+| Portability | JARVIS-native wrapper (SKILL.md is portable) | JARVIS-native |
 
 ## Design Principles
 
-1. **Start as a skill.** Skills are simpler, portable, and faster to build. Default to a skill unless you have evidence that multi-turn interaction is needed.
+1. **Default to `meta.yaml` agents.** For new capabilities that need multi-turn interaction, create a data-driven agent with `meta.yaml` + `prompts/system.md`. Only use a Python class when custom logic is required.
 
-2. **Promote based on evidence, not speculation.** Don't build an agent because a capability *might* need multi-turn support. Build the skill, use it, and let the interaction pattern tell you.
+2. **Use skills for portable knowledge packs.** Skills are simpler and portable. Use them when the capability is one-shot and you want vendor portability (SKILL.md works with any LLM provider). Skills are invoked via tool wrapping, not standalone.
 
-3. **Portability is a feature.** SKILL.md files work everywhere. Once you promote to an agent, you gain power but lose vendor portability. That trade-off should be intentional.
+3. **Promote based on evidence, not speculation.** Don't build an agent because a capability *might* need multi-turn support. Build the skill, use it, and let the interaction pattern tell you.
 
-4. **Keep the SKILL.md alive.** Even after promotion, the SKILL.md serves as documentation and as a portable fallback. It's the specification; the agent is the implementation.
+4. **Portability is a feature.** SKILL.md files work everywhere. Once you promote to an agent, you gain power but lose vendor portability. That trade-off should be intentional.
+
+5. **Keep the SKILL.md alive.** Even after promotion, the SKILL.md serves as documentation and as a portable fallback. It's the specification; the agent is the implementation.

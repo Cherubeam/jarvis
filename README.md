@@ -38,11 +38,11 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 └────────┬────────┘
          │
          ▼
-┌─────────────────┐     ┌─────────────────┐
-│     Agent       │     │     Skill       │  SKILL.md-driven task specs
-│  (Orchestrator  │     │  (vendor-portable│  (zero-code or Python-backed)
-│  or Specialist) │     │   workflows)    │
-└────────┬────────┘     └─────────────────┘
+┌─────────────────┐
+│     Agent       │  Data-driven (meta.yaml) or Python class
+│  (Orchestrator  │  Specialist agents for focused tasks
+│  or Specialist) │
+└────────┬────────┘
          │
          ▼
 ┌─────────────────┐
@@ -73,8 +73,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 ## Features
 
 - **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity, Navigator, Tactics, OKR Architect, Pattern Language Expert)
+- **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
-- **Skills Framework**: Vendor-portable skills via SKILL.md (zero-code or Python-backed), slash-command routing, `--skill <name>` standalone mode
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
 - **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
 - **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
@@ -145,14 +145,6 @@ During a chat session, you can use slash commands:
 /okr-architect          Enters OKR Architect agent session
 /pattern-language-expert  Enters Pattern Language Expert session
 /daily-summary          Generates an Obsidian daily note summary
-/skills                 List available skills
-/<skill-name> <text>    Run a skill (e.g., /content-evaluator)
-```
-
-Skills can also be run standalone:
-
-```bash
-uv run jarvis --skill content-evaluator
 ```
 
 Type `quit` or `exit` to end the session.
@@ -231,17 +223,18 @@ jarvis/
 │   │       ├── web_fetch.py            # URL fetch (httpx + trafilatura)
 │   │       └── conversation_recall.py  # RAG search tool
 │   ├── agents/                         # Agent implementations
-│   │   ├── base.py                     # Base agent class
+│   │   ├── base.py                     # Base agent class + DataDrivenAgent
 │   │   ├── registry.py                 # Filesystem-based agent auto-discovery
-│   │   ├── jarvis/                     # Main JARVIS orchestrator agent
-│   │   ├── writing/                    # Writing specialist (prose, editing)
-│   │   ├── research/                   # Research specialist (analysis, synthesis)
-│   │   ├── clarity/                    # Clarity specialist (simplify complex ideas)
-│   │   ├── navigator/                  # Navigator (alignment, weekly reviews)
-│   │   ├── tactics/                    # Tactics (Pip Decks coaching)
-│   │   ├── okr_architect/              # OKR Architect (OKR facilitation)
-│   │   └── pattern_language_expert/    # Pattern Language Expert
-│   ├── skills/                         # Skills framework
+│   │   ├── jarvis/                     # Main JARVIS orchestrator agent (Python class)
+│   │   ├── writing/                    # Writing specialist (Python class, custom prompt composition)
+│   │   ├── tactics/                    # Tactics (Python class, custom temperature)
+│   │   ├── research/                   # Research specialist (meta.yaml)
+│   │   ├── clarity/                    # Clarity specialist (meta.yaml)
+│   │   ├── navigator/                  # Navigator (meta.yaml)
+│   │   ├── okr_architect/              # OKR Architect (meta.yaml)
+│   │   ├── obsidian_note_creator/      # Obsidian Note Creator (meta.yaml)
+│   │   └── pattern_language_expert/    # Pattern Language Expert (meta.yaml)
+│   ├── skills/                         # Skills (passive knowledge packs for card indexing)
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
 │   │   ├── registry.py                 # Filesystem-based skill discovery
 │   │   ├── content-evaluator/          # Content evaluation (SKILL.md + skill.py)
@@ -335,7 +328,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Web fetch tool (httpx + trafilatura)
 - [x] Conversation recall via RAG (ChromaDB, opt-in)
 - [x] Enhanced CLI UX (rich rendering, prompt_toolkit)
-- [x] Skills framework (SKILL.md-driven, vendor-portable, `/skills` and `--skill`)
+- [x] Skills framework (SKILL.md-driven, vendor-portable, used as passive knowledge packs)
 - [ ] JARVIS delegation (orchestrator auto-routes to specialists)
 - [ ] Extended tools (web search, Playwright, write operations)
 - [ ] Intelligent model routing (task complexity → model selection)
