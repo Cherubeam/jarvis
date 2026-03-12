@@ -110,6 +110,81 @@ class TestDataDrivenAgentsInstantiation:
 
 
 @pytest.mark.unit
+class TestDataDrivenAgentsSkillBinding:
+    """Verify skill binding via meta.yaml skills: field."""
+
+    def test_agent_with_skills_appends_skill_content(self, tmp_path):
+        """meta.yaml with skills: list appends skill content to system prompt."""
+        from packages.core.tools.base import ToolDefinition
+        from packages.skills.registry import SkillMeta
+
+        # Create agent with skills: field
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["my-skill"]})
+        )
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        # Create skill
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("---\nname: my-skill\n---\n\n# My Skill\n\nExpertise content here.")
+
+        skill_registry = {
+            "my-skill": SkillMeta(
+                name="my-skill", description="test", command="/my-skill",
+                path=skill_dir, has_skill_py=False,
+            ),
+        }
+
+        client = Mock(spec=LLMClient)
+        agent = agent_from_meta(
+            agent_dir / "meta.yaml", client, "test-model",
+            skill_registry=skill_registry,
+        )
+
+        assert "# My Skill" in agent.config.system_prompt
+        assert "Expertise content here." in agent.config.system_prompt
+
+    def test_agent_without_skills_unchanged(self, tmp_path):
+        """meta.yaml without skills: field behaves as before."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump({"name": "test", "description": "test", "command": "/test"})
+        )
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        base_prompt = "You are a test agent." * 5
+        (prompts_dir / "system.md").write_text(base_prompt)
+
+        client = Mock(spec=LLMClient)
+        agent = agent_from_meta(agent_dir / "meta.yaml", client, "test-model")
+
+        assert agent.config.system_prompt == base_prompt
+
+    def test_agent_with_skills_but_no_registry_unchanged(self, tmp_path):
+        """skills: in meta.yaml but no skill_registry passed — no crash."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["missing"]})
+        )
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        base_prompt = "You are a test agent." * 5
+        (prompts_dir / "system.md").write_text(base_prompt)
+
+        client = Mock(spec=LLMClient)
+        agent = agent_from_meta(agent_dir / "meta.yaml", client, "test-model")
+
+        assert agent.config.system_prompt == base_prompt
+
+
+@pytest.mark.unit
 class TestDataDrivenAgentsDiscovery:
     """Verify data-driven agents are found by the registry."""
 
