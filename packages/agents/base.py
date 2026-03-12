@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
+
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition, ToolRegistry
@@ -161,3 +163,51 @@ class BaseAgent(ABC):
             "model": self.config.model,
             "tools": [t.name for t in self.config.tools],
         }
+
+
+class DataDrivenAgent(BaseAgent):
+    """Agent instantiated from meta.yaml — no custom Python class needed.
+
+    Implements the standard process_message() that most agents share:
+    add the user message to history and stream a response.
+    """
+
+    def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
+        self.add_to_history("user", message)
+        return self.llm_client.chat_stream(self.get_messages_for_api())
+
+
+def agent_from_meta(
+    meta_path: Path,
+    llm_client: LLMClient,
+    model: str,
+    extra_tools: list[ToolDefinition] | None = None,
+) -> DataDrivenAgent:
+    """Build an agent from a meta.yaml + prompts/system.md.
+
+    Args:
+        meta_path: Path to the agent's meta.yaml file.
+        llm_client: LLM client for API calls.
+        model: Model ID to use.
+        extra_tools: Optional tools to register on the agent.
+
+    Returns:
+        A fully configured DataDrivenAgent.
+    """
+    with open(meta_path, encoding="utf-8") as f:
+        meta = yaml.safe_load(f)
+
+    agent_dir = meta_path.parent
+    system_prompt_path = agent_dir / "prompts" / "system.md"
+    system_prompt = system_prompt_path.read_text(encoding="utf-8")
+
+    config = AgentConfig(
+        name=meta["name"],
+        description=meta.get("description", ""),
+        model=model,
+        system_prompt=system_prompt,
+        tools=extra_tools or [],
+        temperature=meta.get("temperature", 0.7),
+        max_tokens=meta.get("max_tokens", 4096),
+    )
+    return DataDrivenAgent(config, llm_client)
