@@ -4,18 +4,25 @@ Pattern Language Expert agent — design, evolve, and apply pattern languages.
 
 from packages.agents.base import BaseAgent, AgentConfig
 from packages.core.llm_client import LLMClient, StreamingResponse
+from packages.core.tools.base import ToolDefinition
 
 
 class PatternLanguageExpertAgent(BaseAgent):
     """Specialized agent for designing and evolving pattern languages."""
 
-    def __init__(self, llm_client: LLMClient, model: str = "anthropic/claude-sonnet-4"):
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        model: str = "anthropic/claude-sonnet-4",
+        extra_tools: list[ToolDefinition] | None = None,
+    ):
         system_prompt = self.load_prompt("system")
         config = AgentConfig(
             name="pattern-language-expert",
             description="Design, evolve, and apply pattern languages and pattern libraries",
             model=model,
             system_prompt=system_prompt,
+            tools=extra_tools or [],
         )
         super().__init__(config, llm_client)
 
