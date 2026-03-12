@@ -1,0 +1,3 @@
+name: obsidian-note-creator
+description: Extract atomic evergreen notes from conversations or material
+command: /obsidian-note-creator

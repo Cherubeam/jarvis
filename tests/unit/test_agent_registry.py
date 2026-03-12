@@ -43,13 +43,21 @@ class TestDiscoverAgents:
             assert meta.name
             assert meta.description
             assert meta.command.startswith("/")
-            assert meta.agent_class is not None
 
-    def test_all_agent_classes_are_importable(self):
+    def test_python_class_agents_are_importable(self):
         agents = discover_agents()
-        for meta in agents.values():
-            # agent_class should be an actual class
+        class_agents = {k: v for k, v in agents.items() if v.agent_class is not None}
+        assert len(class_agents) >= 2  # writing, tactics at minimum
+        for meta in class_agents.values():
             assert isinstance(meta.agent_class, type)
+
+    def test_data_driven_agents_have_meta_path(self):
+        agents = discover_agents()
+        data_driven = {k: v for k, v in agents.items() if v.agent_class is None}
+        assert len(data_driven) >= 1
+        for meta in data_driven.values():
+            assert meta.meta_path is not None
+            assert meta.meta_path.is_file()
 
 
 @pytest.mark.unit

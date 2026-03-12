@@ -121,12 +121,11 @@ class TestBaseAgentLoadPrompt:
         with pytest.raises(FileNotFoundError):
             WritingAgent.load_prompt("nonexistent")
 
-    def test_each_agent_has_system_prompt(self):
-        """All three agents should load their system prompt without error."""
+    def test_each_python_agent_has_system_prompt(self):
+        """Python-class agents should load their system prompt without error."""
         from packages.agents.writing.agent import WritingAgent
-        from packages.agents.research.agent import ResearchAgent
-        from packages.agents.clarity.agent import ClarityAgent
+        from packages.agents.tactics.agent import TacticsAgent
 
-        for cls in [WritingAgent, ResearchAgent, ClarityAgent]:
+        for cls in [WritingAgent, TacticsAgent]:
             prompt = cls.load_prompt("system")
             assert len(prompt) > 50
