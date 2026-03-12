@@ -28,10 +28,6 @@ things3:
     - Today
     - Upcoming
     - Inbox
-  projects_to_include:
-    - "Work"
-    - "Personal"
-    - "Jarvis Development"
   max_tasks_per_list: 50  # Prevent context bloat
 
 # LLM-as-judge evaluation settings
