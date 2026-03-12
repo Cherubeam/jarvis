@@ -87,7 +87,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Obsidian Integration**: Generate daily note summaries from conversation history
-- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) for task-aware responses
+- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses
 - **Comprehensive Testing**: Automated test suite with high code coverage
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 - **Conversation Import**: Import ChatGPT and Claude exports into Jarvis format
@@ -189,8 +189,8 @@ Imports are idempotent — re-running safely updates existing conversations with
 Edit `config/default.yaml` or `config/local.yaml`:
 
 ```yaml
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.6"  # Change to desired model
+models:
+  default: "openrouter/anthropic/claude-sonnet-4.6"  # Change to desired model
 ```
 
 See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration.
@@ -304,7 +304,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 **Phase 2: Evaluation & Quality Metrics (Complete ✅)**
 - [x] 10 golden test conversations defined
 - [x] **LLM-as-judge automated evaluation (~$0.41/run)**
-- [x] **Things 3 integration** (task sync with auto language detection)
+- [x] **Things 3 integration** (SQLite-based task sync via `things.py`)
 - [x] Latency tracking (TTFT)
 - [x] Model comparison benchmarks
 - [x] Benchmark cost estimation per model
@@ -329,8 +329,8 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Conversation recall via RAG (ChromaDB, opt-in)
 - [x] Enhanced CLI UX (rich rendering, prompt_toolkit)
 - [x] Skills framework (SKILL.md-driven, vendor-portable, used as passive knowledge packs)
-- [ ] JARVIS delegation (orchestrator auto-routes to specialists)
-- [ ] Extended tools (web search, Playwright, write operations)
+- [x] JARVIS delegation (orchestrator auto-routes to specialists)
+- [ ] Extended tools (web search, Playwright)
 - [ ] Intelligent model routing (task complexity → model selection)
 
 **Future Phases:**

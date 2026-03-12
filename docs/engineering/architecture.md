@@ -225,38 +225,27 @@ Files without frontmatter default to `active: true` (backwards compatible).
 **Location**: `packages/integrations/things3/task_sync.py`
 
 **Responsibilities:**
-- Auto-detect Things 3 language (supports German, French, Spanish, Italian, English)
-- Fetch tasks from Today, Anytime, and Upcoming lists via AppleScript
-- Write tasks to `tasks.md` in markdown format
-- Cache results to avoid repeated queries (5-minute TTL)
+- Read tasks from Things 3 via SQLite using `things.py` (no app launch required)
+- Fetch tasks from Inbox, Today, and Upcoming lists
+- Write tasks to `tasks.md` in markdown format grouped by area > project > tasks
+- Cache results to avoid repeated reads (5-minute TTL)
 - Handle errors gracefully (CLI works without task sync)
 
 **Key Classes:**
-- `Task`: Dataclass for task representation
+- `Task`: Dataclass with fields: `title`, `notes`, `due_date`, `when_date`, `tags`, `project`, `area`
 - `TaskSyncCache`: File-based cache with TTL
-- `MCPThings3Client`: Preserved for Phase B (interactive features)
 
 **Key Functions:**
-- `detect_things3_language()`: Auto-detect localized list names
-- `fetch_tasks_applescript_direct()`: Execute AppleScript to fetch tasks
-- `fetch_tasks_async()`: Orchestrate fetching with caching
-- `write_tasks_to_markdown()`: Format and write tasks.md
+- `_to_task()`: Convert a `things.py` dict to a `Task` dataclass
+- `fetch_tasks()`: Read tasks from SQLite via `things.py` with caching
+- `format_tasks_as_markdown()`: Format tasks grouped by area > project > tasks
+- `sync_tasks_to_file()`: Orchestrate fetch + format + write to `tasks.md`
 
 **Design Decision**:
-- **Phase A** (Current): Direct AppleScript for read-only sync
-- **Phase B** (Future): MCP server integration for interactive management
-- See ADR-008 for rationale
-
-**Supported Languages:**
-```python
-{
-    "en": {"inbox": "Inbox", "today": "Today", ...},
-    "de": {"inbox": "Eingang", "today": "Heute", ...},
-    "fr": {"inbox": "Boîte de réception", "today": "Aujourd'hui", ...},
-    "es": {"inbox": "Bandeja de entrada", "today": "Hoy", ...},
-    "it": {"inbox": "Casella in arrivo", "today": "Oggi", ...}
-}
-```
+- Reads the Things 3 SQLite database directly via `things.py` — language-independent, no app launch needed
+- Replaced AppleScript approach (ADR-008) which had 5s timeouts and fragile language detection
+- Phase B (MCP for write operations) remains a future option
+- See ADR-008 for historical context
 
 ---
 
@@ -718,15 +707,12 @@ jarvis/
 - `requests` - HTTP client (for pricing API)
 - `pyyaml` - Config parsing
 - `python-dotenv` - Environment variables
-
-**Phase A (Current):**
-- Direct AppleScript - Things 3 task sync (no additional deps)
+- `things.py` - Things 3 task sync via SQLite
 
 **Optional:**
 - `chromadb` - Vector storage for conversation recall (via `uv add chromadb`, `rag.enabled: true`)
 
 **Future:**
-- `mcp` - Model Context Protocol SDK (Phase B: interactive task management)
 - `sentence-transformers` - Local embeddings (alternative to API embeddings)
 - `textual` - TUI (Phase 7)
 

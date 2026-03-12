@@ -471,7 +471,7 @@ All data lives locally on user's machine:
 ## ADR-008: Things 3 Integration via Direct AppleScript
 
 **Date**: 2026-01-20
-**Status**: ✅ Accepted
+**Status**: ⚠️ Superseded by SQLite approach (2026-03-12)
 
 ### Context
 
@@ -592,6 +592,24 @@ When implementing interactive task management:
 - Relates to: Phase 5 roadmap (Agent Capabilities)
 
 **Current Status**: Phase A implemented and tested. Phase B planned for Phase 5.
+
+### Update (2026-03-12)
+
+This ADR has been **superseded** by a SQLite-based approach using `things.py`.
+
+**Why the change:**
+- AppleScript required Things 3 to launch, causing ~5s timeouts on first sync
+- Language detection was fragile — relied on querying localized list names
+- `things.py` reads the Things 3 SQLite database directly — no app launch, no localization issues
+
+**What changed:**
+- Removed: `detect_things3_language`, `fetch_tasks_applescript_direct`, `MCPThings3Client`, `parse_task_response`
+- Added: `area` field on `Task`, rich task data (project, tags, due dates, notes), grouped markdown output (area > project > tasks)
+- Removed `asyncio` dependency from task sync, removed `projects_to_include` config key
+- Module simplified from ~520 lines to ~290 lines
+
+**What remains relevant:**
+- Phase B (MCP for write operations) is still a valid future option, though now simpler since `things.py` already provides full read access without localization concerns
 
 ---
 

@@ -293,7 +293,7 @@ See [ADR-005](../product/decisions.md#adr-005-start-without-database-plan-rag-tr
 
 ### Jarvis Status
 
-- ✅ Things 3 integration (Phase A — context awareness, 43 tests)
+- ✅ Things 3 integration (Phase A — context awareness via SQLite/things.py)
 - 🟡 Agent foundation: BaseAgent + JarvisAgent classes (packages/agents/)
 - 🟡 LiteLLM provides function calling support
 - 🔴 Function calling not yet wired into agents
@@ -437,7 +437,7 @@ Every request should log:
 
 - **Conversation Schema v1.0.0** (Phase 2 + 6): Structured logging, typed content blocks, migration support
 - **ChatGPT & Claude Import** (Phase 2 + 6): Bulk import with CLI filters, idempotent re-imports
-- **Things 3 Integration Phase A** (Phase 2 + 5): Context awareness via task sync
+- **Things 3 Integration Phase A** (Phase 2 + 5): Context awareness via SQLite task sync
 
 ---
 

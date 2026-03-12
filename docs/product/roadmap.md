@@ -42,10 +42,10 @@
 
 #### Things 3 Integration (Phase A — Context Awareness)
 
-- [x] Task sync module with AppleScript integration
-- [x] Automatic language detection (German, French, Spanish, Italian, English)
+- [x] Task sync module with `things.py` (SQLite) — replaced AppleScript
 - [x] Auto-sync tasks to tasks.md on startup
 - [x] 5-minute task cache to optimize performance
+- [x] Grouped markdown output (area > project > tasks)
 - [ ] Phase B (Interactive management) — Moved to Phase 5C
 
 #### Metrics Implementation
@@ -166,9 +166,9 @@ packages/skills/
 - [x] First skills:
   - [x] Nano Banana Pro image prompt generator (SKILL.md only)
   - [x] Content evaluation workflow (SKILL.md + skill.py with rubric resource)
-- [x] Slash-command routing for skills (e.g., `/content-evaluator <text>`)
-- [x] `/skills` listing command
-- [x] `--skill <name>` standalone mode
+- [x] ~~Slash-command routing for skills~~ (removed in Unreleased)
+- [x] ~~`/skills` listing command~~ (removed in Unreleased)
+- [x] ~~`--skill <name>` standalone mode~~ (removed in Unreleased)
 - [x] 30 unit tests
 
 ### 5F: Filesystem Access Control
@@ -189,12 +189,12 @@ packages/skills/
 - [x] 25 new tests
 - [x] Navigator Agent (`/navigator`) — personal alignment and structured review coaching
 - [x] Architecture simplification: data-driven agents via meta.yaml, dual-path registry
-- [ ] Agent-to-skill delegation (future, separate branch)
+- [x] Agent-to-skill delegation (implemented via agent-skill binding in `meta.yaml`)
 
 ### 5B: Agent Orchestration
 
-- [ ] JARVIS delegation — sub-conversations with specialist agents
-- [ ] Agent-to-skill delegation (`BaseSkill.execute()` + `make_skill_tool()`)
+- [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)
+- [x] Agent-to-agent handoff with conversation context (Unreleased)
 - [ ] LLM-based intent detection and auto-routing
 - [ ] Error recovery and fallbacks
 
@@ -202,8 +202,8 @@ packages/skills/
 
 - [ ] Playwright-based fetch for JS-rendered pages
 - [ ] Tool approval/permission UI
-- [ ] Things 3 write operations as tools (Phase B)
-- [ ] Obsidian write operations as tools
+- [ ] Things 3 write operations as tools (Phase B — simpler now with SQLite read access)
+- [x] Obsidian write operations as tools (implemented in 0.10.0)
 - [ ] Web search integration
 
 ### 5D: Intelligent Model Routing
@@ -343,4 +343,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-12*

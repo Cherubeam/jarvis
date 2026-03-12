@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Things 3 SQLite Migration**: Replaced AppleScript integration with `things.py` (direct SQLite reads). Added `area` field to `Task` dataclass. Markdown output now grouped by area > project > tasks. Removed `detect_things3_language`, `fetch_tasks_applescript_direct`, `MCPThings3Client`, `parse_task_response`. Removed `asyncio` dependency from task sync. Removed `projects_to_include` config key.
 - **Data-Driven Agents**: 6 agents (clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert) converted from Python classes to `meta.yaml` + `prompts/system.md`. New `DataDrivenAgent` class and `agent_from_meta()` factory in `base.py`.
 - **Dual-Path Agent Registry**: Agent discovery now checks `meta.yaml` first (preferred), falls back to `__init__.py` AGENT_META. `AgentMeta` dataclass updated with optional `agent_class` and `meta_path` fields.
 - **Agent Instantiation**: New `_instantiate_agent()` helper in CLI handles both Python-class and data-driven agents, replacing 3 duplicated inspect.signature blocks.
@@ -25,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Delegation Context**: `delegate_to_agent` tool now accepts an optional `context` parameter for JARVIS to summarize relevant background before delegating.
 - **Parameterized Agent Tests**: `test_data_driven_agents.py` covers all 6 data-driven agents with 24 parametrized tests (meta.yaml validation, instantiation, streaming, registry discovery).
 - **CLI Instantiation Tests**: 5 new tests in `test_cli_agents.py` for the `_instantiate_agent()` helper.
-- Tests: 961 pass, 11 skip
+- Tests: 962 pass, 11 skip
 
 ---
 
@@ -626,6 +627,7 @@ See [roadmap.md](product/roadmap.md) for detailed plans.
 - ✅ Function calling & tool support, web fetch tool, RAG
 - ✅ Skills / Capabilities (5A) — mini-agents with prompt + tool config
 - ✅ Pip Decks Integration (5E) — deck-skills + RAG + TacticsAgent + agent sessions
+- ✅ Things 3 SQLite migration — replaced AppleScript with `things.py` direct reads
 - Agent orchestration (5B), extended tools (5C), model routing (5D)
 
 ### Phase 6: Web Interface
@@ -743,4 +745,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-12*
