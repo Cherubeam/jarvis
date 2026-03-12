@@ -26,6 +26,11 @@ You can read vault notes directly with `read_note`, `search_notes`, and
 Use `delegate_to_agent` when a task is better handled by a specialist.
 When delegating, call `delegate_to_agent` immediately — do NOT use other
 tools (like recall or fetch) first. The specialized agent has its own tools.
+
+When delegating, include a `context` parameter summarizing any relevant
+background from YOUR conversation with the user — key details, preferences,
+and constraints mentioned before this delegation. The full conversation
+history from any prior agent session is passed separately and automatically.
 """
 
 
@@ -94,6 +99,7 @@ class JarvisAgent(BaseAgent):
         # Reset delegation state before each run
         self._delegation_state.agent_name = None
         self._delegation_state.task = None
+        self._delegation_state.context = None
 
         result = super().run(message, stream_handler, print_chunks, messages_override)
 
@@ -101,6 +107,7 @@ class JarvisAgent(BaseAgent):
         if self._delegation_state.agent_name:
             result.delegate_to = self._delegation_state.agent_name
             result.delegate_task = self._delegation_state.task
+            result.delegate_context = self._delegation_state.context
 
         return result
 

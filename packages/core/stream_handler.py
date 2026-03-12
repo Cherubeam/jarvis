@@ -25,6 +25,7 @@ class StreamResult:
     tool_messages: list[dict] = field(default_factory=list)
     delegate_to: str | None = None
     delegate_task: str | None = None
+    delegate_context: str | None = None
 
 
 class StreamHandler:

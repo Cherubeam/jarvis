@@ -312,7 +312,9 @@ def _run_agent_session(
     logger: ConversationLogger,
     session,
     initial_message: str | None = None,
-) -> None:
+    context: str | None = None,
+    prior_session: list[dict] | None = None,
+) -> list[dict]:
     """Run a multi-turn agent session until the user types /exit or /back.
 
     Args:
@@ -322,10 +324,24 @@ def _run_agent_session(
         logger: ConversationLogger for persistence.
         session: prompt_toolkit session for user input.
         initial_message: If set, process this as the first message before prompting.
+        context: JARVIS's summary of its conversation before delegating.
+        prior_session: Full conversation history from a previous agent session.
+
+    Returns:
+        The session history (list of user/assistant message dicts).
     """
     print_system(f"\nEntering {agent_name} session. Type /exit to return to JARVIS.\n")
 
     session_history: list[dict] = []
+
+    # Inject prior agent session as conversation context
+    if prior_session:
+        session_history.extend(prior_session)
+
+    # Inject JARVIS's pre-delegation context as a context exchange
+    if context:
+        session_history.append({"role": "user", "content": f"[Context from JARVIS] {context}"})
+        session_history.append({"role": "assistant", "content": "Understood, I have this context. How can I help?"})
 
     def _process_message(user_input: str) -> None:
         logger.add_message("user", user_input)
@@ -379,6 +395,7 @@ def _run_agent_session(
         pass
 
     print_system(f"\nReturning to JARVIS.\n")
+    return session_history
 
 
 def _handle_agent_command(
@@ -726,6 +743,9 @@ def main(argv: list[str] | None = None):
         history_file = str(jarvis_dir / history_file)
     session = create_prompt_session(history_file)
 
+    # Track last agent session for agent-to-agent handoff
+    last_agent_session: list[dict] | None = None
+
     # Main chat loop
     try:
         while True:
@@ -816,10 +836,21 @@ def main(argv: list[str] | None = None):
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
                 )
-                _run_agent_session(
+                agent_session = _run_agent_session(
                     delegate_agent, delegate_meta.name, stream_handler,
-                    logger, session, initial_message=result.delegate_task,
+                    logger, session,
+                    initial_message=result.delegate_task,
+                    context=result.delegate_context,
+                    prior_session=last_agent_session,
                 )
+                # Store for next delegation + inject summary into JARVIS history
+                last_agent_session = agent_session
+                if agent_session:
+                    summary = (
+                        f"[Completed session with {delegate_meta.name} agent"
+                        f" — {len(agent_session)} messages exchanged]"
+                    )
+                    active_agent.add_to_history("assistant", summary)
 
     except KeyboardInterrupt:
         print("\n")
