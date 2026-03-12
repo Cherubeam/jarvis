@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Vault Write Tools**: Generic `make_vault_write_tools()` factory creates `create_note`, `edit_note`, and `list_notes_in_dir` tools scoped to any vault directory. Follows the blog_tools closure pattern. Pattern Language Expert agent now receives these tools for persisting patterns directly to the Obsidian vault.
+  - Configurable target directory and template path via `obsidian.writing.patterns` in config
+  - Diff-based confirmation with reasoning before any write
+  - Descriptive file names with spaces (user convention)
+  - 17 new tests for vault write tools, 3 for pattern agent; total: 916 pass, 11 skip
+- **Pattern Language Expert `extra_tools`**: Agent now accepts `extra_tools` parameter (like WritingAgent). System prompt updated with vault tools section and graceful degradation to conversation-only mode.
+
+### Fixed
+- **Delegation Tool Passing**: Delegated agents now receive both vault read (Tier 1) and vault write (Tier 2) tools. Previously `all_delegate_tools = agent_only_tools` missed `extra_tools`.
+
+### Added
 - **Obsidian Note Creator Agent** (`/obsidian-note-creator`): Promoted from skill to agent for multi-turn evergreen note extraction sessions
   - Create-review-refine cycle for iterative note development
   - Session awareness: tracks created notes, suggests connections and refinements
