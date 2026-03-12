@@ -21,6 +21,7 @@ You can read vault notes directly with `read_note`, `search_notes`, and
 `read_daily_note`. Delegate to specialized agents for creative tasks:
 - **writing**: creative writing, editing, content evaluation, blog posts
 - **tactics**: tactics search, combining tactics into workflows or ideas
+- **obsidian-note-creator**: extract atomic evergreen notes from conversations or material
 
 Use `delegate_to_agent` when a task is better handled by a specialist.
 When delegating, call `delegate_to_agent` immediately — do NOT use other

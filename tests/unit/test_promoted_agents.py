@@ -1,5 +1,5 @@
 """
-Unit tests for promoted agents (Pattern Language Expert, OKR Architect).
+Unit tests for promoted agents (Pattern Language Expert, OKR Architect, Obsidian Note Creator).
 """
 
 import pytest
@@ -66,3 +66,29 @@ class TestOKRArchitectAgent:
         from packages.agents.okr_architect import AGENT_META
         assert AGENT_META["name"] == "okr-architect"
         assert AGENT_META["command"] == "/okr-architect"
+
+
+@pytest.mark.unit
+class TestObsidianNoteCreatorAgent:
+    def test_init_loads_system_prompt(self):
+        from packages.agents.obsidian_note_creator.agent import ObsidianNoteCreatorAgent
+        client = Mock(spec=LLMClient)
+        agent = ObsidianNoteCreatorAgent(llm_client=client)
+        assert "obsidiannote-creator" in agent.config.system_prompt.lower()
+        assert agent.name == "obsidian-note-creator"
+
+    def test_process_message_streams(self):
+        from packages.agents.obsidian_note_creator.agent import ObsidianNoteCreatorAgent
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["evergreen note"])
+        agent = ObsidianNoteCreatorAgent(llm_client=client)
+
+        response = agent.process_message("Extract notes from this conversation")
+        chunks = list(response)
+        assert chunks == ["evergreen note"]
+        assert len(agent.conversation_history) == 1
+
+    def test_meta_export(self):
+        from packages.agents.obsidian_note_creator import AGENT_META
+        assert AGENT_META["name"] == "obsidian-note-creator"
+        assert AGENT_META["command"] == "/obsidian-note-creator"
