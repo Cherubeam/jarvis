@@ -188,6 +188,7 @@ packages/skills/
 - [x] Auto-discovery of deck-skills via `deck.yaml` presence
 - [x] 25 new tests
 - [x] Navigator Agent (`/navigator`) — personal alignment and structured review coaching
+- [x] Architecture simplification: data-driven agents via meta.yaml, dual-path registry
 - [ ] Agent-to-skill delegation (future, separate branch)
 
 ### 5B: Agent Orchestration

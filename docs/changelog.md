@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Data-Driven Agents**: 6 agents (clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert) converted from Python classes to `meta.yaml` + `prompts/system.md`. New `DataDrivenAgent` class and `agent_from_meta()` factory in `base.py`.
+- **Dual-Path Agent Registry**: Agent discovery now checks `meta.yaml` first (preferred), falls back to `__init__.py` AGENT_META. `AgentMeta` dataclass updated with optional `agent_class` and `meta_path` fields.
+- **Agent Instantiation**: New `_instantiate_agent()` helper in CLI handles both Python-class and data-driven agents, replacing 3 duplicated inspect.signature blocks.
+
+### Removed
+- **Standalone Skill Invocation**: `--skill` CLI flag, `/skills` listing command, and skill slash-command routing removed. Skills remain as passive knowledge packs for card indexing and tool wrapping.
+- **Boilerplate Agent Code**: 12 files deleted (6 × `__init__.py` + `agent.py`) from data-driven agent directories.
+- **Per-Agent Test Files**: `test_promoted_agents.py`, `test_navigator.py`, `test_pattern_language_expert.py` replaced by parameterized `test_data_driven_agents.py`.
+
+### Added
+- **Parameterized Agent Tests**: `test_data_driven_agents.py` covers all 6 data-driven agents with 24 parametrized tests (meta.yaml validation, instantiation, streaming, registry discovery).
+- **CLI Instantiation Tests**: 5 new tests in `test_cli_agents.py` for the `_instantiate_agent()` helper.
+- Tests: 940 pass, 11 skip
+
 ---
 
 ## [0.10.0] - 2026-03-12

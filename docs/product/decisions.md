@@ -1697,4 +1697,33 @@ Changing the GenAI model required editing `config/default.yaml` and restarting J
 
 ---
 
-*Last updated: 2026-03-10*
+## ADR-025: Data-Driven Agents via meta.yaml
+
+**Date**: 2026-03-12
+**Status**: ✅ Accepted
+
+### Context
+
+6 of 8 JARVIS agents (clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert) are identical boilerplate: load prompt → AgentConfig → standard process_message(). Only WritingAgent (prompt composition), TacticsAgent (extra_tools + temperature), and JARVIS (orchestrator) have custom logic.
+
+### Decision
+
+Replace boilerplate Python classes with a `meta.yaml` file per agent. A `DataDrivenAgent` class in `base.py` implements the standard `process_message()`. The `agent_from_meta()` factory builds agents from `meta.yaml` + `prompts/system.md`. The agent registry uses dual-path discovery: `meta.yaml` (preferred) then `__init__.py` AGENT_META (legacy).
+
+### Alternatives Considered
+
+1. **Keep Python classes**: Familiar but 460+ lines of identical boilerplate across 6 agents
+2. **YAML-only (no Python fallback)**: Would require rewriting WritingAgent and TacticsAgent to fit YAML constraints
+3. **Decorator-based**: `@agent(name="clarity")` on a function — less explicit than meta.yaml, harder to discover without reading Python
+
+### Consequences
+
+- **+** 460+ lines of boilerplate deleted (12 files: 6 × __init__.py + agent.py)
+- **+** Adding a new simple agent = create meta.yaml + system.md (no Python needed)
+- **+** Complex agents (writing, tactics) keep full Python class flexibility
+- **+** Backward compatible — existing Python-class agents work unchanged
+- **-** Two discovery paths to maintain (meta.yaml + __init__.py)
+
+---
+
+*Last updated: 2026-03-12*
