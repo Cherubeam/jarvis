@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.10.0] - 2026-03-12
+
 ### Added
 - **Vault Write Tools**: Generic `make_vault_write_tools()` factory creates `create_note`, `edit_note`, and `list_notes_in_dir` tools scoped to any vault directory. Follows the blog_tools closure pattern. Pattern Language Expert agent now receives these tools for persisting patterns directly to the Obsidian vault.
   - Configurable target directory and template path via `obsidian.writing.patterns` in config
