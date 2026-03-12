@@ -20,9 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Per-Agent Test Files**: `test_promoted_agents.py`, `test_navigator.py`, `test_pattern_language_expert.py` replaced by parameterized `test_data_driven_agents.py`.
 
 ### Added
+- **Agent-Skill Binding**: Agents can declare `skills:` in `meta.yaml` to automatically inject skill knowledge into their system prompt. Simple skills append SKILL.md content; deck-skills add card search tool and prompt hints. `resolve_skills()` in `packages/skills/resolver.py` handles resolution.
+- **Agent-to-Agent Handoff**: Full conversation history flows between agents through JARVIS. When JARVIS delegates to Agent B after Agent A's session, Agent B receives Agent A's complete conversation. `DelegationState.context` carries JARVIS's pre-delegation summary; `prior_session` carries the full prior agent conversation.
+- **Delegation Context**: `delegate_to_agent` tool now accepts an optional `context` parameter for JARVIS to summarize relevant background before delegating.
 - **Parameterized Agent Tests**: `test_data_driven_agents.py` covers all 6 data-driven agents with 24 parametrized tests (meta.yaml validation, instantiation, streaming, registry discovery).
 - **CLI Instantiation Tests**: 5 new tests in `test_cli_agents.py` for the `_instantiate_agent()` helper.
-- Tests: 940 pass, 11 skip
+- Tests: 961 pass, 11 skip
 
 ---
 

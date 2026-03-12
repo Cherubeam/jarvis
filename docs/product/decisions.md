@@ -1726,4 +1726,47 @@ Replace boilerplate Python classes with a `meta.yaml` file per agent. A `DataDri
 
 ---
 
+## ADR-026: Agent-Skill Binding and Delegation Context
+
+**Date**: 2026-03-12
+**Status**: ✅ Accepted
+
+### Context
+
+Two gaps existed in the agent architecture:
+
+1. **No skill binding**: Skills (passive knowledge packs) had no mechanism to be automatically injected into agents. Agents that needed skill knowledge had to manually include it in their system prompt.
+2. **No conversation handoff**: When JARVIS delegated to Agent A, then Agent B, Agent B had no knowledge of what happened in Agent A's session. Each delegation started fresh.
+
+### Decision
+
+**Agent-Skill Binding:**
+- `meta.yaml` supports a `skills:` list declaring which skills an agent consumes
+- `resolve_skills()` in `packages/skills/resolver.py` resolves skill names: simple skills append SKILL.md body to system prompt, deck-skills add card search tool
+- `agent_from_meta()` accepts `skill_registry` and `card_search_tool` parameters
+- CLI threads these through all agent instantiation paths
+
+**Agent-to-Agent Handoff:**
+- `DelegationState.context` carries JARVIS's pre-delegation summary (what the user discussed)
+- `_run_agent_session()` returns full session history and accepts `context` and `prior_session` parameters
+- `prior_session` passes the complete prior agent conversation verbatim (no summarization)
+- `last_agent_session` variable in the main loop tracks the most recent agent session for handoff
+
+### Alternatives Considered
+
+1. **Skill content in system.md directly**: Copy-paste skill content into agent prompts — breaks DRY, requires manual sync
+2. **Summarize prior sessions**: LLM-generated summaries of agent conversations — loses nuance, adds latency and cost
+3. **Shared conversation database**: All agents read/write a shared store — complex, over-engineered for current needs
+
+### Consequences
+
+- **+** Agents automatically get skill knowledge without manual prompt duplication
+- **+** Full conversation context flows between agents — no information loss
+- **+** SKILL.md remains the canonical knowledge specification (single source of truth)
+- **+** Backward compatible: agents without `skills:` and delegations without `context` work as before
+- **-** Long prior sessions increase token usage for subsequent agents
+- **-** Only the most recent agent session is passed (not all prior sessions)
+
+---
+
 *Last updated: 2026-03-12*

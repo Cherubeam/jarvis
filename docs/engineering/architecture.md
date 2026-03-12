@@ -434,6 +434,40 @@ rag:
 
 **Python-class agents** (3 total): writing (custom prompt composition), tactics (custom temperature handling), jarvis (orchestrator with delegation).
 
+### 11. Agent-Skill Binding (`packages/skills/resolver.py`)
+
+**Purpose**: Inject skill knowledge into agents at construction time.
+
+Agents can declare `skills:` in their `meta.yaml` to bind skills:
+
+```yaml
+name: pattern-language-expert
+command: /pattern-language-expert
+skills:
+  - pattern-language-expert
+```
+
+**Resolution logic** (`resolve_skills()`):
+- **Simple skills** (SKILL.md only): Body text is appended to the agent's system prompt.
+- **Deck-skills** (has `deck.yaml`): Name is added to a deck-skill hint section; if `card_search_tool` is available, it's included in the agent's tools.
+- Unknown skill names are logged as warnings and skipped.
+
+**Wiring**: `agent_from_meta()` accepts `skill_registry` and `card_search_tool` parameters. The CLI threads these from `discover_skills()` and RAG card indexing.
+
+### 12. Agent-to-Agent Handoff
+
+**Purpose**: Preserve conversation context across delegated agent sessions.
+
+**Two information channels:**
+- **`context`** (JARVIS → agent): A summary of JARVIS's conversation with the user before delegating. Prepended as a synthetic context exchange in the agent's session history.
+- **`prior_session`** (agent → agent): The full, unmodified conversation history from the previous agent's session. Passed verbatim — no summarization.
+
+**Flow:**
+1. JARVIS delegates to Agent A with `context` (summary of JARVIS chat)
+2. Agent A runs, user types `/exit` → `_run_agent_session()` returns full `session_history`
+3. JARVIS stores `last_agent_session` and adds a summary to its own history
+4. When JARVIS delegates to Agent B, `prior_session=last_agent_session` passes Agent A's full conversation
+
 ---
 
 ## Data Flow

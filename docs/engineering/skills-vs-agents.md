@@ -69,6 +69,8 @@ Only WritingAgent (custom prompt composition), TacticsAgent (custom temperature)
 
 Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and (for Python-class agents) implement custom `process_message()` logic.
 
+Agents can also **bind skills** by declaring `skills:` in their `meta.yaml`. This injects the skill's knowledge (SKILL.md body) into the agent's system prompt automatically, and for deck-skills, adds the card search tool. See [Agent-Skill Binding](#agent-skill-binding) below.
+
 **Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
 
 ## The Key Difference
@@ -217,6 +219,32 @@ A factory function (e.g., `make_content_evaluator_tool()`) loads the skill's `SK
 | Invocation | Tool call by agent | Slash command or delegation |
 | State | None (tool is stateless) | Conversation history |
 | Portability | JARVIS-native wrapper (SKILL.md is portable) | JARVIS-native |
+
+## Agent-Skill Binding
+
+Agents can declare which skills they consume via the `skills:` field in `meta.yaml`:
+
+```yaml
+name: pattern-language-expert
+description: Design, evolve, and apply pattern languages
+command: /pattern-language-expert
+skills:
+  - pattern-language-expert
+```
+
+When `agent_from_meta()` builds the agent, it calls `resolve_skills()` to:
+
+1. **Simple skills** (no `deck.yaml`): Read the SKILL.md body (frontmatter stripped) and append it to the agent's system prompt.
+2. **Deck-skills** (has `deck.yaml`): Add the deck name to a prompt hint section and include the card search tool (if RAG is enabled).
+3. **Unknown skills**: Log a warning and skip gracefully.
+
+This keeps the SKILL.md as the canonical knowledge specification while letting agents automatically consume it. The skill stays portable; the binding is JARVIS-native.
+
+| | Skill as Tool | Skill Binding | Agent |
+|---|---|---|---|
+| Mechanism | Tool call by agent | System prompt injection | Slash command or delegation |
+| State | None (stateless) | Agent's conversation history | Agent's conversation history |
+| Portability | SKILL.md portable, wrapper native | SKILL.md portable, binding native | JARVIS-native |
 
 ## Design Principles
 

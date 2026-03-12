@@ -156,9 +156,13 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md#project-
    name: my-agent
    description: What this agent does
    command: /my-agent
+   skills:            # optional: bind skill knowledge into the agent
+     - my-skill-name
    ```
 3. Add `prompts/system.md` with the system prompt
 4. Done — the registry discovers it automatically
+
+**Skill binding**: The optional `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
 
 ### Python-Class Agent (for custom logic)
 
