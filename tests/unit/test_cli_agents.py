@@ -7,7 +7,7 @@ Tests parse_args, _handle_agent_command, and --agent flag behavior.
 import pytest
 from unittest.mock import Mock, MagicMock, patch, call, ANY
 
-from apps.cli.main import parse_args, _handle_agent_command, _instantiate_agent, _run_agent_session
+from apps.cli.main import parse_args, _handle_agent_command, _instantiate_agent, _run_agent_session, _make_agent_vault_tools
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
@@ -506,3 +506,74 @@ class TestInstantiateAgent:
 
         assert result is True
         mock_factory.assert_called_once()
+
+
+@pytest.mark.unit
+class TestMakeAgentVaultTools:
+    """Tests for _make_agent_vault_tools helper."""
+
+    def test_returns_empty_when_no_vault_config(self):
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
+        result = _make_agent_vault_tools(meta, {}, None)
+        assert result == []
+
+    def test_returns_empty_when_no_vault_writing(self):
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing=None)
+        result = _make_agent_vault_tools(meta, {}, Mock())
+        assert result == []
+
+    def test_returns_empty_when_target_dir_empty(self):
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
+        config = {"obsidian": {"writing": {"patterns": {"target_dir": "", "template_path": ""}}}}
+        result = _make_agent_vault_tools(meta, config, Mock())
+        assert result == []
+
+    def test_returns_empty_when_config_section_missing(self):
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing="nonexistent")
+        config = {"obsidian": {"writing": {}}}
+        result = _make_agent_vault_tools(meta, config, Mock())
+        assert result == []
+
+    @patch("packages.core.tools.vault_write_tools.make_vault_write_tools")
+    def test_calls_factory_with_correct_args(self, mock_factory):
+        """Calls make_vault_write_tools with target_dir and template_path from config."""
+        mock_factory.return_value = [Mock()]
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing="slip_box")
+        config = {
+            "obsidian": {
+                "writing": {
+                    "slip_box": {
+                        "target_dir": "04 – Slip Box",
+                        "template_path": "Templates/Permanent Note.md",
+                    }
+                }
+            }
+        }
+        vault_config = Mock()
+
+        result = _make_agent_vault_tools(meta, config, vault_config)
+
+        assert len(result) == 1
+        mock_factory.assert_called_once()
+        call_kwargs = mock_factory.call_args
+        assert call_kwargs[1]["target_dir"] == "04 – Slip Box"
+        assert call_kwargs[1]["template_path"] == "Templates/Permanent Note.md"
+
+    @patch("packages.core.tools.vault_write_tools.make_vault_write_tools")
+    def test_patterns_config_routed_correctly(self, mock_factory):
+        """vault_writing='patterns' reads obsidian.writing.patterns section."""
+        mock_factory.return_value = [Mock(), Mock()]
+        meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
+        config = {
+            "obsidian": {
+                "writing": {
+                    "patterns": {
+                        "target_dir": "02 – Areas/02 – Patterns",
+                        "template_path": "Templates/Permanent Note.md",
+                    }
+                }
+            }
+        }
+        result = _make_agent_vault_tools(meta, config, Mock())
+        assert len(result) == 2
+        assert mock_factory.call_args[1]["target_dir"] == "02 – Areas/02 – Patterns"

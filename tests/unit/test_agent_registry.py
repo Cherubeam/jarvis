@@ -59,6 +59,16 @@ class TestDiscoverAgents:
             assert meta.meta_path is not None
             assert meta.meta_path.is_file()
 
+    def test_vault_writing_extracted_from_meta_yaml(self):
+        agents = discover_agents()
+        assert agents["pattern-language-expert"].vault_writing == "patterns"
+        assert agents["obsidian-note-creator"].vault_writing == "slip_box"
+
+    def test_vault_writing_none_when_not_declared(self):
+        agents = discover_agents()
+        assert agents["clarity"].vault_writing is None
+        assert agents["research"].vault_writing is None
+
 
 @pytest.mark.unit
 class TestGetByCommand:
