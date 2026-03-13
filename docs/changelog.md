@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Dynamic Delegation Directive**: Replaced hardcoded 3-agent delegation directive in JARVIS with `_build_delegation_directive()` that dynamically lists all discovered agents. Developer, clarity, research, navigator, OKR architect, and pattern language expert now appear in JARVIS's delegation guidance.
+- **Things 3 Tag Preservation**: Added instruction in `tasks.md` header telling JARVIS to always include all tags in brackets when presenting tasks, preventing tag paraphrasing.
+
+### Added
+- **Developer Agent Roadmap**: `docs/product/developer-agent-roadmap.md` documenting Phase 1 (complete), Phase 2 (autonomous operation), and Phase 3 (continuous self-improvement) plans. Cross-references ADR-028.
+
 ### Changed
 - **Daily Summary Prompt**: Moved `daily_note_entry.md` and `general_writing.md` from `data/prompts/obsidian/` into `packages/agents/jarvis/prompts/`, using `BaseAgent.load_prompt()` like all other agents. Removed legacy `prompts.py` module, `obsidian.prompts_dir` config key, and `data/prompts/obsidian/` directory.
 - **Things 3 SQLite Migration**: Replaced AppleScript integration with `things.py` (direct SQLite reads). Added `area` field to `Task` dataclass. Markdown output now grouped by area > project > tasks. Removed `detect_things3_language`, `fetch_tasks_applescript_direct`, `MCPThings3Client`, `parse_task_response`. Removed `asyncio` dependency from task sync. Removed `projects_to_include` config key.
