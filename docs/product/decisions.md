@@ -1823,4 +1823,39 @@ Each agent declares which `obsidian.writing.<key>` config section it uses via `v
 
 ---
 
+## ADR-028: Developer Agent — Git Sandbox, Scope Restrictions, and Extended Agentic Loop
+
+**Date**: 2026-03-13
+**Status**: ✅ Accepted
+
+### Context
+
+A developer agent needs to read, modify, and test the codebase autonomously. This creates risks: unbounded file writes, accidental commits to the wrong branch, and runaway agentic loops consuming tokens and wall-clock time.
+
+### Decision
+
+Three interlocking constraints make the developer agent safe by default:
+
+1. **Scope restrictions**: File write/edit tools (`write_file`, `edit_file`, `create_directory`) are restricted to configurable extensions (default: `.md`, `.yaml`, `.yml`). The agent reads any file but can only modify data-driven files in Phase 1. The restriction lives in `config/default.yaml` under `developer.allowed_extensions`.
+
+2. **Git sandbox**: All git write operations (`git_add`, `git_commit`) require the active branch to carry a prefix (e.g. `feat/`, `fix/`). Committing on `main` is rejected. Commits are tagged `[JARVIS-auto]` for easy auditing. `git_branch` enforces the same prefix when creating branches.
+
+3. **Extended agentic loop**: `StreamHandler.stream()` accepts a `max_iterations` parameter (default remains 5 for all other agents). `DeveloperAgent` sets `max_iterations=20` to allow multi-step edit-test-fix cycles without hitting the default limit.
+
+### Alternatives Considered
+
+1. **Subprocess sandboxing (chroot/Docker)**: Full isolation — rejected as too heavy for a personal tool; adds setup complexity with little practical gain given scope restrictions.
+2. **Single global `max_iterations` constant**: Simpler — rejected because specialist agents with longer workflows (developer) need a higher limit without changing the default for simple agents.
+3. **No scope restriction, rely on confirmation handler**: Prompts user for every write — rejected for unattended use; scope restriction is a hard guard, confirmation is a soft guard.
+
+### Consequences
+
+- **+** Agent can perform multi-step edit-test cycles autonomously without leaving safe defaults
+- **+** `[JARVIS-auto]` tag makes all agent-authored commits auditable via `git log --grep`
+- **+** `max_iterations` is now a per-agent concern, not a global constant
+- **-** Phase 1 scope (`.md`, `.yaml`, `.yml` only) prevents the agent from modifying Python source — intentional until trust is established
+- **-** `max_iterations=20` increases worst-case token spend for developer sessions
+
+---
+
 *Last updated: 2026-03-13*

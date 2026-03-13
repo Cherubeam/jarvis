@@ -83,3 +83,17 @@ obsidian:
     slip_box:
       target_dir: ""                # User sets in local.yaml
       template_path: ""             # User sets in local.yaml
+
+# Developer agent — JARVIS self-improvement
+developer:
+  enabled: true
+  scope:
+    - "packages/agents/"
+    - "packages/skills/"
+    - "data/context/"
+    - "data/prompts/"
+    - "config/"
+  allowed_extensions:
+    - ".md"
+    - ".yaml"
+    - ".yml"

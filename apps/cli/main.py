@@ -624,6 +624,34 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
 
+    # Initialize developer agent tools (codebase, git, project write, test runner)
+    dev_cfg = config.get("developer", {})
+    if dev_cfg.get("enabled", True):
+        try:
+            from packages.core.tools.codebase_tools import make_codebase_tools
+            from packages.core.tools.git_tools import make_git_tools
+            from packages.core.tools.project_write_tools import make_project_write_tools
+            from packages.core.tools.test_tools import make_test_runner_tool
+
+            dev_scope = dev_cfg.get("scope", [
+                "packages/agents/", "packages/skills/",
+                "data/context/", "data/prompts/", "config/",
+            ])
+            dev_extensions = dev_cfg.get("allowed_extensions", [".md", ".yaml", ".yml"])
+
+            dev_tools: list = []
+            dev_tools.extend(make_codebase_tools(jarvis_dir))
+            dev_tools.extend(make_git_tools(jarvis_dir))
+            dev_tools.extend(make_project_write_tools(
+                jarvis_dir, CLIConfirmationHandler(),
+                allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
+            ))
+            dev_tools.append(make_test_runner_tool(jarvis_dir))
+            agent_only_tools.extend(dev_tools)
+            print_system(f"[Developer] {len(dev_tools)} developer tools loaded.")
+        except Exception as e:
+            print_system(f"[Developer] Startup failed — developer tools disabled. ({e})")
+
     # Initialize suggest-improvements tool (if vault is configured)
     if vault_config is not None:
         try:

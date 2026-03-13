@@ -49,6 +49,9 @@ tests/golden/results/
 # Personal voice profile
 packages/agents/writing/prompts/voice-profile.md
 
+# Heartbeat runtime data (journals, plans)
+data/heartbeat/
+
 # Individual skills (personal content, framework code is tracked)
 packages/skills/*
 !packages/skills/*.py

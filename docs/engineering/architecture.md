@@ -20,14 +20,14 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 ├─────────────────┬──────────────────┬───────────────────────────┤
 │  packages/core  │  packages/agents │  packages/integrations    │
 │                 │                  │                           │
-│  • LLM Client   │  • Base Agent    │  • Things 3               │
-│  • Context      │  • JARVIS Agent  │  • Obsidian               │
-│  • Memory       │  • Writing Agent │  • (Future: Calendar)     │
-│  • Pricing      │  • Tactics Agent │                           │
-│  • Stream       │  • Data-driven   │                           │
-│    Handler      │    agents (6)    │                           │
-│  • Tools        │  • Registry      │                           │
-│  • RAG          │                  │                           │
+│  • LLM Client   │  • Base Agent      │  • Things 3               │
+│  • Context      │  • JARVIS Agent    │  • Obsidian               │
+│  • Memory       │  • Writing Agent   │  • (Future: Calendar)     │
+│  • Pricing      │  • Tactics Agent   │                           │
+│  • Stream       │  • Developer Agent │                           │
+│    Handler      │  • Data-driven     │                           │
+│  • Tools        │    agents (6)      │                           │
+│  • RAG          │  • Registry        │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
 │  • Metrics tracking (TTFT, latency)                            │
@@ -298,11 +298,17 @@ User types: /daily-summary
 - `web_fetch.py`: `FETCH_URL_TOOL` singleton — fetches URLs with `httpx`, extracts text with `trafilatura`
 - `blog_tools.py`: `make_blog_tools()` factory — scoped blog post tools for the Writing Agent (list, read, create, edit)
 - `vault_write_tools.py`: `make_vault_write_tools()` factory — generic vault write tools (create_note, edit_note, list_notes_in_dir) for any agent
+- `codebase_tools.py`: `read_source_file`, `search_code`, `list_directory`, `read_architecture_map` — read-only codebase introspection tools for the Developer Agent
+- `git_tools.py`: `git_status`, `git_diff`, `git_branch`, `git_add`, `git_commit`, `git_log` — git operations with branch-prefix enforcement and `[JARVIS-auto]` commit tagging
+- `project_write_tools.py`: `write_file`, `edit_file`, `create_directory` — guarded file write tools with confirmation handler and scope restrictions (Phase 1: `.md`, `.yaml`, `.yml` only)
+- `test_tools.py`: `run_tests` — runs the test suite via subprocess with timeout
 
 **Agentic Loop** (in `StreamHandler`):
 1. `LLMClient.complete(tools=...)` (non-streaming) — check if LLM wants to call a tool
 2. If `finish_reason == "tool_calls"` → execute tool, append result, loop
-3. After at most 5 iterations → stream final answer as usual
+3. After at most `max_iterations` iterations → stream final answer as usual
+   - Default: 5 (all agents except developer)
+   - Developer Agent: 20 (multi-step edit-test-fix cycles)
 
 **Key Design Choices:**
 - Non-streaming intermediate calls (simpler delta parsing, no user-visible cost)
@@ -418,7 +424,7 @@ rag:
 
 **Data-driven agents** (6 total): clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert.
 
-**Python-class agents** (3 total): writing (custom prompt composition), tactics (custom temperature handling), jarvis (orchestrator with delegation).
+**Python-class agents** (4 total): writing (custom prompt composition), tactics (custom temperature handling), jarvis (orchestrator with delegation), developer (custom `run()` with `max_iterations=20`, 14 codebase/git/write/test tools, scoped to `.md`/`.yaml`/`.yml` in Phase 1).
 
 ### 11. Agent-Skill Binding (`packages/skills/resolver.py`)
 
@@ -578,8 +584,12 @@ jarvis/
 │   │   │   ├── executor.py         # execute_tool_calls()
 │   │   │   ├── web_fetch.py        # fetch_url tool
 │   │   │   ├── conversation_recall.py  # make_conversation_recall_tool()
-│   │   │   ├── blog_tools.py      # make_blog_tools() for Writing Agent
-│   │   │   └── vault_write_tools.py # make_vault_write_tools() for any agent
+│   │   │   ├── blog_tools.py           # make_blog_tools() for Writing Agent
+│   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
+│   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
+│   │   │   ├── git_tools.py            # git_status, git_diff, git_branch, git_add, git_commit, git_log
+│   │   │   ├── project_write_tools.py  # write_file, edit_file, create_directory (scoped, guarded)
+│   │   │   └── test_tools.py           # run_tests via subprocess
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
@@ -612,8 +622,11 @@ jarvis/
 │   │   ├── obsidian_note_creator/  # Data-driven agent (/obsidian-note-creator)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   └── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
-│   │       ├── meta.yaml
+│   │   ├── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   └── developer/               # Developer agent (/develop) — custom Python class
+│   │       ├── agent.py
 │   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
@@ -638,6 +651,7 @@ jarvis/
 │   │   └── YYYY-MM-DD_HH-MM-SS.json
 │   ├── rag/                        # RAG vector store (gitignored)
 │   │   └── chroma/                 # ChromaDB persistent data
+│   ├── codebase_map.md             # Auto-generated by scripts/generate_codebase_map.py
 │   └── learned_facts.md            # (Future) Extracted facts
 │
 ├── config/                         # Configuration
@@ -799,4 +813,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-12*
+*Last updated: 2026-03-13*
