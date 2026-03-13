@@ -1,3 +1,4 @@
 name: obsidian-note-creator
 description: Extract atomic evergreen notes from conversations or material
 command: /obsidian-note-creator
+vault_writing: slip_box

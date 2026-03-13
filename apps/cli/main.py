@@ -75,6 +75,35 @@ def _instantiate_agent(
     return meta.agent_class(llm_client=client, model=model_id)
 
 
+def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config) -> list:
+    """Create vault write tools scoped to an agent's declared vault_writing config section.
+
+    Reads meta.vault_writing (e.g. "patterns", "slip_box"), looks up the
+    corresponding obsidian.writing.<key> config, and calls make_vault_write_tools()
+    with the right target_dir and template_path.
+
+    Returns [] if the agent doesn't declare vault_writing or the config section is empty.
+    """
+    if vault_config is None or not meta.vault_writing:
+        return []
+
+    section = config.get("obsidian", {}).get("writing", {}).get(meta.vault_writing, {})
+    target_dir = section.get("target_dir", "")
+    template_path = section.get("template_path", "")
+    if not target_dir:
+        return []
+
+    try:
+        from packages.core.tools.vault_write_tools import make_vault_write_tools
+
+        return make_vault_write_tools(
+            vault_config, CLIConfirmationHandler(),
+            target_dir=target_dir, template_path=template_path,
+        )
+    except Exception:
+        return []
+
+
 def stream_and_track(
     client: LLMClient,
     messages: list[dict],
@@ -410,14 +439,21 @@ def _handle_agent_command(
     session=None,
     skill_registry: dict | None = None,
     card_search_tool=None,
+    config: dict | None = None,
+    vault_config=None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
     meta = get_by_command(command, agent_registry)
     if meta is None:
         return False
 
+    # Add per-agent vault write tools if the agent declares vault_writing
+    all_tools = list(extra_tools or [])
+    if config is not None:
+        all_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
+
     agent = _instantiate_agent(
-        meta, client, model_id, extra_tools,
+        meta, client, model_id, all_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
     )
@@ -576,28 +612,6 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
-    # Vault write tools (patterns) — agent-only so JARVIS delegates to pattern agent
-    if vault_config is not None:
-        try:
-            from packages.core.tools.vault_write_tools import make_vault_write_tools
-
-            obsidian_cfg = config.get("obsidian", {})
-            writing_cfg = obsidian_cfg.get("writing", {})
-            patterns_cfg = writing_cfg.get("patterns", {})
-            patterns_target_dir = patterns_cfg.get("target_dir", "")
-            patterns_template_path = patterns_cfg.get("template_path", "")
-
-            if patterns_target_dir:
-                vault_write_tools = make_vault_write_tools(
-                    vault_config, CLIConfirmationHandler(),
-                    target_dir=patterns_target_dir,
-                    template_path=patterns_template_path,
-                )
-                agent_only_tools.extend(vault_write_tools)
-                print_system(f"[Vault] {len(vault_write_tools)} vault write tools loaded.")
-        except Exception as e:
-            print_system(f"[Vault] Vault write tools failed: {e}")
-
     # Initialize content-evaluator tool (if skill directory exists)
     # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
     skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
@@ -631,7 +645,8 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        all_agent_tools = extra_tools + agent_only_tools
+        agent_vault_tools = _make_agent_vault_tools(meta, config, vault_config)
+        all_agent_tools = extra_tools + agent_only_tools + agent_vault_tools
         active_agent = _instantiate_agent(
             meta, client, model_id, all_agent_tools,
             skill_registry=skill_registry,
@@ -786,6 +801,8 @@ def main(argv: list[str] | None = None):
                     session=session,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
+                    config=config,
+                    vault_config=vault_config,
                 ):
                     continue
 
@@ -830,7 +847,8 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                all_delegate_tools = extra_tools + agent_only_tools
+                agent_vault_tools = _make_agent_vault_tools(delegate_meta, config, vault_config)
+                all_delegate_tools = extra_tools + agent_only_tools + agent_vault_tools
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,
                     skill_registry=skill_registry,

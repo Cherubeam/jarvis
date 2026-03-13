@@ -46,6 +46,7 @@ class AgentMeta:
     command: str
     agent_class: type[BaseAgent] | None = None
     meta_path: Path | None = None
+    vault_writing: str | None = None
 
 
 def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
@@ -86,6 +87,7 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
         command=meta_dict.get("command", f"/{meta_dict['name']}"),
         agent_class=agent_class,
         meta_path=meta_file,
+        vault_writing=meta_dict.get("vault_writing"),
     )
 
 
@@ -112,6 +114,7 @@ def _discover_from_init(child: Path) -> AgentMeta | None:
             description=meta_dict["description"],
             command=meta_dict["command"],
             agent_class=meta_dict["agent_class"],
+            vault_writing=meta_dict.get("vault_writing"),
         )
     except (KeyError, TypeError) as exc:
         logger.warning("Invalid AGENT_META in %s: %s", module_name, exc)
