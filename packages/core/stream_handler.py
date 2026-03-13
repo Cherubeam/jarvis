@@ -52,6 +52,7 @@ class StreamHandler:
         messages: list[dict],
         print_chunks: bool = False,
         tool_registry=None,
+        max_iterations: int | None = None,
     ) -> StreamResult:
         """Stream an LLM response, tracking metrics and cost.
 
@@ -75,7 +76,10 @@ class StreamHandler:
         self._terminal_tool_fired = False
         self.metrics_tracker.start_request()
         if tool_registry is not None and not tool_registry.is_empty():
-            messages, tools_format = self._run_agentic_loop(messages, tool_registry, execute_tool_calls)
+            messages, tools_format = self._run_agentic_loop(
+                messages, tool_registry, execute_tool_calls,
+                max_iterations=max_iterations,
+            )
 
         if self._terminal_tool_fired:
             # Terminal tool fired — skip streaming, return accumulated results
@@ -104,13 +108,13 @@ class StreamHandler:
 
         return self._stream_simple(messages, print_chunks, tools=tools_format)
 
-    def _run_agentic_loop(self, messages: list[dict], tool_registry, execute_tool_calls) -> tuple[list[dict], list[dict]]:
+    def _run_agentic_loop(self, messages: list[dict], tool_registry, execute_tool_calls, max_iterations: int | None = None) -> tuple[list[dict], list[dict]]:
         """Run agentic tool-calling loop. Returns (messages, tools_format) for final streaming."""
         tools_format = tool_registry.to_litellm_format()
         accumulated_usage = TokenUsage()
         tool_messages: list[dict] = []
 
-        for _ in range(_MAX_AGENTIC_ITERATIONS):
+        for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
             response = self.client.complete(messages, tools=tools_format)
             choice = response.choices[0]
 
