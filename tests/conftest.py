@@ -336,14 +336,8 @@ def daily_note_with_callout(temp_vault: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def reset_lru_cache():
-    """Reset LRU caches between tests to ensure isolation."""
+    """Placeholder for test isolation (pricing cache removed in favour of litellm.model_cost)."""
     yield
-    # Clear pricing cache after each test
-    try:
-        from packages.core.pricing import _get_litellm_cost_map
-        _get_litellm_cost_map.cache_clear()
-    except ImportError:
-        pass
 
 
 # ==================== LLM-as-Judge Evaluation ====================

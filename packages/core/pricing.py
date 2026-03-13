@@ -6,7 +6,6 @@ Uses LiteLLM's built-in cost map — works offline, covers all providers.
 import warnings
 import litellm
 from dataclasses import dataclass
-from functools import lru_cache
 
 # Suppress Pydantic serialization warnings from LiteLLM streaming responses
 # These occur when LiteLLM tries to serialize streaming response objects during cleanup
@@ -26,13 +25,9 @@ class ModelPricing:
         return (prompt_tokens * self.prompt_cost) + (completion_tokens * self.completion_cost)
 
 
-@lru_cache(maxsize=1)
 def _get_litellm_cost_map() -> dict:
-    """Load LiteLLM's built-in cost map (cached)."""
-    try:
-        return litellm.get_model_cost_map(url="")
-    except Exception:
-        return {}
+    """Return LiteLLM's cost map (loaded at import with remote→local fallback)."""
+    return litellm.model_cost
 
 
 def get_model_pricing(model_id: str) -> ModelPricing | None:
