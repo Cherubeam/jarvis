@@ -28,7 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Parameterized Agent Tests**: `test_data_driven_agents.py` covers all 6 data-driven agents with 24 parametrized tests (meta.yaml validation, instantiation, streaming, registry discovery).
 - **CLI Instantiation Tests**: 5 new tests in `test_cli_agents.py` for the `_instantiate_agent()` helper.
 - **Per-Agent Vault Write Tool Routing**: Agents declare `vault_writing: <config_key>` in `meta.yaml` to receive scoped vault write tools. `_make_agent_vault_tools()` reads `obsidian.writing.<key>` config and calls `make_vault_write_tools()` per agent. `pattern-language-expert` → `patterns`, `obsidian-note-creator` → `slip_box`. Global patterns vault write tools removed from `agent_only_tools`. New `slip_box` config section in `default.yaml`. 9 new tests.
-- Tests: 970 pass, 11 skip
+- **Developer Agent** (`/develop`): Self-improvement agent with codebase awareness, git sandbox, and scoped write access. 14 tools across four modules: codebase read tools (`read_source_file`, `search_code`, `list_directory`, `read_architecture_map`), git operations (`git_status`, `git_diff`, `git_branch`, `git_add`, `git_commit`, `git_log`), guarded file writes (`write_file`, `edit_file`, `create_directory`), and a test runner (`run_tests`). Phase 1 write scope limited to data-driven files (`.md`, `.yaml`, `.yml`).
+- **Codebase Map Generator**: `scripts/generate_codebase_map.py` produces `data/codebase_map.md` — a compact project summary used by the developer agent for codebase orientation.
+- **Extended Agentic Loop**: `StreamHandler.stream()` now accepts a `max_iterations` parameter (default unchanged at 5). Developer agent uses `max_iterations=20` to support multi-step edit-test-fix cycles.
+- Tests: 1025 pass, 11 skip
 
 ---
 
