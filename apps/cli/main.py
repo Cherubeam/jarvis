@@ -43,7 +43,6 @@ from packages.core.filesystem_access import load_filesystem_guard
 from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
 from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
-from packages.integrations.obsidian.prompts import get_daily_note_instructions
 from packages.telemetry.metrics import MetricsTracker
 
 CLIENT_VERSION = "0.4.0"
@@ -203,7 +202,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
 
     # Load prompt and build LLM messages
     try:
-        daily_prompt = get_daily_note_instructions()
+        daily_prompt = JarvisAgent.get_daily_note_instructions()
     except FileNotFoundError:
         print("\nDaily note prompt file not found.\n")
         return

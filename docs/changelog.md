@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Daily Summary Prompt**: Moved `daily_note_entry.md` and `general_writing.md` from `data/prompts/obsidian/` into `packages/agents/jarvis/prompts/`, using `BaseAgent.load_prompt()` like all other agents. Removed legacy `prompts.py` module, `obsidian.prompts_dir` config key, and `data/prompts/obsidian/` directory.
 - **Things 3 SQLite Migration**: Replaced AppleScript integration with `things.py` (direct SQLite reads). Added `area` field to `Task` dataclass. Markdown output now grouped by area > project > tasks. Removed `detect_things3_language`, `fetch_tasks_applescript_direct`, `MCPThings3Client`, `parse_task_response`. Removed `asyncio` dependency from task sync. Removed `projects_to_include` config key.
 - **Data-Driven Agents**: 6 agents (clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert) converted from Python classes to `meta.yaml` + `prompts/system.md`. New `DataDrivenAgent` class and `agent_from_meta()` factory in `base.py`.
 - **Dual-Path Agent Registry**: Agent discovery now checks `meta.yaml` first (preferred), falls back to `__init__.py` AGENT_META. `AgentMeta` dataclass updated with optional `agent_class` and `meta_path` fields.

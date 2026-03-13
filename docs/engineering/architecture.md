@@ -260,21 +260,18 @@ Files without frontmatter default to `active: true` (backwards compatible).
 - Parse and manipulate `> [!JARVIS]` callout blocks (pure string operations)
 - Compute and format diffs (CLI and API output)
 - Orchestrate write operations with diff → confirm → write flow
-- Load prompt files on demand from `data/prompts/obsidian/`
-
 **Key Modules:**
 - `vault.py`: `VaultConfig`, path validation, read/list/get daily note
 - `callout.py`: `CalloutBlock`, `find_jarvis_callout()`, `build_updated_content()` (no I/O)
 - `diff.py`: `VaultDiff`, `compute_diff()`, CLI/API formatters
 - `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`, `write_note()`
-- `prompts.py`: Load `.md` prompt files from `data/prompts/obsidian/`
 
 **Key Design Decisions:**
 - **FilesystemGuard**: Per-path access control layer replacing flat `allowed_dirs`. Rules use `AccessLevel` (read/write/deny) with most-specific-path-wins resolution. Shared across all vault tools for consistent enforcement. See ADR-021.
 - **ConfirmationHandler ABC**: CLI and future GUI each implement this interface
 - **Pure string callout parsing**: No I/O in callout module, testable in isolation
 - **Path validation**: All vault I/O goes through `vault.py`, uses `Path.resolve()` to block traversal
-- **Prompts on demand**: Not in system prompt, loaded only for `/daily-summary` command
+- **Prompts on demand**: Not in system prompt, loaded only for `/daily-summary` command via `JarvisAgent.load_prompt()`
 
 **CLI Command**: `/daily-summary`
 ```
@@ -592,7 +589,8 @@ jarvis/
 │   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
 │   │   ├── registry.py             # Dual-path agent discovery + slash-command lookup
 │   │   ├── jarvis/                 # Main JARVIS orchestrator
-│   │   │   └── agent.py
+│   │   │   ├── agent.py
+│   │   │   └── prompts/            # Daily summary + writing prompts
 │   │   ├── writing/                # Writing agent (/write) — custom Python class
 │   │   │   ├── agent.py
 │   │   │   └── prompts/system.md
@@ -624,8 +622,7 @@ jarvis/
 │   │       ├── vault.py            # Vault access + path validation
 │   │       ├── callout.py          # Callout block parser (pure string ops)
 │   │       ├── diff.py             # Diff computation + formatters
-│   │       ├── writer.py           # Write orchestration + ConfirmationHandler
-│   │       └── prompts.py          # Prompt file loader
+│   │       └── writer.py           # Write orchestration + ConfirmationHandler
 │   └── telemetry/                  # Metrics and monitoring
 │       └── metrics.py              # TTFT, response metrics
 │
@@ -641,8 +638,6 @@ jarvis/
 │   │   └── YYYY-MM-DD_HH-MM-SS.json
 │   ├── rag/                        # RAG vector store (gitignored)
 │   │   └── chroma/                 # ChromaDB persistent data
-│   ├── prompts/                    # LLM prompt templates
-│   │   └── obsidian/              # Obsidian-specific prompts
 │   └── learned_facts.md            # (Future) Extracted facts
 │
 ├── config/                         # Configuration

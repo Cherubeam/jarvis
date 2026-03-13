@@ -111,6 +111,11 @@ class JarvisAgent(BaseAgent):
 
         return result
 
+    @classmethod
+    def get_daily_note_instructions(cls) -> str:
+        """Load the daily note entry prompt."""
+        return cls.load_prompt("daily_note_entry")
+
     def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
         """
         Process a user message and return a streaming response.

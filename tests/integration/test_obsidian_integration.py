@@ -29,7 +29,6 @@ from packages.integrations.obsidian.writer import (
     append_to_note,
     append_to_daily_note,
 )
-from packages.integrations.obsidian.prompts import load_obsidian_prompt
 from packages.integrations.obsidian.diff import VaultDiff
 
 
@@ -185,19 +184,6 @@ class TestSecurityBoundaries:
 
         with pytest.raises(PermissionError):
             list_notes(private, sample_vault_config)
-
-
-class TestPromptLoading:
-    """Test that prompt files load correctly from the real data directory."""
-
-    def test_daily_note_entry_prompt_exists(self):
-        content = load_obsidian_prompt("daily_note_entry")
-        assert "Daily Note" in content
-        assert len(content) > 100
-
-    def test_general_writing_prompt_exists(self):
-        content = load_obsidian_prompt("general_writing")
-        assert "Obsidian" in content
 
 
 class TestMultipleAppends:

@@ -577,3 +577,34 @@ class TestMakeAgentVaultTools:
         result = _make_agent_vault_tools(meta, config, Mock())
         assert len(result) == 2
         assert mock_factory.call_args[1]["target_dir"] == "02 – Areas/02 – Patterns"
+
+
+@pytest.mark.unit
+class TestJarvisAgentPromptLoading:
+    """Tests for JarvisAgent.load_prompt and get_daily_note_instructions."""
+
+    def test_load_daily_note_entry_prompt(self):
+        """JarvisAgent.load_prompt('daily_note_entry') returns the prompt content."""
+        from packages.agents.jarvis.agent import JarvisAgent
+
+        content = JarvisAgent.load_prompt("daily_note_entry")
+        assert "Daily Note" in content
+        assert "DO NOT" in content
+
+    def test_get_daily_note_instructions(self):
+        """JarvisAgent.get_daily_note_instructions() returns the daily note prompt."""
+        from packages.agents.jarvis.agent import JarvisAgent
+
+        content = JarvisAgent.get_daily_note_instructions()
+        assert len(content) > 0
+        assert "Daily Note" in content
+        assert "DO NOT" in content
+        assert "bullet" in content.lower()
+        assert "OUTPUT ONLY" in content
+
+    def test_load_general_writing_prompt(self):
+        """JarvisAgent.load_prompt('general_writing') returns the writing conventions."""
+        from packages.agents.jarvis.agent import JarvisAgent
+
+        content = JarvisAgent.load_prompt("general_writing")
+        assert "Obsidian" in content

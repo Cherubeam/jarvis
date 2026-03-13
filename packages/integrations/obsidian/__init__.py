@@ -17,10 +17,6 @@ from packages.integrations.obsidian.diff import (
     format_diff_for_api,
     format_diff_for_cli,
 )
-from packages.integrations.obsidian.prompts import (
-    get_daily_note_instructions,
-    load_obsidian_prompt,
-)
 from packages.integrations.obsidian.vault import (
     VaultConfig,
     get_daily_note_path,
@@ -65,7 +61,4 @@ __all__ = [
     "WriteResult",
     "append_to_daily_note",
     "append_to_note",
-    # prompts
-    "load_obsidian_prompt",
-    "get_daily_note_instructions",
 ]
