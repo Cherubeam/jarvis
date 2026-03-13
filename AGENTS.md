@@ -156,7 +156,8 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md#project-
    name: my-agent
    description: What this agent does
    command: /my-agent
-   skills:            # optional: bind skill knowledge into the agent
+   vault_writing: slip_box  # optional: scoped vault write tools from obsidian.writing.<key>
+   skills:                  # optional: bind skill knowledge into the agent
      - my-skill-name
    ```
 3. Add `prompts/system.md` with the system prompt

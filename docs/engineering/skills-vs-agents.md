@@ -71,6 +71,8 @@ Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run
 
 Agents can also **bind skills** by declaring `skills:` in their `meta.yaml`. This injects the skill's knowledge (SKILL.md body) into the agent's system prompt automatically, and for deck-skills, adds the card search tool. See [Agent-Skill Binding](#agent-skill-binding) below.
 
+Agents can declare **vault write tool routing** via `vault_writing: <config_key>` in `meta.yaml`. This gives the agent scoped vault write tools (create_note, edit_note, list_notes_in_dir) pointing at the configured directory. Each agent gets its own tools — no name collisions.
+
 **Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
 
 ## The Key Difference

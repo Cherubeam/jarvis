@@ -1787,4 +1787,40 @@ Two gaps existed in the agent architecture:
 
 ---
 
-*Last updated: 2026-03-12*
+## ADR-027: Per-Agent Vault Write Tool Routing via meta.yaml
+
+**Date**: 2026-03-13
+**Status**: ✅ Accepted
+
+### Context
+
+The vault write tools (`make_vault_write_tools()`) were created globally for the `patterns` config and dumped into `agent_only_tools` — a shared pool all agents receive. This caused two problems:
+1. **Wrong scoping**: `obsidian-note-creator` got pattern-directory tools (or none if patterns isn't configured)
+2. **Name collision**: Can't create a second `make_vault_write_tools()` instance without duplicate `create_note` tool names in the shared pool
+
+### Decision
+
+Each agent declares which `obsidian.writing.<key>` config section it uses via `vault_writing` in its `meta.yaml` (or `AGENT_META` dict for Python-class agents). At instantiation time, `_make_agent_vault_tools()` reads the declared config key, calls `make_vault_write_tools()` with the right `target_dir` and `template_path`, and adds the tools to that agent's tool list.
+
+**Key design choices:**
+- `vault_writing` is stored on `AgentMeta` during discovery, so the helper doesn't need to re-read the YAML
+- No name collisions because each agent gets its own `ToolRegistry` — they never share a pool
+- Agents without `vault_writing` get no vault write tools (correct behavior)
+- New config sections (e.g. `slip_box`) can be added to `obsidian.writing` in `default.yaml` without code changes
+
+### Alternatives Considered
+
+1. **Keep global `agent_only_tools` with prefixed tool names**: Rename tools per agent (e.g. `patterns_create_note`, `slip_box_create_note`) — pollutes tool namespace, requires changes to vault_write_tools factory
+2. **Per-agent config in `meta.yaml` directly**: Store `target_dir`/`template_path` in meta.yaml instead of referencing a config key — duplicates config, harder to override in `local.yaml`
+
+### Consequences
+
+- **+** Each agent gets vault write tools scoped to its own directory
+- **+** New agents can opt in by adding one line to `meta.yaml` — no code changes
+- **+** `make_vault_write_tools()` factory unchanged — still fully reusable
+- **+** No name collisions between agents
+- **-** Config indirection: agent → meta.yaml key → default.yaml section → local.yaml override
+
+---
+
+*Last updated: 2026-03-13*

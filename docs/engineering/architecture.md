@@ -315,19 +315,19 @@ User types: /daily-summary
 
 **Tool Scoping for Agent Delegation:**
 
-Tools are split into two lists at startup, each with different forwarding rules:
+Tools are split into three categories at startup, each with different forwarding rules:
 
 | List | Examples | Given to JARVIS | Standalone `--agent` | Delegated agent |
 |---|---|---|---|---|
 | `extra_tools` | `recall_conversations`, vault read tools | Yes | Yes | Yes (via delegation fix) |
-| `agent_only_tools` | blog tools, vault write tools, `evaluate_content` | **No** | Yes | Yes |
+| `agent_only_tools` | blog tools, `evaluate_content` | **No** | Yes | Yes |
+| Per-agent vault tools | `create_note`, `edit_note` (scoped to agent's dir) | **No** | Yes | Yes |
 
 - **`extra_tools`** — Orchestration tools (conversation recall, card search). Wired at startup, passed to `JarvisAgent`. These are NOT forwarded when JARVIS delegates to a specialist agent, because JARVIS already gathered context before delegating.
 - **`agent_only_tools`** — Specialist tools (blog tools, content evaluator). NOT given to JARVIS (so it delegates content work instead of handling it directly). Forwarded to delegated agents via the `extra_tools` parameter.
-- **Standalone `--agent` mode** — Receives `extra_tools + agent_only_tools` (intentional — standalone agents benefit from recall since there is no JARVIS to gather context first).
-- **Delegation path** — Receives `extra_tools + agent_only_tools` (delegated agents need vault read tools from `extra_tools` alongside specialist write tools from `agent_only_tools`).
-
-See `apps/cli/main.py` lines 476–481 (initialization), 532 (standalone), 740 (delegation).
+- **Per-agent vault tools** — Created by `_make_agent_vault_tools()` based on `vault_writing` in the agent's `meta.yaml`. Each agent declares which `obsidian.writing.<key>` config section it uses (e.g. `patterns`, `slip_box`), and gets vault write tools scoped to that directory. No name collisions because each agent gets its own `ToolRegistry`.
+- **Standalone `--agent` mode** — Receives `extra_tools + agent_only_tools + agent_vault_tools`.
+- **Delegation path** — Receives `extra_tools + agent_only_tools + agent_vault_tools`.
 
 ---
 
