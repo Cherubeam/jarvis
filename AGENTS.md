@@ -140,9 +140,7 @@ from packages.integrations.things3.task_sync import sync_tasks_to_file
 
 ## Project Structure
 
-See [docs/engineering/architecture.md](docs/engineering/architecture.md#project-structure) for the full project structure.
-
-**Note**: The old `personal-context/` structure is deprecated. Use the new `packages/`, `apps/`, and `data/` directories.
+See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the full project structure.
 
 ---
 
@@ -174,7 +172,7 @@ Use this when you need custom prompt composition, non-default temperature, or cu
 3. Add `agent.py` extending `BaseAgent`
 4. Add `prompts/system.md`
 
-See `packages/agents/writing/` (custom prompt composition) or `packages/agents/tactics/` (custom temperature + tools) for examples.
+See `packages/agents/writing/` (custom prompt composition), `packages/agents/tactics/` (custom temperature + tools), or `packages/agents/developer/` (tool-heavy agentic loop) for examples.
 
 ---
 
@@ -210,7 +208,15 @@ uv run pytest --cov=packages --cov=apps --cov-report=term
 
 ## Documentation Updates
 
-After any implementation, check and update all relevant files in `docs/`. Always update [docs/changelog.md](docs/changelog.md). See the docs folder structure for which files may need changes.
+After any implementation, review and update **all** relevant documentation — not just changelog. Check each of these:
+
+- **[README.md](README.md)** — features list, usage examples, slash commands, project structure, roadmap summary
+- **[docs/changelog.md](docs/changelog.md)** — always update (new entry under `[Unreleased]`)
+- **[docs/engineering/architecture.md](docs/engineering/architecture.md)** — if project structure or components changed
+- **[docs/engineering/api.md](docs/engineering/api.md)** — if public interfaces changed
+- **[docs/product/roadmap.md](docs/product/roadmap.md)** — if a roadmap item was completed or added
+- **[docs/product/decisions.md](docs/product/decisions.md)** — if an architectural decision was made (new ADR)
+- **[AGENTS.md](AGENTS.md)** — if agents, commands, or development workflow changed
 
 ---
 
@@ -255,6 +261,24 @@ git switch -c <type>/<short-description>
 git switch -c feat/task-sync-localization
 git switch -c fix/stale-unit-tests
 git switch -c refactor/config-loading
+```
+
+### Merging
+
+Merges to `main` must be fast-forward where possible:
+
+```bash
+git switch main
+git merge --ff-only <feature-branch>
+```
+
+If fast-forward isn't possible, rebase the feature branch first:
+
+```bash
+git switch <feature-branch>
+git rebase main
+git switch main
+git merge --ff-only <feature-branch>
 ```
 
 ### Committing During Development
@@ -335,4 +359,4 @@ While pre-1.0, minor bumps may include breaking changes.
 
 ---
 
-*Last updated: 2026-03-12*
+*Last updated: 2026-03-13*
