@@ -219,7 +219,10 @@ def format_tasks_as_markdown(
 
     # Header
     sections.append("# Tasks from Things 3")
-    sections.append(f"\n*Last synced: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n")
+    sections.append(f"\n*Last synced: {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
+    sections.append(
+        "\n*When presenting tasks, always include all tags in [brackets] next to each task.*\n"
+    )
 
     # Today section
     if today_tasks:

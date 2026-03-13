@@ -15,13 +15,35 @@ from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
 from packages.core.tools.web_fetch import FETCH_URL_TOOL
 
-_DELEGATION_DIRECTIVE = """
+_SPECIAL_HINTS: dict[str, str] = {
+    "developer": " (uses a git sandbox — creates branches, commits safely, never pushes)",
+}
+
+
+def _build_delegation_directive(available_agents: list[dict]) -> str:
+    """Build the delegation directive dynamically from discovered agents.
+
+    Args:
+        available_agents: List of dicts with "name" and "description" keys.
+
+    Returns:
+        Directive string to append to the system prompt.
+    """
+    if not available_agents:
+        return ""
+
+    agent_lines = []
+    for agent in sorted(available_agents, key=lambda a: a["name"]):
+        hint = _SPECIAL_HINTS.get(agent["name"], "")
+        agent_lines.append(f"- **{agent['name']}**: {agent['description']}{hint}")
+
+    agent_list = "\n".join(agent_lines)
+
+    return f"""
 ## Agent Delegation
 You can read vault notes directly with `read_note`, `search_notes`, and
-`read_daily_note`. Delegate to specialized agents for creative tasks:
-- **writing**: creative writing, editing, content evaluation, blog posts
-- **tactics**: tactics search, combining tactics into workflows or ideas
-- **obsidian-note-creator**: extract atomic evergreen notes from conversations or material
+`read_daily_note`. Delegate to specialized agents when appropriate:
+{agent_list}
 
 Use `delegate_to_agent` when a task is better handled by a specialist.
 When delegating, call `delegate_to_agent` immediately — do NOT use other
@@ -75,7 +97,7 @@ class JarvisAgent(BaseAgent):
         if available_agents:
             delegate_tool = make_delegate_tool(available_agents, self._delegation_state)
             tools.append(delegate_tool)
-            system_prompt += _DELEGATION_DIRECTIVE
+            system_prompt += _build_delegation_directive(available_agents)
 
         config = AgentConfig(
             name="JARVIS",
