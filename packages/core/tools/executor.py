@@ -3,8 +3,12 @@ Tool call executor — runs tool calls returned by the LLM and formats results.
 """
 
 import json
+import logging
+import time
 
 from packages.core.tools.base import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def execute_tool_calls(tool_calls: list, registry: ToolRegistry) -> list[dict]:
@@ -35,7 +39,10 @@ def execute_tool_calls(tool_calls: list, registry: ToolRegistry) -> list[dict]:
 
         try:
             args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+            start = time.perf_counter()
             content = tool.execute(**args)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            logger.info("Tool %s executed in %.1fms", name, elapsed_ms)
         except Exception as e:
             content = f"Error executing tool '{name}': {e}"
 

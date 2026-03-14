@@ -110,3 +110,21 @@ class TestExecuteToolCalls:
     def test_empty_tool_calls_returns_empty_list(self):
         registry = _make_registry()
         assert execute_tool_calls([], registry) == []
+
+    def test_logs_execution_latency(self, caplog):
+        """Tool execution time is logged at INFO level."""
+        import logging
+        tool = ToolDefinition(
+            name="slow",
+            description="slow",
+            parameters={},
+            execute=lambda: "done",
+        )
+        registry = _make_registry(tool)
+        call = _make_tool_call("c7", "slow", {})
+
+        with caplog.at_level(logging.INFO, logger="packages.core.tools.executor"):
+            execute_tool_calls([call], registry)
+
+        assert "Tool slow executed in" in caplog.text
+        assert "ms" in caplog.text
