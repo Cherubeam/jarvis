@@ -195,8 +195,6 @@ class StreamHandler:
 
     def _stream_from_response(self, response: StreamingResponse, print_chunks: bool) -> StreamResult:
         """Stream from an already-started StreamingResponse (from tool detection)."""
-        self.metrics_tracker.start_request()
-
         chunks: list[str] = []
         first_token = True
         for chunk in response:
@@ -247,7 +245,6 @@ class StreamHandler:
 
     def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
         """Stream the final response and return a StreamResult."""
-        self.metrics_tracker.start_request()
         response = self.client.chat_stream(messages, tools=tools)
 
         chunks: list[str] = []

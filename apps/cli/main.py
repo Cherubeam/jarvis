@@ -819,6 +819,9 @@ def main(argv: list[str] | None = None):
                 payload = parts[1] if len(parts) > 1 else ""
 
                 # Built-in commands
+                if command in ("/exit", "/quit"):
+                    break
+
                 if command == "/daily-summary":
                     handle_daily_summary(config, client, logger, system_prompt,
                                          metrics_tracker, pricing, model_id)
