@@ -1276,7 +1276,7 @@ JARVIS always has a non-empty `ToolRegistry` (contains `FETCH_URL_TOOL`), so `_r
 
 ---
 
-## ADR-016: Conversation Recall via ChromaDB + LiteLLM Embeddings (RAG)
+## ADR-024: Conversation Recall via ChromaDB + LiteLLM Embeddings (RAG)
 
 **Date**: 2026-02-27
 **Status**: ✅ Accepted
@@ -1468,7 +1468,7 @@ Deck-skills include a `skill.py` (JARVIS-specific) rather than being pure markdo
 - `skill.py` pattern is JARVIS-specific (SKILL.md body remains portable)
 
 ### Related
-- Extends: ADR-016 (Conversation Recall via ChromaDB + RAG)
+- Extends: ADR-024 (Conversation Recall via ChromaDB + RAG)
 - Extends: ADR-017 (Skills — SKILL.md-First Design)
 - Extends: ADR-014 (Agent Framework — Convention-Based Discovery)
 
