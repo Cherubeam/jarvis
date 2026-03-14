@@ -680,6 +680,16 @@ class TestMigrateConversation:
         result = migrate_conversation(data)
         assert result is data
 
+    def test_unknown_schema_version_logs_warning(self, caplog):
+        """Test that an unexpected schema version logs a warning."""
+        import logging
+        data = {"schema_version": "99.0.0", "id": "conv_future"}
+        with caplog.at_level(logging.WARNING, logger="packages.core.memory"):
+            result = migrate_conversation(data)
+        assert result is data
+        assert "Unknown schema version 99.0.0" in caplog.text
+        assert "conv_future" in caplog.text
+
     def test_migrate_v0_no_metrics(self):
         """Test migration of oldest format (no metrics)."""
         old_data = {

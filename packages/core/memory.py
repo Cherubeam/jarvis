@@ -5,12 +5,15 @@ Saves conversations to JSON files with a future-proof schema (v1.0.0).
 
 import hashlib
 import json
+import logging
 import platform
 import secrets
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -54,6 +57,13 @@ def migrate_conversation(data: dict) -> dict:
     - v2 (metrics with latency): adds average_ttft_ms, average_latency_ms
     """
     if "schema_version" in data:
+        if data["schema_version"] != SCHEMA_VERSION:
+            logger.warning(
+                "Unknown schema version %s (expected %s) in conversation %s",
+                data["schema_version"],
+                SCHEMA_VERSION,
+                data.get("id", "unknown"),
+            )
         return data
 
     migrated = {
