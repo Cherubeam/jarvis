@@ -58,6 +58,13 @@ rag:
   # Uses the same OPENROUTER_API_KEY already configured for chat.
   # LiteLLM's openrouter/ prefix routes natively — no api_base needed.
 
+# Intelligent model routing (opt-in)
+# Routes simple queries to fast models, complex ones to quality models.
+routing:
+  enabled: false                    # Set to true in local.yaml to activate
+  simple_threshold: 200             # Chars below which query is "simple"
+  complex_threshold: 800            # Chars above which query is "complex"
+
 # CLI display settings
 cli:
   colors: true

@@ -36,6 +36,7 @@ from packages.skills.registry import discover_skills
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
 from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
+from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
@@ -841,6 +842,15 @@ def main(argv: list[str] | None = None):
             history = logger.get_messages_for_api()
             logger.add_message("user", user_input)
 
+            # Intelligent model routing (opt-in via config)
+            routed_model_id = None
+            if config.get("routing", {}).get("enabled", False):
+                decision = route_query(user_input, config, agent_name=agent_name)
+                if decision.resolved.model_id != model_id:
+                    routed_model_id = model_id  # save original to restore
+                    client.set_model(decision.resolved.model_id)
+                    stream_handler.model_id = decision.resolved.model_id
+
             print_assistant_prefix(agent_name)
             live, buf = start_live_stream()
             stream_handler.on_chunk = make_live_chunk_handler(live, buf)
@@ -852,6 +862,11 @@ def main(argv: list[str] | None = None):
             )
             stream_handler.on_chunk = None
             finish_live_stream(live, result.text)
+
+            # Restore original model after routed call
+            if routed_model_id is not None:
+                client.set_model(routed_model_id)
+                stream_handler.model_id = routed_model_id
 
             print_usage_stats(result)
             print_separator()
