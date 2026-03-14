@@ -3,7 +3,7 @@ Thin wrapper around LiteLLM for unified LLM access.
 Supports multiple providers via LiteLLM's routing conventions.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Generator
 import litellm
 
@@ -16,6 +16,14 @@ class TokenUsage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+
+
+@dataclass
+class StreamToolResult:
+    """Result from a streaming call that detected tool calls instead of content."""
+    tool_calls: list  # Accumulated tool call objects
+    usage: TokenUsage
+    finish_reason: str = "tool_calls"
 
 
 class StreamingResponse:
@@ -124,6 +132,106 @@ class LLMClient:
             StreamingResponse that yields text chunks and provides usage stats after completion
         """
         return StreamingResponse(self._stream_response(messages, model, tools))
+
+    def stream_with_tool_detection(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        tools: list[dict] | None = None,
+        temperature: float | None = None,
+    ) -> StreamingResponse | StreamToolResult:
+        """Stream a response, detecting tool calls without a separate complete() call.
+
+        If the model wants to call tools, accumulates the full tool call info
+        from streaming deltas and returns a StreamToolResult.
+        If the model returns content, returns a normal StreamingResponse.
+
+        This eliminates the separate complete() call in the agentic loop,
+        saving one round-trip per non-tool query.
+        """
+        model_to_use = model or self.default_model
+
+        kwargs: dict = dict(
+            model=model_to_use,
+            messages=messages,
+            stream=True,
+            stream_options={"include_usage": True},
+            api_key=self._resolve_api_key(model_to_use),
+        )
+        if tools:
+            kwargs["tools"] = tools
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+
+        response = litellm.completion(**kwargs)
+
+        # Peek at chunks to determine if this is a tool call or content response
+        content_chunks: list[str] = []
+        tool_call_deltas: dict[int, dict] = {}  # index -> accumulated tool call
+        usage = TokenUsage()
+        is_tool_response = False
+
+        for chunk in response:
+            # Extract usage from final chunk
+            if hasattr(chunk, 'usage') and chunk.usage:
+                usage = TokenUsage(
+                    prompt_tokens=chunk.usage.prompt_tokens or 0,
+                    completion_tokens=chunk.usage.completion_tokens or 0,
+                    total_tokens=chunk.usage.total_tokens or 0,
+                )
+
+            if not chunk.choices:
+                continue
+
+            delta = chunk.choices[0].delta
+            finish_reason = chunk.choices[0].finish_reason
+
+            # Accumulate tool call deltas
+            if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                is_tool_response = True
+                for tc_delta in delta.tool_calls:
+                    idx = tc_delta.index
+                    if idx not in tool_call_deltas:
+                        tool_call_deltas[idx] = {
+                            "id": tc_delta.id or "",
+                            "function": {"name": "", "arguments": ""},
+                        }
+                    entry = tool_call_deltas[idx]
+                    if tc_delta.id:
+                        entry["id"] = tc_delta.id
+                    if hasattr(tc_delta, 'function') and tc_delta.function:
+                        if tc_delta.function.name:
+                            entry["function"]["name"] = tc_delta.function.name
+                        if tc_delta.function.arguments:
+                            entry["function"]["arguments"] += tc_delta.function.arguments
+
+            # Accumulate content
+            if delta.content:
+                content_chunks.append(delta.content)
+
+        if is_tool_response:
+            # Build tool call objects that match the complete() response format
+            from types import SimpleNamespace
+            tool_calls = []
+            for idx in sorted(tool_call_deltas):
+                tc = tool_call_deltas[idx]
+                tool_calls.append(SimpleNamespace(
+                    id=tc["id"],
+                    function=SimpleNamespace(
+                        name=tc["function"]["name"],
+                        arguments=tc["function"]["arguments"],
+                    ),
+                    type="function",
+                ))
+            return StreamToolResult(tool_calls=tool_calls, usage=usage)
+
+        # Content response — wrap remaining content in a StreamingResponse
+        def _replay_content() -> Generator[str, None, tuple[TokenUsage, object]]:
+            for c in content_chunks:
+                yield c
+            return usage, response
+
+        return StreamingResponse(_replay_content())
 
     def _stream_response(
         self,
