@@ -331,6 +331,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Model preset or LiteLLM model ID (e.g. --model fast, --model anthropic/claude-sonnet-4.6)",
     )
+    parser.add_argument(
+        "--auto-confirm",
+        action="store_true",
+        help="Auto-approve file writes within developer.scope (for CI/unattended runs)",
+    )
     return parser.parse_args(argv)
 
 
@@ -643,8 +648,13 @@ def main(argv: list[str] | None = None):
             dev_tools: list = []
             dev_tools.extend(make_codebase_tools(jarvis_dir))
             dev_tools.extend(make_git_tools(jarvis_dir))
+            if args.auto_confirm:
+                from packages.agents.developer.confirmation import AutoConfirmationHandler
+                dev_confirmation = AutoConfirmationHandler(dev_scope, jarvis_dir)
+            else:
+                dev_confirmation = CLIConfirmationHandler()
             dev_tools.extend(make_project_write_tools(
-                jarvis_dir, CLIConfirmationHandler(),
+                jarvis_dir, dev_confirmation,
                 allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
             ))
             dev_tools.append(make_test_runner_tool(jarvis_dir))
