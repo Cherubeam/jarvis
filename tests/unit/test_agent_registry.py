@@ -13,20 +13,15 @@ from packages.agents.registry import discover_agents, get_by_command, AgentMeta
 class TestDiscoverAgents:
     """Tests for discover_agents()."""
 
-    def test_discovers_writing_agent(self):
+    @pytest.mark.parametrize("name,command", [
+        ("writing", "/write"),
+        ("research", "/research"),
+        ("clarity", "/clarity"),
+    ])
+    def test_discovers_agent(self, name, command):
         agents = discover_agents()
-        assert "writing" in agents
-        assert agents["writing"].command == "/write"
-
-    def test_discovers_research_agent(self):
-        agents = discover_agents()
-        assert "research" in agents
-        assert agents["research"].command == "/research"
-
-    def test_discovers_clarity_agent(self):
-        agents = discover_agents()
-        assert "clarity" in agents
-        assert agents["clarity"].command == "/clarity"
+        assert name in agents
+        assert agents[name].command == command
 
     def test_excludes_jarvis(self):
         agents = discover_agents()
@@ -74,23 +69,16 @@ class TestDiscoverAgents:
 class TestGetByCommand:
     """Tests for get_by_command()."""
 
-    def test_finds_write_command(self):
+    @pytest.mark.parametrize("command,expected_name", [
+        ("/write", "writing"),
+        ("/research", "research"),
+        ("/clarity", "clarity"),
+    ])
+    def test_finds_command(self, command, expected_name):
         agents = discover_agents()
-        meta = get_by_command("/write", agents)
+        meta = get_by_command(command, agents)
         assert meta is not None
-        assert meta.name == "writing"
-
-    def test_finds_research_command(self):
-        agents = discover_agents()
-        meta = get_by_command("/research", agents)
-        assert meta is not None
-        assert meta.name == "research"
-
-    def test_finds_clarity_command(self):
-        agents = discover_agents()
-        meta = get_by_command("/clarity", agents)
-        assert meta is not None
-        assert meta.name == "clarity"
+        assert meta.name == expected_name
 
     def test_returns_none_for_unknown_command(self):
         agents = discover_agents()

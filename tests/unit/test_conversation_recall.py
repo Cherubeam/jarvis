@@ -80,36 +80,28 @@ class TestRecallToolOutput:
         if mock_results is None:
             mock_results = []
 
-        # The execute closure captures a ConversationSearcher; patch its search method
-        execute = tool.execute
-        with patch("packages.core.rag.searcher.ConversationSearcher.search", return_value=mock_results):
-            # We need to patch on the actual searcher instance inside the closure
-            # Easier: extract the closure's searcher and patch it directly
-            import gc
-            searcher = None
-            for cell in execute.__closure__ or []:
-                try:
-                    obj = cell.cell_contents
-                    if hasattr(obj, "search"):
-                        searcher = obj
-                        break
-                except ValueError:
-                    pass
+        # Find the ConversationSearcher instance captured in the closure
+        searcher = None
+        for cell in tool.execute.__closure__ or []:
+            try:
+                obj = cell.cell_contents
+                if hasattr(obj, "search"):
+                    searcher = obj
+                    break
+            except ValueError:
+                pass
 
-            if searcher is not None:
-                original_search = searcher.search
-                searcher.search = MagicMock(return_value=mock_results)
-                try:
-                    if date_from or date_to:
-                        result = execute(query=query, date_from=date_from, date_to=date_to)
-                    else:
-                        result = execute(query=query)
-                finally:
-                    searcher.search = original_search
-            else:
-                result = execute(query=query)
+        kwargs = {"query": query}
+        if date_from:
+            kwargs["date_from"] = date_from
+        if date_to:
+            kwargs["date_to"] = date_to
 
-        return result
+        if searcher is not None:
+            with patch.object(searcher, "search", return_value=mock_results):
+                return tool.execute(**kwargs)
+
+        return tool.execute(**kwargs)
 
     def test_tool_definition_structure(self, tmp_path):
         mock_chroma = MagicMock()

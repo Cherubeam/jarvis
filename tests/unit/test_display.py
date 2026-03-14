@@ -33,23 +33,16 @@ from packages.telemetry.metrics import ResponseMetrics
 class TestHasMarkdown:
     """Tests for the markdown detection heuristic."""
 
-    def test_fenced_code_block(self):
-        assert _has_markdown("Here is code:\n```python\nprint('hi')\n```") is True
-
-    def test_atx_heading(self):
-        assert _has_markdown("## Section Title\nSome text") is True
-
-    def test_bold_text(self):
-        assert _has_markdown("This is **important** text") is True
-
-    def test_unordered_list(self):
-        assert _has_markdown("Items:\n- first\n- second") is True
-
-    def test_ordered_list(self):
-        assert _has_markdown("Steps:\n1. first\n2. second") is True
-
-    def test_inline_code(self):
-        assert _has_markdown("Use `print()` to output") is True
+    @pytest.mark.parametrize("text", [
+        "Here is code:\n```python\nprint('hi')\n```",
+        "## Section Title\nSome text",
+        "This is **important** text",
+        "Items:\n- first\n- second",
+        "Steps:\n1. first\n2. second",
+        "Use `print()` to output",
+    ], ids=["fenced_code", "atx_heading", "bold", "unordered_list", "ordered_list", "inline_code"])
+    def test_detects_markdown(self, text):
+        assert _has_markdown(text) is True
 
     def test_plain_text_no_markdown(self):
         assert _has_markdown("This is just a plain sentence.") is False
