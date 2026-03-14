@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **TTFT Always 0ms**: Removed duplicate `start_request()` calls in `_stream_from_response()` and `_stream_simple()` that reset the metrics timer right before streaming, causing TTFT to measure only microseconds instead of actual user-perceived latency.
+- **`/exit` Command Not Recognized**: Added `/exit` and `/quit` as recognized slash commands in the main CLI loop, so they work consistently with the non-slash `exit`/`quit` variants.
 - **Dynamic Delegation Directive**: Replaced hardcoded 3-agent delegation directive in JARVIS with `_build_delegation_directive()` that dynamically lists all discovered agents. Developer, clarity, research, navigator, OKR architect, and pattern language expert now appear in JARVIS's delegation guidance.
 - **Things 3 Tag Preservation**: Added instruction in `tasks.md` header telling JARVIS to always include all tags in brackets when presenting tasks, preventing tag paraphrasing.
 
