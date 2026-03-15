@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Things 3 Tag Preservation**: Added instruction in `tasks.md` header telling JARVIS to always include all tags in brackets when presenting tasks, preventing tag paraphrasing.
 
 ### Added
+- **Agent Attribution in Conversations**: Assistant messages now include an optional `"agent"` field identifying the originating agent (e.g. `"JARVIS"`, `"writing"`, `"developer"`). Existing conversations without the field are unaffected.
 - **Developer Agent Roadmap**: `docs/product/developer-agent-roadmap.md` documenting Phase 1 (complete), Phase 2 (autonomous operation), and Phase 3 (continuous self-improvement) plans. Cross-references ADR-028.
 
 ### Changed

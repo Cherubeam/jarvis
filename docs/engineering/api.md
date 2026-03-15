@@ -172,7 +172,7 @@ Add message to current session.
 **Parameters:**
 - `role` - "user" or "assistant"
 - `content` - Message content
-- `**metadata` - Optional: `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`
+- `**metadata` - Optional: `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `agent_name` (str, tags assistant messages with the originating agent)
 
 #### `get_messages_for_api() -> list[dict]`
 
