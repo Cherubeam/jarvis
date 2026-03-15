@@ -1,4 +1,8 @@
 name: developer
 description: "JARVIS self-improvement agent — reads codebase, creates branches, writes data-driven files, runs tests, commits changes"
 command: /develop
-agent_class: DeveloperAgent
+temperature: 0.3
+max_tokens: 4096
+max_iterations: 20
+tools:
+  - dev_tools
