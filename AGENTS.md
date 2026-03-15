@@ -146,7 +146,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 
 ## Creating a New Agent
 
-### Data-Driven Agent (recommended for simple agents)
+### Data-Driven Agent (all delegate agents use this)
 
 1. Create a directory under `packages/agents/<name>/`
 2. Add `meta.yaml`:
@@ -154,25 +154,30 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
    name: my-agent
    description: What this agent does
    command: /my-agent
-   vault_writing: slip_box  # optional: scoped vault write tools from obsidian.writing.<key>
-   skills:                  # optional: bind skill knowledge into the agent
+   temperature: 0.7          # optional (default 0.7)
+   max_tokens: 4096           # optional (default 4096)
+   max_iterations: 20         # optional: for multi-step agentic loops
+   vault_writing: slip_box    # optional: scoped vault write tools from obsidian.writing.<key>
+   skills:                    # optional: bind skill knowledge into the agent
      - my-skill-name
+   tools:                     # optional: named tool groups from CLI registry
+     - blog_tools
+     - content_evaluator
+   prompt_includes:           # optional: replace {placeholder} in system.md
+     voice_profile: voice-profile   # loads prompts/voice-profile.md
    ```
 3. Add `prompts/system.md` with the system prompt
 4. Done — the registry discovers it automatically
 
-**Skill binding**: The optional `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
+**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`. Shared tools (vault read, recall) go to all agents automatically.
 
-### Python-Class Agent (for custom logic)
+**Skill binding**: The `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
 
-Use this when you need custom prompt composition, non-default temperature, or custom `process_message()` logic.
+**Prompt includes**: The `prompt_includes:` field maps placeholder names to filenames in `prompts/`. Each `{placeholder}` in `system.md` is replaced with the file content. See `packages/agents/writing/meta.yaml`.
 
-1. Create `packages/agents/<name>/`
-2. Add `__init__.py` with `AGENT_META` dict
-3. Add `agent.py` extending `BaseAgent`
-4. Add `prompts/system.md`
+### Python-Class Agent (escape hatch)
 
-See `packages/agents/writing/` (custom prompt composition), `packages/agents/tactics/` (custom temperature + tools), or `packages/agents/developer/` (tool-heavy agentic loop) for examples.
+Only used for JarvisAgent (the orchestrator) which needs custom delegation logic. All delegate agents should be data-driven.
 
 ---
 

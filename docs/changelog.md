@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **All Delegate Agents Data-Driven**: Migrated WritingAgent, TacticsAgent, and DeveloperAgent from Python classes to `meta.yaml` + `prompts/system.md`. All 9 delegate agents are now data-driven. Removed `agent_class` from `AgentMeta` and the Python-class discovery/instantiation path.
+- **Per-Agent Tool Declarations**: Replaced flat `agent_only_tools` list with named `tool_groups` registry. Each agent declares which tool groups it needs via `tools:` in `meta.yaml` (e.g. writing gets `blog_tools`, `content_evaluator`, `suggest_improvements`; developer gets `dev_tools`; tactics gets `card_search`). Agents no longer receive tools they don't need.
+- **Prompt Includes**: New `prompt_includes:` field in `meta.yaml` replaces `{placeholder}` tokens in system prompts with content from included files. Used by the writing agent for `voice-profile` and `anti-patterns`.
+- **Max Iterations**: New `max_iterations:` field in `meta.yaml` passed through to `StreamHandler.stream()`. Used by developer agent (20 iterations for multi-step workflows).
+
 ### Fixed
 - **TTFT Always 0ms**: Removed duplicate `start_request()` calls in `_stream_from_response()` and `_stream_simple()` that reset the metrics timer right before streaming, causing TTFT to measure only microseconds instead of actual user-perceived latency.
 - **`/exit` Command Not Recognized**: Added `/exit` and `/quit` as recognized slash commands in the main CLI loop, so they work consistently with the non-slash `exit`/`quit` variants.

@@ -414,13 +414,15 @@ Factory function that builds an agent instance from a `meta.yaml` file.
 - `extra_tools: list[ToolDefinition] | None` — Additional tools to provide
 
 **Returns:**
-- `BaseAgent` — A `DataDrivenAgent` instance (or custom class if `agent_class` is specified in the YAML)
+- `DataDrivenAgent` — A fully configured agent instance
 
 **Behavior:**
 1. Reads `meta.yaml` for agent configuration
 2. Loads `prompts/system.md` from the same directory
-3. Builds an `AgentConfig` with specified temperature, max_tokens
-4. Returns a configured agent instance ready for `process_message()`
+3. Resolves `prompt_includes` placeholders (if declared)
+4. Resolves bound skills (if declared)
+5. Builds an `AgentConfig` with specified temperature, max_tokens, max_iterations
+6. Returns a configured agent instance ready for `process_message()`
 
 ---
 
@@ -432,15 +434,16 @@ Dataclass describing a discovered agent for registry purposes.
 - `name: str` — Agent name (e.g., `"clarity"`)
 - `description: str` — Human-readable description
 - `command: str` — Slash command (e.g., `"/clarity"`)
-- `agent_class: type | None` — Python class to instantiate, or `None` for data-driven agents
-- `module_path: str` — Dotted module path (e.g., `"packages.agents.clarity"`)
-- `meta_path: Path | None` — Path to `meta.yaml` file, or `None` for legacy agents
+- `meta_path: Path | None` — Path to `meta.yaml` file
+- `vault_writing: str | None` — Config section key for scoped vault write tools
+- `tool_groups: tuple[str, ...]` — Named tool groups from CLI registry
+- `skills: tuple[str, ...]` — Skill names to bind into the agent
 
 ---
 
 ### `meta.yaml` Schema
 
-Data-driven agents are configured via a `meta.yaml` file in their directory:
+All delegate agents are configured via a `meta.yaml` file in their directory:
 
 ```yaml
 name: agent-name           # required — agent identifier
@@ -448,7 +451,15 @@ description: What it does   # required — shown in help/registry
 command: /agent-name        # required — slash command to invoke
 temperature: 0.7            # optional, default 0.7
 max_tokens: 4096            # optional, default 4096
-agent_class: ClassName      # optional — for hybrid agents needing custom Python class
+max_iterations: 20          # optional — for multi-step agentic loops
+vault_writing: slip_box     # optional — scoped vault write config section
+skills:                     # optional — skill names to bind
+  - my-skill
+tools:                      # optional — named tool groups from CLI registry
+  - blog_tools
+  - dev_tools
+prompt_includes:            # optional — placeholder → filename mapping
+  voice_profile: voice-profile  # loads prompts/voice-profile.md
 ```
 
 The system prompt is loaded from `prompts/system.md` in the same directory as `meta.yaml`.

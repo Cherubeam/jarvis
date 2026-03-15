@@ -413,18 +413,17 @@ rag:
 
 1. **Data-driven agents via `meta.yaml`** (preferred): Agent directories containing a `meta.yaml` file are loaded as `DataDrivenAgent` instances. The `meta.yaml` declares the agent's name, description, command, and optional parameters (temperature, max_tokens). The system prompt is loaded from `prompts/system.md` in the same directory. No Python code is required.
 
-2. **Legacy Python-class agents via `__init__.py` AGENT_META**: Agent directories containing an `__init__.py` with an `AGENT_META` dict are loaded using the class specified in the metadata. This path supports agents that need custom behavior (e.g., Writing Agent's prompt composition, Tactics Agent's custom temperature).
-
 **Key Components:**
 
-- **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` using only `meta.yaml` + `prompts/system.md`. No per-agent Python code needed.
-- **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent instance from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, and returns a configured `DataDrivenAgent` (or a custom class if `agent_class` is specified in the YAML).
-- **`AgentMeta`** dataclass: Extended with `agent_class: type | None` (the Python class to instantiate, or `None` for data-driven agents) and `meta_path: Path | None` (path to the `meta.yaml` file).
-- **`_instantiate_agent()`** (in `apps/cli/main.py`): Helper that instantiates an agent from `AgentMeta`, choosing between `agent_from_meta()` for data-driven agents and direct class construction for legacy agents.
+- **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` and `run()` using only `meta.yaml` + `prompts/system.md`. Supports `max_iterations` for extended agentic loops. No per-agent Python code needed.
+- **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, resolves `prompt_includes` placeholders, binds skills, and returns a configured `DataDrivenAgent`.
+- **`AgentMeta`** dataclass: Contains `meta_path`, `vault_writing`, `tool_groups` (named tool groups from CLI registry), and `skills` (skill names to bind).
+- **`_assemble_agent_tools()`** (in `apps/cli/main.py`): Builds tool list for an agent from shared tools + its declared `tool_groups`.
+- **`_instantiate_agent()`** (in `apps/cli/main.py`): Thin wrapper around `agent_from_meta()`.
 
-**Data-driven agents** (6 total): clarity, research, navigator, obsidian_note_creator, okr_architect, pattern_language_expert.
+**Data-driven delegate agents** (9 total): clarity, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, research, tactics, writing.
 
-**Python-class agents** (4 total): writing (custom prompt composition), tactics (custom temperature handling), jarvis (orchestrator with delegation), developer (custom `run()` with `max_iterations=20`, 14 codebase/git/write/test tools, scoped to `.md`/`.yaml`/`.yml` in Phase 1).
+**Python-class agent**: jarvis (orchestrator with delegation logic — the only agent with custom Python code).
 
 ### 11. Agent-Skill Binding (`packages/skills/resolver.py`)
 
