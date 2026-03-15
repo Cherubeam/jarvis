@@ -28,6 +28,7 @@ class AgentConfig:
     tools: list[ToolDefinition] = field(default_factory=list)
     max_tokens: int = 4096
     temperature: float = 0.7
+    max_iterations: int | None = None
 
 
 class BaseAgent(ABC):
@@ -177,6 +178,32 @@ class DataDrivenAgent(BaseAgent):
         self.add_to_history("user", message)
         return self.llm_client.chat_stream(self.get_messages_for_api())
 
+    def run(
+        self,
+        message: str,
+        stream_handler: StreamHandler,
+        print_chunks: bool = False,
+        messages_override: list[dict] | None = None,
+    ) -> StreamResult:
+        """Run the agent, passing max_iterations when configured."""
+        if messages_override is not None:
+            messages = [
+                {"role": "system", "content": self.config.system_prompt},
+                *messages_override,
+                {"role": "user", "content": message},
+            ]
+        else:
+            self.add_to_history("user", message)
+            messages = self.get_messages_for_api()
+
+        registry = self.tool_registry if not self.tool_registry.is_empty() else None
+        kwargs: dict = {}
+        if self.config.max_iterations is not None:
+            kwargs["max_iterations"] = self.config.max_iterations
+        return stream_handler.stream(
+            messages, print_chunks=print_chunks, tool_registry=registry, **kwargs,
+        )
+
 
 def agent_from_meta(
     meta_path: Path,
@@ -206,6 +233,12 @@ def agent_from_meta(
     system_prompt_path = agent_dir / "prompts" / "system.md"
     system_prompt = system_prompt_path.read_text(encoding="utf-8")
 
+    # Resolve prompt_includes: replace {placeholder} with included file content
+    for placeholder, filename in meta.get("prompt_includes", {}).items():
+        include_path = agent_dir / "prompts" / f"{filename}.md"
+        include_text = include_path.read_text(encoding="utf-8")
+        system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
+
     tools = list(extra_tools) if extra_tools else []
 
     # Resolve bound skills if declared in meta.yaml
@@ -226,5 +259,6 @@ def agent_from_meta(
         tools=tools,
         temperature=meta.get("temperature", 0.7),
         max_tokens=meta.get("max_tokens", 4096),
+        max_iterations=meta.get("max_iterations"),
     )
     return DataDrivenAgent(config, llm_client)
