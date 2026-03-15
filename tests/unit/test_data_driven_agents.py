@@ -1,9 +1,7 @@
 """
 Parameterized tests for data-driven agents (meta.yaml-based).
 
-These tests replace the per-agent test files that existed before the
-architecture simplification. All 6 data-driven agents share the same
-test coverage via parametrize.
+All agents are now data-driven (including writing, tactics, developer).
 """
 
 from pathlib import Path
@@ -19,11 +17,14 @@ from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
 
 DATA_DRIVEN_AGENTS = [
     "clarity",
-    "research",
+    "developer",
     "navigator",
     "obsidian_note_creator",
     "okr_architect",
     "pattern_language_expert",
+    "research",
+    "tactics",
+    "writing",
 ]
 
 _AGENTS_DIR = Path(__file__).parent.parent.parent / "packages" / "agents"
@@ -105,8 +106,9 @@ class TestDataDrivenAgentsInstantiation:
         agent = agent_from_meta(
             meta_path, client, "test-model", extra_tools=[dummy_tool],
         )
-        assert len(agent.config.tools) == 1
-        assert agent.config.tools[0].name == "test_tool"
+        assert len(agent.config.tools) >= 1
+        tool_names = [t.name for t in agent.config.tools]
+        assert "test_tool" in tool_names
 
 
 @pytest.mark.unit
@@ -185,6 +187,141 @@ class TestDataDrivenAgentsSkillBinding:
 
 
 @pytest.mark.unit
+class TestPromptIncludes:
+    """Verify prompt_includes substitution in agent_from_meta."""
+
+    def test_prompt_includes_replaces_placeholders(self, tmp_path):
+        """prompt_includes: field replaces {placeholder} in system prompt."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+            "prompt_includes": {"voice": "my-voice", "rules": "my-rules"},
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("Voice: {voice}\n\nRules: {rules}")
+        (prompts_dir / "my-voice.md").write_text("Speak plainly.")
+        (prompts_dir / "my-rules.md").write_text("No fluff.")
+
+        agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
+
+        assert "Speak plainly." in agent.config.system_prompt
+        assert "No fluff." in agent.config.system_prompt
+        assert "{voice}" not in agent.config.system_prompt
+        assert "{rules}" not in agent.config.system_prompt
+
+    def test_writing_agent_prompt_includes_work(self):
+        """Writing agent's prompt_includes resolve voice-profile and anti-patterns."""
+        meta_path = _AGENTS_DIR / "writing" / "meta.yaml"
+        agent = agent_from_meta(meta_path, Mock(spec=LLMClient), "test-model")
+
+        # voice-profile and anti-patterns should be substituted
+        assert "{voice_profile}" not in agent.config.system_prompt
+        assert "{anti_patterns}" not in agent.config.system_prompt
+        # Content from the included files should be present
+        assert len(agent.config.system_prompt) > 200
+
+
+@pytest.mark.unit
+class TestMaxIterations:
+    """Verify max_iterations is read from meta.yaml and passed through."""
+
+    def test_max_iterations_read_from_meta(self, tmp_path):
+        """max_iterations in meta.yaml is set on AgentConfig."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+            "max_iterations": 20,
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
+        assert agent.config.max_iterations == 20
+
+    def test_max_iterations_none_by_default(self, tmp_path):
+        """Agents without max_iterations have None."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
+        assert agent.config.max_iterations is None
+
+    def test_developer_agent_has_max_iterations(self):
+        """Developer agent's meta.yaml sets max_iterations=20."""
+        meta_path = _AGENTS_DIR / "developer" / "meta.yaml"
+        agent = agent_from_meta(meta_path, Mock(spec=LLMClient), "test-model")
+        assert agent.config.max_iterations == 20
+
+    def test_max_iterations_passed_to_stream_handler(self, tmp_path):
+        """DataDrivenAgent.run() passes max_iterations to stream_handler.stream()."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+            "max_iterations": 15,
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        from packages.core.stream_handler import StreamResult
+        from packages.telemetry.metrics import ResponseMetrics
+
+        agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
+        handler = Mock()
+        handler.stream.return_value = StreamResult(
+            text="ok",
+            usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            cost_usd=0.0,
+            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
+        )
+
+        agent.run("hello", handler)
+
+        handler.stream.assert_called_once()
+        call_kwargs = handler.stream.call_args[1]
+        assert call_kwargs["max_iterations"] == 15
+
+    def test_no_max_iterations_not_passed(self, tmp_path):
+        """Agents without max_iterations don't pass the kwarg."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a test agent." * 5)
+
+        from packages.core.stream_handler import StreamResult
+        from packages.telemetry.metrics import ResponseMetrics
+
+        agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
+        handler = Mock()
+        handler.stream.return_value = StreamResult(
+            text="ok",
+            usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            cost_usd=0.0,
+            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
+        )
+
+        agent.run("hello", handler)
+
+        call_kwargs = handler.stream.call_args[1]
+        assert "max_iterations" not in call_kwargs
+
+
+@pytest.mark.unit
 class TestDataDrivenAgentsDiscovery:
     """Verify data-driven agents are found by the registry."""
 
@@ -196,6 +333,5 @@ class TestDataDrivenAgentsDiscovery:
         agent_key = meta_yaml["name"]
         assert agent_key in agents, f"{agent_name} not discovered"
         meta = agents[agent_key]
-        assert meta.agent_class is None
         assert meta.meta_path is not None
         assert meta.command == meta_yaml["command"]

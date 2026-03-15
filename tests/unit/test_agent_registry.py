@@ -17,6 +17,8 @@ class TestDiscoverAgents:
         ("writing", "/write"),
         ("research", "/research"),
         ("clarity", "/clarity"),
+        ("tactics", "/tactics"),
+        ("developer", "/develop"),
     ])
     def test_discovers_agent(self, name, command):
         agents = discover_agents()
@@ -39,18 +41,9 @@ class TestDiscoverAgents:
             assert meta.description
             assert meta.command.startswith("/")
 
-    def test_python_class_agents_are_importable(self):
+    def test_all_agents_are_data_driven(self):
         agents = discover_agents()
-        class_agents = {k: v for k, v in agents.items() if v.agent_class is not None}
-        assert len(class_agents) >= 2  # writing, tactics at minimum
-        for meta in class_agents.values():
-            assert isinstance(meta.agent_class, type)
-
-    def test_data_driven_agents_have_meta_path(self):
-        agents = discover_agents()
-        data_driven = {k: v for k, v in agents.items() if v.agent_class is None}
-        assert len(data_driven) >= 1
-        for meta in data_driven.values():
+        for meta in agents.values():
             assert meta.meta_path is not None
             assert meta.meta_path.is_file()
 
@@ -63,6 +56,22 @@ class TestDiscoverAgents:
         agents = discover_agents()
         assert agents["clarity"].vault_writing is None
         assert agents["research"].vault_writing is None
+
+    def test_tool_groups_extracted_from_meta_yaml(self):
+        agents = discover_agents()
+        assert agents["writing"].tool_groups == ("blog_tools", "content_evaluator", "suggest_improvements")
+        assert agents["developer"].tool_groups == ("dev_tools",)
+        assert agents["tactics"].tool_groups == ("card_search",)
+
+    def test_skills_extracted_from_meta_yaml(self):
+        agents = discover_agents()
+        assert agents["writing"].skills == ("technical-humanist-image-architect",)
+        assert agents["pattern-language-expert"].skills == ("pattern-language-expert",)
+
+    def test_tool_groups_empty_when_not_declared(self):
+        agents = discover_agents()
+        assert agents["clarity"].tool_groups == ()
+        assert agents["research"].tool_groups == ()
 
 
 @pytest.mark.unit

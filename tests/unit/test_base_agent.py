@@ -109,23 +109,13 @@ class TestBaseAgentRun:
 class TestBaseAgentLoadPrompt:
     """Tests for BaseAgent.load_prompt()."""
 
-    def test_load_prompt_from_agent_directory(self, tmp_path):
+    def test_load_prompt_from_agent_directory(self):
         """Test that load_prompt reads from prompts/ relative to agent file."""
-        # The writing agent has a real system.md prompt — test via it
-        from packages.agents.writing.agent import WritingAgent
-        prompt = WritingAgent.load_prompt("system")
-        assert "writing specialist" in prompt.lower()
+        from packages.agents.jarvis.agent import JarvisAgent
+        prompt = JarvisAgent.load_prompt("daily_note_entry")
+        assert "Daily Note" in prompt
 
     def test_load_prompt_missing_file_raises(self):
-        from packages.agents.writing.agent import WritingAgent
+        from packages.agents.jarvis.agent import JarvisAgent
         with pytest.raises(FileNotFoundError):
-            WritingAgent.load_prompt("nonexistent")
-
-    def test_each_python_agent_has_system_prompt(self):
-        """Python-class agents should load their system prompt without error."""
-        from packages.agents.writing.agent import WritingAgent
-        from packages.agents.tactics.agent import TacticsAgent
-
-        for cls in [WritingAgent, TacticsAgent]:
-            prompt = cls.load_prompt("system")
-            assert len(prompt) > 50
+            JarvisAgent.load_prompt("nonexistent")

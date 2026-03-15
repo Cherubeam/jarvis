@@ -7,7 +7,10 @@ Tests parse_args, _handle_agent_command, and --agent flag behavior.
 import pytest
 from unittest.mock import Mock, MagicMock, patch, call, ANY
 
-from apps.cli.main import parse_args, _handle_agent_command, _instantiate_agent, _run_agent_session, _make_agent_vault_tools
+from apps.cli.main import (
+    parse_args, _handle_agent_command, _instantiate_agent,
+    _run_agent_session, _make_agent_vault_tools, _assemble_agent_tools,
+)
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
@@ -45,15 +48,39 @@ class TestParseArgs:
 
 
 @pytest.mark.unit
-class TestHandleAgentCommand:
-    def _make_mock_agent_class(self, stream_result=None):
-        if stream_result is None:
-            stream_result = _make_stream_result()
-        agent_instance = Mock()
-        agent_instance.run.return_value = stream_result
-        agent_class = Mock(return_value=agent_instance)
-        return agent_class, agent_instance
+class TestAssembleAgentTools:
+    """Tests for _assemble_agent_tools helper."""
 
+    def test_shared_tools_always_included(self):
+        shared = [Mock(spec=ToolDefinition)]
+        meta = AgentMeta(name="test", description="", command="/test")
+        result = _assemble_agent_tools(meta, shared, {})
+        assert len(result) == 1
+
+    def test_tool_groups_resolved(self):
+        shared = [Mock(spec=ToolDefinition)]
+        blog = [Mock(spec=ToolDefinition), Mock(spec=ToolDefinition)]
+        meta = AgentMeta(name="test", description="", command="/test", tool_groups=("blog_tools",))
+        result = _assemble_agent_tools(meta, shared, {"blog_tools": blog})
+        assert len(result) == 3
+
+    def test_unknown_tool_group_ignored(self):
+        meta = AgentMeta(name="test", description="", command="/test", tool_groups=("nonexistent",))
+        result = _assemble_agent_tools(meta, [], {})
+        assert len(result) == 0
+
+    def test_agent_only_gets_declared_groups(self):
+        """Agent with tool_groups=('blog_tools',) doesn't get dev_tools."""
+        blog = [Mock(spec=ToolDefinition)]
+        dev = [Mock(spec=ToolDefinition)]
+        meta = AgentMeta(name="test", description="", command="/test", tool_groups=("blog_tools",))
+        result = _assemble_agent_tools(meta, [], {"blog_tools": blog, "dev_tools": dev})
+        assert len(result) == 1
+        assert result[0] is blog[0]
+
+
+@pytest.mark.unit
+class TestHandleAgentCommand:
     def test_returns_false_for_unknown_command(self):
         result = _handle_agent_command(
             "/unknown", "payload", Mock(), Mock(), Mock(), "model", {}
@@ -61,32 +88,35 @@ class TestHandleAgentCommand:
         assert result is False
 
     def test_returns_true_for_known_command(self):
-        agent_class, _ = self._make_mock_agent_class()
         registry = {
             "writing": AgentMeta(
                 name="writing",
                 description="desc",
                 command="/write",
-                agent_class=agent_class,
+                meta_path=None,
             )
         }
 
         logger = Mock(spec=ConversationLogger)
         handler = Mock(spec=StreamHandler)
 
-        result = _handle_agent_command(
-            "/write", "some text", Mock(), handler, logger, "model", registry
-        )
+        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+            mock_agent = Mock()
+            mock_agent.run.return_value = _make_stream_result()
+            mock_factory.return_value = mock_agent
+
+            result = _handle_agent_command(
+                "/write", "some text", Mock(), handler, logger, "model", registry
+            )
         assert result is True
 
     def test_shows_usage_when_no_payload(self, capsys):
-        agent_class, _ = self._make_mock_agent_class()
         registry = {
             "writing": AgentMeta(
                 name="writing",
                 description="Refined prose",
                 command="/write",
-                agent_class=agent_class,
+                meta_path=None,
             )
         }
 
@@ -99,13 +129,12 @@ class TestHandleAgentCommand:
 
     def test_routes_to_agent_and_logs(self):
         stream_result = _make_stream_result("polished text")
-        agent_class, agent_instance = self._make_mock_agent_class(stream_result)
         registry = {
             "writing": AgentMeta(
                 name="writing",
                 description="desc",
                 command="/write",
-                agent_class=agent_class,
+                meta_path=None,
             )
         }
 
@@ -113,16 +142,20 @@ class TestHandleAgentCommand:
         handler = Mock(spec=StreamHandler)
         logger = Mock(spec=ConversationLogger)
 
-        _handle_agent_command(
-            "/write", "fix this text", client, handler, logger, "test-model", registry
-        )
+        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+            mock_agent = Mock()
+            mock_agent.run.return_value = stream_result
+            mock_factory.return_value = mock_agent
 
-        # Agent was instantiated
-        agent_class.assert_called_once_with(llm_client=client, model="test-model")
-        # run() was called with payload
-        agent_instance.run.assert_called_once_with(
-            "fix this text", handler, print_chunks=True
-        )
+            _handle_agent_command(
+                "/write", "fix this text", client, handler, logger, "test-model", registry
+            )
+
+            # run() was called with payload
+            mock_agent.run.assert_called_once_with(
+                "fix this text", handler, print_chunks=True
+            )
+
         # User message logged
         logger.add_message.assert_any_call("user", "/write fix this text")
         # Assistant response logged
@@ -138,49 +171,51 @@ class TestHandleAgentCommand:
             agent_name="writing",
         )
 
-    def test_passes_extra_tools_to_agent(self):
-        """extra_tools are forwarded to agent classes that accept them."""
+    def test_tool_groups_passed_to_agent(self):
+        """Tool groups are assembled and passed to the agent."""
         dummy_tool = ToolDefinition(
             name="search_tactics", description="Search",
             parameters={"type": "object", "properties": {}},
             execute=lambda: "r",
         )
 
-        # Real class with extra_tools in __init__ so inspect.signature works
-        created_with = {}
-
-        class FakeAgent:
-            def __init__(self, *, llm_client, model, extra_tools=None):
-                created_with["extra_tools"] = extra_tools
-
-            def run(self, *args, **kwargs):
-                return _make_stream_result()
-
         registry = {
             "tactics": AgentMeta(
                 name="tactics", description="desc",
-                command="/tactics", agent_class=FakeAgent,
+                command="/tactics", meta_path=None,
+                tool_groups=("card_search",),
             )
         }
 
-        _handle_agent_command(
-            "/tactics", "help me pitch", Mock(), Mock(), Mock(), "model",
-            registry, extra_tools=[dummy_tool],
-        )
+        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+            mock_agent = Mock()
+            mock_agent.run.return_value = _make_stream_result()
+            mock_factory.return_value = mock_agent
 
-        assert created_with["extra_tools"] == [dummy_tool]
+            _handle_agent_command(
+                "/tactics", "help me pitch", Mock(), Mock(), Mock(), "model",
+                registry,
+                shared_tools=[],
+                tool_groups={"card_search": [dummy_tool]},
+            )
+
+            # Verify extra_tools passed to agent_from_meta
+            call_kwargs = mock_factory.call_args
+            extra = call_kwargs[1].get("extra_tools") or call_kwargs[0][3] if len(call_kwargs[0]) > 3 else call_kwargs[1].get("extra_tools")
+            assert extra == [dummy_tool]
 
     def test_no_payload_starts_session_when_session_provided(self):
         """No-payload + session triggers _run_agent_session instead of usage."""
-        agent_class, _ = self._make_mock_agent_class()
         registry = {
             "tactics": AgentMeta(
                 name="tactics", description="desc",
-                command="/tactics", agent_class=agent_class,
+                command="/tactics", meta_path=None,
             )
         }
 
-        with patch("apps.cli.main._run_agent_session") as mock_session:
+        with patch("apps.cli.main._run_agent_session") as mock_session, \
+             patch("apps.cli.main.agent_from_meta") as mock_factory:
+            mock_factory.return_value = Mock()
             result = _handle_agent_command(
                 "/tactics", "", Mock(), Mock(), Mock(), "model",
                 registry, session=Mock(),
@@ -191,11 +226,10 @@ class TestHandleAgentCommand:
 
     def test_no_payload_shows_usage_when_no_session(self, capsys):
         """No-payload + no session falls back to usage text."""
-        agent_class, _ = self._make_mock_agent_class()
         registry = {
             "tactics": AgentMeta(
                 name="tactics", description="Pip Decks coaching",
-                command="/tactics", agent_class=agent_class,
+                command="/tactics", meta_path=None,
             )
         }
 
@@ -376,10 +410,10 @@ class TestRunAgentSessionHandoff:
 
 @pytest.mark.unit
 class TestInstantiateAgent:
-    """Tests for the _instantiate_agent helper (data-driven + Python-class paths)."""
+    """Tests for the _instantiate_agent helper (all data-driven)."""
 
     def test_data_driven_agent_from_meta_path(self, tmp_path):
-        """agent_class=None uses agent_from_meta()."""
+        """Uses agent_from_meta() to create DataDrivenAgent."""
         import yaml as _yaml
 
         # Create a minimal meta.yaml + system prompt
@@ -397,7 +431,7 @@ class TestInstantiateAgent:
 
         meta = AgentMeta(
             name="test-agent", description="A test agent",
-            command="/test-agent", agent_class=None, meta_path=meta_path,
+            command="/test-agent", meta_path=meta_path,
         )
         client = Mock(spec=LLMClient)
         agent = _instantiate_agent(meta, client, "test-model")
@@ -430,53 +464,13 @@ class TestInstantiateAgent:
 
         meta = AgentMeta(
             name="test-agent", description="desc",
-            command="/test", agent_class=None, meta_path=meta_path,
+            command="/test", meta_path=meta_path,
         )
         agent = _instantiate_agent(meta, Mock(spec=LLMClient), "model", [dummy_tool])
         assert len(agent.config.tools) == 1
 
-    def test_python_class_agent_without_extra_tools(self):
-        """Python-class agent without extra_tools param gets simple instantiation."""
-        created_with = {}
-
-        class SimpleAgent:
-            def __init__(self, *, llm_client, model):
-                created_with["model"] = model
-
-            config = Mock()
-
-        meta = AgentMeta(
-            name="simple", description="desc",
-            command="/simple", agent_class=SimpleAgent,
-        )
-        _instantiate_agent(meta, Mock(), "test-model")
-        assert created_with["model"] == "test-model"
-
-    def test_python_class_agent_with_extra_tools(self):
-        """Python-class agent with extra_tools param receives them."""
-        created_with = {}
-
-        class ToolAgent:
-            def __init__(self, *, llm_client, model, extra_tools=None):
-                created_with["extra_tools"] = extra_tools
-
-            config = Mock()
-
-        dummy_tool = ToolDefinition(
-            name="tool", description="test",
-            parameters={"type": "object", "properties": {}},
-            execute=lambda: "ok",
-        )
-
-        meta = AgentMeta(
-            name="tool-agent", description="desc",
-            command="/tool", agent_class=ToolAgent,
-        )
-        _instantiate_agent(meta, Mock(), "model", [dummy_tool])
-        assert created_with["extra_tools"] == [dummy_tool]
-
     def test_handle_agent_command_with_data_driven_agent(self, tmp_path):
-        """_handle_agent_command works with data-driven agents (agent_class=None)."""
+        """_handle_agent_command works with data-driven agents."""
         import yaml as _yaml
 
         agent_dir = tmp_path / "clarity"
@@ -490,7 +484,7 @@ class TestInstantiateAgent:
 
         meta = AgentMeta(
             name="clarity", description="Explains things",
-            command="/clarity", agent_class=None,
+            command="/clarity",
             meta_path=agent_dir / "meta.yaml",
         )
         registry = {"clarity": meta}

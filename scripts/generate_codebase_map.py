@@ -78,12 +78,7 @@ def scan_agents(root: Path) -> list[str]:
                 name = meta.get("name", child.name)
                 cmd = meta.get("command", f"/{name}")
                 desc = meta.get("description", "")
-                agent_type = "data-driven"
-                if meta.get("agent_class"):
-                    agent_type = "python-class"
-                elif (child / "__init__.py").is_file():
-                    agent_type = "python-class"
-                lines.append(f"- **{name}** (`{cmd}`) — {desc} [{agent_type}]")
+                lines.append(f"- **{name}** (`{cmd}`) — {desc} [data-driven]")
                 continue
             except Exception:
                 pass

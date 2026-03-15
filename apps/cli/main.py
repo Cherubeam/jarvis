@@ -459,6 +459,12 @@ def _handle_agent_command(
     if meta is None:
         return False
 
+    # Show usage if no payload and no interactive session
+    if not payload and session is None:
+        print_system(f"\nUsage: {command} <text>")
+        print_system(f"  {meta.description}\n")
+        return True
+
     # Assemble tools: shared + per-agent tool_groups + vault write tools
     all_tools = _assemble_agent_tools(meta, shared_tools or [], tool_groups or {})
     if config is not None:
@@ -471,11 +477,7 @@ def _handle_agent_command(
     )
 
     if not payload:
-        if session is not None:
-            _run_agent_session(agent, meta.name, stream_handler, logger, session)
-        else:
-            print_system(f"\nUsage: {command} <text>")
-            print_system(f"  {meta.description}\n")
+        _run_agent_session(agent, meta.name, stream_handler, logger, session)
         return True
 
     logger.add_message("user", f"{command} {payload}")
