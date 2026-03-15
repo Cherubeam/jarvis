@@ -1,0 +1,6 @@
+name: tactics
+description: "Pip Decks tactics coaching — storytelling, workshops, ideation"
+command: /tactics
+temperature: 0.7
+tools:
+  - card_search
