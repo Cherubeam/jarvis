@@ -4,15 +4,11 @@ Agent registry — discovers and indexes agents by scanning subdirectories.
 All delegate agents are data-driven: each folder contains a ``meta.yaml``
 with name, description, command, and optional tool_groups / skills / prompt_includes.
 
-Legacy fallback: ``__init__.py`` with ``AGENT_META`` dict is still supported
-but no longer used by any agent.
-
 JARVIS is excluded from discovery (it is the orchestrator, not a delegate).
 """
 
 from __future__ import annotations
 
-import importlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,40 +64,9 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
     )
 
 
-def _discover_from_init(child: Path) -> AgentMeta | None:
-    """Try to discover an agent from __init__.py AGENT_META export."""
-    init_file = child / "__init__.py"
-    if not init_file.is_file():
-        return None
-
-    module_name = f"{_AGENTS_PACKAGE}.{child.name}"
-    try:
-        module = importlib.import_module(module_name)
-    except Exception:
-        logger.warning("Failed to import agent module %s", module_name, exc_info=True)
-        return None
-
-    meta_dict = getattr(module, "AGENT_META", None)
-    if meta_dict is None:
-        return None
-
-    try:
-        return AgentMeta(
-            name=meta_dict["name"],
-            description=meta_dict["description"],
-            command=meta_dict["command"],
-            vault_writing=meta_dict.get("vault_writing"),
-        )
-    except (KeyError, TypeError) as exc:
-        logger.warning("Invalid AGENT_META in %s: %s", module_name, exc)
-        return None
-
 
 def discover_agents() -> dict[str, AgentMeta]:
-    """Scan ``packages/agents/*/`` for agent folders.
-
-    Checks meta.yaml first (preferred), then falls back to __init__.py
-    AGENT_META export.
+    """Scan ``packages/agents/*/`` for agent folders with ``meta.yaml``.
 
     Returns:
         dict keyed by agent name, values are AgentMeta instances.
@@ -112,10 +77,7 @@ def discover_agents() -> dict[str, AgentMeta]:
         if not child.is_dir() or child.name in _SKIP_DIRS or child.name.startswith("_"):
             continue
 
-        # meta.yaml takes priority
         meta = _discover_from_meta_yaml(child)
-        if meta is None:
-            meta = _discover_from_init(child)
         if meta is None:
             continue
 
