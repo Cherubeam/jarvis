@@ -49,6 +49,19 @@ from packages.telemetry.metrics import MetricsTracker
 CLIENT_VERSION = "0.4.0"
 
 
+def _assemble_agent_tools(
+    meta: AgentMeta,
+    shared_tools: list,
+    tool_groups: dict[str, list],
+) -> list:
+    """Assemble tools for an agent from shared_tools + its declared tool_groups."""
+    agent_tools = list(shared_tools)
+    for group_name in meta.tool_groups:
+        if group_name in tool_groups:
+            agent_tools.extend(tool_groups[group_name])
+    return agent_tools
+
+
 def _instantiate_agent(
     meta: AgentMeta,
     client: LLMClient,
@@ -57,22 +70,13 @@ def _instantiate_agent(
     skill_registry: dict | None = None,
     card_search_tool=None,
 ):
-    """Create an agent from AgentMeta, handling both Python-class and data-driven agents."""
-    if meta.agent_class is None:
-        # Data-driven agent: build from meta.yaml
-        return agent_from_meta(
-            meta.meta_path, client, model_id,
-            extra_tools=extra_tools or None,
-            skill_registry=skill_registry,
-            card_search_tool=card_search_tool,
-        )
-
-    # Python-class agent: check if it accepts extra_tools
-    import inspect
-    sig = inspect.signature(meta.agent_class.__init__)
-    if "extra_tools" in sig.parameters and extra_tools:
-        return meta.agent_class(llm_client=client, model=model_id, extra_tools=extra_tools)
-    return meta.agent_class(llm_client=client, model=model_id)
+    """Create an agent from AgentMeta via agent_from_meta()."""
+    return agent_from_meta(
+        meta.meta_path, client, model_id,
+        extra_tools=extra_tools or None,
+        skill_registry=skill_registry,
+        card_search_tool=card_search_tool,
+    )
 
 
 def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config) -> list:
@@ -442,7 +446,8 @@ def _handle_agent_command(
     logger: ConversationLogger,
     model_id: str,
     agent_registry: dict,
-    extra_tools: list | None = None,
+    shared_tools: list | None = None,
+    tool_groups: dict[str, list] | None = None,
     session=None,
     skill_registry: dict | None = None,
     card_search_tool=None,
@@ -454,8 +459,8 @@ def _handle_agent_command(
     if meta is None:
         return False
 
-    # Add per-agent vault write tools if the agent declares vault_writing
-    all_tools = list(extra_tools or [])
+    # Assemble tools: shared + per-agent tool_groups + vault write tools
+    all_tools = _assemble_agent_tools(meta, shared_tools or [], tool_groups or {})
     if config is not None:
         all_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
 
@@ -539,9 +544,10 @@ def main(argv: list[str] | None = None):
     skill_registry = discover_skills()
 
     # Initialize RAG if enabled
-    extra_tools = []
-    # Agent-only tools: available to delegated agents but not JARVIS
-    agent_only_tools: list = []
+    # Shared tools — always available to JARVIS and all delegated agents
+    shared_tools: list = []
+    # Named tool groups — assigned per-agent via meta.yaml `tools:` field
+    tool_groups: dict[str, list] = {}
     card_search_tool = None  # Set by RAG card indexing if available
     rag_cfg = config.get("rag", {})
     if rag_cfg.get("enabled", False):
@@ -561,7 +567,7 @@ def main(argv: list[str] | None = None):
                 print_system(f"[RAG] Indexed {n_new} new conversation(s).")
 
             recall_tool = make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
-            extra_tools.append(recall_tool)
+            shared_tools.append(recall_tool)
 
             # Index deck-skill cards if any deck-skills have a deck.yaml
             if rag_cfg.get("index_cards", True):
@@ -579,7 +585,7 @@ def main(argv: list[str] | None = None):
                         print_system(f"[RAG] Indexed {n_cards} new card(s).")
 
                     card_search_tool = make_card_search_tool(db_path, embedding_model, rag_api_key)
-                    agent_only_tools.append(card_search_tool)
+                    tool_groups["card_search"] = [card_search_tool]
 
         except ImportError:
             print_system("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
@@ -590,18 +596,18 @@ def main(argv: list[str] | None = None):
     fs_guard = load_filesystem_guard(config)
     vault_config = load_vault_config(config, filesystem_guard=fs_guard)
 
-    # Vault read tools — Tier 1 (available to JARVIS and all delegated agents)
+    # Vault read tools — shared (available to JARVIS and all delegated agents)
     if vault_config is not None:
         try:
             from packages.core.tools.vault_tools import make_vault_tools
 
             vault_read_tools = make_vault_tools(vault_config)
-            extra_tools.extend(vault_read_tools)
+            shared_tools.extend(vault_read_tools)
             print_system(f"[Vault] {len(vault_read_tools)} vault read tools loaded.")
         except Exception as e:
             print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
 
-    # Blog tools are agent-only so JARVIS delegates instead of reading/reviewing directly.
+    # Blog tools — tool group for writing agent
     if vault_config is not None:
         try:
             from packages.core.tools.blog_tools import make_blog_tools
@@ -615,25 +621,24 @@ def main(argv: list[str] | None = None):
                 blog_tools = make_blog_tools(
                     vault_config, CLIConfirmationHandler(), blog_dir, template_path,
                 )
-                agent_only_tools.extend(blog_tools)
+                tool_groups["blog_tools"] = blog_tools
                 print_system(f"[Blog] {len(blog_tools)} blog tools loaded.")
         except Exception as e:
             print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
 
-    # Initialize content-evaluator tool (if skill directory exists)
-    # This tool is for specialized agents only — JARVIS delegates instead of evaluating directly.
+    # Content-evaluator tool — tool group for writing agent
     skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
     if (skill_dir / "SKILL.md").is_file():
         try:
             from packages.core.tools.content_evaluator import make_content_evaluator_tool
 
             evaluator_tool = make_content_evaluator_tool(skill_dir, client, model_id)
-            agent_only_tools.append(evaluator_tool)
+            tool_groups["content_evaluator"] = [evaluator_tool]
             print_system("[Tools] Content evaluator loaded.")
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
 
-    # Initialize developer agent tools (codebase, git, project write, test runner)
+    # Developer tools — tool group for developer agent
     dev_cfg = config.get("developer", {})
     if dev_cfg.get("enabled", True):
         try:
@@ -661,12 +666,12 @@ def main(argv: list[str] | None = None):
                 allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
             ))
             dev_tools.append(make_test_runner_tool(jarvis_dir))
-            agent_only_tools.extend(dev_tools)
+            tool_groups["dev_tools"] = dev_tools
             print_system(f"[Developer] {len(dev_tools)} developer tools loaded.")
         except Exception as e:
             print_system(f"[Developer] Startup failed — developer tools disabled. ({e})")
 
-    # Initialize suggest-improvements tool (if vault is configured)
+    # Suggest-improvements tool — tool group for writing agent
     if vault_config is not None:
         try:
             from packages.core.tools.suggest_improvements import make_suggest_improvements_tool
@@ -674,7 +679,7 @@ def main(argv: list[str] | None = None):
             suggest_tool = make_suggest_improvements_tool(
                 vault_config, CLIConfirmationHandler(),
             )
-            agent_only_tools.append(suggest_tool)
+            tool_groups["suggest_improvements"] = [suggest_tool]
             print_system("[Tools] Suggest improvements loaded.")
         except Exception as e:
             print_system(f"[Tools] Suggest improvements failed: {e}")
@@ -686,8 +691,8 @@ def main(argv: list[str] | None = None):
             print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
             sys.exit(1)
         meta = agent_registry[args.agent]
-        agent_vault_tools = _make_agent_vault_tools(meta, config, vault_config)
-        all_agent_tools = extra_tools + agent_only_tools + agent_vault_tools
+        all_agent_tools = _assemble_agent_tools(meta, shared_tools, tool_groups)
+        all_agent_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
         active_agent = _instantiate_agent(
             meta, client, model_id, all_agent_tools,
             skill_registry=skill_registry,
@@ -703,7 +708,7 @@ def main(argv: list[str] | None = None):
             llm_client=client,
             context_dir=context_dir,
             model=model_id,
-            extra_tools=extra_tools or None,
+            extra_tools=shared_tools or None,
             available_agents=available_agents or None,
         )
         agent_name = "JARVIS"
@@ -837,11 +842,11 @@ def main(argv: list[str] | None = None):
                     continue
 
                 # Agent-routed commands
-                all_agent_tools = extra_tools + agent_only_tools
                 if _handle_agent_command(
                     command, payload, client, stream_handler, logger,
                     model_id, agent_registry,
-                    extra_tools=all_agent_tools or None,
+                    shared_tools=shared_tools,
+                    tool_groups=tool_groups,
                     session=session,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
@@ -906,8 +911,8 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                agent_vault_tools = _make_agent_vault_tools(delegate_meta, config, vault_config)
-                all_delegate_tools = extra_tools + agent_only_tools + agent_vault_tools
+                all_delegate_tools = _assemble_agent_tools(delegate_meta, shared_tools, tool_groups)
+                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,
                     skill_registry=skill_registry,
