@@ -47,6 +47,8 @@ class AgentMeta:
     agent_class: type[BaseAgent] | None = None
     meta_path: Path | None = None
     vault_writing: str | None = None
+    tool_groups: tuple[str, ...] = ()
+    skills: tuple[str, ...] = ()
 
 
 def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
@@ -88,6 +90,8 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
         agent_class=agent_class,
         meta_path=meta_file,
         vault_writing=meta_dict.get("vault_writing"),
+        tool_groups=tuple(meta_dict.get("tools", [])),
+        skills=tuple(meta_dict.get("skills", [])),
     )
 
 
