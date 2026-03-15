@@ -1,0 +1,12 @@
+name: writing
+description: Write and edit in Marco's authentic voice
+command: /write
+prompt_includes:
+  voice_profile: voice-profile
+  anti_patterns: anti-patterns
+skills:
+  - technical-humanist-image-architect
+tools:
+  - blog_tools
+  - content_evaluator
+  - suggest_improvements
