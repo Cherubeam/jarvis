@@ -242,6 +242,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         cost_usd=result.cost_usd,
         ttft_ms=result.metrics.ttft_ms,
         total_latency_ms=result.metrics.total_latency_ms,
+        agent_name="JARVIS",
     )
 
     # Write to vault with diff + confirmation
