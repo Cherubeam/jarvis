@@ -1,17 +1,11 @@
 """
 Agent registry — discovers and indexes agents by scanning subdirectories.
 
-Supports two discovery paths:
+All delegate agents are data-driven: each folder contains a ``meta.yaml``
+with name, description, command, and optional tool_groups / skills / prompt_includes.
 
-1. **meta.yaml** (preferred): Agent folder contains a ``meta.yaml`` with name,
-   description, command. If ``agent_class`` is specified, that Python class is
-   imported; otherwise the agent is data-driven (``agent_class=None``).
-
-2. **__init__.py + AGENT_META** (legacy): Agent folder exports an
-   ``AGENT_META`` dict from ``__init__.py`` with name, description, command,
-   and agent_class.
-
-When both exist, ``meta.yaml`` takes priority.
+Legacy fallback: ``__init__.py`` with ``AGENT_META`` dict is still supported
+but no longer used by any agent.
 
 JARVIS is excluded from discovery (it is the orchestrator, not a delegate).
 """
@@ -22,12 +16,8 @@ import importlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import yaml
-
-if TYPE_CHECKING:
-    from packages.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +34,6 @@ class AgentMeta:
     name: str
     description: str
     command: str
-    agent_class: type[BaseAgent] | None = None
     meta_path: Path | None = None
     vault_writing: str | None = None
     tool_groups: tuple[str, ...] = ()
@@ -68,26 +57,10 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
         logger.warning("Invalid meta.yaml in %s: missing 'name'", child.name)
         return None
 
-    # Optional: import a Python class if specified
-    agent_class = None
-    class_ref = meta_dict.get("agent_class")
-    if class_ref:
-        module_name = f"{_AGENTS_PACKAGE}.{child.name}"
-        try:
-            module = importlib.import_module(module_name)
-            agent_class = getattr(module, class_ref)
-        except Exception:
-            logger.warning(
-                "Failed to import agent_class '%s' from %s",
-                class_ref, module_name, exc_info=True,
-            )
-            return None
-
     return AgentMeta(
         name=meta_dict["name"],
         description=meta_dict.get("description", ""),
         command=meta_dict.get("command", f"/{meta_dict['name']}"),
-        agent_class=agent_class,
         meta_path=meta_file,
         vault_writing=meta_dict.get("vault_writing"),
         tool_groups=tuple(meta_dict.get("tools", [])),
@@ -117,7 +90,6 @@ def _discover_from_init(child: Path) -> AgentMeta | None:
             name=meta_dict["name"],
             description=meta_dict["description"],
             command=meta_dict["command"],
-            agent_class=meta_dict["agent_class"],
             vault_writing=meta_dict.get("vault_writing"),
         )
     except (KeyError, TypeError) as exc:
