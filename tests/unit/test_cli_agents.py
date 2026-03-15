@@ -135,6 +135,7 @@ class TestHandleAgentCommand:
             cost_usd=0.001,
             ttft_ms=50,
             total_latency_ms=200,
+            agent_name="writing",
         )
 
     def test_passes_extra_tools_to_agent(self):

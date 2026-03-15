@@ -261,7 +261,7 @@ class ConversationLogger:
             "metadata": kwargs,
         }
 
-    def add_tool_messages(self, tool_messages: list[dict]) -> None:
+    def add_tool_messages(self, tool_messages: list[dict], agent_name: str | None = None) -> None:
         """Store tool-calling messages (assistant with tool_calls + tool results).
 
         Preserves tool_calls and tool_call_id fields so that
@@ -284,6 +284,10 @@ class ConversationLogger:
                 "error": None,
                 "metadata": {},
             }
+
+            # Tag assistant tool-call messages with the originating agent
+            if agent_name and msg["role"] == "assistant":
+                stored["agent"] = agent_name
 
             # Preserve tool_calls on assistant messages
             if "tool_calls" in msg:
@@ -312,6 +316,7 @@ class ConversationLogger:
         status: str = "completed",
         error: dict | None = None,
         metadata: dict | None = None,
+        agent_name: str | None = None,
     ):
         """Add a message to the current conversation with optional token usage, cost, and latency."""
         self._message_counter += 1
@@ -330,6 +335,10 @@ class ConversationLogger:
             "error": error,
             "metadata": metadata or {},
         }
+
+        # Tag assistant messages with the originating agent
+        if agent_name and role == "assistant":
+            message["agent"] = agent_name
 
         # Add usage for assistant messages with token data
         if role == "assistant" and total_tokens > 0:

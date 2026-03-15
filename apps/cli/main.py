@@ -406,6 +406,7 @@ def _run_agent_session(
             cost_usd=result.cost_usd,
             ttft_ms=result.metrics.ttft_ms,
             total_latency_ms=result.metrics.total_latency_ms,
+            agent_name=agent_name,
         )
 
     # Process initial message if provided (e.g. from delegation)
@@ -492,6 +493,7 @@ def _handle_agent_command(
         cost_usd=result.cost_usd,
         ttft_ms=result.metrics.ttft_ms,
         total_latency_ms=result.metrics.total_latency_ms,
+        agent_name=meta.name,
     )
     return True
 
@@ -886,7 +888,7 @@ def main(argv: list[str] | None = None):
 
             # Persist tool call context before the final assistant message
             if result.tool_messages:
-                logger.add_tool_messages(result.tool_messages)
+                logger.add_tool_messages(result.tool_messages, agent_name=agent_name)
 
             logger.add_message(
                 "assistant",
@@ -897,6 +899,7 @@ def main(argv: list[str] | None = None):
                 cost_usd=result.cost_usd,
                 ttft_ms=result.metrics.ttft_ms,
                 total_latency_ms=result.metrics.total_latency_ms,
+                agent_name=agent_name,
             )
 
             # Handle delegation to a specialized agent
