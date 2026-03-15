@@ -9,12 +9,12 @@ Overview of all agents, their capabilities, and configuration.
 | Agent | Command | Type | Temperature | Max Iterations | Vault Writing |
 |-------|---------|------|:-----------:|:--------------:|:-------------:|
 | **JARVIS** | *(orchestrator)* | Python class | 0.7 | 5 | — |
-| **Writing** | `/write` | Python class | 0.7 | 5 | — |
+| **Writing** | `/write` | Data-driven | 0.7 | 5 | — |
 | **Research** | `/research` | Data-driven | 0.7 | 5 | — |
 | **Clarity** | `/clarity` | Data-driven | 0.7 | 5 | — |
 | **Navigator** | `/navigator` | Data-driven | 0.7 | 5 | — |
-| **Tactics** | `/tactics` | Python class | 0.3 | 5 | — |
-| **Developer** | `/develop` | Python class | 0.3 | 20 | — |
+| **Tactics** | `/tactics` | Data-driven | 0.7 | 5 | — |
+| **Developer** | `/develop` | Data-driven | 0.3 | 20 | — |
 | **OKR Architect** | `/okr-architect` | Data-driven | 0.7 | 5 | — |
 | **Obsidian Note Creator** | `/obsidian-note-creator` | Data-driven | 0.7 | 5 | `slip_box` |
 | **Pattern Language Expert** | `/pattern-language-expert` | Data-driven | 0.7 | 5 | `patterns` |
@@ -59,16 +59,18 @@ Tools are assigned in two tiers, configured in `apps/cli/main.py`:
 
 ---
 
-## Python-Class Agent Rationale
+## Agent Architecture Notes
 
-Four agents use Python classes instead of data-driven `meta.yaml`:
+Only JarvisAgent uses a Python class (custom delegation routing, conversation context management). All 9 delegate agents are data-driven via `meta.yaml`.
 
-| Agent | Reason |
-|-------|--------|
-| **JARVIS** | Custom delegation routing logic, conversation context management |
-| **Writing** | Custom prompt composition (system.md + voice-profile.md + anti-patterns.md) |
-| **Tactics** | Custom temperature (0.3), skill-card tool injection |
-| **Developer** | Extended iterations (20), custom tool wiring, temperature (0.3) |
+Features that previously required Python classes are now handled declaratively:
+
+| Feature | `meta.yaml` field | Used by |
+|---------|-------------------|---------|
+| Prompt composition | `prompt_includes:` | Writing (`voice-profile`, `anti-patterns`) |
+| Extended iterations | `max_iterations:` | Developer (20) |
+| Tool wiring | `tools:` (tool groups) | Writing, Developer, Tactics |
+| Custom temperature | `temperature:` | Developer (0.3) |
 
 ---
 

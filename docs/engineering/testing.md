@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 1033 passed, 11 skipped (run `uv run pytest` for current counts)
+**Tests**: 1094 passed, 8 skipped (run `uv run pytest` for current counts)
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---

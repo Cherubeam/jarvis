@@ -26,7 +26,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • Pricing      │  • Tactics Agent   │                           │
 │  • Stream       │  • Developer Agent │                           │
 │    Handler      │  • Data-driven     │                           │
-│  • Tools        │    agents (6)      │                           │
+│  • Tools        │    agents (9)      │                           │
 │  • RAG          │  • Registry        │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
@@ -405,13 +405,11 @@ rag:
 
 ### 10. Agent Discovery (`packages/agents/registry.py`)
 
-**Purpose**: Discover and instantiate agents via a dual-path registry.
+**Purpose**: Discover and instantiate agents via `meta.yaml` registry.
 
 **Location**: `packages/agents/registry.py`, `packages/agents/base.py`
 
-**Discovery Paths** (in order of preference):
-
-1. **Data-driven agents via `meta.yaml`** (preferred): Agent directories containing a `meta.yaml` file are loaded as `DataDrivenAgent` instances. The `meta.yaml` declares the agent's name, description, command, and optional parameters (temperature, max_tokens). The system prompt is loaded from `prompts/system.md` in the same directory. No Python code is required.
+**Discovery**: Agent directories containing a `meta.yaml` file are loaded as `DataDrivenAgent` instances. The `meta.yaml` declares the agent's name, description, command, and optional parameters (temperature, max_tokens). The system prompt is loaded from `prompts/system.md` in the same directory. No Python code is required.
 
 **Key Components:**
 
@@ -543,9 +541,8 @@ skills:
 7b. Blog tools initialization (if obsidian.enabled: true)
    └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
-8. Agent discovery (dual-path registry)
-   ├─ Scan agent directories for meta.yaml (data-driven agents)
-   └─ Fall back to __init__.py AGENT_META (legacy Python-class agents)
+8. Agent discovery (meta.yaml registry)
+   └─ Scan agent directories for meta.yaml (all agents discovered via meta.yaml)
    ↓
 9. Load pricing from LiteLLM cost map (offline, no HTTP)
    ↓
@@ -596,15 +593,18 @@ jarvis/
 │   │       └── claude_context.py   # Claude memories/projects importer
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
-│   │   ├── registry.py             # Dual-path agent discovery + slash-command lookup
+│   │   ├── registry.py             # Agent discovery (meta.yaml) + slash-command lookup
 │   │   ├── jarvis/                 # Main JARVIS orchestrator
 │   │   │   ├── agent.py
 │   │   │   └── prompts/            # Daily summary + writing prompts
-│   │   ├── writing/                # Writing agent (/write) — custom Python class
-│   │   │   ├── agent.py
-│   │   │   └── prompts/system.md
-│   │   ├── tactics/                # Tactics agent (/tactics) — custom Python class
-│   │   │   ├── agent.py
+│   │   ├── writing/                # Data-driven agent (/write)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/
+│   │   │       ├── system.md
+│   │   │       ├── voice-profile.md
+│   │   │       └── anti-patterns.md
+│   │   ├── tactics/                # Data-driven agent (/tactics)
+│   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── clarity/                # Data-driven agent (/clarity)
 │   │   │   ├── meta.yaml
@@ -624,8 +624,9 @@ jarvis/
 │   │   ├── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   └── developer/               # Developer agent (/develop) — custom Python class
-│   │       ├── agent.py
+│   │   └── developer/               # Data-driven agent (/develop)
+│   │       ├── meta.yaml
+│   │       ├── confirmation.py
 │   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync

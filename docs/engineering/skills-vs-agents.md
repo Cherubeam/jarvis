@@ -44,30 +44,20 @@ clarity/
     system.md       # system prompt
 ```
 
-This is the preferred approach for agents that follow the standard pattern: load a system prompt, maintain conversation history, stream responses. Six agents use this pattern: Clarity, Research, Navigator, OKR Architect, Obsidian Note Creator, and Pattern Language Expert.
+This is the preferred approach for agents that follow the standard pattern: load a system prompt, maintain conversation history, stream responses. Nine delegate agents use this pattern: Clarity, Developer, Navigator, Obsidian Note Creator, OKR Architect, Pattern Language Expert, Research, Tactics, and Writing.
 
-### Python-Class Agents
+### Python-Class Agent (JarvisAgent only)
 
-Agents that need custom logic -- such as custom prompt composition, non-standard temperature, or orchestration -- use a Python class that inherits from [`BaseAgent`](../../packages/agents/base.py).
-
-```
-tactics/
-  __init__.py       # AGENT_META dict for registry discovery
-  agent.py          # Python class extending BaseAgent
-  prompts/
-    system.md       # system prompt loaded via load_prompt()
-```
-
-Only WritingAgent (custom prompt composition), TacticsAgent (custom temperature), and JarvisAgent (orchestrator) use this pattern.
+Only JarvisAgent (the orchestrator) uses a Python class, because it needs custom delegation routing logic. All delegate agents are data-driven.
 
 **Key properties (both forms):**
 
 - **Stateful** -- maintains `conversation_history` across turns within a session.
 - **Multi-turn** -- designed for back-and-forth interaction where context accumulates.
 - **JARVIS-native** -- whether data-driven or Python-class, agents are JARVIS-specific.
-- **Dual-path discovery** -- the [agent registry](../../packages/agents/registry.py) scans for both `meta.yaml` files and `AGENT_META` in `__init__.py` files.
+- **Filesystem-based discovery** -- the [agent registry](../../packages/agents/registry.py) scans for `meta.yaml` files.
 
-Agents can accept `extra_tools` at construction (e.g., the RAG search tool), run agentic loops with tool calls, and (for Python-class agents) implement custom `process_message()` logic.
+Agents can accept `extra_tools` at construction (e.g., the RAG search tool) and run agentic loops with tool calls.
 
 Agents can also **bind skills** by declaring `skills:` in their `meta.yaml`. This injects the skill's knowledge (SKILL.md body) into the agent's system prompt automatically, and for deck-skills, adds the card search tool. See [Agent-Skill Binding](#agent-skill-binding) below.
 
@@ -85,10 +75,10 @@ This is not about complexity. A skill can have a sophisticated prompt, tools, an
 |---|---|---|
 | State across turns | None | Conversation history |
 | Typical interaction | Single request/response | Multi-turn dialogue |
-| Implementation | SKILL.md (+ optional Python) | `meta.yaml` (data-driven) or Python class |
+| Implementation | SKILL.md (+ optional Python) | `meta.yaml` (data-driven); only JarvisAgent uses a Python class |
 | Portability | Vendor-portable | JARVIS-native |
 | User invocation | Not standalone-invokable; used as tool by agents | Slash command or `--agent` flag |
-| Discovery | Filesystem scan for SKILL.md | Filesystem scan for `meta.yaml` or `AGENT_META` |
+| Discovery | Filesystem scan for SKILL.md | Filesystem scan for `meta.yaml` |
 
 If the user's task can be fully addressed in one exchange -- "evaluate this blog post", "draft OKRs for Q3" -- it's a skill. If the task requires follow-up questions, iterative refinement, or accumulated context -- "coach me through building a workshop agenda" -- it's an agent.
 
@@ -165,36 +155,9 @@ command: /my-agent
 
 The `agent_from_meta()` factory will create a `DataDrivenAgent` instance automatically.
 
-### Step 3: Use a Python Class (Only If Needed)
+### Step 3: Use a Python Class (Escape Hatch)
 
-Only create a Python class if the agent needs custom logic (e.g., custom prompt composition, non-standard temperature, tool orchestration). In that case, use the traditional pattern:
-
-```
-packages/agents/<name>/
-  __init__.py       # AGENT_META = {"name": ..., "description": ..., "command": ...}
-  agent.py          # Agent class extending BaseAgent
-  prompts/
-    system.md       # system prompt loaded via load_prompt()
-```
-
-```python
-from packages.agents.base import BaseAgent, AgentConfig
-from packages.core.llm_client import LLMClient, StreamingResponse
-
-class MyAgent(BaseAgent):
-    def __init__(self, llm_client: LLMClient, model: str = "..."):
-        config = AgentConfig(
-            name="my-agent",
-            description="...",
-            model=model,
-            system_prompt=self.load_prompt("system"),
-        )
-        super().__init__(config, llm_client)
-
-    def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
-        self.add_to_history("user", message)
-        return self.llm_client.chat_stream(self.get_messages_for_api())
-```
+Python classes are reserved for JarvisAgent-level complexity (custom delegation routing, orchestration logic). All delegate agents should be data-driven — `prompt_includes`, `tools`, `max_iterations`, and `temperature` in `meta.yaml` cover most needs without custom code.
 
 ### Step 4: Retire the Skill (Optional)
 
