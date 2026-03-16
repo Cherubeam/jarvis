@@ -374,7 +374,7 @@ class TestImportConversations:
     def test_dry_run_no_files_written(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path, dry_run=True)
         assert summary.imported > 0
-        assert list(tmp_path.glob("*.json")) == []
+        assert list(tmp_path.rglob("*.json")) == []
 
     def test_dry_run_counts(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path, dry_run=True)
@@ -385,12 +385,12 @@ class TestImportConversations:
     def test_import_creates_files(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path)
         assert summary.imported == 2
-        json_files = list(tmp_path.glob("*.json"))
+        json_files = list(tmp_path.rglob("*.json"))
         assert len(json_files) == 2
 
     def test_imported_files_valid_schema(self, sample_source, tmp_path):
         import_conversations(sample_source, tmp_path)
-        for f in tmp_path.glob("*.json"):
+        for f in tmp_path.rglob("*.json"):
             data = json.loads(f.read_text())
             assert data["schema_version"] == "1.0.0"
             assert "id" in data
@@ -442,7 +442,7 @@ class TestImportConversations:
         target = tmp_path / "out"
         summary = import_conversations(source, target)
         assert summary.imported == 3
-        files = sorted(f.name for f in target.glob("*.json"))
+        files = sorted(f.name for f in target.rglob("*.json"))
         assert len(files) == 3
         # Should have base, _2, _3 suffixes
         assert any("_2" in f for f in files)
@@ -475,7 +475,7 @@ class TestLoadRoundTrip:
     def test_imported_file_loadable(self, tmp_path):
         source = FIXTURES_DIR / "chatgpt_sample.json"
         import_conversations(source, tmp_path)
-        for f in tmp_path.glob("*.json"):
+        for f in tmp_path.rglob("*.json"):
             data = ConversationLogger.load(f)
             assert data["schema_version"] == "1.0.0"
             assert isinstance(data["messages"], list)

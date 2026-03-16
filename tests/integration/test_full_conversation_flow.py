@@ -284,7 +284,7 @@ class TestFullConversationFlow:
         logger.add_message("assistant", "Hi!", prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.001)
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         assert len(files) == 1
 
         with open(files[0]) as f:
@@ -323,7 +323,7 @@ class TestFullConversationFlow:
         logger.add_message("user", "Turn 2")
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         with open(files[0]) as f:
             data = json.load(f)
 
