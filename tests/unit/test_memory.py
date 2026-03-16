@@ -512,8 +512,8 @@ class TestConversationLogger:
         with freeze_time("2026-01-15 14:31:00"):
             logger.save()
 
-        # Find the saved file
-        files = list(temp_conversations_dir.glob("*.json"))
+        # Find the saved file (in year subdir)
+        files = list(temp_conversations_dir.rglob("*.json"))
         assert len(files) == 1
 
         # Load and verify structure
@@ -566,7 +566,7 @@ class TestConversationLogger:
         logger.add_message("user", "Hello")
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         with open(files[0]) as f:
             data = json.load(f)
 
@@ -583,11 +583,22 @@ class TestConversationLogger:
 
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         assert len(files) == 1
 
         filename = files[0].name
         assert filename == "2026-01-15_14-30-45.json"
+
+    @freeze_time("2026-01-15 14:30:45")
+    def test_save_writes_to_year_subdir(self, temp_conversations_dir: Path):
+        """Test that save writes the file into a YYYY subdirectory."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "Test")
+
+        logger.save()
+
+        expected_path = temp_conversations_dir / "2026" / "2026-01-15_14-30-45.json"
+        assert expected_path.exists()
 
     def test_save_empty_conversation(self, temp_conversations_dir: Path):
         """Test that save doesn't create file for empty conversation."""
@@ -595,7 +606,7 @@ class TestConversationLogger:
 
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         assert len(files) == 0
 
 
@@ -660,7 +671,7 @@ class TestConversationLoggerMethods:
         logger.add_message("user", "Hello")
         logger.save()
 
-        files = list(temp_conversations_dir.glob("*.json"))
+        files = list(temp_conversations_dir.rglob("*.json"))
         with open(files[0]) as f:
             data = json.load(f)
 
