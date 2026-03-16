@@ -609,6 +609,41 @@ class TestStreamHandlerAgenticLoop:
         assert kwargs.get("tools") is None
         assert result.text == "forced text"
 
+    def test_max_tokens_passed_to_chat_stream(self):
+        """When max_tokens is set, it is forwarded to chat_stream on the simple path."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["ok"])
+
+        handler = self._make_handler(client)
+        handler.max_tokens = 16384
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        client.chat_stream.assert_called_once_with(
+            [{"role": "user", "content": "hi"}], tools=None, max_tokens=16384,
+        )
+
+    def test_max_tokens_passed_to_stream_with_tool_detection(self):
+        """When max_tokens is set, it is forwarded to stream_with_tool_detection."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        content_stream = _make_streaming_response(["done"])
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.return_value = content_stream
+
+        handler = self._make_handler(client)
+        handler.max_tokens = 8192
+        handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        _, kwargs = client.stream_with_tool_detection.call_args
+        assert kwargs["max_tokens"] == 8192
+
     def test_no_tool_call_streams_directly(self):
         """When model returns content (no tools), the streaming response is used directly."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition
