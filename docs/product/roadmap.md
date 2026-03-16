@@ -220,6 +220,13 @@ packages/skills/
 **Timeline**: Mid 2026
 **Goal**: Add a web UI following the 3-step approach from [gui-architecture-notes.md](../research/gui-architecture-notes.md)
 
+### Design Foundations
+
+- [x] UI design principles — [`docs/design/principles.md`](../design/principles.md)
+- [x] UI voice & tone guide — [`docs/design/voice-and-tone.md`](../design/voice-and-tone.md)
+- [x] Design tokens (colors, typography, spacing) — [`docs/design/tokens.md`](../design/tokens.md)
+- [x] Component inventory — [`docs/design/components.md`](../design/components.md)
+
 ### 6A: Event Decoupling (prerequisite)
 
 - [ ] Make `StreamHandler.stream()` yield typed events (`TextChunk`, `ToolCallStarted`, `UsageReport`, etc.)
