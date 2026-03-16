@@ -53,13 +53,19 @@ def _assemble_agent_tools(
     meta: AgentMeta,
     shared_tools: list,
     tool_groups: dict[str, list],
-    exclude_tool_groups: set[str] | None = None,
+    only_tool_groups: set[str] | None = None,
+    include_shared: bool = True,
 ) -> list:
-    """Assemble tools for an agent from shared_tools + its declared tool_groups."""
-    agent_tools = list(shared_tools)
-    for group_name in meta.tool_groups:
-        if exclude_tool_groups and group_name in exclude_tool_groups:
-            continue
+    """Assemble tools for an agent from shared_tools + its declared tool_groups.
+
+    Args:
+        only_tool_groups: If set, include only these tool groups
+            (overrides meta.tool_groups). If None, use meta.tool_groups.
+        include_shared: Whether to include shared tools (default True).
+    """
+    agent_tools = list(shared_tools) if include_shared else []
+    groups = only_tool_groups if only_tool_groups is not None else set(meta.tool_groups)
+    for group_name in groups:
         if group_name in tool_groups:
             agent_tools.extend(tool_groups[group_name])
     return agent_tools
@@ -919,14 +925,14 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                exclude_groups = None
+                tool_kwargs: dict = {}
                 if result.delegate_to == "writing" and result.delegate_task:
                     task_lower = result.delegate_task.lower()
                     if any(s in task_lower for s in ("prepare", "pre-publish", "publish", "prepub", "pre-pub")):
-                        exclude_groups = {"content_evaluator", "suggest_improvements"}
+                        tool_kwargs = {"only_tool_groups": {"blog_tools"}, "include_shared": False}
                 all_delegate_tools = _assemble_agent_tools(
                     delegate_meta, shared_tools, tool_groups,
-                    exclude_tool_groups=exclude_groups,
+                    **tool_kwargs,
                 )
                 all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(

@@ -78,6 +78,24 @@ class TestAssembleAgentTools:
         assert len(result) == 1
         assert result[0] is blog[0]
 
+    def test_only_tool_groups_whitelist(self):
+        """only_tool_groups overrides meta.tool_groups and include_shared=False drops shared."""
+        shared = [Mock(spec=ToolDefinition)]
+        blog = [Mock(spec=ToolDefinition), Mock(spec=ToolDefinition)]
+        dev = [Mock(spec=ToolDefinition)]
+        meta = AgentMeta(
+            name="test", description="", command="/test",
+            tool_groups=("blog_tools", "dev_tools"),
+        )
+        result = _assemble_agent_tools(
+            meta, shared, {"blog_tools": blog, "dev_tools": dev},
+            only_tool_groups={"blog_tools"}, include_shared=False,
+        )
+        # Only blog tools, no shared, no dev
+        assert len(result) == 2
+        assert result[0] is blog[0]
+        assert result[1] is blog[1]
+
 
 @pytest.mark.unit
 class TestHandleAgentCommand:
