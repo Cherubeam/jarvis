@@ -113,7 +113,7 @@
 - [x] `StreamHandler` extracted from CLI into `packages/core/stream_handler.py`
 - [x] `BaseAgent.run()` and `BaseAgent.load_prompt()` methods
 - [x] Agent registry with filesystem-based auto-discovery
-- [x] Three specialized agents: Writing (`/write`), Research (`/research`), Clarity (`/clarity`)
+- [x] Three specialized agents: Writer (`/write`), Researcher (`/research`), Simplifier (`/simplify`)
 - [x] Slash-command routing in CLI via agent registry
 - [x] `--agent <name>` standalone mode
 - [x] Convention: folder in `packages/agents/` with `agent.py` + `prompts/system.md`

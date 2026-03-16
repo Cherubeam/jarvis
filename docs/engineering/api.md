@@ -431,9 +431,9 @@ Factory function that builds an agent instance from a `meta.yaml` file.
 Dataclass describing a discovered agent for registry purposes.
 
 **Attributes:**
-- `name: str` — Agent name (e.g., `"clarity"`)
+- `name: str` — Agent name (e.g., `"simplifier"`)
 - `description: str` — Human-readable description
-- `command: str` — Slash command (e.g., `"/clarity"`)
+- `command: str` — Slash command (e.g., `"/simplify"`)
 - `meta_path: Path | None` — Path to `meta.yaml` file
 - `vault_writing: str | None` — Config section key for scoped vault write tools
 - `tool_groups: tuple[str, ...]` — Named tool groups from CLI registry
@@ -450,7 +450,7 @@ name: agent-name           # required — agent identifier
 description: What it does   # required — shown in help/registry
 command: /agent-name        # required — slash command to invoke
 temperature: 0.7            # optional, default 0.7
-max_tokens: 4096            # optional, default 4096
+max_tokens: 4096            # optional (default: provider decides)
 max_iterations: 20          # optional — for multi-step agentic loops
 vault_writing: slip_box     # optional — scoped vault write config section
 skills:                     # optional — skill names to bind

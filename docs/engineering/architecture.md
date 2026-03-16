@@ -22,11 +22,11 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │                 │                  │                           │
 │  • LLM Client   │  • Base Agent      │  • Things 3               │
 │  • Context      │  • JARVIS Agent    │  • Obsidian               │
-│  • Memory       │  • Writing Agent   │  • (Future: Calendar)     │
-│  • Pricing      │  • Tactics Agent   │                           │
+│  • Memory       │  • Writer Agent    │  • (Future: Calendar)     │
+│  • Pricing      │  • Tactics Coach   │                           │
 │  • Stream       │  • Developer Agent │                           │
 │    Handler      │  • Data-driven     │                           │
-│  • Tools        │    agents (9)      │                           │
+│  • Tools        │    agents (12)     │                           │
 │  • RAG          │  • Registry        │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
@@ -419,7 +419,7 @@ rag:
 - **`_assemble_agent_tools()`** (in `apps/cli/main.py`): Builds tool list for an agent from shared tools + its declared `tool_groups`.
 - **`_instantiate_agent()`** (in `apps/cli/main.py`): Thin wrapper around `agent_from_meta()`.
 
-**Data-driven delegate agents** (9 total): clarity, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, research, tactics, writing.
+**Data-driven delegate agents** (12 total): content_reviewer, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, researcher, simplifier, substack_image_creator, substack_publisher, tactics_coach, writer.
 
 **Python-class agent**: jarvis (orchestrator with delegation logic — the only agent with custom Python code).
 
@@ -594,39 +594,49 @@ jarvis/
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
 │   │   ├── registry.py             # Agent discovery (meta.yaml) + slash-command lookup
+│   │   ├── _shared/                # Shared prompt includes
+│   │   │   └── prompts/
+│   │   │       ├── voice-profile.md
+│   │   │       └── anti-patterns.md
 │   │   ├── jarvis/                 # Main JARVIS orchestrator
 │   │   │   ├── agent.py
 │   │   │   └── prompts/            # Daily summary + writing prompts
-│   │   ├── writing/                # Data-driven agent (/write)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/
-│   │   │       ├── system.md
-│   │   │       ├── voice-profile.md
-│   │   │       └── anti-patterns.md
-│   │   ├── tactics/                # Data-driven agent (/tactics)
+│   │   ├── content_reviewer/       # Data-driven agent (/content-review)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   ├── clarity/                # Data-driven agent (/clarity)
+│   │   ├── developer/              # Data-driven agent (/develop)
 │   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── research/               # Data-driven agent (/research)
-│   │   │   ├── meta.yaml
+│   │   │   ├── confirmation.py
 │   │   │   └── prompts/system.md
 │   │   ├── navigator/              # Data-driven agent (/navigator)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── okr_architect/          # Data-driven agent (/okr-architect)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── obsidian_note_creator/  # Data-driven agent (/obsidian-note-creator)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
+│   │   ├── okr_architect/          # Data-driven agent (/okr-architect)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
 │   │   ├── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   └── developer/               # Data-driven agent (/develop)
+│   │   ├── researcher/             # Data-driven agent (/research)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── simplifier/             # Data-driven agent (/simplify)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── substack_image_creator/ # Data-driven agent (/substack-image)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── substack_publisher/     # Data-driven agent (/substack-publish)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── tactics_coach/          # Data-driven agent (/tactics)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   └── writer/                 # Data-driven agent (/write)
 │   │       ├── meta.yaml
-│   │       ├── confirmation.py
 │   │       └── prompts/system.md
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync

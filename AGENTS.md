@@ -169,7 +169,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
    description: What this agent does
    command: /my-agent
    temperature: 0.7          # optional (default 0.7)
-   max_tokens: 4096           # optional (default 4096)
+   max_tokens: 4096           # optional (default: provider decides)
    max_iterations: 20         # optional: for multi-step agentic loops
    vault_writing: slip_box    # optional: scoped vault write tools from obsidian.writing.<key>
    skills:                    # optional: bind skill knowledge into the agent
