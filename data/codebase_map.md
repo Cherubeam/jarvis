@@ -65,7 +65,7 @@
 - `packages/core/tools/project_write_tools.py` — Project write tools — guarded file write access for the developer agent.
 - `packages/core/tools/suggest_improvements.py` — Suggest improvements tool — shows a preview diff without writing to disk.
 - `packages/core/tools/test_tools.py` — Test runner tool — execute pytest from the developer agent.
-- `packages/core/tools/vault_tools.py` — Vault read tools for JARVIS.
+- `packages/core/tools/vault_read_tools.py` — Vault read tools for JARVIS.
 - `packages/core/tools/vault_write_tools.py` — Generic vault write tools factory.
 - `packages/core/tools/web_fetch.py` — Web fetch tool — fetches and extracts text content from URLs.
 

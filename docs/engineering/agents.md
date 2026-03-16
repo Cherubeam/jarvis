@@ -32,7 +32,7 @@ Tools are assigned in two tiers, configured in `apps/cli/main.py`:
 | `fetch_url` | `packages/core/tools/web_fetch.py` | Fetch and extract web page content |
 | `delegate_to_agent` | `packages/core/tools/delegate.py` | JARVIS-only: route to specialist agents |
 | `recall_conversations` | `packages/core/tools/conversation_recall.py` | RAG search over past conversations (opt-in) |
-| Vault read tools | `packages/core/tools/vault_tools.py` | `read_note`, `search_notes`, `read_daily_note` |
+| Vault read tools | `packages/core/tools/vault_read_tools.py` | `read_note`, `search_notes`, `read_daily_note` |
 
 ### Tier 2 — Specialist agent tools (passed via delegation)
 
