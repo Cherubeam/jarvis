@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
+from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
@@ -339,8 +339,8 @@ def import_conversations(
     # Track already-imported claude IDs → file path for incremental sync
     existing_claude_ids: dict[str, Path] = {}
     if not dry_run:
-        used_filenames = {f.name for f in target_dir.glob("*.json")}
-        for f in target_dir.glob("*.json"):
+        used_filenames = {f.name for f in target_dir.rglob("*.json")}
+        for f in target_dir.rglob("*.json"):
             try:
                 data = json.loads(f.read_text())
                 cid = data.get("metadata", {}).get("claude_id")
@@ -386,7 +386,7 @@ def import_conversations(
                     suffix += 1
                 filename = f"{base}_{suffix}.json"
 
-            filepath = target_dir / filename
+            filepath = year_subdir(target_dir, ts_dt) / filename
 
             # Convert
             jarvis_conv = convert_conversation(conv)
