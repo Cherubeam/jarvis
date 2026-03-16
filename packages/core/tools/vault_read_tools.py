@@ -19,7 +19,7 @@ MAX_CONTENT_SIZE = 50_000  # 50KB cap for note content
 MAX_SEARCH_RESULTS = 100
 
 
-def make_vault_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
+def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
     """Create read-only vault tools scoped to the given vault.
 
     Args:

@@ -1,4 +1,4 @@
-name: tactics
+name: tactics_coach
 description: "Pip Decks tactics coaching — storytelling, workshops, ideation"
 command: /tactics
 temperature: 0.7

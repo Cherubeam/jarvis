@@ -619,9 +619,9 @@ def main(argv: list[str] | None = None):
     # Vault read tools — shared (available to JARVIS and all delegated agents)
     if vault_config is not None:
         try:
-            from packages.core.tools.vault_tools import make_vault_tools
+            from packages.core.tools.vault_read_tools import make_vault_read_tools
 
-            vault_read_tools = make_vault_tools(vault_config)
+            vault_read_tools = make_vault_read_tools(vault_config)
             shared_tools.extend(vault_read_tools)
             print_system(f"[Vault] {len(vault_read_tools)} vault read tools loaded.")
         except Exception as e:

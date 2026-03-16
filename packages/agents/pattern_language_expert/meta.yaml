@@ -1,4 +1,4 @@
-name: pattern-language-expert
+name: pattern_language_expert
 description: Design, evolve, and apply pattern languages and pattern libraries
 command: /pattern-language-expert
 vault_writing: patterns
