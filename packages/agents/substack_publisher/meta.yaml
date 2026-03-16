@@ -1,0 +1,11 @@
+name: substack_publisher
+description: Prepare blog posts for Substack publication
+command: /publish
+prompt_includes:
+  voice_profile: voice-profile
+  anti_patterns: anti-patterns
+max_iterations: 5
+skills:
+  - substack-prepare-to-publish
+tools:
+  - blog_tools

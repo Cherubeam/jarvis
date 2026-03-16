@@ -1,0 +1,10 @@
+name: substack_image_creator
+description: Generate header image prompts for Substack posts
+command: /substack-image
+prompt_includes:
+  voice_profile: voice-profile
+max_iterations: 5
+skills:
+  - technical-humanist-image-architect
+tools:
+  - blog_tools

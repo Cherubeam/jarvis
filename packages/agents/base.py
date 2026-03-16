@@ -249,8 +249,11 @@ def agent_from_meta(
             else:
                 prompt_includes[placeholder] = value
 
+    shared_prompts_dir = Path(__file__).parent / "_shared" / "prompts"
     for placeholder, filename in prompt_includes.items():
         include_path = agent_dir / "prompts" / f"{filename}.md"
+        if not include_path.is_file():
+            include_path = shared_prompts_dir / f"{filename}.md"
         include_text = include_path.read_text(encoding="utf-8")
         system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
 

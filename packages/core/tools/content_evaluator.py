@@ -87,9 +87,7 @@ def make_content_evaluator_tool(
         description=(
             "Run a structured 5-lens content evaluation on written content. "
             "Evaluates through: marketing strategist debate, busy subscriber test, "
-            "substance scan, skimmer's path analysis, and voice authenticity scan. "
-            "Use ONLY when the user explicitly asks to review, evaluate, or critique "
-            "a piece of writing. Do not use for other workflows like publishing preparation."
+            "substance scan, skimmer's path analysis, and voice authenticity scan."
         ),
         parameters={
             "type": "object",

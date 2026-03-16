@@ -1,0 +1,11 @@
+name: content_reviewer
+description: Structured content evaluation and improvement suggestions
+command: /review
+prompt_includes:
+  voice_profile: voice-profile
+  anti_patterns: anti-patterns
+max_iterations: 5
+tools:
+  - blog_tools
+  - content_evaluator
+  - suggest_improvements
