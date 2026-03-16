@@ -27,6 +27,10 @@ def _make_streaming_response(chunks: list[str], usage: TokenUsage | None = None)
 class TestDailySummaryMaxTokens:
     """Verify handle_daily_summary passes max_tokens to the LLM client."""
 
+    @patch("apps.cli.main.finish_live_stream")
+    @patch("apps.cli.main.make_live_chunk_handler", return_value=lambda chunk: None)
+    @patch("apps.cli.main.start_live_stream", return_value=(Mock(), []))
+    @patch("apps.cli.main.print_assistant_prefix")
     @patch("apps.cli.main.append_to_daily_note")
     @patch("apps.cli.main.JarvisAgent")
     @patch("apps.cli.main.find_jarvis_callout")
@@ -43,6 +47,10 @@ class TestDailySummaryMaxTokens:
         mock_find_callout,
         mock_jarvis_agent,
         mock_append,
+        mock_print_prefix,
+        mock_start_live,
+        mock_make_handler,
+        mock_finish_live,
     ):
         """handle_daily_summary must pass max_tokens=4096 to prevent 402 errors."""
         from apps.cli.main import handle_daily_summary

@@ -246,10 +246,16 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         {"role": "user", "content": user_content},
     ]
 
-    # Collect streamed LLM response for the summary
-    print_system("\nGenerating daily summary...")
-    result = stream_and_track(client, messages, metrics_tracker, pricing, model_id,
-                              max_tokens=4096)
+    # Stream LLM response with activity spinner
+    print_assistant_prefix("JARVIS")
+    live, buf = start_live_stream()
+
+    handler = StreamHandler(client, metrics_tracker, pricing, model_id)
+    handler.max_tokens = 4096
+    handler.on_chunk = make_live_chunk_handler(live, buf)
+    result = handler.stream(messages, print_chunks=True)
+
+    finish_live_stream(live, result.text)
 
     # Log the exchange so save() writes conversation + prints session summary
     logger.add_message("user", "/daily-summary")
