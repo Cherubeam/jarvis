@@ -372,7 +372,9 @@ class ConversationLogger:
             return
 
         filename = self.session_start.strftime("%Y-%m-%d_%H-%M-%S.json")
-        filepath = self.conversations_dir / filename
+        year_dir = self.conversations_dir / str(self.session_start.year)
+        year_dir.mkdir(parents=True, exist_ok=True)
+        filepath = year_dir / filename
 
         data = {
             "schema_version": SCHEMA_VERSION,
