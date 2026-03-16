@@ -53,7 +53,7 @@ class CLIConfirmationHandler(ConfirmationHandler):
 
     def get_confirmation(self, prompt: str = "Apply this change?") -> bool:
         try:
-            answer = input(f"{prompt} [y/N] ").strip().lower()
+            answer = input(f"\n{prompt} (y/yes to confirm): ").strip().lower()
             return answer in ("y", "yes")
         except (EOFError, KeyboardInterrupt):
             return False
