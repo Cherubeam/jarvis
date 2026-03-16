@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Daily Summary Credit Error**: `/daily-summary` crashed with a 402 error when OpenRouter credits were lower than the model's default max_tokens (65536). Now explicitly caps max_tokens at 4096, which is appropriate for short structured summaries.
+
 ### Added
 - **Activity Spinner**: Animated "Thinking…" spinner displays immediately after pressing Enter, filling the gap before the first LLM token arrives. Spinner is automatically replaced by streaming text — no changes needed to callers.
 - **Substack Prepare-to-Publish Skill**: New 7-step interactive pre-publication workflow for the writing agent. Generates Substack tags, SEO descriptions, article summaries, LinkedIn post drafts, and Substack note drafts with promotional timelines. Persists chosen promotional content to Obsidian vault callout blocks.
