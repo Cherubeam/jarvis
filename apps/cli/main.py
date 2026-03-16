@@ -401,6 +401,11 @@ def _run_agent_session(
         print_usage_stats(result)
         print_separator()
 
+        # Persist tool call context before the final assistant message
+        if result.tool_messages:
+            session_history.extend(result.tool_messages)
+            logger.add_tool_messages(result.tool_messages, agent_name=agent_name)
+
         session_history.append({"role": "assistant", "content": result.text})
         logger.add_message(
             "assistant",
