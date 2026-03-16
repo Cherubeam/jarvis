@@ -13,6 +13,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.spinner import Spinner
 from rich.text import Text
 from rich.theme import Theme
 
@@ -93,12 +94,14 @@ def print_agent_prefix(agent_name: str) -> None:
 # Live streaming display
 # ---------------------------------------------------------------------------
 
-def start_live_stream() -> tuple[Live, list[str]]:
+def start_live_stream(thinking: bool = True) -> tuple[Live, list[str]]:
     """Create and start a rich.Live context for streaming output.
 
     Returns (live, buffer) where buffer is a list that accumulates chunks.
+    When *thinking* is True, shows an animated spinner until the first chunk arrives.
     """
-    live = Live(Text(""), console=console, refresh_per_second=8, vertical_overflow="crop")
+    initial = Spinner("dots", text=Text(" Thinking…", style="dim")) if thinking else Text("")
+    live = Live(initial, console=console, refresh_per_second=8, vertical_overflow="crop")
     live.start()
     return live, []
 

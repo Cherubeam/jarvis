@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Activity Spinner**: Animated "Thinking…" spinner displays immediately after pressing Enter, filling the gap before the first LLM token arrives. Spinner is automatically replaced by streaming text — no changes needed to callers.
 - **Substack Prepare-to-Publish Skill**: New 7-step interactive pre-publication workflow for the writing agent. Generates Substack tags, SEO descriptions, article summaries, LinkedIn post drafts, and Substack note drafts with promotional timelines. Persists chosen promotional content to Obsidian vault callout blocks.
 - **Agent Split — Writer → 4 Specialists**: Split the monolithic `writing` agent into `writer` (drafting/editing), `content_reviewer` (structured evaluation), `substack_publisher` (pre-pub workflow), and `substack_image_creator` (header image prompts). Each agent gets only the tools it needs — `evaluate_content` is no longer available during publishing workflows.
 - **Shared Prompt Includes**: New `packages/agents/_shared/prompts/` directory for prompt files shared across agents (voice-profile, anti-patterns). Resolver falls back to shared dir when include not found in agent-local `prompts/`.
