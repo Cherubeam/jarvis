@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.11.0] - 2026-03-16
+
 ### Changed
 - **Year-Based Conversation Storage**: Conversations are now organized into `data/conversations/YYYY/` subdirectories instead of a flat directory. Includes a migration script (`scripts/migrate_conversations_to_years.py`) to move existing files. All importers, the indexer, and `ConversationLogger` updated accordingly.
 
