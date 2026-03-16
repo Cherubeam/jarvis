@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 @dataclass
@@ -29,6 +30,13 @@ def make_conv_id(source_uuid: str, dt: datetime) -> str:
     """
     hex_suffix = hashlib.sha256(source_uuid.encode()).hexdigest()[:4]
     return f"conv_{dt.strftime('%Y%m%d')}_{dt.strftime('%H%M%S')}_{hex_suffix}"
+
+
+def year_subdir(target_dir: Path, dt: datetime) -> Path:
+    """Return target_dir / YYYY, creating the subdirectory if needed."""
+    subdir = target_dir / str(dt.year)
+    subdir.mkdir(parents=True, exist_ok=True)
+    return subdir
 
 
 def make_filename(dt: datetime) -> str:
