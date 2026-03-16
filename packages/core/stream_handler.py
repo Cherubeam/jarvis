@@ -142,6 +142,20 @@ class StreamHandler:
 
             # Tool calls detected via streaming
             tool_result: StreamToolResult = result
+
+            # Deduplicate parallel tool calls with identical name + arguments
+            seen: set[tuple[str, str]] = set()
+            unique_calls = []
+            for tc in tool_result.tool_calls:
+                key = (tc.function.name, tc.function.arguments)
+                if key not in seen:
+                    seen.add(key)
+                    unique_calls.append(tc)
+            tool_result = StreamToolResult(
+                tool_calls=unique_calls,
+                usage=tool_result.usage,
+            )
+
             accumulated_usage = TokenUsage(
                 prompt_tokens=accumulated_usage.prompt_tokens + tool_result.usage.prompt_tokens,
                 completion_tokens=accumulated_usage.completion_tokens + tool_result.usage.completion_tokens,
@@ -187,6 +201,10 @@ class StreamHandler:
             ):
                 self._terminal_tool_fired = True
                 break
+
+        else:
+            # Loop exhausted all iterations — force text-only final response
+            tools_format = None
 
         # Store accumulated intermediate usage so _stream_simple can add to it
         self._intermediate_usage = accumulated_usage

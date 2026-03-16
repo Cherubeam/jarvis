@@ -471,6 +471,144 @@ class TestStreamHandlerAgenticLoop:
         assert result.tool_messages[0]["role"] == "assistant"
         assert result.tool_messages[1]["role"] == "tool"
 
+    def test_duplicate_parallel_tool_calls_deduplicated(self, capsys):
+        """LLM returns 3 identical tool calls; only one is executed."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        call_count = 0
+
+        def _execute():
+            nonlocal call_count
+            call_count += 1
+            return "result"
+
+        tool = ToolDefinition(name="list_blog_posts", description="list", parameters={}, execute=_execute)
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        # Three identical parallel tool calls
+        calls = [
+            _make_tool_call_obj("tc1", "list_blog_posts", "{}"),
+            _make_tool_call_obj("tc2", "list_blog_posts", "{}"),
+            _make_tool_call_obj("tc3", "list_blog_posts", "{}"),
+        ]
+        final_stream = _make_streaming_response(["done"])
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result(calls),
+            final_stream,
+        ]
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "list posts"}],
+            tool_registry=registry,
+        )
+
+        # Tool executed only once despite 3 identical calls
+        assert call_count == 1
+        assert result.text == "done"
+
+    def test_different_parallel_tool_calls_preserved(self, capsys):
+        """Two distinct tools in parallel; both execute."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "a_result")
+        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "b_result")
+        registry = ToolRegistry()
+        registry.register(tool_a)
+        registry.register(tool_b)
+
+        calls = [
+            _make_tool_call_obj("tc1", "tool_a", "{}"),
+            _make_tool_call_obj("tc2", "tool_b", "{}"),
+        ]
+        final_stream = _make_streaming_response(["done"])
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result(calls),
+            final_stream,
+        ]
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "do things"}],
+            tool_registry=registry,
+        )
+
+        # Both tool calls preserved — assistant message has 2 tool_calls
+        first_tool_msg = result.tool_messages[0]
+        assert len(first_tool_msg["tool_calls"]) == 2
+        assert result.text == "done"
+
+    def test_same_tool_different_args_not_deduplicated(self):
+        """Same tool name with different args; both execute."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        results_seen = []
+
+        def _read(post_id):
+            results_seen.append(post_id)
+            return f"content of {post_id}"
+
+        tool = ToolDefinition(name="read_blog_post", description="read", parameters={}, execute=_read)
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        calls = [
+            _make_tool_call_obj("tc1", "read_blog_post", json.dumps({"post_id": "post-a"})),
+            _make_tool_call_obj("tc2", "read_blog_post", json.dumps({"post_id": "post-b"})),
+        ]
+        final_stream = _make_streaming_response(["done"])
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result(calls),
+            final_stream,
+        ]
+
+        handler = self._make_handler(client)
+        handler.stream(
+            [{"role": "user", "content": "read posts"}],
+            tool_registry=registry,
+        )
+
+        # Both calls executed — different args
+        assert len(results_seen) == 2
+
+    def test_tools_stripped_when_loop_exhausted(self):
+        """When all iterations are consumed, chat_stream is called with tools=None."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        # Every iteration returns a tool call — never a content response
+        def make_tool_iteration():
+            return _make_stream_tool_result([_make_tool_call_obj("tc1", "my_tool", "{}")])
+
+        max_iter = 3
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [make_tool_iteration() for _ in range(max_iter)]
+        client.chat_stream.return_value = _make_streaming_response(["forced text"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+            max_iterations=max_iter,
+        )
+
+        # All iterations consumed — final chat_stream called with tools=None
+        client.chat_stream.assert_called_once()
+        _, kwargs = client.chat_stream.call_args
+        assert kwargs.get("tools") is None
+        assert result.text == "forced text"
+
     def test_no_tool_call_streams_directly(self):
         """When model returns content (no tools), the streaming response is used directly."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition
