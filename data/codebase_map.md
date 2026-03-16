@@ -14,6 +14,7 @@
 - `packages/core/llm_client.py` — Thin wrapper around LiteLLM for unified LLM access.
 - `packages/core/memory.py` — Handles conversation persistence.
 - `packages/core/model_resolver.py` — Model resolution: presets, provider inference, and API key management.
+- `packages/core/model_router.py` — Intelligent model routing — classify query complexity and select the
 - `packages/core/pricing.py` — Handles model pricing and cost calculation.
 - `packages/core/stream_handler.py` — Stream handling for LLM responses.
 
@@ -42,16 +43,19 @@
 
 ## Agents
 
-- **clarity** (`/clarity`) — Explains complex ideas simply [data-driven]
-- **developer** (`/develop`) — JARVIS self-improvement agent — reads codebase, creates branches, writes data-driven files, runs tests, commits changes [python-class]
+- **content_reviewer** (`/review`) — Structured content evaluation and improvement suggestions [data-driven]
+- **developer** (`/develop`) — JARVIS self-improvement agent — reads codebase, creates branches, writes data-driven files, runs tests, commits changes [data-driven]
 - **jarvis** — (python-class agent)
 - **navigator** (`/navigator`) — Personal alignment, goal clarity, and structured reviews [data-driven]
-- **obsidian-note-creator** (`/obsidian-note-creator`) — Extract atomic evergreen notes from conversations or material [data-driven]
-- **okr-architect** (`/okr-architect`) — Design, implement, and track effective OKRs [data-driven]
-- **pattern-language-expert** (`/pattern-language-expert`) — Design, evolve, and apply pattern languages and pattern libraries [data-driven]
-- **research** (`/research`) — Analysis, synthesis, and structured answers [data-driven]
-- **tactics** — (python-class agent)
-- **writing** — (python-class agent)
+- **obsidian_note_creator** (`/obsidian-note-creator`) — Extract atomic evergreen notes from conversations or material [data-driven]
+- **okr_architect** (`/okr-architect`) — Design, implement, and track effective OKRs [data-driven]
+- **pattern_language_expert** (`/pattern-language-expert`) — Design, evolve, and apply pattern languages and pattern libraries [data-driven]
+- **researcher** (`/research`) — Analysis, synthesis, and structured answers [data-driven]
+- **simplifier** (`/simplify`) — Explains complex ideas simply [data-driven]
+- **substack_image_creator** (`/substack-image`) — Generate header image prompts for Substack posts [data-driven]
+- **substack_publisher** (`/publish`) — Prepare blog posts for Substack publication [data-driven]
+- **tactics_coach** (`/tactics`) — Pip Decks tactics coaching — storytelling, workshops, ideation [data-driven]
+- **writer** (`/write`) — Draft and edit blog posts in Marco's authentic voice [data-driven]
 
 ## Tools
 
@@ -68,6 +72,7 @@
 - `packages/core/tools/vault_read_tools.py` — Vault read tools for JARVIS.
 - `packages/core/tools/vault_write_tools.py` — Generic vault write tools factory.
 - `packages/core/tools/web_fetch.py` — Web fetch tool — fetches and extracts text content from URLs.
+- `packages/core/tools/web_search.py` — Web search tool — search the web using DuckDuckGo.
 
 ## Config Structure (`config/default.yaml`)
 
@@ -76,6 +81,7 @@
 - `things3:` — {enabled, sync_on_startup, cache_ttl_seconds, lists_to_include, max_tasks_per_list}
 - `evaluation:` — {judge_model, quality_threshold, category_thresholds, results_dir, max_cost_per_run, warn_cost_threshold}
 - `rag:` — {enabled, db_path, embedding_model, index_cards}
+- `routing:` — {enabled, simple_threshold, complex_threshold}
 - `cli:` — {colors, history_file}
 - `filesystem:` — {access_rules}
 - `obsidian:` — {enabled, vault_path, daily_notes, writing}
