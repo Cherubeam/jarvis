@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
+from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
@@ -302,8 +302,8 @@ def import_conversations(
     # Track already-imported chatgpt IDs for idempotent skip
     existing_chatgpt_ids: set[str] = set()
     if not dry_run:
-        used_filenames = {f.name for f in target_dir.glob("*.json")}
-        for f in target_dir.glob("*.json"):
+        used_filenames = {f.name for f in target_dir.rglob("*.json")}
+        for f in target_dir.rglob("*.json"):
             try:
                 data = json.loads(f.read_text())
                 cid = data.get("metadata", {}).get("chatgpt_id")
@@ -344,7 +344,9 @@ def import_conversations(
 
             # Generate filename
             update_time = conv.get("update_time")
-            filename = _make_filename(create_time, update_time)
+            ts = create_time or update_time
+            ts_dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(tz=timezone.utc)
+            filename = make_filename(ts_dt)
 
             # Handle collisions
             if filename in used_filenames:
@@ -354,7 +356,7 @@ def import_conversations(
                     suffix += 1
                 filename = f"{base}_{suffix}.json"
 
-            filepath = target_dir / filename
+            filepath = year_subdir(target_dir, ts_dt) / filename
 
             # Convert
             jarvis_conv = convert_conversation(conv)
