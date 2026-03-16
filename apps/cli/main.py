@@ -128,12 +128,14 @@ def stream_and_track(
     pricing: ModelPricing | None,
     model_id: str,
     print_chunks: bool = False,
+    max_tokens: int | None = None,
 ) -> StreamResult:
     """Stream an LLM response, tracking metrics and cost.
 
     Thin wrapper around StreamHandler.stream() for backward compatibility.
     """
     handler = StreamHandler(client, metrics_tracker, pricing, model_id)
+    handler.max_tokens = max_tokens
     return handler.stream(messages, print_chunks=print_chunks)
 
 
@@ -246,7 +248,8 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
 
     # Collect streamed LLM response for the summary
     print_system("\nGenerating daily summary...")
-    result = stream_and_track(client, messages, metrics_tracker, pricing, model_id)
+    result = stream_and_track(client, messages, metrics_tracker, pricing, model_id,
+                              max_tokens=4096)
 
     # Log the exchange so save() writes conversation + prints session summary
     logger.add_message("user", "/daily-summary")
