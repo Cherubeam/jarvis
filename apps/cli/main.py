@@ -341,7 +341,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--agent",
         type=str,
         default=None,
-        help="Run a standalone agent instead of the default JARVIS orchestrator (e.g. --agent writing)",
+        help="Run a standalone agent instead of the default JARVIS orchestrator (e.g. --agent writer)",
     )
     parser.add_argument(
         "--model",

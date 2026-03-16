@@ -1,9 +1,10 @@
 # Jarvis
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-94A3B8?logo=openrouter&logoColor=fff)](#)
+![Version 0.10.0](https://img.shields.io/badge/version-0.10.0-green.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 > A personal AI assistant built from first principles to solve the vendor lock-in problem in conversational AI.
 
@@ -72,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writing, Research, Clarity, Navigator, Tactics, OKR Architect, Pattern Language Expert)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -127,21 +128,24 @@ echo "OPENROUTER_API_KEY=your_key_here" > .env
 uv run jarvis
 
 # Run a specialist agent directly
-uv run jarvis --agent writing
-uv run jarvis --agent research
-uv run jarvis --agent clarity
+uv run jarvis --agent writer
+uv run jarvis --agent researcher
+uv run jarvis --agent simplifier
 uv run jarvis --agent navigator
-uv run jarvis --agent tactics
+uv run jarvis --agent tactics_coach
 ```
 
 During a chat session, you can use slash commands:
 
 ```
-/write <text>           Delegates to Writing agent (prose, editing, rewriting)
-/research <text>        Delegates to Research agent (analysis, synthesis)
-/clarity <text>         Delegates to Clarity agent (explains complex ideas simply)
+/write <text>           Delegates to Writer agent (prose, editing, rewriting)
+/research <text>        Delegates to Researcher agent (analysis, synthesis)
+/simplify <text>        Delegates to Simplifier agent (explains complex ideas simply)
+/review                 Enters Content Reviewer session (structured evaluation)
+/publish                Enters Substack Publisher session (pre-pub workflow)
+/substack-image         Enters Substack Image Creator session (header image prompts)
 /navigator              Enters Navigator agent session (alignment, weekly reviews)
-/tactics                Enters Tactics agent session (Pip Decks coaching)
+/tactics                Enters Tactics Coach agent session (Pip Decks coaching)
 /okr-architect          Enters OKR Architect agent session
 /pattern-language-expert  Enters Pattern Language Expert session
 /daily-summary          Generates an Obsidian daily note summary
@@ -226,14 +230,18 @@ jarvis/
 │   │   ├── base.py                     # Base agent class + DataDrivenAgent
 │   │   ├── registry.py                 # Filesystem-based agent auto-discovery
 │   │   ├── jarvis/                     # Main JARVIS orchestrator agent (Python class)
-│   │   ├── writing/                    # Writing specialist (Python class, custom prompt composition)
-│   │   ├── tactics/                    # Tactics (Python class, custom temperature)
-│   │   ├── research/                   # Research specialist (meta.yaml)
-│   │   ├── clarity/                    # Clarity specialist (meta.yaml)
-│   │   ├── navigator/                  # Navigator (meta.yaml)
-│   │   ├── okr_architect/              # OKR Architect (meta.yaml)
-│   │   ├── obsidian_note_creator/      # Obsidian Note Creator (meta.yaml)
-│   │   └── pattern_language_expert/    # Pattern Language Expert (meta.yaml)
+│   │   ├── _shared/                    # Shared prompt includes (voice-profile, anti-patterns)
+│   │   ├── writer/                     # Writer — drafting & editing
+│   │   ├── content_reviewer/           # Content Reviewer — structured evaluation
+│   │   ├── substack_publisher/         # Substack Publisher — pre-pub workflow
+│   │   ├── substack_image_creator/     # Substack Image Creator — header image prompts
+│   │   ├── researcher/                 # Researcher — analysis, synthesis
+│   │   ├── simplifier/                 # Simplifier — explains complex ideas simply
+│   │   ├── tactics_coach/              # Tactics Coach — Pip Decks coaching
+│   │   ├── navigator/                  # Navigator — alignment, weekly reviews
+│   │   ├── okr_architect/              # OKR Architect
+│   │   ├── obsidian_note_creator/      # Obsidian Note Creator
+│   │   └── pattern_language_expert/    # Pattern Language Expert
 │   ├── skills/                         # Skills (passive knowledge packs for card indexing)
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
 │   │   ├── registry.py                 # Filesystem-based skill discovery

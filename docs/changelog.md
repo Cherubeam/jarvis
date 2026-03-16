@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Substack Prepare-to-Publish Skill**: New 7-step interactive pre-publication workflow for the writing agent. Generates Substack tags, SEO descriptions, article summaries, LinkedIn post drafts, and Substack note drafts with promotional timelines. Persists chosen promotional content to Obsidian vault callout blocks.
+- **Agent Split — Writer → 4 Specialists**: Split the monolithic `writing` agent into `writer` (drafting/editing), `content_reviewer` (structured evaluation), `substack_publisher` (pre-pub workflow), and `substack_image_creator` (header image prompts). Each agent gets only the tools it needs — `evaluate_content` is no longer available during publishing workflows.
+- **Shared Prompt Includes**: New `packages/agents/_shared/prompts/` directory for prompt files shared across agents (voice-profile, anti-patterns). Resolver falls back to shared dir when include not found in agent-local `prompts/`.
+
+### Changed
+- **Naming Conventions Normalized**: Agent directories use actor nouns (`writer`, `researcher`, `simplifier`, `tactics_coach`). All `meta.yaml` `name:` fields use `snake_case`. Renamed `vault_tools.py` → `vault_read_tools.py` and `make_vault_tools()` → `make_vault_read_tools()` to match `vault_write_tools.py`.
+- **Agent Renames**: `writing` → `writer`, `research` → `researcher`, `clarity` → `simplifier`, `tactics` → `tactics_coach`. Kebab-case `name:` fields normalized to snake_case: `obsidian-note-creator` → `obsidian_note_creator`, `okr-architect` → `okr_architect`, `pattern-language-expert` → `pattern_language_expert`.
 
 ### Changed
 - **All Delegate Agents Data-Driven**: Migrated WritingAgent, TacticsAgent, and DeveloperAgent from Python classes to `meta.yaml` + `prompts/system.md`. All 9 delegate agents are now data-driven. Removed `agent_class` from `AgentMeta` and the Python-class discovery/instantiation path.

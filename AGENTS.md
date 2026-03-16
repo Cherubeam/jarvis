@@ -119,6 +119,20 @@ Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](doc
 - Snake case: `llm_client.py`, not `LLMClient.py`
 - Descriptive names: `context_builder.py` over `builder.py`
 
+### Naming Conventions (Agents & Skills)
+
+| Entity | Pattern | Examples |
+|--------|---------|---------|
+| Agent directory | `snake_case` | `writer/`, `content_reviewer/` |
+| Agent name (meta.yaml `name:`) | `snake_case` | `writer`, `content_reviewer` |
+| Agent command (meta.yaml `command:`) | `/kebab-case` | `/write`, `/content-review` |
+| Skill directory | `kebab-case` | `substack-prepare-to-publish/` |
+| Skill name (in meta.yaml `skills:`) | `kebab-case` | `substack-prepare-to-publish` |
+| Tool group key (in main.py) | `snake_case` | `blog_tools`, `content_evaluator` |
+| Tool name (ToolDefinition `name=`) | `snake_case` | `evaluate_content`, `read_note` |
+| Tool file | `snake_case.py` | `vault_read_tools.py` |
+| Prompt include files | `kebab-case.md` | `voice-profile.md` |
+
 ### Imports
 
 ```python
@@ -151,7 +165,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 1. Create a directory under `packages/agents/<name>/`
 2. Add `meta.yaml`:
    ```yaml
-   name: my-agent
+   name: my_agent
    description: What this agent does
    command: /my-agent
    temperature: 0.7          # optional (default 0.7)
@@ -171,9 +185,11 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 
 **Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`. Shared tools (vault read, recall) go to all agents automatically.
 
+**Shared prompt includes**: If a prompt include file isn't found in the agent's `prompts/` dir, the resolver falls back to `packages/agents/_shared/prompts/`. Voice profile and anti-patterns live there.
+
 **Skill binding**: The `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
 
-**Prompt includes**: The `prompt_includes:` field maps placeholder names to filenames in `prompts/`. Each `{placeholder}` in `system.md` is replaced with the file content. See `packages/agents/writing/meta.yaml`.
+**Prompt includes**: The `prompt_includes:` field maps placeholder names to filenames in `prompts/` (agent-local first, then `_shared/prompts/` fallback). Each `{placeholder}` in `system.md` is replaced with the file content. See `packages/agents/writer/meta.yaml`.
 
 ### Python-Class Agent (escape hatch)
 
