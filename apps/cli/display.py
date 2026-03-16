@@ -72,7 +72,7 @@ def print_startup(
     )
     if commands:
         console.print(f"Commands: {' '.join(commands)}")
-    console.print("Type 'quit' or 'exit' to end. Ctrl+C also works.\n")
+    console.print("Type /exit or /quit to end.\n")
 
 
 # ---------------------------------------------------------------------------

@@ -369,7 +369,7 @@ def _run_agent_session(
     Returns:
         The session history (list of user/assistant message dicts).
     """
-    print_system(f"\nEntering {agent_name} session. Type /exit to return to JARVIS.\n")
+    print_system(f"\nEntering {agent_name} session. Type /exit or /back to return to JARVIS.\n")
 
     session_history: list[dict] = []
 
@@ -432,7 +432,7 @@ def _run_agent_session(
 
             if not user_input:
                 continue
-            if user_input.strip().lower() in ("/exit", "/back"):
+            if user_input.strip().lower() in ("/exit", "/quit", "/back"):
                 break
 
             _process_message(user_input)
@@ -824,8 +824,6 @@ def main(argv: list[str] | None = None):
 
             if not user_input:
                 continue
-            if user_input.lower() in ("quit", "exit"):
-                break
 
             # Handle slash commands
             if user_input.startswith("/"):
