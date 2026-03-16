@@ -26,7 +26,7 @@ class AgentConfig:
     model: str
     system_prompt: str
     tools: list[ToolDefinition] = field(default_factory=list)
-    max_tokens: int = 4096
+    max_tokens: int | None = None
     temperature: float = 0.7
     max_iterations: int | None = None
 
@@ -283,7 +283,7 @@ def agent_from_meta(
         system_prompt=system_prompt,
         tools=tools,
         temperature=meta.get("temperature", 0.7),
-        max_tokens=meta.get("max_tokens", 4096),
+        max_tokens=meta.get("max_tokens"),
         max_iterations=meta.get("max_iterations"),
     )
     return DataDrivenAgent(config, llm_client)
