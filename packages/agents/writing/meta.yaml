@@ -4,6 +4,7 @@ command: /write
 prompt_includes:
   voice_profile: voice-profile
   anti_patterns: anti-patterns
+max_iterations: 2
 skills:
   - technical-humanist-image-architect
   - substack-prepare-to-publish

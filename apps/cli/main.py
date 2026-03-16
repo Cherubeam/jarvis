@@ -53,10 +53,13 @@ def _assemble_agent_tools(
     meta: AgentMeta,
     shared_tools: list,
     tool_groups: dict[str, list],
+    exclude_tool_groups: set[str] | None = None,
 ) -> list:
     """Assemble tools for an agent from shared_tools + its declared tool_groups."""
     agent_tools = list(shared_tools)
     for group_name in meta.tool_groups:
+        if exclude_tool_groups and group_name in exclude_tool_groups:
+            continue
         if group_name in tool_groups:
             agent_tools.extend(tool_groups[group_name])
     return agent_tools
@@ -916,7 +919,15 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                all_delegate_tools = _assemble_agent_tools(delegate_meta, shared_tools, tool_groups)
+                exclude_groups = None
+                if result.delegate_to == "writing" and result.delegate_task:
+                    task_lower = result.delegate_task.lower()
+                    if any(s in task_lower for s in ("prepare", "pre-publish", "publish", "prepub", "pre-pub")):
+                        exclude_groups = {"content_evaluator", "suggest_improvements"}
+                all_delegate_tools = _assemble_agent_tools(
+                    delegate_meta, shared_tools, tool_groups,
+                    exclude_tool_groups=exclude_groups,
+                )
                 all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,

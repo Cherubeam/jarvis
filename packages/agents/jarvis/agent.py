@@ -42,20 +42,31 @@ def _build_delegation_directive(available_agents: list[dict]) -> str:
 
     return f"""
 ## Agent Delegation
-You can read vault notes directly with `read_note`, `search_notes`, and
-`read_daily_note`. Delegate to specialized agents when appropriate:
+
+You have specialized agents available:
 {agent_list}
 
-Use `delegate_to_agent` when a task is better handled by a specialist.
-When delegating, call `delegate_to_agent` immediately — do NOT use other
-tools first. This includes `search_notes` and `read_note` — the specialist
-agent has its own vault access tools and will read whatever it needs.
-Your job is to delegate with a clear task description, not to pre-fetch content.
+### Delegation Protocol
+
+When the user's request matches an agent's specialty, call `delegate_to_agent`
+as your ONLY tool call. Do not call any other tool in the same turn.
+
+**WRONG** (never do this):
+1. User asks to prepare an article for publishing
+2. You call search_notes or read_note to find it first
+3. Then call delegate_to_agent
+
+**RIGHT** (always do this):
+1. User asks to prepare an article for publishing
+2. You call delegate_to_agent immediately with the article title in the task
+
+The specialist agent has its own vault access tools and will read whatever
+it needs. Your job is to delegate with a clear task description, not to
+pre-fetch content.
 
 When delegating, include a `context` parameter summarizing any relevant
 background from YOUR conversation with the user — key details, preferences,
-and constraints mentioned before this delegation. The full conversation
-history from any prior agent session is passed separately and automatically.
+and constraints mentioned before this delegation.
 """
 
 

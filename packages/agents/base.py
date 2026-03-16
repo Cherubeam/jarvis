@@ -248,7 +248,10 @@ def agent_from_meta(
 
         resolved = resolve_skills(skill_names, skill_registry, card_search_tool)
         if resolved.prompt_appendix:
-            system_prompt += "\n\n" + resolved.prompt_appendix
+            if "{skills}" in system_prompt:
+                system_prompt = system_prompt.replace("{skills}", resolved.prompt_appendix)
+            else:
+                system_prompt += "\n\n" + resolved.prompt_appendix
         tools.extend(resolved.tools)
 
     config = AgentConfig(
