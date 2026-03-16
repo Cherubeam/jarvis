@@ -8,8 +8,8 @@ from packages.core.tools.delegate import DelegationState, make_delegate_tool
 
 
 AVAILABLE_AGENTS = [
-    {"name": "writing", "description": "Writing and content creation"},
-    {"name": "research", "description": "Research and analysis"},
+    {"name": "writer", "description": "Writing and content creation"},
+    {"name": "researcher", "description": "Research and analysis"},
 ]
 
 
@@ -32,18 +32,18 @@ class TestDelegateTool:
 
         assert isinstance(tool, ToolDefinition)
         assert tool.name == "delegate_to_agent"
-        assert tool.parameters["properties"]["agent_name"]["enum"] == ["writing", "research"]
+        assert tool.parameters["properties"]["agent_name"]["enum"] == ["writer", "researcher"]
         assert tool.parameters["required"] == ["agent_name", "task"]
 
     def test_execute_sets_state(self):
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)
 
-        result = tool.execute(agent_name="writing", task="Review my blog post")
+        result = tool.execute(agent_name="writer", task="Review my blog post")
 
-        assert state.agent_name == "writing"
+        assert state.agent_name == "writer"
         assert state.task == "Review my blog post"
-        assert "Delegating to writing" in result
+        assert "Delegating to writer" in result
 
     def test_execute_unknown_agent_returns_error(self):
         state = DelegationState()
@@ -54,7 +54,7 @@ class TestDelegateTool:
         assert state.agent_name is None
         assert state.task is None
         assert "Unknown agent" in result
-        assert "writing" in result
+        assert "writer" in result
 
     def test_terminal_flag_is_true(self):
         state = DelegationState()
@@ -73,7 +73,7 @@ class TestDelegateTool:
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)
 
-        tool.execute(agent_name="writing", task="Write post", context="User prefers formal tone")
+        tool.execute(agent_name="writer", task="Write post", context="User prefers formal tone")
 
         assert state.context == "User prefers formal tone"
 
@@ -81,7 +81,7 @@ class TestDelegateTool:
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)
 
-        tool.execute(agent_name="writing", task="Write post")
+        tool.execute(agent_name="writer", task="Write post")
 
         assert state.context is None
 
@@ -89,7 +89,7 @@ class TestDelegateTool:
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)
 
-        tool.execute(agent_name="writing", task="Write post", context="")
+        tool.execute(agent_name="writer", task="Write post", context="")
 
         assert state.context is None
 

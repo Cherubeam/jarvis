@@ -1,4 +1,4 @@
-"""Tests for packages.core.tools.vault_tools."""
+"""Tests for packages.core.tools.vault_read_tools."""
 
 import os
 import re
@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
-from packages.core.tools.vault_tools import make_vault_tools, MAX_CONTENT_SIZE, MAX_SEARCH_RESULTS
+from packages.core.tools.vault_read_tools import make_vault_read_tools, MAX_CONTENT_SIZE, MAX_SEARCH_RESULTS
 
 
 def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:
@@ -44,14 +44,14 @@ def vault(tmp_path):
 @pytest.fixture
 def tools(vault):
     config, vault_path = vault
-    return make_vault_tools(config), vault_path, config
+    return make_vault_read_tools(config), vault_path, config
 
 
 def _get_tool(tools_list, name):
     return next(t for t in tools_list if t.name == name)
 
 
-# ==================== make_vault_tools ====================
+# ==================== make_vault_read_tools ====================
 
 
 @pytest.mark.unit

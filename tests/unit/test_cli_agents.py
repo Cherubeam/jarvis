@@ -38,11 +38,11 @@ class TestParseArgs:
         assert args.agent is None
 
     def test_agent_flag(self):
-        args = parse_args(["--agent", "writing"])
-        assert args.agent == "writing"
+        args = parse_args(["--agent", "writer"])
+        assert args.agent == "writer"
 
     def test_agent_flag_various_names(self):
-        for name in ["writing", "research", "clarity"]:
+        for name in ["writer", "researcher", "simplifier"]:
             args = parse_args(["--agent", name])
             assert args.agent == name
 
@@ -107,8 +107,8 @@ class TestHandleAgentCommand:
 
     def test_returns_true_for_known_command(self):
         registry = {
-            "writing": AgentMeta(
-                name="writing",
+            "writer": AgentMeta(
+                name="writer",
                 description="desc",
                 command="/write",
                 meta_path=None,
@@ -130,8 +130,8 @@ class TestHandleAgentCommand:
 
     def test_shows_usage_when_no_payload(self, capsys):
         registry = {
-            "writing": AgentMeta(
-                name="writing",
+            "writer": AgentMeta(
+                name="writer",
                 description="Refined prose",
                 command="/write",
                 meta_path=None,
@@ -148,8 +148,8 @@ class TestHandleAgentCommand:
     def test_routes_to_agent_and_logs(self):
         stream_result = _make_stream_result("polished text")
         registry = {
-            "writing": AgentMeta(
-                name="writing",
+            "writer": AgentMeta(
+                name="writer",
                 description="desc",
                 command="/write",
                 meta_path=None,
@@ -186,7 +186,7 @@ class TestHandleAgentCommand:
             cost_usd=0.001,
             ttft_ms=50,
             total_latency_ms=200,
-            agent_name="writing",
+            agent_name="writer",
         )
 
     def test_tool_groups_passed_to_agent(self):
@@ -491,10 +491,10 @@ class TestInstantiateAgent:
         """Delegated agent keeps its meta.yaml max_iterations."""
         import yaml as _yaml
 
-        agent_dir = tmp_path / "writing"
+        agent_dir = tmp_path / "writer"
         agent_dir.mkdir()
         (agent_dir / "meta.yaml").write_text(_yaml.dump({
-            "name": "writing",
+            "name": "writer",
             "description": "Writing agent",
             "command": "/write",
             "max_iterations": 2,
@@ -504,7 +504,7 @@ class TestInstantiateAgent:
         (prompts_dir / "system.md").write_text("You are a writing agent." * 5)
 
         meta = AgentMeta(
-            name="writing", description="Writing agent",
+            name="writer", description="Writing agent",
             command="/write", meta_path=agent_dir / "meta.yaml",
         )
 

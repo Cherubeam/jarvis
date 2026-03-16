@@ -10,15 +10,15 @@ class TestBuildDelegationDirective:
         assert _build_delegation_directive([]) == ""
 
     def test_single_agent_appears_in_output(self):
-        agents = [{"name": "writing", "description": "creative writing"}]
+        agents = [{"name": "writer", "description": "creative writing"}]
         result = _build_delegation_directive(agents)
-        assert "**writing**" in result
+        assert "**writer**" in result
         assert "creative writing" in result
 
     def test_all_agent_names_appear(self):
         agents = [
-            {"name": "writing", "description": "creative writing"},
-            {"name": "tactics", "description": "tactics search"},
+            {"name": "writer", "description": "creative writing"},
+            {"name": "tactics_coach", "description": "tactics search"},
             {"name": "developer", "description": "self-improvement agent"},
         ]
         result = _build_delegation_directive(agents)
@@ -27,15 +27,15 @@ class TestBuildDelegationDirective:
 
     def test_agents_sorted_alphabetically(self):
         agents = [
-            {"name": "writing", "description": "write"},
-            {"name": "clarity", "description": "clarify"},
+            {"name": "writer", "description": "write"},
+            {"name": "simplifier", "description": "simplify"},
             {"name": "developer", "description": "develop"},
         ]
         result = _build_delegation_directive(agents)
-        clarity_pos = result.index("**clarity**")
         developer_pos = result.index("**developer**")
-        writing_pos = result.index("**writing**")
-        assert clarity_pos < developer_pos < writing_pos
+        simplifier_pos = result.index("**simplifier**")
+        writer_pos = result.index("**writer**")
+        assert developer_pos < simplifier_pos < writer_pos
 
     def test_special_hint_included_for_developer(self):
         agents = [{"name": "developer", "description": "self-improvement"}]
@@ -48,7 +48,7 @@ class TestBuildDelegationDirective:
         assert "git sandbox" not in result
 
     def test_behavioral_instructions_present(self):
-        agents = [{"name": "writing", "description": "write"}]
+        agents = [{"name": "writer", "description": "write"}]
         result = _build_delegation_directive(agents)
         assert "delegate_to_agent" in result
         assert "context" in result

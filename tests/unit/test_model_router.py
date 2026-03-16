@@ -62,12 +62,12 @@ class TestClassifyQuery:
         assert preset == "quality"
         assert "developer" in reason
 
-    def test_writing_agent_always_quality(self):
-        preset, _, _ = classify_query("hi", _SAMPLE_CONFIG, agent_name="writing")
+    def test_writer_agent_always_quality(self):
+        preset, _, _ = classify_query("hi", _SAMPLE_CONFIG, agent_name="writer")
         assert preset == "quality"
 
-    def test_research_agent_not_forced_to_quality(self):
-        preset, _, _ = classify_query("hi", _SAMPLE_CONFIG, agent_name="research")
+    def test_researcher_agent_not_forced_to_quality(self):
+        preset, _, _ = classify_query("hi", _SAMPLE_CONFIG, agent_name="researcher")
         assert preset == "fast"  # short query, no special agent override
 
     def test_custom_thresholds_respected(self):

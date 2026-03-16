@@ -448,7 +448,7 @@ class TestStreamHandlerAgenticLoop:
 
         call = _make_tool_call_obj(
             "tc1", "delegate_to_agent",
-            json.dumps({"agent_name": "writing", "task": "review blog"}),
+            json.dumps({"agent_name": "writer", "task": "review blog"}),
         )
 
         client = Mock(spec=LLMClient)

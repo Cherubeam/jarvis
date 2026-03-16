@@ -16,15 +16,18 @@ from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
 
 
 DATA_DRIVEN_AGENTS = [
-    "clarity",
+    "content_reviewer",
     "developer",
     "navigator",
     "obsidian_note_creator",
     "okr_architect",
     "pattern_language_expert",
-    "research",
-    "tactics",
-    "writing",
+    "researcher",
+    "simplifier",
+    "substack_image_creator",
+    "substack_publisher",
+    "tactics_coach",
+    "writer",
 ]
 
 _AGENTS_DIR = Path(__file__).parent.parent.parent / "packages" / "agents"
@@ -258,9 +261,9 @@ class TestPromptIncludes:
         assert "Alternative greeting" in agent.config.system_prompt
         assert "Hello world" not in agent.config.system_prompt
 
-    def test_writing_agent_prompt_includes_work(self):
-        """Writing agent's prompt_includes resolve voice-profile and anti-patterns."""
-        meta_path = _AGENTS_DIR / "writing" / "meta.yaml"
+    def test_writer_agent_prompt_includes_work(self):
+        """Writer agent's prompt_includes resolve voice-profile and anti-patterns from shared dir."""
+        meta_path = _AGENTS_DIR / "writer" / "meta.yaml"
         agent = agent_from_meta(meta_path, Mock(spec=LLMClient), "test-model")
 
         # voice-profile and anti-patterns should be substituted

@@ -22,7 +22,7 @@ class RoutingDecision:
 
 
 # Agents that always get the quality model
-_QUALITY_AGENTS = {"developer", "writing"}
+_QUALITY_AGENTS = {"developer", "writer", "content_reviewer", "substack_publisher"}
 
 # Patterns that indicate complexity
 _CODE_BLOCK_RE = re.compile(r"```")
