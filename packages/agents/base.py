@@ -226,7 +226,8 @@ def agent_from_meta(
         card_search_tool: Optional card search tool for deck-skills.
         skill_names_override: If set, replaces meta.yaml's skills list.
         prompt_includes_override: Overrides specific placeholder values
-            after normal resolution (e.g. {"review_workflow": ""} to blank it).
+            before normal expansion (e.g. {"x": ""} blanks {x} and skips
+            its file; {"x": "custom"} replaces the filename for {x}).
 
     Returns:
         A fully configured DataDrivenAgent.
@@ -238,16 +239,20 @@ def agent_from_meta(
     system_prompt_path = agent_dir / "prompts" / "system.md"
     system_prompt = system_prompt_path.read_text(encoding="utf-8")
 
-    # Resolve prompt_includes: replace {placeholder} with included file content
-    for placeholder, filename in meta.get("prompt_includes", {}).items():
+    # Resolve prompt_includes: apply overrides before normal expansion
+    prompt_includes = dict(meta.get("prompt_includes", {}))
+    if prompt_includes_override:
+        for placeholder, value in prompt_includes_override.items():
+            if value == "":
+                system_prompt = system_prompt.replace(f"{{{placeholder}}}", "")
+                prompt_includes.pop(placeholder, None)
+            else:
+                prompt_includes[placeholder] = value
+
+    for placeholder, filename in prompt_includes.items():
         include_path = agent_dir / "prompts" / f"{filename}.md"
         include_text = include_path.read_text(encoding="utf-8")
         system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
-
-    # Apply prompt_includes overrides (e.g. blank out sections for pre-pub mode)
-    if prompt_includes_override:
-        for placeholder, value in prompt_includes_override.items():
-            system_prompt = system_prompt.replace(f"{{{placeholder}}}", value)
 
     tools = list(extra_tools) if extra_tools else []
 

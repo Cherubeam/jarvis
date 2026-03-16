@@ -929,47 +929,15 @@ def main(argv: list[str] | None = None):
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                tool_kwargs: dict = {}
-                skill_names_override: list[str] | None = None
-                prompt_includes_override: dict[str, str] | None = None
-                if result.delegate_to == "writing" and result.delegate_task:
-                    task_lower = result.delegate_task.lower()
-                    if any(s in task_lower for s in ("prepare", "pre-publish", "publish", "prepub", "pre-pub")):
-                        tool_kwargs = {"only_tool_groups": {"blog_tools"}, "include_shared": False}
-                        skill_names_override = ["substack-prepare-to-publish"]
-                        prompt_includes_override = {"review_workflow": ""}
-
-                        # Pre-fetch blog listing so the agent doesn't need to discover files
-                        blog_listing = ""
-                        for tool in tool_groups.get("blog_tools", []):
-                            if tool.name == "list_blog_posts":
-                                blog_listing = tool.execute()
-                                break
-                        if blog_listing:
-                            extra_context = f"\n\nAvailable blog posts:\n{blog_listing}"
-                            result.delegate_context = (result.delegate_context or "") + extra_context
-
                 all_delegate_tools = _assemble_agent_tools(
                     delegate_meta, shared_tools, tool_groups,
-                    **tool_kwargs,
                 )
-
-                # In pre-pub mode, remove discovery/creation tools — only read + edit needed
-                if tool_kwargs:
-                    all_delegate_tools = [
-                        t for t in all_delegate_tools
-                        if t.name not in ("list_blog_posts", "create_blog_post")
-                    ]
                 all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
-                    skill_names_override=skill_names_override,
-                    prompt_includes_override=prompt_includes_override,
                 )
-                if tool_kwargs:  # pre-pub override: need more iterations for skill workflow
-                    delegate_agent.config.max_iterations = 5
                 agent_session = _run_agent_session(
                     delegate_agent, delegate_meta.name, stream_handler,
                     logger, session,

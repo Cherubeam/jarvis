@@ -211,6 +211,53 @@ class TestPromptIncludes:
         assert "{voice}" not in agent.config.system_prompt
         assert "{rules}" not in agent.config.system_prompt
 
+    def test_prompt_includes_override_blanks_before_expansion(self, tmp_path):
+        """prompt_includes_override={\"x\": \"\"} blanks {x} before normal file expansion."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+            "prompt_includes": {"greeting": "hello", "farewell": "bye"},
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("A: {greeting}\n\nB: {farewell}")
+        (prompts_dir / "hello.md").write_text("Hello world")
+        (prompts_dir / "bye.md").write_text("Goodbye world")
+
+        agent = agent_from_meta(
+            agent_dir / "meta.yaml", Mock(spec=LLMClient), "m",
+            prompt_includes_override={"greeting": ""},
+        )
+
+        # {greeting} should be blanked (empty string), not expanded from file
+        assert "Hello world" not in agent.config.system_prompt
+        assert "A: \n" in agent.config.system_prompt
+        # {farewell} should still be expanded normally
+        assert "Goodbye world" in agent.config.system_prompt
+
+    def test_prompt_includes_override_replaces_filename(self, tmp_path):
+        """prompt_includes_override={\"x\": \"alt\"} replaces the file for {x}."""
+        agent_dir = tmp_path / "test_agent"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(yaml.dump({
+            "name": "test", "description": "test", "command": "/test",
+            "prompt_includes": {"greeting": "hello"},
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("Say: {greeting}")
+        (prompts_dir / "hello.md").write_text("Hello world")
+        (prompts_dir / "alt-hello.md").write_text("Alternative greeting")
+
+        agent = agent_from_meta(
+            agent_dir / "meta.yaml", Mock(spec=LLMClient), "m",
+            prompt_includes_override={"greeting": "alt-hello"},
+        )
+
+        assert "Alternative greeting" in agent.config.system_prompt
+        assert "Hello world" not in agent.config.system_prompt
+
     def test_writing_agent_prompt_includes_work(self):
         """Writing agent's prompt_includes resolve voice-profile and anti-patterns."""
         meta_path = _AGENTS_DIR / "writing" / "meta.yaml"
