@@ -6,6 +6,7 @@ prompt_includes:
   anti_patterns: anti-patterns
 skills:
   - technical-humanist-image-architect
+  - substack-prepare-to-publish
 tools:
   - blog_tools
   - content_evaluator

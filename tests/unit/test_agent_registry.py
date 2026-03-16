@@ -65,7 +65,7 @@ class TestDiscoverAgents:
 
     def test_skills_extracted_from_meta_yaml(self):
         agents = discover_agents()
-        assert agents["writing"].skills == ("technical-humanist-image-architect",)
+        assert agents["writing"].skills == ("technical-humanist-image-architect", "substack-prepare-to-publish")
         assert agents["pattern-language-expert"].skills == ("pattern-language-expert",)
 
     def test_tool_groups_empty_when_not_declared(self):

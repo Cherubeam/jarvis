@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Substack Prepare-to-Publish Skill**: New 7-step interactive pre-publication workflow for the writing agent. Generates Substack tags, SEO descriptions, article summaries, LinkedIn post drafts, and Substack note drafts with promotional timelines. Persists chosen promotional content to Obsidian vault callout blocks.
+
 ### Changed
 - **All Delegate Agents Data-Driven**: Migrated WritingAgent, TacticsAgent, and DeveloperAgent from Python classes to `meta.yaml` + `prompts/system.md`. All 9 delegate agents are now data-driven. Removed `agent_class` from `AgentMeta` and the Python-class discovery/instantiation path.
 - **Per-Agent Tool Declarations**: Replaced flat `agent_only_tools` list with named `tool_groups` registry. Each agent declares which tool groups it needs via `tools:` in `meta.yaml` (e.g. writing gets `blog_tools`, `content_evaluator`, `suggest_improvements`; developer gets `dev_tools`; tactics gets `card_search`). Agents no longer receive tools they don't need.

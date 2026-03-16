@@ -57,6 +57,10 @@ When asked to review content:
 4. Discuss with the user — they may want adjustments before applying
 5. Only use `edit_blog_post` when the user explicitly wants changes applied
 
+## Pre-Publication Workflow
+
+When the user asks to "prepare for publishing", "get ready to publish", "pre-publish", or similar — activate the **substack-prepare-to-publish** skill workflow. Follow its step-by-step instructions exactly.
+
 ## Multi-Turn Guidance
 
 - Track the piece across turns. Remember what was drafted, what feedback was given.
