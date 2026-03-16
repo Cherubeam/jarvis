@@ -130,7 +130,7 @@ class TestStreamHandler:
         handler = StreamHandler(client, tracker, pricing, "test-model")
         handler.stream(messages)
 
-        client.chat_stream.assert_called_once_with(messages, tools=None)
+        client.chat_stream.assert_called_once_with(messages, tools=None, max_tokens=None)
 
     def test_on_chunk_callback_invoked_instead_of_print(self, capsys):
         """When on_chunk is set, it receives chunks and print() is suppressed."""

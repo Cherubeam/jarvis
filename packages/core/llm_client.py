@@ -119,6 +119,7 @@ class LLMClient:
         messages: list[dict],
         model: str | None = None,
         tools: list[dict] | None = None,
+        max_tokens: int | None = None,
     ) -> StreamingResponse:
         """
         Stream a chat response, yielding chunks as they arrive.
@@ -127,11 +128,12 @@ class LLMClient:
             messages: List of {"role": "...", "content": "..."} dicts
             model: Override default model if needed
             tools: LiteLLM-formatted tool definitions
+            max_tokens: Maximum tokens for the response
 
         Returns:
             StreamingResponse that yields text chunks and provides usage stats after completion
         """
-        return StreamingResponse(self._stream_response(messages, model, tools))
+        return StreamingResponse(self._stream_response(messages, model, tools, max_tokens=max_tokens))
 
     def stream_with_tool_detection(
         self,
@@ -139,6 +141,7 @@ class LLMClient:
         model: str | None = None,
         tools: list[dict] | None = None,
         temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> StreamingResponse | StreamToolResult:
         """Stream a response, detecting tool calls without a separate complete() call.
 
@@ -162,6 +165,8 @@ class LLMClient:
             kwargs["tools"] = tools
         if temperature is not None:
             kwargs["temperature"] = temperature
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
 
         response = litellm.completion(**kwargs)
 
@@ -238,6 +243,7 @@ class LLMClient:
         messages: list[dict],
         model: str | None = None,
         tools: list[dict] | None = None,
+        max_tokens: int | None = None,
     ) -> Generator[str, None, tuple[TokenUsage, object]]:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
 
@@ -253,6 +259,8 @@ class LLMClient:
         )
         if tools:
             kwargs["tools"] = tools
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
 
         response = litellm.completion(**kwargs)
 

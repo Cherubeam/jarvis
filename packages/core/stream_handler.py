@@ -39,6 +39,7 @@ class StreamHandler:
         model_id: str,
         on_tool_call: Callable[[str], None] | None = None,
         on_chunk: Callable[[str], None] | None = None,
+        max_tokens: int | None = None,
     ):
         self.client = client
         self.metrics_tracker = metrics_tracker
@@ -46,6 +47,7 @@ class StreamHandler:
         self.model_id = model_id
         self.on_tool_call = on_tool_call
         self.on_chunk = on_chunk
+        self.max_tokens = max_tokens
 
     def stream(
         self,
@@ -130,7 +132,7 @@ class StreamHandler:
 
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
             result = self.client.stream_with_tool_detection(
-                messages, tools=tools_format,
+                messages, tools=tools_format, max_tokens=self.max_tokens,
             )
 
             # Content response — no tool calls detected
@@ -263,7 +265,7 @@ class StreamHandler:
 
     def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
         """Stream the final response and return a StreamResult."""
-        response = self.client.chat_stream(messages, tools=tools)
+        response = self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
 
         chunks: list[str] = []
         first_token = True

@@ -200,6 +200,10 @@ class DataDrivenAgent(BaseAgent):
         kwargs: dict = {}
         if self.config.max_iterations is not None:
             kwargs["max_iterations"] = self.config.max_iterations
+
+        # Pass agent-configured max_tokens to the stream handler
+        stream_handler.max_tokens = self.config.max_tokens
+
         return stream_handler.stream(
             messages, print_chunks=print_chunks, tool_registry=registry, **kwargs,
         )
