@@ -52,6 +52,10 @@ When the user asks to "prepare for publishing", "get ready to publish",
 workflow below step-by-step. Each step is one conversation turn — complete
 the step, present your output, then STOP and wait for the user's response.
 
+**Tool usage**: The available blog posts are listed in your context.
+Use `read_blog_post` directly with the matching file path. Do not search
+for articles — the listing is already provided.
+
 {skills}
 
 {review_workflow}

@@ -938,10 +938,28 @@ def main(argv: list[str] | None = None):
                         tool_kwargs = {"only_tool_groups": {"blog_tools"}, "include_shared": False}
                         skill_names_override = ["substack-prepare-to-publish"]
                         prompt_includes_override = {"review_workflow": ""}
+
+                        # Pre-fetch blog listing so the agent doesn't need to discover files
+                        blog_listing = ""
+                        for tool in tool_groups.get("blog_tools", []):
+                            if tool.name == "list_blog_posts":
+                                blog_listing = tool.execute()
+                                break
+                        if blog_listing:
+                            extra_context = f"\n\nAvailable blog posts:\n{blog_listing}"
+                            result.delegate_context = (result.delegate_context or "") + extra_context
+
                 all_delegate_tools = _assemble_agent_tools(
                     delegate_meta, shared_tools, tool_groups,
                     **tool_kwargs,
                 )
+
+                # In pre-pub mode, remove discovery/creation tools — only read + edit needed
+                if tool_kwargs:
+                    all_delegate_tools = [
+                        t for t in all_delegate_tools
+                        if t.name not in ("list_blog_posts", "create_blog_post")
+                    ]
                 all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta, client, model_id, all_delegate_tools,
