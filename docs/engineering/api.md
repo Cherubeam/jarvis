@@ -186,7 +186,7 @@ Get message history formatted for LLM API.
 Save conversation to timestamped JSON file.
 
 **File Format:**
-- `YYYY-MM-DD_HH-MM-SS_<model>.json`
+- `YYYY/YYYY-MM-DD_HH-MM-SS.json` (organized by year subdirectory)
 
 **Usage Example:**
 ```python
@@ -216,7 +216,7 @@ Convert a single ChatGPT conversation to Jarvis schema v1.0.0.
 
 #### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to, model_filter, include_archived) -> ImportSummary`
 
-Orchestrate bulk import with filters. Idempotent — skips already-imported conversations by `chatgpt_id`.
+Orchestrate bulk import with filters. Writes to `data/conversations/YYYY/` subdirectories. Idempotent — skips already-imported conversations by `chatgpt_id`.
 
 ### `class ImportSummary`
 
@@ -242,7 +242,7 @@ Incrementally sync an existing JARVIS conversation with new data from Claude. Sy
 
 #### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to) -> ImportSummary`
 
-Orchestrate bulk import with date filters. For existing conversations, calls `update_conversation` instead of skipping. New conversations are converted and written. Idempotent — unchanged conversations are skipped.
+Orchestrate bulk import with date filters. Writes to `data/conversations/YYYY/` subdirectories. For existing conversations, calls `update_conversation` instead of skipping. New conversations are converted and written. Idempotent — unchanged conversations are skipped.
 
 ### `class ImportSummary`
 

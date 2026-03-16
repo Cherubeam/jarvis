@@ -861,7 +861,7 @@ Implement a bulk import with CLI filters rather than a per-conversation selectio
 
 1. **Reusable conversion module** (`packages/core/importers/chatgpt.py`) — pure conversion logic in an extensible `importers/` subpackage
 2. **Thin CLI script** (`scripts/import_chatgpt.py`) — `--dry-run`, `--date-from/to`, `--model`, `--include-archived` filters
-3. **Same target directory** (`data/conversations/`) — imported files interleave with native Jarvis conversations, distinguished by tags and metadata
+3. **Same target directory** (`data/conversations/YYYY/`) — imported files interleave with native Jarvis conversations in year-based subdirectories, distinguished by tags and metadata
 4. **Deterministic IDs** — `conv_id` derived from SHA-256 of ChatGPT UUID, enabling idempotent re-imports
 5. **Idempotent skip** — existing imports detected by `chatgpt_id` in metadata, not by filename
 
@@ -870,7 +870,7 @@ Implement a bulk import with CLI filters rather than a per-conversation selectio
 1. **Per-conversation selection UI**
    - ✅ Fine-grained control
    - ❌ Over-engineering for a one-time 147-conversation import
-   - ❌ `data/conversations/` is gitignored, so deleting unwanted files is trivial
+   - ❌ `data/conversations/YYYY/` is gitignored, so deleting unwanted files is trivial
 
 2. **Separate `data/imported/` directory**
    - ✅ Clear separation
@@ -1291,7 +1291,7 @@ Add a `recall_conversations` tool backed by **ChromaDB** (local persistent vecto
 
 **Architecture:**
 
-1. At startup, `ConversationIndexer` scans `data/conversations/*.json`, skips already-indexed conv_ids, embeds new message-pair chunks, and upserts them into ChromaDB's `"conversations"` collection.
+1. At startup, `ConversationIndexer` recursively scans `data/conversations/YYYY/*.json`, skips already-indexed conv_ids, embeds new message-pair chunks, and upserts them into ChromaDB's `"conversations"` collection.
 2. At runtime, the LLM can call `recall_conversations(query, date_from?, date_to?)`. `ConversationSearcher` embeds the query, does a cosine similarity lookup in ChromaDB, and returns formatted snippets back to the LLM.
 
 **Chunking strategy — message pairs:**

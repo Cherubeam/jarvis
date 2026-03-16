@@ -222,7 +222,7 @@ uv run pytest --cov=packages --cov=apps --cov-report=term
 
 ### Read-Only Unless Fixing Bugs
 
-- `data/conversations/*.json` - Conversation logs
+- `data/conversations/YYYY/*.json` - Conversation logs (organized by year)
 - `docs/product/decisions.md` - Architecture Decision Records
 
 ---

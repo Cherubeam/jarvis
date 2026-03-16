@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Year-Based Conversation Storage**: Conversations are now organized into `data/conversations/YYYY/` subdirectories instead of a flat directory. Includes a migration script (`scripts/migrate_conversations_to_years.py`) to move existing files. All importers, the indexer, and `ConversationLogger` updated accordingly.
+
 ### Fixed
 - **Daily Summary Spinner**: Activity spinner now shows for `/daily-summary`, matching the main chat loop behavior instead of the static "Generating daily summary..." message.
 - **Daily Summary Credit Error**: `/daily-summary` crashed with a 402 error when OpenRouter credits were lower than the model's default max_tokens (65536). Now explicitly caps max_tokens at 4096, which is appropriate for short structured summaries.

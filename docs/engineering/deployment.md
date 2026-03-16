@@ -100,7 +100,7 @@ system_prompt_prefix: |
 
 paths:
   context_dir: "data/context"
-  conversations_dir: "data/conversations"
+  conversations_dir: "data/conversations"  # files stored in YYYY/ subdirs
   learned_facts: "data/learned_facts.md"
 ```
 
@@ -223,8 +223,8 @@ See [docs/engineering/architecture.md](architecture.md#file-structure) for the f
 
 ### Conversation Logs
 
-Saved to `data/conversations/`:
-- Format: `YYYY-MM-DD_HH-MM-SS_<model>.json`
+Saved to `data/conversations/YYYY/`:
+- Format: `YYYY/YYYY-MM-DD_HH-MM-SS.json` (organized by year)
 - **Gitignored by default** (contain sensitive data)
 
 ### Backup Strategy
@@ -232,7 +232,7 @@ Saved to `data/conversations/`:
 **What to back up:**
 - ✅ `data/context/*.md` (your context files)
 - ✅ `config/default.yaml` (your configuration)
-- ✅ `data/conversations/*.json` (optional, if you want history)
+- ✅ `data/conversations/YYYY/*.json` (optional, if you want history)
 
 **How to back up:**
 ```bash

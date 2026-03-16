@@ -265,7 +265,10 @@ jarvis/
 │   │   ├── current_focus.md            # Current projects and priorities
 │   │   ├── tasks.md                    # Auto-synced from Things 3
 │   │   └── projects/                   # Project-specific context
-│   ├── conversations/                  # Timestamped conversation logs
+│   ├── conversations/                  # Timestamped conversation logs (by year)
+│   │   ├── 2024/                      # e.g. 2024-02-10_17-50-05.json
+│   │   ├── 2025/
+│   │   └── 2026/
 │   ├── prompts/                        # Prompt templates
 │   │   └── obsidian/                   # Obsidian-specific prompts
 │   └── rag/                            # ChromaDB vector store (runtime, gitignored)
