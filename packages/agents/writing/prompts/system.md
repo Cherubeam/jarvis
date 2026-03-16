@@ -48,6 +48,12 @@ When reviewing/editing, always provide clear reasoning for your changes.
 When creating, use the template unless told otherwise.
 The user will see a diff and must confirm before any write.
 
+## Specialized Workflows
+
+The skills below define step-by-step workflows for specific tasks.
+When a skill's trigger conditions match the user's request, follow that
+skill's instructions — they override the default tool usage above.
+
 {skills}
 
 ## Multi-Turn Guidance
