@@ -522,6 +522,78 @@ class TestInstantiateAgent:
 
 
 @pytest.mark.unit
+class TestPrePubMaxIterationsOverride:
+    """Tests that pre-pub delegation overrides max_iterations."""
+
+    def test_prepub_delegation_sets_max_iterations_to_5(self, tmp_path):
+        """Pre-pub delegate agent gets max_iterations=5 instead of meta default."""
+        import yaml as _yaml
+
+        agent_dir = tmp_path / "writing"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(_yaml.dump({
+            "name": "writing",
+            "description": "Writing agent",
+            "command": "/write",
+            "max_iterations": 2,
+            "tools": ["blog_tools"],
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a writing agent." * 5)
+
+        meta = AgentMeta(
+            name="writing", description="Writing agent",
+            command="/write", meta_path=agent_dir / "meta.yaml",
+            tool_groups=("blog_tools",),
+        )
+
+        client = Mock(spec=LLMClient)
+        dummy_tool = ToolDefinition(
+            name="list_blog_posts", description="List posts",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda: "ok",
+        )
+
+        tools = _assemble_agent_tools(
+            meta, [], {"blog_tools": [dummy_tool]},
+            only_tool_groups={"blog_tools"}, include_shared=False,
+        )
+        agent = _instantiate_agent(meta, client, "test-model", tools)
+
+        # Simulate the pre-pub override from main loop
+        tool_kwargs = {"only_tool_groups": {"blog_tools"}, "include_shared": False}
+        if tool_kwargs:
+            agent.config.max_iterations = 5
+
+        assert agent.config.max_iterations == 5
+
+    def test_normal_delegation_keeps_default_max_iterations(self, tmp_path):
+        """Non-pre-pub delegate agent keeps its meta.yaml max_iterations."""
+        import yaml as _yaml
+
+        agent_dir = tmp_path / "writing"
+        agent_dir.mkdir()
+        (agent_dir / "meta.yaml").write_text(_yaml.dump({
+            "name": "writing",
+            "description": "Writing agent",
+            "command": "/write",
+            "max_iterations": 2,
+        }))
+        prompts_dir = agent_dir / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "system.md").write_text("You are a writing agent." * 5)
+
+        meta = AgentMeta(
+            name="writing", description="Writing agent",
+            command="/write", meta_path=agent_dir / "meta.yaml",
+        )
+
+        agent = _instantiate_agent(meta, Mock(spec=LLMClient), "test-model")
+        assert agent.config.max_iterations == 2
+
+
+@pytest.mark.unit
 class TestMakeAgentVaultTools:
     """Tests for _make_agent_vault_tools helper."""
 

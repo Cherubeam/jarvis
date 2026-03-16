@@ -940,6 +940,8 @@ def main(argv: list[str] | None = None):
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
                 )
+                if tool_kwargs:  # pre-pub override: need more iterations for skill workflow
+                    delegate_agent.config.max_iterations = 5
                 agent_session = _run_agent_session(
                     delegate_agent, delegate_meta.name, stream_handler,
                     logger, session,
