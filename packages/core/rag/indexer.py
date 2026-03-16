@@ -82,7 +82,7 @@ class ConversationIndexer:
         all_documents: list[str] = []
         all_metadatas: list[dict] = []
 
-        for filepath in sorted(conversations_dir.glob("*.json")):
+        for filepath in sorted(conversations_dir.rglob("*.json")):
             conversation = self._load_conversation(filepath)
             if conversation is None:
                 continue
