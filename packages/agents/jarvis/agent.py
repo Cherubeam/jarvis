@@ -48,7 +48,9 @@ You can read vault notes directly with `read_note`, `search_notes`, and
 
 Use `delegate_to_agent` when a task is better handled by a specialist.
 When delegating, call `delegate_to_agent` immediately — do NOT use other
-tools (like recall or fetch) first. The specialized agent has its own tools.
+tools first. This includes `search_notes` and `read_note` — the specialist
+agent has its own vault access tools and will read whatever it needs.
+Your job is to delegate with a clear task description, not to pre-fetch content.
 
 When delegating, include a `context` parameter summarizing any relevant
 background from YOUR conversation with the user — key details, preferences,

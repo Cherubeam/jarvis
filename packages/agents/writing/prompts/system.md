@@ -48,6 +48,14 @@ When reviewing/editing, always provide clear reasoning for your changes.
 When creating, use the template unless told otherwise.
 The user will see a diff and must confirm before any write.
 
+## Pre-Publication Workflow (takes priority over Review Workflow)
+
+When the user asks to "prepare for publishing", "get ready to publish",
+"pre-publish", or similar — this is NOT a review request. Do NOT run
+`evaluate_content` or `suggest_improvements`. Instead, follow the
+**substack-prepare-to-publish** skill workflow step-by-step. The skill
+instructions are appended below this system prompt.
+
 ## Review Workflow
 
 When asked to review content:
@@ -56,10 +64,6 @@ When asked to review content:
 3. Use `suggest_improvements` to show concrete changes as a preview diff
 4. Discuss with the user — they may want adjustments before applying
 5. Only use `edit_blog_post` when the user explicitly wants changes applied
-
-## Pre-Publication Workflow
-
-When the user asks to "prepare for publishing", "get ready to publish", "pre-publish", or similar — activate the **substack-prepare-to-publish** skill workflow. Follow its step-by-step instructions exactly.
 
 ## Multi-Turn Guidance
 
