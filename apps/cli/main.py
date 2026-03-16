@@ -78,6 +78,8 @@ def _instantiate_agent(
     extra_tools: list | None = None,
     skill_registry: dict | None = None,
     card_search_tool=None,
+    skill_names_override: list[str] | None = None,
+    prompt_includes_override: dict[str, str] | None = None,
 ):
     """Create an agent from AgentMeta via agent_from_meta()."""
     return agent_from_meta(
@@ -85,6 +87,8 @@ def _instantiate_agent(
         extra_tools=extra_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
+        skill_names_override=skill_names_override,
+        prompt_includes_override=prompt_includes_override,
     )
 
 
@@ -926,10 +930,14 @@ def main(argv: list[str] | None = None):
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
                 tool_kwargs: dict = {}
+                skill_names_override: list[str] | None = None
+                prompt_includes_override: dict[str, str] | None = None
                 if result.delegate_to == "writing" and result.delegate_task:
                     task_lower = result.delegate_task.lower()
                     if any(s in task_lower for s in ("prepare", "pre-publish", "publish", "prepub", "pre-pub")):
                         tool_kwargs = {"only_tool_groups": {"blog_tools"}, "include_shared": False}
+                        skill_names_override = ["substack-prepare-to-publish"]
+                        prompt_includes_override = {"review_workflow": ""}
                 all_delegate_tools = _assemble_agent_tools(
                     delegate_meta, shared_tools, tool_groups,
                     **tool_kwargs,
@@ -939,6 +947,8 @@ def main(argv: list[str] | None = None):
                     delegate_meta, client, model_id, all_delegate_tools,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
+                    skill_names_override=skill_names_override,
+                    prompt_includes_override=prompt_includes_override,
                 )
                 if tool_kwargs:  # pre-pub override: need more iterations for skill workflow
                     delegate_agent.config.max_iterations = 5

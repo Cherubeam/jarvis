@@ -212,6 +212,8 @@ def agent_from_meta(
     extra_tools: list[ToolDefinition] | None = None,
     skill_registry: dict | None = None,
     card_search_tool: ToolDefinition | None = None,
+    skill_names_override: list[str] | None = None,
+    prompt_includes_override: dict[str, str] | None = None,
 ) -> DataDrivenAgent:
     """Build an agent from a meta.yaml + prompts/system.md.
 
@@ -222,6 +224,9 @@ def agent_from_meta(
         extra_tools: Optional tools to register on the agent.
         skill_registry: Optional skill registry for resolving bound skills.
         card_search_tool: Optional card search tool for deck-skills.
+        skill_names_override: If set, replaces meta.yaml's skills list.
+        prompt_includes_override: Overrides specific placeholder values
+            after normal resolution (e.g. {"review_workflow": ""} to blank it).
 
     Returns:
         A fully configured DataDrivenAgent.
@@ -239,10 +244,15 @@ def agent_from_meta(
         include_text = include_path.read_text(encoding="utf-8")
         system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
 
+    # Apply prompt_includes overrides (e.g. blank out sections for pre-pub mode)
+    if prompt_includes_override:
+        for placeholder, value in prompt_includes_override.items():
+            system_prompt = system_prompt.replace(f"{{{placeholder}}}", value)
+
     tools = list(extra_tools) if extra_tools else []
 
     # Resolve bound skills if declared in meta.yaml
-    skill_names = meta.get("skills", [])
+    skill_names = skill_names_override if skill_names_override is not None else meta.get("skills", [])
     if skill_names and skill_registry is not None:
         from packages.skills.resolver import resolve_skills
 
