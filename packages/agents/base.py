@@ -137,7 +137,10 @@ class BaseAgent(ABC):
             messages = self.get_messages_for_api()
 
         registry = self.tool_registry if not self.tool_registry.is_empty() else None
-        return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry)
+        kwargs: dict = {}
+        if self.config.max_iterations is not None:
+            kwargs["max_iterations"] = self.config.max_iterations
+        return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
 
     def add_to_history(self, role: str, content: str):
         """Add a message to conversation history."""
@@ -185,29 +188,12 @@ class DataDrivenAgent(BaseAgent):
         print_chunks: bool = False,
         messages_override: list[dict] | None = None,
     ) -> StreamResult:
-        """Run the agent, passing max_iterations when configured."""
-        if messages_override is not None:
-            messages = [
-                {"role": "system", "content": self.config.system_prompt},
-                *messages_override,
-                {"role": "user", "content": message},
-            ]
-        else:
-            self.add_to_history("user", message)
-            messages = self.get_messages_for_api()
-
-        registry = self.tool_registry if not self.tool_registry.is_empty() else None
-        kwargs: dict = {}
-        if self.config.max_iterations is not None:
-            kwargs["max_iterations"] = self.config.max_iterations
-
+        """Run the agent, passing max_tokens when configured."""
         # Pass agent-configured max_tokens to the stream handler
         if self.config.max_tokens is not None:
             stream_handler.max_tokens = self.config.max_tokens
 
-        return stream_handler.stream(
-            messages, print_chunks=print_chunks, tool_registry=registry, **kwargs,
-        )
+        return super().run(message, stream_handler, print_chunks, messages_override)
 
 
 def agent_from_meta(
