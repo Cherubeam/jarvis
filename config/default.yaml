@@ -8,6 +8,7 @@
 # See docs/research/models.md "Default Model Recommendation" for decision matrix.
 models:
   default: "openrouter/anthropic/claude-sonnet-4.6"
+  default_max_tokens: 16384
   presets:
     fast: "openrouter/google/gemini-2.0-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"
