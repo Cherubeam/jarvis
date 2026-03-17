@@ -667,3 +667,77 @@ class TestStreamHandlerAgenticLoop:
         assert client.stream_with_tool_detection.call_count == 1
         client.chat_stream.assert_not_called()
         assert result.text == "done"
+
+
+# ---------------------------------------------------------------------------
+# Credit fallback tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCreditFallback:
+    """Tests for _try_with_credit_fallback in StreamHandler."""
+
+    def _make_handler(self, client, max_tokens=16384):
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        return StreamHandler(client, tracker, pricing, "test-model", max_tokens=max_tokens)
+
+    def test_402_retries_with_reduced_max_tokens(self, capsys):
+        """First call raises InsufficientCreditsError, retry succeeds with reduced tokens."""
+        from packages.core.llm_client import InsufficientCreditsError
+
+        client = Mock(spec=LLMClient)
+        handler = self._make_handler(client, max_tokens=16384)
+
+        # First call: 402, second call: success
+        client.chat_stream.side_effect = [
+            InsufficientCreditsError(requested=16384, affordable=8612, original_error=Exception()),
+            _make_streaming_response(["ok"]),
+        ]
+
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        assert handler.max_tokens == 8612
+        assert result.text == "ok"
+        assert client.chat_stream.call_count == 2
+        captured = capsys.readouterr()
+        assert "8612" in captured.out
+
+    def test_402_too_few_tokens_raises_runtime_error(self):
+        """When affordable tokens < minimum, RuntimeError is raised."""
+        from packages.core.llm_client import InsufficientCreditsError
+
+        client = Mock(spec=LLMClient)
+        handler = self._make_handler(client, max_tokens=16384)
+
+        client.chat_stream.side_effect = InsufficientCreditsError(
+            requested=16384, affordable=100, original_error=Exception(),
+        )
+
+        with pytest.raises(RuntimeError, match="Insufficient OpenRouter credits"):
+            handler.stream([{"role": "user", "content": "hi"}])
+
+    def test_reduced_tokens_persist_across_calls(self, capsys):
+        """After adjustment, next stream() uses the reduced value."""
+        from packages.core.llm_client import InsufficientCreditsError
+
+        client = Mock(spec=LLMClient)
+        handler = self._make_handler(client, max_tokens=16384)
+
+        # First stream: 402 then success
+        client.chat_stream.side_effect = [
+            InsufficientCreditsError(requested=16384, affordable=8612, original_error=Exception()),
+            _make_streaming_response(["first"]),
+            _make_streaming_response(["second"]),
+        ]
+
+        handler.stream([{"role": "user", "content": "hi"}])
+        assert handler.max_tokens == 8612
+
+        # Second stream: no error, should use reduced max_tokens
+        result = handler.stream([{"role": "user", "content": "hello"}])
+        assert result.text == "second"
+
+        # The third chat_stream call should have been made with reduced tokens
+        third_call = client.chat_stream.call_args_list[2]
+        assert third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612

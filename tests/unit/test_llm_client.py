@@ -9,7 +9,10 @@ from unittest.mock import Mock, patch, MagicMock
 
 # Try new import path first, fall back to old for backward compatibility
 try:
-    from packages.core.llm_client import TokenUsage, StreamingResponse, LLMClient
+    from packages.core.llm_client import (
+        TokenUsage, StreamingResponse, LLMClient,
+        InsufficientCreditsError, _parse_credit_error,
+    )
 except ImportError:
     from llm_client import TokenUsage, StreamingResponse, LLMClient
 
@@ -318,3 +321,55 @@ class TestStreamingResponse:
         assert usage.prompt_tokens == 100
         assert usage.completion_tokens == 50
         assert usage.total_tokens == 150
+
+
+@pytest.mark.unit
+class TestCreditErrorParsing:
+    """Tests for 402 credit error detection."""
+
+    def test_402_raises_insufficient_credits_error(self):
+        """A 402 with 'can only afford N' is converted to InsufficientCreditsError."""
+        import litellm
+
+        client = LLMClient(
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
+        )
+
+        error = litellm.APIError(
+            status_code=402,
+            message="You requested up to 16384 tokens, but can only afford 8612",
+            llm_provider="openrouter",
+            model="test/test-model",
+        )
+
+        with patch("litellm.completion", side_effect=error):
+            with pytest.raises(InsufficientCreditsError) as exc_info:
+                stream = client.chat_stream(
+                    [{"role": "user", "content": "hi"}], max_tokens=16384,
+                )
+                list(stream)  # Consume to trigger the generator
+
+            assert exc_info.value.affordable == 8612
+            assert exc_info.value.requested == 16384
+
+    def test_non_402_error_passes_through(self):
+        """A 500 error is not caught by the credit error handler."""
+        import litellm
+
+        client = LLMClient(
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
+        )
+
+        error = litellm.APIError(
+            status_code=500,
+            message="Internal server error",
+            llm_provider="openrouter",
+            model="test/test-model",
+        )
+
+        with patch("litellm.completion", side_effect=error):
+            with pytest.raises(litellm.APIError):
+                stream = client.chat_stream([{"role": "user", "content": "hi"}])
+                list(stream)  # Consume to trigger the generator
