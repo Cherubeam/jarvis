@@ -48,6 +48,8 @@ class StreamHandler:
         self.on_tool_call = on_tool_call
         self.on_chunk = on_chunk
         self.max_tokens = max_tokens
+        self.on_before_tool_exec: Callable[[], None] | None = None
+        self.on_after_tool_exec: Callable[[], None] | None = None
 
     def stream(
         self,
@@ -189,7 +191,11 @@ class StreamHandler:
                     for tc in tool_result.tool_calls
                 ],
             }
+            if self.on_before_tool_exec:
+                self.on_before_tool_exec()
             tool_results = execute_tool_calls(tool_result.tool_calls, tool_registry)
+            if self.on_after_tool_exec:
+                self.on_after_tool_exec()
             messages = [*messages, assistant_msg, *tool_results]
 
             # Track tool messages for history persistence

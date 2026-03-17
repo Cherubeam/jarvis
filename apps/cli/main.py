@@ -411,6 +411,8 @@ def _run_agent_session(
         print_agent_prefix(agent_name)
         live, buf = start_live_stream()
         stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+        stream_handler.on_before_tool_exec = lambda: live.stop()
+        stream_handler.on_after_tool_exec = lambda: live.start()
         result = agent.run(
             user_input,
             stream_handler,
@@ -418,6 +420,8 @@ def _run_agent_session(
             messages_override=session_history[:-1],
         )
         stream_handler.on_chunk = None
+        stream_handler.on_before_tool_exec = None
+        stream_handler.on_after_tool_exec = None
         finish_live_stream(live, result.text)
 
         print_usage_stats(result)
@@ -512,8 +516,12 @@ def _handle_agent_command(
     print_agent_prefix(meta.name)
     live, buf = start_live_stream()
     stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+    stream_handler.on_before_tool_exec = lambda: live.stop()
+    stream_handler.on_after_tool_exec = lambda: live.start()
     result = agent.run(payload, stream_handler, print_chunks=True)
     stream_handler.on_chunk = None
+    stream_handler.on_before_tool_exec = None
+    stream_handler.on_after_tool_exec = None
     finish_live_stream(live, result.text)
 
     print_usage_stats(result)
@@ -915,6 +923,8 @@ def main(argv: list[str] | None = None):
             print_assistant_prefix(agent_name)
             live, buf = start_live_stream()
             stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+            stream_handler.on_before_tool_exec = lambda: live.stop()
+            stream_handler.on_after_tool_exec = lambda: live.start()
             result = active_agent.run(
                 user_input,
                 stream_handler,
@@ -922,6 +932,8 @@ def main(argv: list[str] | None = None):
                 messages_override=history,
             )
             stream_handler.on_chunk = None
+            stream_handler.on_before_tool_exec = None
+            stream_handler.on_after_tool_exec = None
             finish_live_stream(live, result.text)
 
             # Restore original model after routed call
