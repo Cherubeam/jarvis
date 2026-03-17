@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **JARVIS Iteration Limit**: JARVIS exhausted the default 5-iteration limit calling vault tools before it could delegate to specialist agents. `BaseAgent.run()` now passes `max_iterations` from config (removing duplicated logic in `DataDrivenAgent`), JARVIS is set to 15, and the delegation directive more strongly instructs first-turn delegation.
 - **Credit Error Crash**: 402 errors from OpenRouter now handled gracefully — max_tokens is automatically reduced to what the user can afford, with a warning message. If credits are too low for a useful response (< 256 tokens), a clear error with a link to add credits is shown.
 - **Prompt Token Limit Error**: 402 errors from OpenRouter when the prompt itself exceeds the API key's monthly token limit are now caught and shown as a clear error with a link to create a key with a higher limit, instead of crashing with an unhandled `APIError`.
 - **Agent Credit Error**: All agents crashed with a 402 error when OpenRouter credits were below the model's default max_tokens (65536). Added configurable `default_max_tokens` (16384) applied globally unless an agent specifies its own.
