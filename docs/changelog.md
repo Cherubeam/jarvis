@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Credit Error Crash**: 402 errors from OpenRouter now handled gracefully — max_tokens is automatically reduced to what the user can afford, with a warning message. If credits are too low for a useful response (< 256 tokens), a clear error with a link to add credits is shown.
 - **Agent Credit Error**: All agents crashed with a 402 error when OpenRouter credits were below the model's default max_tokens (65536). Added configurable `default_max_tokens` (16384) applied globally unless an agent specifies its own.
 - **Pattern Agent**: Vault write tools (create_note, edit_note, list_notes_in_dir) now enabled via missing `obsidian.writing.patterns` config; system prompt deduplicated using `{skills}` placeholder; concrete output format added for vault notes; agentic loop enabled with `max_iterations: 10`.
 - **Pattern Agent Delegation**: Pattern agent no longer skips discussion when delegated from JARVIS — added session start protocol requiring scoping questions before generating patterns.
