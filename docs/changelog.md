@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Pattern Agent**: Vault write tools (create_note, edit_note, list_notes_in_dir) now enabled via missing `obsidian.writing.patterns` config; system prompt deduplicated using `{skills}` placeholder; concrete output format added for vault notes; agentic loop enabled with `max_iterations: 10`.
+
 ### Added
 - **Token Economics Research**: Analysis document (`docs/research/token-economics.md`) covering system prompt costs, five optimization approaches with tradeoff matrix, and a recommended layered strategy.
 - **Token Economics Instrumentation**: Lightweight measurement of context usage patterns — per-section token breakdown in session summaries, history growth tracking per turn, context utilization heuristic (which sections are referenced in responses). All data saved to conversation JSON for cross-session analysis. No behavior changes — observation only.
