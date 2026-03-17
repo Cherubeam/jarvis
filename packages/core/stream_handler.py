@@ -13,6 +13,7 @@ from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
 _MAX_AGENTIC_ITERATIONS = 5
+_MIN_USEFUL_TOKENS = 256
 
 
 @dataclass
@@ -50,6 +51,23 @@ class StreamHandler:
         self.max_tokens = max_tokens
         self.on_before_tool_exec: Callable[[], None] | None = None
         self.on_after_tool_exec: Callable[[], None] | None = None
+
+    def _try_with_credit_fallback(self, api_call):
+        """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
+        from packages.core.llm_client import InsufficientCreditsError
+
+        try:
+            return api_call()
+        except InsufficientCreditsError as e:
+            if e.affordable < _MIN_USEFUL_TOKENS:
+                raise RuntimeError(
+                    f"Insufficient OpenRouter credits — only {e.affordable} tokens affordable "
+                    f"(minimum {_MIN_USEFUL_TOKENS} needed). Please add credits at "
+                    f"https://openrouter.ai/settings/credits"
+                ) from e
+            print(f"\n⚠ Credit limit: reduced max_tokens from {self.max_tokens} → {e.affordable}")
+            self.max_tokens = e.affordable
+            return api_call()
 
     def stream(
         self,
@@ -133,8 +151,10 @@ class StreamHandler:
         tool_messages: list[dict] = []
 
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
-            result = self.client.stream_with_tool_detection(
-                messages, tools=tools_format, max_tokens=self.max_tokens,
+            result = self._try_with_credit_fallback(
+                lambda: self.client.stream_with_tool_detection(
+                    messages, tools=tools_format, max_tokens=self.max_tokens,
+                )
             )
 
             # Content response — no tool calls detected
@@ -271,7 +291,9 @@ class StreamHandler:
 
     def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
         """Stream the final response and return a StreamResult."""
-        response = self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
+        response = self._try_with_credit_fallback(
+            lambda: self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
+        )
 
         chunks: list[str] = []
         first_token = True
