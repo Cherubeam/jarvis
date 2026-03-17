@@ -3,6 +3,8 @@ Handles conversation persistence.
 Saves conversations to JSON files with a future-proof schema (v1.0.0).
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import logging
@@ -12,6 +14,10 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from packages.core.context_builder import ContextMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +164,7 @@ class SessionMetrics:
     request_count: int = 0
     total_ttft_ms: float = 0.0
     total_latency_ms: float = 0.0
+    history_tokens_per_turn: list[int] = field(default_factory=list)
 
     def add_usage(
         self,
@@ -183,6 +190,10 @@ class SessionMetrics:
         self.total_thinking_tokens += thinking_tokens
         self.request_count += 1
 
+    def record_history_tokens(self, approx_tokens: int):
+        """Record approximate history token count for the current turn."""
+        self.history_tokens_per_turn.append(approx_tokens)
+
     @property
     def average_ttft_ms(self) -> float:
         """Average time to first token across all requests."""
@@ -194,7 +205,7 @@ class SessionMetrics:
         return self.total_latency_ms / self.request_count if self.request_count > 0 else 0.0
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "total_prompt_tokens": self.total_prompt_tokens,
             "total_completion_tokens": self.total_completion_tokens,
             "total_tokens": self.total_tokens,
@@ -207,6 +218,9 @@ class SessionMetrics:
             "average_latency_ms": self.average_latency_ms,
             "metadata": {},
         }
+        if self.history_tokens_per_turn:
+            result["history_tokens_per_turn"] = self.history_tokens_per_turn
+        return result
 
 
 class ConversationLogger:
@@ -219,6 +233,7 @@ class ConversationLogger:
         agent_config: dict | None = None,
         context_snapshot: dict | None = None,
         environment: dict | None = None,
+        context_metadata: "ContextMetadata | None" = None,
     ):
         self.conversations_dir = Path(conversations_dir)
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
@@ -233,11 +248,13 @@ class ConversationLogger:
         self.agent_config = agent_config
         self.context_snapshot = context_snapshot
         self.environment = environment
+        self.context_metadata = context_metadata
         self.title: str | None = None
         self.topic: str | None = None
         self.tags: list[str] = []
         self.feedback: dict | None = None
         self.metadata: dict = {}
+        self.utilization: list[dict] = []
 
     def set_title(self, title: str):
         """Set the conversation title."""
@@ -251,6 +268,34 @@ class ConversationLogger:
         """Add a tag to the conversation."""
         if tag not in self.tags:
             self.tags.append(tag)
+
+    def record_utilization(self, response_text: str, section_names: list[str]):
+        """Check which context sections appear referenced in a response.
+
+        Uses simple keyword matching as a heuristic — not perfect, but
+        gives directional data on which sections contribute to responses.
+        """
+        text_lower = response_text.lower()
+        # Keywords that suggest a section was utilized
+        section_keywords: dict[str, list[str]] = {
+            "soul": ["jarvis", "assistant"],
+            "personal": ["marco", "personal", "family"],
+            "professional": ["work", "career", "professional", "engineering"],
+            "preferences": ["prefer", "style", "tone"],
+            "focus": ["focus", "current", "priority"],
+            "tasks": ["task", "todo", "things"],
+            "projects": ["project", "jarvis", "repo"],
+        }
+        utilized = []
+        for name in section_names:
+            keywords = section_keywords.get(name, [name])
+            if any(kw in text_lower for kw in keywords):
+                utilized.append(name)
+        self.utilization.append({
+            "turn": self.metrics.request_count,
+            "sections_loaded": section_names,
+            "sections_utilized": utilized,
+        })
 
     def set_feedback(self, overall_rating: int | None = None, helpful: bool | None = None, notes: str | None = None, **kwargs):
         """Set session-level feedback."""
@@ -376,6 +421,23 @@ class ConversationLogger:
         year_dir.mkdir(parents=True, exist_ok=True)
         filepath = year_dir / filename
 
+        # Enrich context snapshot with token metadata
+        context = self.context_snapshot
+        if context and self.context_metadata:
+            context = {**context}
+            # Add approx_tokens to each file entry
+            section_tokens = {
+                s.name: s.approx_tokens
+                for s in self.context_metadata.sections
+            }
+            context["system_prompt_approx_tokens"] = self.context_metadata.total_approx_tokens
+            context["section_breakdown"] = [
+                {"name": s.name, "approx_tokens": s.approx_tokens, "size_bytes": s.size_bytes}
+                for s in self.context_metadata.sections
+            ]
+            if self.utilization:
+                context["utilization"] = self.utilization
+
         data = {
             "schema_version": SCHEMA_VERSION,
             "id": self.conversation_id,
@@ -386,7 +448,7 @@ class ConversationLogger:
             "session_end": datetime.now().isoformat(),
             "model": self.model_config,
             "agent": self.agent_config,
-            "context": self.context_snapshot,
+            "context": context,
             "metrics": self.metrics.to_dict(),
             "environment": self.environment,
             "messages": self.current_conversation,
@@ -419,6 +481,33 @@ class ConversationLogger:
                 f"Cost: {cost_str} | "
                 f"{m.request_count} request(s){latency_str}"
             )
+
+            # Print context breakdown if available
+            if self.context_metadata:
+                pcts = self.context_metadata.section_percentages()
+                if pcts:
+                    parts = [f"{name}: {pct:.0f}%" for name, pct in pcts.items()]
+                    print(
+                        f"  System prompt: ~{self.context_metadata.total_approx_tokens:,} tokens "
+                        f"({', '.join(parts)})"
+                    )
+
+                # Print history growth if tracked
+                if m.history_tokens_per_turn:
+                    last_history = m.history_tokens_per_turn[-1]
+                    print(f"  History: ~{last_history:,} tokens (turn {m.request_count})")
+
+            # Print utilization summary
+            if self.utilization:
+                all_loaded = set()
+                all_utilized = set()
+                for entry in self.utilization:
+                    all_loaded.update(entry["sections_loaded"])
+                    all_utilized.update(entry["sections_utilized"])
+                print(
+                    f"  Context utilized: {', '.join(sorted(all_utilized)) or 'none'} "
+                    f"({len(all_utilized)}/{len(all_loaded)} sections referenced in responses)"
+                )
 
     def get_messages_for_api(self) -> list[dict]:
         """Return messages in the format the API expects.

@@ -31,7 +31,7 @@ from apps.cli.display import (
 from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.registry import AgentMeta, discover_agents, get_by_command
-from packages.core.context_builder import build_system_prompt, parse_frontmatter
+from packages.core.context_builder import build_system_prompt, build_system_prompt_with_metadata, parse_frontmatter
 from packages.skills.registry import discover_skills
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, hash_content
@@ -561,7 +561,7 @@ def main(argv: list[str] | None = None):
     # Sync tasks from Things 3 (if enabled)
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
-    system_prompt = build_system_prompt(context_dir)
+    system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
 
     client = LLMClient(
         api_keys=api_keys,
@@ -761,10 +761,12 @@ def main(argv: list[str] | None = None):
         for f in sorted(context_dir.iterdir()):
             if f.is_file() and f.suffix == ".md":
                 content = f.read_text(encoding="utf-8")
+                size_bytes = f.stat().st_size
                 context_files.append({
                     "path": str(f.relative_to(jarvis_dir)),
                     "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": f.stat().st_size,
+                    "size_bytes": size_bytes,
+                    "approx_tokens": size_bytes // 4,
                 })
         # Include project context files with frontmatter metadata
         projects_dir = context_dir / "projects"
@@ -773,10 +775,12 @@ def main(argv: list[str] | None = None):
                 content = f.read_text(encoding="utf-8")
                 meta_fm, _ = parse_frontmatter(content)
                 is_active = meta_fm.get("active", True)
+                size_bytes = f.stat().st_size
                 entry = {
                     "path": str(f.relative_to(jarvis_dir)),
                     "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": f.stat().st_size,
+                    "size_bytes": size_bytes,
+                    "approx_tokens": size_bytes // 4,
                     "active": is_active,
                 }
                 if meta_fm:
@@ -802,6 +806,7 @@ def main(argv: list[str] | None = None):
         agent_config=logger_agent_config,
         context_snapshot=context_snapshot,
         environment=environment,
+        context_metadata=context_metadata,
     )
     metrics_tracker = MetricsTracker()
 
@@ -888,6 +893,13 @@ def main(argv: list[str] | None = None):
             # Regular chat — route through active agent
             # Grab existing history before adding user message (run() appends it)
             history = logger.get_messages_for_api()
+
+            # Track history size for token economics instrumentation
+            history_bytes = sum(
+                len(str(m.get("content", "")).encode("utf-8")) for m in history
+            )
+            logger.metrics.record_history_tokens(history_bytes // 4)
+
             logger.add_message("user", user_input)
 
             # Intelligent model routing (opt-in via config)
@@ -934,6 +946,11 @@ def main(argv: list[str] | None = None):
                 total_latency_ms=result.metrics.total_latency_ms,
                 agent_name=agent_name,
             )
+
+            # Record context utilization for token economics instrumentation
+            if context_metadata and result.text:
+                section_names = [s.name for s in context_metadata.sections]
+                logger.record_utilization(result.text, section_names)
 
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
