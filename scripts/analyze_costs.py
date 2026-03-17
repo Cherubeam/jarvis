@@ -94,7 +94,7 @@ def aggregate_conversation(stats: GroupStats, conversation: dict) -> None:
 def load_conversations(conversations_dir: Path) -> list[dict]:
     """Load and migrate all conversation files."""
     conversations = []
-    for json_file in sorted(conversations_dir.glob("*.json")):
+    for json_file in sorted(conversations_dir.rglob("*.json")):
         try:
             with open(json_file) as f:
                 data = json.load(f)

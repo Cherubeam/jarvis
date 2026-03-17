@@ -120,7 +120,7 @@ def _estimate_context_tokens(size_bytes: int) -> int:
 def load_conversations(conversations_dir: Path) -> list[dict]:
     """Load and migrate all conversation files."""
     conversations = []
-    for json_file in sorted(conversations_dir.glob("*.json")):
+    for json_file in sorted(conversations_dir.rglob("*.json")):
         try:
             with open(json_file) as f:
                 data = json.load(f)
