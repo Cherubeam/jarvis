@@ -1,0 +1,33 @@
+# JARVIS Configuration
+# RAG — Conversation recall via ChromaDB + LiteLLM embeddings
+rag:
+  enabled: true
+
+# Filesystem access control — per-path read/read-write rules
+filesystem:
+  access_rules:
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault"
+      access: read
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault/06 – Journals"
+      access: read-write
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault/03 – Areas/02 – Substack"
+      access: read-write
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault/04 – Resources/06 – Patterns"
+      access: read-write
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault/99 – Meta/00 – Templates"
+      access: read
+
+# Obsidian vault integration
+obsidian:
+  enabled: true
+  vault_path: "/Users/marcobraun/Obsidian/Marcos Vault"
+  # allowed_dirs removed — access control moved to filesystem.access_rules
+  daily_notes:
+    path_format: "06 – Journals/01 Daily/%Y/%Y-%m/%Y-%m-%d"
+  writing:
+    blog_dir: "03 – Areas/02 – Substack"
+    template_path: "99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md"
+    patterns:
+      target_dir: "04 – Resources/06 – Patterns"
+      template_path: ""
+  prompts_dir: "data/prompts/obsidian"
