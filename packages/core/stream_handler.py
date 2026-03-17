@@ -54,10 +54,16 @@ class StreamHandler:
 
     def _try_with_credit_fallback(self, api_call):
         """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
-        from packages.core.llm_client import InsufficientCreditsError
+        from packages.core.llm_client import InsufficientCreditsError, PromptTokenLimitError
 
         try:
             return api_call()
+        except PromptTokenLimitError as e:
+            raise RuntimeError(
+                f"Prompt too large for your OpenRouter key — {e.prompt_tokens} tokens sent, "
+                f"but key limit is {e.limit}. Create a key with a higher limit at "
+                f"https://openrouter.ai/settings/keys"
+            ) from e
         except InsufficientCreditsError as e:
             if e.affordable < _MIN_USEFUL_TOKENS:
                 raise RuntimeError(

@@ -21,14 +21,31 @@ class InsufficientCreditsError(Exception):
         super().__init__(f"Requested {requested} tokens but can only afford {affordable}")
 
 
+class PromptTokenLimitError(Exception):
+    """Raised when prompt tokens exceed the API key's monthly limit."""
+
+    def __init__(self, prompt_tokens: int, limit: int, original_error: Exception):
+        self.prompt_tokens = prompt_tokens
+        self.limit = limit
+        self.original_error = original_error
+        super().__init__(f"Prompt tokens ({prompt_tokens}) exceed key limit ({limit})")
+
+
 _AFFORDABLE_TOKENS_RE = re.compile(r"can only afford (\d+)")
+_PROMPT_LIMIT_RE = re.compile(r"Prompt tokens limit exceeded:\s*(\d+)\s*>\s*(\d+)")
 
 
-def _parse_credit_error(error: Exception, max_tokens: int | None) -> InsufficientCreditsError | None:
-    """Parse a 402 API error into an InsufficientCreditsError, or return None."""
+def _parse_credit_error(
+    error: Exception, max_tokens: int | None,
+) -> InsufficientCreditsError | PromptTokenLimitError | None:
+    """Parse a 402 API error into a typed exception, or return None."""
     if getattr(error, "status_code", None) != 402:
         return None
-    match = _AFFORDABLE_TOKENS_RE.search(str(error))
+    msg = str(error)
+    prompt_match = _PROMPT_LIMIT_RE.search(msg)
+    if prompt_match:
+        return PromptTokenLimitError(int(prompt_match.group(1)), int(prompt_match.group(2)), error)
+    match = _AFFORDABLE_TOKENS_RE.search(msg)
     if not match:
         return None
     return InsufficientCreditsError(max_tokens or 0, int(match.group(1)), error)
