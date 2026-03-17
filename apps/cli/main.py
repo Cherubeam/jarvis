@@ -820,6 +820,7 @@ def main(argv: list[str] | None = None):
     stream_handler = StreamHandler(
         client, metrics_tracker, pricing, model_id,
         on_tool_call=print_tool_feedback,
+        max_tokens=config.get("models", {}).get("default_max_tokens"),
     )
 
     # Print startup info
