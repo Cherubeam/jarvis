@@ -9,9 +9,15 @@ from pathlib import Path
 
 # Try new import path first, fall back to old for backward compatibility
 try:
-    from packages.core.context_builder import load_context_file, build_system_prompt, parse_frontmatter
+    from packages.core.context_builder import (
+        load_context_file, build_system_prompt, build_system_prompt_with_metadata,
+        parse_frontmatter, _approx_tokens, ContextMetadata, ContextSection,
+    )
 except ImportError:
-    from context_builder import load_context_file, build_system_prompt, parse_frontmatter
+    from context_builder import (
+        load_context_file, build_system_prompt, build_system_prompt_with_metadata,
+        parse_frontmatter, _approx_tokens, ContextMetadata, ContextSection,
+    )
 
 
 @pytest.mark.unit
@@ -517,3 +523,105 @@ class TestProjectIndex:
         assert "Other projects (context available on request):" in result
         assert "Active projects" not in result
         assert "## Project context" not in result
+
+
+@pytest.mark.unit
+class TestApproxTokens:
+    """Tests for _approx_tokens helper."""
+
+    def test_empty_string(self):
+        assert _approx_tokens("") == 0
+
+    def test_ascii_text(self):
+        # 20 ASCII chars = 20 bytes / 4 = 5 tokens
+        assert _approx_tokens("Hello World! Test.  ") == 5
+
+    def test_multibyte_text(self):
+        # Multibyte chars produce more bytes, so more tokens
+        text = "Hallo Wörld"  # ö is 2 bytes in UTF-8
+        assert _approx_tokens(text) >= len(text) // 4
+
+
+@pytest.mark.unit
+class TestContextMetadata:
+    """Tests for ContextMetadata dataclass."""
+
+    def test_empty_metadata(self):
+        meta = ContextMetadata()
+        assert meta.total_approx_tokens == 0
+        assert meta.sections == []
+        assert meta.section_percentages() == {}
+
+    def test_section_percentages(self):
+        meta = ContextMetadata(
+            total_approx_tokens=100,
+            sections=[
+                ContextSection(name="soul", size_bytes=80, approx_tokens=20),
+                ContextSection(name="tasks", size_bytes=320, approx_tokens=80),
+            ],
+        )
+        pcts = meta.section_percentages()
+        assert pcts["soul"] == pytest.approx(20.0)
+        assert pcts["tasks"] == pytest.approx(80.0)
+
+    def test_section_percentages_zero_total(self):
+        meta = ContextMetadata(
+            total_approx_tokens=0,
+            sections=[ContextSection(name="soul", size_bytes=0, approx_tokens=0)],
+        )
+        assert meta.section_percentages() == {}
+
+
+@pytest.mark.unit
+class TestBuildSystemPromptWithMetadata:
+    """Tests for build_system_prompt_with_metadata."""
+
+    def test_returns_same_prompt_as_original(self, temp_context_dir: Path):
+        """Metadata variant produces the same prompt text."""
+        (temp_context_dir / "soul.md").write_text("I am Jarvis.")
+        (temp_context_dir / "personal_context.md").write_text("User is a dev.")
+
+        original = build_system_prompt(temp_context_dir)
+        prompt, _meta = build_system_prompt_with_metadata(temp_context_dir)
+        assert prompt == original
+
+    def test_metadata_has_sections(self, temp_context_dir: Path):
+        (temp_context_dir / "soul.md").write_text("I am Jarvis.")
+        (temp_context_dir / "personal_context.md").write_text("User info here.")
+        (temp_context_dir / "tasks.md").write_text("- Buy milk")
+
+        _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
+        section_names = [s.name for s in meta.sections]
+        assert "soul" in section_names
+        assert "personal" in section_names
+        assert "tasks" in section_names
+
+    def test_metadata_total_tokens_positive(self, temp_context_dir: Path):
+        (temp_context_dir / "soul.md").write_text("I am Jarvis, a personal AI assistant.")
+
+        _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
+        assert meta.total_approx_tokens > 0
+
+    def test_metadata_includes_projects(self, temp_context_dir: Path):
+        projects_dir = temp_context_dir / "projects"
+        projects_dir.mkdir()
+        (projects_dir / "myproject.md").write_text("# My Project\nSome content here.")
+
+        _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
+        section_names = [s.name for s in meta.sections]
+        assert "projects" in section_names
+
+    def test_empty_context_dir(self, temp_context_dir: Path):
+        prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
+        assert prompt == ""
+        assert meta.total_approx_tokens == 0
+        assert meta.sections == []
+
+    def test_section_tokens_are_positive(self, temp_context_dir: Path):
+        (temp_context_dir / "soul.md").write_text("I am Jarvis.")
+        (temp_context_dir / "preferences.md").write_text("Be concise.")
+
+        _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
+        for section in meta.sections:
+            assert section.approx_tokens > 0
+            assert section.size_bytes > 0

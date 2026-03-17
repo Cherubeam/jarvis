@@ -815,3 +815,108 @@ class TestMigrateConversation:
 
         assert result["schema_version"] == "1.0.0"
         assert result["id"] == "conv_20260206_143022_abcd"
+
+
+@pytest.mark.unit
+class TestSessionMetricsHistoryTracking:
+    """Tests for history_tokens_per_turn tracking."""
+
+    def test_history_tokens_initially_empty(self):
+        metrics = SessionMetrics()
+        assert metrics.history_tokens_per_turn == []
+
+    def test_record_history_tokens(self):
+        metrics = SessionMetrics()
+        metrics.record_history_tokens(0)
+        metrics.record_history_tokens(150)
+        metrics.record_history_tokens(500)
+        assert metrics.history_tokens_per_turn == [0, 150, 500]
+
+    def test_history_tokens_in_to_dict(self):
+        metrics = SessionMetrics()
+        metrics.record_history_tokens(100)
+        result = metrics.to_dict()
+        assert result["history_tokens_per_turn"] == [100]
+
+    def test_history_tokens_omitted_when_empty(self):
+        metrics = SessionMetrics()
+        result = metrics.to_dict()
+        assert "history_tokens_per_turn" not in result
+
+
+@pytest.mark.unit
+class TestConversationLoggerUtilization:
+    """Tests for context utilization tracking."""
+
+    def test_record_utilization_finds_keywords(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.record_utilization(
+            "I checked your tasks and here's what I found.",
+            ["soul", "personal", "tasks", "projects"],
+        )
+        assert len(logger.utilization) == 1
+        entry = logger.utilization[0]
+        assert "tasks" in entry["sections_utilized"]
+        assert entry["sections_loaded"] == ["soul", "personal", "tasks", "projects"]
+
+    def test_record_utilization_no_match(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.record_utilization(
+            "The weather is nice today.",
+            ["soul", "personal", "tasks"],
+        )
+        entry = logger.utilization[0]
+        assert entry["sections_utilized"] == []
+
+    def test_utilization_saved_to_json(self, temp_conversations_dir: Path):
+        from packages.core.context_builder import ContextMetadata, ContextSection
+
+        metadata = ContextMetadata(
+            total_approx_tokens=100,
+            sections=[ContextSection(name="tasks", size_bytes=400, approx_tokens=100)],
+        )
+        logger = ConversationLogger(
+            temp_conversations_dir,
+            context_snapshot={"files_loaded": [], "metadata": {}},
+            context_metadata=metadata,
+        )
+        logger.add_message("user", "What are my tasks?")
+        logger.add_message("assistant", "Here are your tasks: buy milk",
+                           prompt_tokens=100, completion_tokens=20, total_tokens=120)
+        logger.record_utilization("Here are your tasks: buy milk", ["tasks"])
+
+        logger.save()
+
+        files = list(temp_conversations_dir.rglob("*.json"))
+        assert len(files) == 1
+        data = json.loads(files[0].read_text())
+        assert "utilization" in data["context"]
+        assert len(data["context"]["utilization"]) == 1
+
+    def test_context_metadata_saved_to_json(self, temp_conversations_dir: Path):
+        from packages.core.context_builder import ContextMetadata, ContextSection
+
+        metadata = ContextMetadata(
+            total_approx_tokens=500,
+            sections=[
+                ContextSection(name="soul", size_bytes=100, approx_tokens=25),
+                ContextSection(name="tasks", size_bytes=1600, approx_tokens=400),
+            ],
+        )
+        logger = ConversationLogger(
+            temp_conversations_dir,
+            context_snapshot={"files_loaded": [], "metadata": {}},
+            context_metadata=metadata,
+        )
+        logger.add_message("user", "Hello")
+        logger.add_message("assistant", "Hi!", prompt_tokens=50, completion_tokens=5, total_tokens=55)
+
+        logger.save()
+
+        files = list(temp_conversations_dir.rglob("*.json"))
+        data = json.loads(files[0].read_text())
+        ctx = data["context"]
+        assert ctx["system_prompt_approx_tokens"] == 500
+        assert len(ctx["section_breakdown"]) == 2
+        assert ctx["section_breakdown"][0]["name"] == "soul"
+        assert ctx["section_breakdown"][1]["approx_tokens"] == 400
