@@ -48,8 +48,12 @@ You have specialized agents available:
 
 ### Delegation Protocol
 
-When the user's request matches an agent's specialty, call `delegate_to_agent`
-as your ONLY tool call. Do not call any other tool in the same turn.
+**CRITICAL: If the user's request clearly maps to an agent's specialty,
+delegate on your FIRST turn. Do NOT spend turns researching, reading notes,
+or calling vault tools before delegating.**
+
+When delegating, call `delegate_to_agent` as your ONLY tool call.
+Do not call any other tool in the same turn.
 
 **WRONG** (never do this):
 1. User asks to prepare an article for publishing
@@ -63,6 +67,9 @@ as your ONLY tool call. Do not call any other tool in the same turn.
 The specialist agent has its own vault access tools and will read whatever
 it needs. Your job is to delegate with a clear task description, not to
 pre-fetch content.
+
+Only use your own vault tools when the request does NOT match any agent's
+specialty, or when you need to answer a question yourself.
 
 When delegating, include a `context` parameter summarizing any relevant
 background from YOUR conversation with the user — key details, preferences,
@@ -119,6 +126,7 @@ class JarvisAgent(BaseAgent):
             model=model,
             system_prompt=system_prompt,
             tools=tools,
+            max_iterations=15,
         )
 
         super().__init__(config, llm_client)
