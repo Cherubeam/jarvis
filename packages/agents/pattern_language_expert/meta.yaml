@@ -1,6 +1,7 @@
 name: pattern_language_expert
 description: Design, evolve, and apply pattern languages and pattern libraries
 command: /pattern-language-expert
+max_iterations: 10
 vault_writing: patterns
 skills:
   - pattern-language-expert
