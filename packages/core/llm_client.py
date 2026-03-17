@@ -3,11 +3,35 @@ Thin wrapper around LiteLLM for unified LLM access.
 Supports multiple providers via LiteLLM's routing conventions.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Generator
 import litellm
 
 from packages.core.model_resolver import infer_provider, get_api_key
+
+
+class InsufficientCreditsError(Exception):
+    """Raised when OpenRouter returns 402 due to insufficient credits."""
+
+    def __init__(self, requested: int, affordable: int, original_error: Exception):
+        self.requested = requested
+        self.affordable = affordable
+        self.original_error = original_error
+        super().__init__(f"Requested {requested} tokens but can only afford {affordable}")
+
+
+_AFFORDABLE_TOKENS_RE = re.compile(r"can only afford (\d+)")
+
+
+def _parse_credit_error(error: Exception, max_tokens: int | None) -> InsufficientCreditsError | None:
+    """Parse a 402 API error into an InsufficientCreditsError, or return None."""
+    if getattr(error, "status_code", None) != 402:
+        return None
+    match = _AFFORDABLE_TOKENS_RE.search(str(error))
+    if not match:
+        return None
+    return InsufficientCreditsError(max_tokens or 0, int(match.group(1)), error)
 
 
 @dataclass
@@ -168,7 +192,13 @@ class LLMClient:
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
 
-        response = litellm.completion(**kwargs)
+        try:
+            response = litellm.completion(**kwargs)
+        except litellm.APIError as e:
+            credit_err = _parse_credit_error(e, kwargs.get("max_tokens"))
+            if credit_err:
+                raise credit_err from e
+            raise
 
         # Peek at chunks to determine if this is a tool call or content response
         content_chunks: list[str] = []
@@ -262,7 +292,13 @@ class LLMClient:
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
 
-        response = litellm.completion(**kwargs)
+        try:
+            response = litellm.completion(**kwargs)
+        except litellm.APIError as e:
+            credit_err = _parse_credit_error(e, kwargs.get("max_tokens"))
+            if credit_err:
+                raise credit_err from e
+            raise
 
         # Stream content chunks and extract usage from chunks
         usage = TokenUsage()
