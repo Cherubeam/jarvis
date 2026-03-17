@@ -717,6 +717,24 @@ class TestCreditFallback:
         with pytest.raises(RuntimeError, match="Insufficient OpenRouter credits"):
             handler.stream([{"role": "user", "content": "hi"}])
 
+    def test_prompt_limit_error_raises_runtime_error(self):
+        """PromptTokenLimitError is converted to RuntimeError with helpful message."""
+        from packages.core.llm_client import PromptTokenLimitError
+
+        client = Mock(spec=LLMClient)
+        handler = self._make_handler(client, max_tokens=16384)
+
+        client.chat_stream.side_effect = PromptTokenLimitError(
+            prompt_tokens=13391, limit=7985, original_error=Exception(),
+        )
+
+        with pytest.raises(RuntimeError, match="Prompt too large") as exc_info:
+            handler.stream([{"role": "user", "content": "hi"}])
+
+        assert "13391" in str(exc_info.value)
+        assert "7985" in str(exc_info.value)
+        assert "openrouter.ai/settings/keys" in str(exc_info.value)
+
     def test_reduced_tokens_persist_across_calls(self, capsys):
         """After adjustment, next stream() uses the reduced value."""
         from packages.core.llm_client import InsufficientCreditsError

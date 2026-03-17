@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch, MagicMock
 try:
     from packages.core.llm_client import (
         TokenUsage, StreamingResponse, LLMClient,
-        InsufficientCreditsError, _parse_credit_error,
+        InsufficientCreditsError, PromptTokenLimitError, _parse_credit_error,
     )
 except ImportError:
     from llm_client import TokenUsage, StreamingResponse, LLMClient
@@ -352,6 +352,32 @@ class TestCreditErrorParsing:
 
             assert exc_info.value.affordable == 8612
             assert exc_info.value.requested == 16384
+
+    def test_402_prompt_limit_raises_prompt_token_limit_error(self):
+        """A 402 with 'Prompt tokens limit exceeded' raises PromptTokenLimitError."""
+        import litellm
+
+        client = LLMClient(
+            api_keys={"test": "test-key"},
+            default_model="test/test-model",
+        )
+
+        error = litellm.APIError(
+            status_code=402,
+            message="Prompt tokens limit exceeded: 13391 > 7985. To increase, visit https://openrouter.ai/settings/keys",
+            llm_provider="openrouter",
+            model="test/test-model",
+        )
+
+        with patch("litellm.completion", side_effect=error):
+            with pytest.raises(PromptTokenLimitError) as exc_info:
+                stream = client.chat_stream(
+                    [{"role": "user", "content": "hi"}], max_tokens=16384,
+                )
+                list(stream)
+
+            assert exc_info.value.prompt_tokens == 13391
+            assert exc_info.value.limit == 7985
 
     def test_non_402_error_passes_through(self):
         """A 500 error is not caught by the credit error handler."""
