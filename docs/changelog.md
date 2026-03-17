@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Token Economics Research**: Analysis document (`docs/research/token-economics.md`) covering system prompt costs, five optimization approaches with tradeoff matrix, and a recommended layered strategy.
+- **Token Economics Instrumentation**: Lightweight measurement of context usage patterns — per-section token breakdown in session summaries, history growth tracking per turn, context utilization heuristic (which sections are referenced in responses). All data saved to conversation JSON for cross-session analysis. No behavior changes — observation only.
+
 ---
 
 ## [0.11.0] - 2026-03-16
