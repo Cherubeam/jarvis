@@ -68,7 +68,11 @@ class StreamHandler:
     def _calculate_cost(self, usage: TokenUsage, raw_response=None) -> float:
         """Calculate cost using pricing, LiteLLM fallback, or zero."""
         if self.pricing:
-            return self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            return self.pricing.calculate_cost(
+                usage.prompt_tokens, usage.completion_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
+            )
         if raw_response is not None:
             return calculate_cost_from_litellm(raw_response)
         return 0.0
@@ -152,6 +156,8 @@ class StreamHandler:
                 prompt_tokens=usage.prompt_tokens,
                 completion_tokens=usage.completion_tokens,
                 total_tokens=usage.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
                 cost_usd=cost_usd,
                 model=self.model_id,
                 instance_id=self.instance_id,
@@ -221,6 +227,8 @@ class StreamHandler:
                 total_tokens=accumulated_usage.total_tokens + (
                     tool_result.usage.prompt_tokens + tool_result.usage.completion_tokens
                 ),
+                cache_read_tokens=accumulated_usage.cache_read_tokens + tool_result.usage.cache_read_tokens,
+                cache_write_tokens=accumulated_usage.cache_write_tokens + tool_result.usage.cache_write_tokens,
             )
 
             # UX feedback for each tool call
@@ -314,6 +322,8 @@ class StreamHandler:
                 prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
                 completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
                 total_tokens=usage.total_tokens + intermediate.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
             )
             self._intermediate_usage = None
 
@@ -333,6 +343,8 @@ class StreamHandler:
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=usage.completion_tokens,
             total_tokens=usage.total_tokens,
+            cache_read_tokens=usage.cache_read_tokens,
+            cache_write_tokens=usage.cache_write_tokens,
             cost_usd=cost_usd,
             model=self.model_id,
             instance_id=self.instance_id,
@@ -374,6 +386,8 @@ class StreamHandler:
                 prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
                 completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
                 total_tokens=usage.total_tokens + intermediate.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
             )
             self._intermediate_usage = None
 
@@ -394,6 +408,8 @@ class StreamHandler:
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=usage.completion_tokens,
             total_tokens=usage.total_tokens,
+            cache_read_tokens=usage.cache_read_tokens,
+            cache_write_tokens=usage.cache_write_tokens,
             cost_usd=cost_usd,
             model=self.model_id,
             instance_id=self.instance_id,
