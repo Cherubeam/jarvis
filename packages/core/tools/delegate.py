@@ -54,7 +54,10 @@ def make_delegate_tool(
                 },
                 "task": {
                     "type": "string",
-                    "description": "The full task description to pass to the agent.",
+                    "description": (
+                        "The task or topic for the agent. Frame as a goal, not a "
+                        "command (e.g., 'Help the user draft X' rather than 'Draft X')."
+                    ),
                 },
                 "context": {
                     "type": "string",
