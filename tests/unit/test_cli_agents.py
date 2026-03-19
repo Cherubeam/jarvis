@@ -183,6 +183,8 @@ class TestHandleAgentCommand:
             prompt_tokens=10,
             completion_tokens=5,
             total_tokens=15,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
             cost_usd=0.001,
             ttft_ms=50,
             total_latency_ms=200,

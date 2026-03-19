@@ -12,6 +12,7 @@ try:
     from packages.core.llm_client import (
         TokenUsage, StreamingResponse, LLMClient,
         InsufficientCreditsError, PromptTokenLimitError, _parse_credit_error,
+        _apply_cache_control, _extract_cache_tokens,
     )
 except ImportError:
     from llm_client import TokenUsage, StreamingResponse, LLMClient
@@ -399,3 +400,132 @@ class TestCreditErrorParsing:
             with pytest.raises(litellm.APIError):
                 stream = client.chat_stream([{"role": "user", "content": "hi"}])
                 list(stream)  # Consume to trigger the generator
+
+
+@pytest.mark.unit
+class TestCacheControl:
+    """Tests for prompt caching helpers."""
+
+    def test_cache_control_added_for_anthropic_model(self):
+        """Verify cache_control is injected for openrouter/anthropic models."""
+        messages = [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "Hello"},
+        ]
+        result = _apply_cache_control(messages, "openrouter/anthropic/claude-sonnet-4.6")
+
+        assert result[0]["role"] == "system"
+        content = result[0]["content"]
+        assert isinstance(content, list)
+        assert content[0]["type"] == "text"
+        assert content[0]["text"] == "You are helpful."
+        assert content[0]["cache_control"] == {"type": "ephemeral"}
+        # User message unchanged
+        assert result[1] == {"role": "user", "content": "Hello"}
+
+    def test_cache_control_added_for_direct_anthropic_model(self):
+        """Verify cache_control is injected for direct anthropic/ models."""
+        messages = [{"role": "system", "content": "System prompt."}]
+        result = _apply_cache_control(messages, "anthropic/claude-sonnet-4.6")
+
+        content = result[0]["content"]
+        assert isinstance(content, list)
+        assert content[0]["cache_control"] == {"type": "ephemeral"}
+
+    def test_cache_control_not_added_for_non_anthropic(self):
+        """Verify no modification for non-Anthropic models."""
+        messages = [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "Hello"},
+        ]
+        result = _apply_cache_control(messages, "openrouter/google/gemini-2.0-flash")
+
+        assert result is messages  # Same object, no copy
+        assert result[0]["content"] == "You are helpful."
+
+    def test_cache_control_no_system_message(self):
+        """Verify no modification when first message is not system."""
+        messages = [{"role": "user", "content": "Hello"}]
+        result = _apply_cache_control(messages, "openrouter/anthropic/claude-sonnet-4.6")
+
+        assert result is messages
+
+    def test_cache_control_empty_messages(self):
+        """Verify no crash on empty messages."""
+        result = _apply_cache_control([], "openrouter/anthropic/claude-sonnet-4.6")
+        assert result == []
+
+    def test_cache_control_already_block_format(self):
+        """Verify no modification when content is already in block format."""
+        messages = [
+            {
+                "role": "system",
+                "content": [{"type": "text", "text": "Already blocks"}],
+            },
+        ]
+        result = _apply_cache_control(messages, "openrouter/anthropic/claude-sonnet-4.6")
+        # Should not modify non-string content
+        assert result is messages
+
+
+@pytest.mark.unit
+class TestExtractCacheTokens:
+    """Tests for cache token extraction from usage objects."""
+
+    def test_extract_anthropic_cache_tokens(self):
+        """Extract cache tokens from Anthropic-style usage object."""
+        usage = Mock()
+        usage.cache_read_input_tokens = 5000
+        usage.cache_creation_input_tokens = 2000
+        usage.prompt_tokens_details = None
+
+        read, write = _extract_cache_tokens(usage)
+        assert read == 5000
+        assert write == 2000
+
+    def test_extract_openai_cache_tokens(self):
+        """Extract cache tokens from OpenAI-style usage object."""
+        usage = Mock(spec=[])
+        usage.cache_read_input_tokens = 0
+        usage.cache_creation_input_tokens = 0
+        details = Mock()
+        details.cached_tokens = 3000
+        usage.prompt_tokens_details = details
+
+        read, write = _extract_cache_tokens(usage)
+        assert read == 3000
+        assert write == 0
+
+    def test_extract_no_cache_tokens(self):
+        """Extract returns zeros when no cache info available."""
+        usage = Mock(spec=[])
+        usage.cache_read_input_tokens = 0
+        usage.cache_creation_input_tokens = 0
+        usage.prompt_tokens_details = None
+
+        read, write = _extract_cache_tokens(usage)
+        assert read == 0
+        assert write == 0
+
+
+@pytest.mark.unit
+class TestTokenUsageCacheFields:
+    """Tests for cache fields on TokenUsage."""
+
+    def test_token_usage_cache_defaults(self):
+        """Cache fields default to zero."""
+        usage = TokenUsage()
+        assert usage.cache_read_tokens == 0
+        assert usage.cache_write_tokens == 0
+
+    def test_token_usage_cache_values(self):
+        """Cache fields can be set."""
+        usage = TokenUsage(
+            prompt_tokens=1000,
+            completion_tokens=500,
+            total_tokens=1500,
+            cache_read_tokens=800,
+            cache_write_tokens=200,
+        )
+        assert usage.cache_read_tokens == 800
+        assert usage.cache_write_tokens == 200

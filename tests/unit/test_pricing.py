@@ -187,3 +187,90 @@ class TestFormatCost:
         """Test formatting of zero cost."""
         result = format_cost(0.0)
         assert result == "$0.000000"
+
+
+@pytest.mark.unit
+class TestCacheAwarePricing:
+    """Tests for cache-aware cost calculation."""
+
+    def test_cost_with_cache_tokens_anthropic_defaults(self):
+        """Cache tokens reduce cost using Anthropic default rates (0.1x read, 1.25x write)."""
+        pricing = ModelPricing(
+            prompt_cost=0.000003,  # $3 per 1M tokens
+            completion_cost=0.000015,
+            model_id="test-model",
+        )
+
+        # 1000 total prompt, 500 cache read, 200 cache write → 300 regular
+        cost = pricing.calculate_cost(1000, 200, cache_read_tokens=500, cache_write_tokens=200)
+
+        # regular: 300 * 0.000003 = 0.0009
+        # cache read: 500 * 0.000003 * 0.1 = 0.00015
+        # cache write: 200 * 0.000003 * 1.25 = 0.00075
+        # completion: 200 * 0.000015 = 0.003
+        expected = 0.0009 + 0.00015 + 0.00075 + 0.003
+        assert cost == pytest.approx(expected)
+
+    def test_cost_with_cache_tokens_explicit_rates(self):
+        """Cache tokens use explicit rates from LiteLLM cost map."""
+        pricing = ModelPricing(
+            prompt_cost=0.000003,
+            completion_cost=0.000015,
+            model_id="test-model",
+            cache_read_cost=0.0000015,  # 0.5x (OpenAI-style)
+            cache_write_cost=0.000003,  # 1.0x (no surcharge)
+        )
+
+        cost = pricing.calculate_cost(1000, 200, cache_read_tokens=500, cache_write_tokens=200)
+
+        # regular: 300 * 0.000003 = 0.0009
+        # cache read: 500 * 0.0000015 = 0.00075
+        # cache write: 200 * 0.000003 = 0.0006
+        # completion: 200 * 0.000015 = 0.003
+        expected = 0.0009 + 0.00075 + 0.0006 + 0.003
+        assert cost == pytest.approx(expected)
+
+    def test_cost_without_cache_tokens_unchanged(self):
+        """Without cache tokens, cost calculation is identical to before."""
+        pricing = ModelPricing(
+            prompt_cost=0.000003,
+            completion_cost=0.000015,
+            model_id="test-model",
+        )
+
+        cost_old = (1000 * 0.000003) + (200 * 0.000015)
+        cost_new = pricing.calculate_cost(1000, 200)
+
+        assert cost_new == pytest.approx(cost_old)
+
+    def test_get_model_pricing_includes_cache_costs(self):
+        """get_model_pricing populates cache cost fields from LiteLLM cost map."""
+        mock_cost_map = {
+            "anthropic/claude-sonnet-4.6": {
+                "input_cost_per_token": 0.000003,
+                "output_cost_per_token": 0.000015,
+                "cache_read_input_token_cost": 0.0000003,
+                "cache_creation_input_token_cost": 0.00000375,
+            }
+        }
+        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+            result = get_model_pricing("anthropic/claude-sonnet-4.6")
+
+        assert result is not None
+        assert result.cache_read_cost == 0.0000003
+        assert result.cache_write_cost == 0.00000375
+
+    def test_get_model_pricing_none_cache_costs_when_absent(self):
+        """get_model_pricing returns None cache costs when not in cost map."""
+        mock_cost_map = {
+            "openai/gpt-4o": {
+                "input_cost_per_token": 0.000005,
+                "output_cost_per_token": 0.000015,
+            }
+        }
+        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+            result = get_model_pricing("openai/gpt-4o")
+
+        assert result is not None
+        assert result.cache_read_cost is None
+        assert result.cache_write_cost is None
