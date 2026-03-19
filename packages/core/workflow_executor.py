@@ -33,7 +33,7 @@ class StepResult:
 class WorkflowResult:
     """Result of executing an entire workflow."""
     workflow_name: str
-    status: str  # completed, failed, partial
+    status: str = ""  # completed, failed, partial (set after execution)
     step_results: dict[str, StepResult] = field(default_factory=dict)
     total_cost_usd: float = 0.0
 
