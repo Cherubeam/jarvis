@@ -11,6 +11,62 @@ import litellm
 from packages.core.model_resolver import infer_provider, get_api_key
 
 
+def _apply_cache_control(messages: list[dict], model: str) -> list[dict]:
+    """Add cache_control breakpoint to system message for Anthropic models.
+
+    Only activates when the model string contains 'anthropic' (covers both
+    openrouter/anthropic/... and direct anthropic/... models).
+    """
+    if "anthropic" not in model:
+        return messages
+    if not messages or messages[0].get("role") != "system":
+        return messages
+
+    system_msg = messages[0]
+    content = system_msg["content"]
+
+    if isinstance(content, str):
+        messages = [
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": content,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            },
+            *messages[1:],
+        ]
+    return messages
+
+
+def _get_nested(obj, *attrs):
+    """Safely traverse nested attributes, returning None if any is missing."""
+    for attr in attrs:
+        obj = getattr(obj, attr, None)
+        if obj is None:
+            return None
+    return obj
+
+
+def _extract_cache_tokens(usage) -> tuple[int, int]:
+    """Extract cache read/write tokens from a usage object, regardless of provider.
+
+    Anthropic: cache_read_input_tokens, cache_creation_input_tokens
+    OpenAI:    prompt_tokens_details.cached_tokens (read only, no write concept)
+    LiteLLM:   May normalize to cache_read_input_tokens / cache_creation_input_tokens
+    """
+    cache_read = (
+        getattr(usage, "cache_read_input_tokens", 0)
+        or _get_nested(usage, "prompt_tokens_details", "cached_tokens")
+        or 0
+    )
+    cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    return cache_read, cache_write
+
+
 class InsufficientCreditsError(Exception):
     """Raised when OpenRouter returns 402 due to insufficient credits."""
 
@@ -57,6 +113,8 @@ class TokenUsage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 @dataclass
@@ -141,6 +199,7 @@ class LLMClient:
             Raw LiteLLM ModelResponse object
         """
         model_to_use = model or self.default_model
+        messages = _apply_cache_control(messages, model_to_use)
 
         kwargs: dict = dict(
             model=model_to_use,
@@ -194,6 +253,7 @@ class LLMClient:
         saving one round-trip per non-tool query.
         """
         model_to_use = model or self.default_model
+        messages = _apply_cache_control(messages, model_to_use)
 
         kwargs: dict = dict(
             model=model_to_use,
@@ -226,10 +286,13 @@ class LLMClient:
         for chunk in response:
             # Extract usage from final chunk
             if hasattr(chunk, 'usage') and chunk.usage:
+                cache_read, cache_write = _extract_cache_tokens(chunk.usage)
                 usage = TokenUsage(
                     prompt_tokens=chunk.usage.prompt_tokens or 0,
                     completion_tokens=chunk.usage.completion_tokens or 0,
                     total_tokens=chunk.usage.total_tokens or 0,
+                    cache_read_tokens=cache_read,
+                    cache_write_tokens=cache_write,
                 )
 
             if not chunk.choices:
@@ -295,6 +358,7 @@ class LLMClient:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
 
         model_to_use = model or self.default_model
+        messages = _apply_cache_control(messages, model_to_use)
 
         # LiteLLM will handle provider-specific auth and formatting
         kwargs: dict = dict(
@@ -326,10 +390,13 @@ class LLMClient:
 
             # Check if this chunk contains usage info (usually the last chunk)
             if hasattr(chunk, 'usage') and chunk.usage:
+                cache_read, cache_write = _extract_cache_tokens(chunk.usage)
                 usage = TokenUsage(
                     prompt_tokens=chunk.usage.prompt_tokens or 0,
                     completion_tokens=chunk.usage.completion_tokens or 0,
                     total_tokens=chunk.usage.total_tokens or 0,
+                    cache_read_tokens=cache_read,
+                    cache_write_tokens=cache_write,
                 )
 
         return usage, response
