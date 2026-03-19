@@ -570,7 +570,17 @@ jarvis/
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging
 │   │   ├── pricing.py              # Cost tracking
-│   │   ├── stream_handler.py       # Streaming + metrics + cost
+│   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
+│   │   ├── events.py               # Typed event dataclasses (Phase 6A)
+│   │   ├── app.py                  # Shared bootstrap (config, init)
+│   │   ├── agent_instance.py       # AgentInstance wrapper (multi-instance identity)
+│   │   ├── cost_control.py         # CostGuard + CostBudget (budget enforcement)
+│   │   ├── task_queue.py           # TaskQueue (ThreadPoolExecutor)
+│   │   ├── rate_limiter.py         # Token bucket rate limiter
+│   │   ├── workflow.py             # Workflow + WorkflowStep (DAG definitions)
+│   │   ├── workflow_executor.py    # DAG-based workflow execution engine
+│   │   ├── output_schema.py        # Structured output validation
+│   │   ├── broker.py               # MessageBroker protocol + InProcessBroker
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
 │   │   │   ├── indexer.py          # ConversationIndexer
@@ -740,21 +750,24 @@ jarvis/
 
 ## Scalability Considerations
 
-### Current Limitations (By Design)
+### Current State
+
+Multi-agent scaling infrastructure is in place (Phase 6A+):
+
+- **Parallel execution**: `TaskQueue` with `ThreadPoolExecutor` (I/O-bound LLM calls)
+- **Agent instances**: `AgentInstance` wrapper with unique IDs, cost budgets
+- **Cost controls**: `CostGuard` with thread-safe per-task/session/workflow budgets
+- **Rate limiting**: Token bucket `RateLimiter` for API call throttling
+- **Workflows**: DAG-based `WorkflowExecutor` with topological sort, structured output
+- **Events**: Typed event dataclasses for decoupled streaming output
+
+See `docs/engineering/multi-agent-architecture.md` for the full architecture vision.
+
+### Limitations
 
 - **Single user**: No multi-user support
-- **Single machine**: No distributed architecture
-- **Sequential requests**: No concurrency (CLI interface)
+- **Single machine**: Distributed execution (Scenario B) is vision-only
 - **In-memory history**: Full conversation in context window
-
-### When to Scale
-
-**Not soon**, but if needed:
-
-1. **> 10k conversations**: Add vector index (Phase 4)
-2. **Multi-user**: Add authentication, per-user directories
-3. **API mode**: FastAPI server wrapping components
-4. **Distributed**: Not planned (personal tool)
 
 ---
 
@@ -824,4 +837,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-19*

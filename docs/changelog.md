@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Multi-Agent Scaling Architecture**: Foundation for running multiple agent instances concurrently, DAG-based workflows, and homelab deployment.
+  - **Phase 6A: Event Decoupling** -- Typed event dataclasses (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`) in `packages/core/events.py`. `StreamHandler` emits events via `on_event` callback (backward compatible). Shared bootstrap extracted to `packages/core/app.py`.
+  - **AgentInstance** (`packages/core/agent_instance.py`) -- Runtime wrapper with unique instance IDs, status tracking, and cost budgets. Wraps around existing agents without modifying them.
+  - **CostGuard** (`packages/core/cost_control.py`) -- Thread-safe budget enforcement for per-task, per-session, and per-workflow cost limits. Prevents surprise API bills.
+  - **TaskQueue** (`packages/core/task_queue.py`) -- Parallel agent execution via `ThreadPoolExecutor`. Manages agent instances, lifecycle events, and cost tracking.
+  - **RateLimiter** (`packages/core/rate_limiter.py`) -- Token bucket rate limiter for API call throttling across concurrent agents.
+  - **Workflow Engine** (`packages/core/workflow.py`, `packages/core/workflow_executor.py`) -- DAG-based workflow definitions in YAML. Topological sort validation prevents cycles. Supports output substitution, structured output schemas, human approval gates, and configurable failure modes (`abort`/`skip`).
+  - **Structured Output** (`packages/core/output_schema.py`) -- Schema validation and LLM `response_format` conversion for inter-agent communication.
+  - **`run_workflow` Tool** -- New tool in `packages/core/tools/delegate.py` for JARVIS to trigger multi-agent workflows.
+  - **MessageBroker** (`packages/core/broker.py`) -- Protocol + `InProcessBroker` for dev/local, designed for future `RedisBroker` in homelab.
+  - **Infrastructure** -- `Dockerfile`, `docker-compose.yaml` (vision/template for Scenario B homelab deployment).
+  - **Example Workflow** -- `packages/workflows/write-and-review.yaml` (research -> write -> review -> revise pipeline).
+  - **Config** -- `concurrency:` and `workflows:` sections in `config/default.yaml`.
+  - **Architecture Doc** -- `docs/engineering/multi-agent-architecture.md` covering all three scenarios (parallel local, homelab, workflows).
+  - **85 new tests** covering all new modules. Full suite: 1244 tests pass.
+
 ### Changed
 - **Simplifier Agent Redesign**: Rewrote the simplifier from a 5-rule placeholder into a technique-aware clarity specialist. New system prompt includes 12 simplification techniques with selection criteria, 4 adaptive output modes (Quick Explain, Deep Dive, Compare/Contrast, Misconception Correction), audience assessment protocol, domain-specific heuristics, quality self-check, and multi-turn refinement guidance. Added `max_iterations: 5` for follow-up conversations.
 
