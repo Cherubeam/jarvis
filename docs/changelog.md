@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Prompt Caching (Provider-Aware)**: Automatic prompt caching for Anthropic models — injects `cache_control` breakpoints into system messages when the model string contains `anthropic`. Cache token metrics (`cache_read_tokens`, `cache_write_tokens`) are extracted from all providers generically and flowed through `TokenUsage`, `StreamResult`, `UsageReport` events, and conversation logs. Cost calculation is cache-aware: uses provider-specific rates from LiteLLM cost map when available, defaults to Anthropic rates (0.1x read, 1.25x write). Non-Anthropic models are unaffected. Expected 80-90% cost reduction on the ~8K system prompt portion for multi-turn Anthropic sessions.
 - **Phase 6A: Event Decoupling** — Foundation for multi-agent and Web UI scenarios.
   - Typed event dataclasses (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`, `DelegationRequested`) in `packages/core/events.py`.
   - `StreamHandler` emits events via `on_event` callback (backward compatible — existing `on_chunk`/`on_tool_call` unchanged).

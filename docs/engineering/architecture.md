@@ -135,13 +135,17 @@ Files without frontmatter default to `active: true` (backwards compatible).
 - Return structured responses with usage metadata
 
 **Key Classes:**
-- `TokenUsage`: Dataclass for token counts
+- `TokenUsage`: Dataclass for token counts (includes `cache_read_tokens`, `cache_write_tokens`)
 - `StreamingResponse`: Iterator wrapper with usage tracking
 - `LLMClient`: Main client class
 
 **Key Methods:**
 - `chat_stream(messages, model)`: Stream a completion
 - `_stream_response(messages, model)`: Internal generator
+
+**Prompt Caching:**
+- `_apply_cache_control(messages, model)`: Injects `cache_control` breakpoints into system messages for Anthropic models (the only provider requiring explicit opt-in). Non-Anthropic models are unaffected.
+- `_extract_cache_tokens(usage)`: Extracts cache read/write tokens from any provider's usage object (Anthropic, OpenAI, LiteLLM).
 
 **Provider Support:**
 - OpenRouter (default)
@@ -401,7 +405,9 @@ rag:
 2. **Fallback**: LiteLLM `completion_cost()` on response object
 3. **Degraded**: Show token count only
 
-**Cost Centralization**: `StreamHandler._calculate_cost()` is the single helper for all three streaming paths (direct streaming, agentic loop intermediate calls, and delegation terminal tool). It applies the pricing→fallback logic consistently and emits a `UsageReport` event for each cost calculation.
+**Cache-Aware Pricing**: `ModelPricing.calculate_cost()` accounts for cached tokens. Cache read/write costs are populated from LiteLLM's cost map (`cache_read_input_token_cost`, `cache_creation_input_token_cost`) when available. When absent, defaults to Anthropic rates (read = 0.1x prompt, write = 1.25x prompt). Regular prompt tokens are computed as `prompt_tokens - cache_read - cache_write`.
+
+**Cost Centralization**: `StreamHandler._calculate_cost()` is the single helper for all three streaming paths (direct streaming, agentic loop intermediate calls, and delegation terminal tool). It passes cache tokens through to `ModelPricing.calculate_cost()` and emits a `UsageReport` event for each cost calculation.
 
 ---
 

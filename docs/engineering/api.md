@@ -20,6 +20,8 @@ Dataclass storing token usage statistics.
 - `prompt_tokens: int` - Input tokens used
 - `completion_tokens: int` - Output tokens generated
 - `total_tokens: int` - Sum of prompt + completion
+- `cache_read_tokens: int` - Tokens served from cache (default 0)
+- `cache_write_tokens: int` - Tokens written to cache (default 0)
 
 ---
 
@@ -260,12 +262,14 @@ Dataclass storing model pricing information.
 - `prompt_cost: float` - Cost per input token (USD)
 - `completion_cost: float` - Cost per output token (USD)
 - `model_id: str` - Model identifier
+- `cache_read_cost: float | None` - Cost per cache-read token (None = derive from prompt_cost)
+- `cache_write_cost: float | None` - Cost per cache-write token (None = derive from prompt_cost)
 
 **Methods:**
 
-#### `calculate_cost(prompt_tokens: int, completion_tokens: int) -> float`
+#### `calculate_cost(prompt_tokens: int, completion_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float`
 
-Calculate total cost in USD for a request.
+Calculate total cost in USD for a request, accounting for cached tokens. When cache costs are not set explicitly, defaults to Anthropic rates (read = 0.1x prompt, write = 1.25x prompt).
 
 ---
 
