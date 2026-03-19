@@ -19,10 +19,33 @@ class ModelPricing:
     prompt_cost: float  # Cost per input token
     completion_cost: float  # Cost per output token
     model_id: str
+    cache_read_cost: float | None = None  # Cost per cache-read token (None = derive from prompt_cost)
+    cache_write_cost: float | None = None  # Cost per cache-write token (None = derive from prompt_cost)
 
-    def calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
-        """Calculate total cost in USD for a request."""
-        return (prompt_tokens * self.prompt_cost) + (completion_tokens * self.completion_cost)
+    def calculate_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cache_read_tokens: int = 0,
+        cache_write_tokens: int = 0,
+    ) -> float:
+        """Calculate total cost in USD for a request, accounting for cached tokens.
+
+        Cache pricing varies by provider:
+          Anthropic: read = 0.1x prompt, write = 1.25x prompt
+          OpenAI: read = 0.5x prompt, no write surcharge
+        Uses provider-specific rates from LiteLLM cost map when available,
+        otherwise defaults to Anthropic rates.
+        """
+        regular_prompt = max(0, prompt_tokens - cache_read_tokens - cache_write_tokens)
+        read_cost = self.cache_read_cost if self.cache_read_cost is not None else self.prompt_cost * 0.1
+        write_cost = self.cache_write_cost if self.cache_write_cost is not None else self.prompt_cost * 1.25
+        return (
+            regular_prompt * self.prompt_cost
+            + cache_read_tokens * read_cost
+            + cache_write_tokens * write_cost
+            + completion_tokens * self.completion_cost
+        )
 
 
 def _get_litellm_cost_map() -> dict:
@@ -55,10 +78,14 @@ def get_model_pricing(model_id: str) -> ModelPricing | None:
         if info:
             input_cost = info.get("input_cost_per_token", 0)
             output_cost = info.get("output_cost_per_token", 0)
+            cache_read = info.get("cache_read_input_token_cost")
+            cache_write = info.get("cache_creation_input_token_cost")
             return ModelPricing(
                 prompt_cost=input_cost,
                 completion_cost=output_cost,
                 model_id=model_id,
+                cache_read_cost=cache_read,
+                cache_write_cost=cache_write,
             )
 
     return None
