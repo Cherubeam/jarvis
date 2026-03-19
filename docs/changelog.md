@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Simplifier Agent Redesign**: Rewrote the simplifier from a 5-rule placeholder into a technique-aware clarity specialist. New system prompt includes 12 simplification techniques with selection criteria, 4 adaptive output modes (Quick Explain, Deep Dive, Compare/Contrast, Misconception Correction), audience assessment protocol, domain-specific heuristics, quality self-check, and multi-turn refinement guidance. Added `max_iterations: 5` for follow-up conversations.
+- **Streaming Always Markdown**: All streaming responses now render as Markdown in the CLI, removing the conditional `_has_markdown()` detection. Simpler and more consistent rendering.
+- **Delegation Message Framing**: When JARVIS delegates to a specialist agent, the task is now framed as a goal with explicit instructions to confirm, ask scoping questions, and propose a plan before acting.
 
 ### Fixed
 - **Cost Tracking in Terminal Tool Path**: When `pricing` was `None`, the delegation (terminal tool) path silently reported `cost_usd = 0.0` instead of falling back to LiteLLM cost calculation. Also added missing `UsageReport` event emission so delegation costs appear in session summaries. Extracted `_calculate_cost()` helper to centralize pricing→fallback logic across all three streaming paths.
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Token Economics Research**: Analysis document (`docs/research/token-economics.md`) covering system prompt costs, five optimization approaches with tradeoff matrix, and a recommended layered strategy.
 - **Token Economics Instrumentation**: Lightweight measurement of context usage patterns — per-section token breakdown in session summaries, history growth tracking per turn, context utilization heuristic (which sections are referenced in responses). All data saved to conversation JSON for cross-session analysis. No behavior changes — observation only.
+- **Token Economics Cost Status**: Analysis document (`docs/research/token-economics-cost-status.md`) with actual cost data from 28 sessions ($10.94 total), cost driver analysis, savings opportunities ranked by impact, and cost tracking discrepancy investigation.
 
 ---
 
@@ -700,6 +703,7 @@ See [roadmap.md](product/roadmap.md) for detailed plans.
 - ✅ Skills / Capabilities (5A) — mini-agents with prompt + tool config
 - ✅ Pip Decks Integration (5E) — deck-skills + RAG + TacticsAgent + agent sessions
 - ✅ Things 3 SQLite migration — replaced AppleScript with `things.py` direct reads
+- ✅ Developer Agent (5G) — codebase tools, git, guarded writes, test runner
 - Agent orchestration (5B), extended tools (5C), model routing (5D)
 
 ### Phase 6: Web Interface
@@ -817,4 +821,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-03-12*
+*Last updated: 2026-03-19*

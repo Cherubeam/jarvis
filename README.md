@@ -3,7 +3,7 @@
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-94A3B8?logo=openrouter&logoColor=fff)](#)
-![Version 0.10.0](https://img.shields.io/badge/version-0.10.0-green.svg)
+![Version 0.11.0](https://img.shields.io/badge/version-0.11.0-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 > A personal AI assistant built from first principles to solve the vendor lock-in problem in conversational AI.
@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Developer)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -133,6 +133,7 @@ uv run jarvis --agent researcher
 uv run jarvis --agent simplifier
 uv run jarvis --agent navigator
 uv run jarvis --agent tactics_coach
+uv run jarvis --agent developer
 ```
 
 During a chat session, you can use slash commands:
@@ -148,6 +149,7 @@ During a chat session, you can use slash commands:
 /tactics                Enters Tactics Coach agent session (Pip Decks coaching)
 /okr-architect          Enters OKR Architect agent session
 /pattern-language-expert  Enters Pattern Language Expert session
+/develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary          Generates an Obsidian daily note summary
 ```
 
@@ -216,6 +218,9 @@ jarvis/
 │   │   ├── stream_handler.py           # Streaming response handler with agentic loop
 │   │   ├── memory.py                   # Conversation logging (schema v1.0.0)
 │   │   ├── pricing.py                  # Cost calculation and tracking
+│   │   ├── app.py                      # Shared bootstrap (load_config, init_llm_client, etc.)
+│   │   ├── events.py                   # Typed event dataclasses for streaming decoupling
+│   │   ├── filesystem_access.py        # Filesystem access control (FilesystemGuard)
 │   │   ├── benchmark_costs.py          # Benchmark cost estimation
 │   │   ├── importers/                  # Conversation importers (ChatGPT, Claude)
 │   │   ├── rag/                        # Conversation recall (optional, ChromaDB)
@@ -225,7 +230,13 @@ jarvis/
 │   │       ├── base.py                 # ToolDefinition + ToolRegistry
 │   │       ├── executor.py             # Tool call execution
 │   │       ├── web_fetch.py            # URL fetch (httpx + trafilatura)
-│   │       └── conversation_recall.py  # RAG search tool
+│   │       ├── conversation_recall.py  # RAG search tool
+│   │       ├── delegate.py             # Agent delegation tool
+│   │       ├── vault_read_tools.py     # Obsidian vault read tools
+│   │       ├── vault_write_tools.py    # Obsidian vault write tools (scoped per agent)
+│   │       ├── blog_tools.py           # Blog management tools
+│   │       ├── codebase_tools.py       # Codebase analysis tools
+│   │       └── git_tools.py            # Git operations tools
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class + DataDrivenAgent
 │   │   ├── registry.py                 # Filesystem-based agent auto-discovery
@@ -241,10 +252,12 @@ jarvis/
 │   │   ├── navigator/                  # Navigator — alignment, weekly reviews
 │   │   ├── okr_architect/              # OKR Architect
 │   │   ├── obsidian_note_creator/      # Obsidian Note Creator
-│   │   └── pattern_language_expert/    # Pattern Language Expert
+│   │   ├── pattern_language_expert/    # Pattern Language Expert
+│   │   └── developer/                 # Developer agent (git sandbox, code tools)
 │   ├── skills/                         # Skills (passive knowledge packs for card indexing)
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
 │   │   ├── registry.py                 # Filesystem-based skill discovery
+│   │   ├── resolver.py                 # Skill resolution and binding for agents
 │   │   ├── content-evaluator/          # Content evaluation (SKILL.md + skill.py)
 │   │   └── .../                        # Additional skills (each has SKILL.md)
 │   ├── integrations/                   # External service integrations
@@ -344,8 +357,13 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [ ] Extended tools (web search, Playwright)
 - [ ] Intelligent model routing (task complexity → model selection)
 
+**Phase 6A: Event Decoupling (Partially Complete)**
+- [x] Event decoupling (typed events, StreamHandler emission)
+- [x] Shared bootstrap extraction (`packages/core/app.py`)
+- [ ] Move print statements from StreamHandler into CLI adapter
+
 **Future Phases:**
-- [ ] Web interface (Phase 6 — FastAPI + event-driven architecture)
+- [ ] Web interface (Phase 6B/C — FastAPI + frontend)
 - [ ] Context window management (truncation, summarization)
 - [ ] System monitoring and optimization
 

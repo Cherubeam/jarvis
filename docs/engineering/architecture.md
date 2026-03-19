@@ -401,6 +401,8 @@ rag:
 2. **Fallback**: LiteLLM `completion_cost()` on response object
 3. **Degraded**: Show token count only
 
+**Cost Centralization**: `StreamHandler._calculate_cost()` is the single helper for all three streaming paths (direct streaming, agentic loop intermediate calls, and delegation terminal tool). It applies the pricing→fallback logic consistently and emits a `UsageReport` event for each cost calculation.
+
 ---
 
 ### 10. Agent Discovery (`packages/agents/registry.py`)
@@ -559,7 +561,8 @@ skills:
 jarvis/
 ├── apps/                           # Deployable applications
 │   ├── cli/                        # CLI entry point
-│   │   └── main.py                 # CLI application
+│   │   ├── main.py                 # CLI application
+│   │   └── display.py              # Rich terminal formatting
 │   └── web/                        # Web application (Phase 3)
 │       ├── backend/                # FastAPI backend
 │       └── frontend/               # React frontend
@@ -573,6 +576,7 @@ jarvis/
 │   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (Phase 6A)
 │   │   ├── app.py                  # Shared bootstrap (config, init)
+│   │   ├── filesystem_access.py    # Filesystem access control (FilesystemGuard)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
 │   │   │   ├── indexer.py          # ConversationIndexer
@@ -582,6 +586,8 @@ jarvis/
 │   │   │   ├── executor.py         # execute_tool_calls()
 │   │   │   ├── web_fetch.py        # fetch_url tool
 │   │   │   ├── conversation_recall.py  # make_conversation_recall_tool()
+│   │   │   ├── delegate.py             # delegate_to_agent tool
+│   │   │   ├── vault_read_tools.py     # Obsidian vault read tools (read_note, search_notes, read_daily_note)
 │   │   │   ├── blog_tools.py           # make_blog_tools() for Writing Agent
 │   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
 │   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
@@ -640,6 +646,11 @@ jarvis/
 │   │   └── writer/                 # Data-driven agent (/write)
 │   │       ├── meta.yaml
 │   │       └── prompts/system.md
+│   ├── skills/                     # Skills (passive knowledge packs)
+│   │   ├── base.py                 # BaseSkill (parses SKILL.md, optional skill.py)
+│   │   ├── registry.py             # Filesystem-based skill discovery
+│   │   ├── resolver.py             # Skill resolution and binding for agents
+│   │   └── .../                    # Individual skills (each has SKILL.md)
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
 │   │   │   └── task_sync.py        # ~520 lines

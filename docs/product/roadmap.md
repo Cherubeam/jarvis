@@ -191,6 +191,12 @@ packages/skills/
 - [x] Architecture simplification: data-driven agents via meta.yaml, dual-path registry
 - [x] Agent-to-skill delegation (implemented via agent-skill binding in `meta.yaml`)
 
+### 5G: Developer Agent
+
+- [x] Developer Agent (`/develop`) — self-improvement agent with codebase read tools, git operations, guarded file writes, and test runner
+- [x] 14 tools across four modules (codebase, git, project writes, tests)
+- [x] Extended agentic loop (`max_iterations: 20`) for multi-step edit-test-fix cycles
+
 ### 5B: Agent Orchestration
 
 - [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)
