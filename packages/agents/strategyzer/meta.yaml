@@ -1,0 +1,7 @@
+name: strategyzer
+description: "Strategy consulting — competitive analysis, growth loops, pricing, and market positioning"
+command: /strategize
+temperature: 0.7
+skills:
+  - strategy-tactics
+  - pm-strategist
