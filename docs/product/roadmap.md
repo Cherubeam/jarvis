@@ -235,20 +235,6 @@ packages/skills/
 - [x] Keep CLI working exactly as before (thin adapter consuming events)
 - [ ] Move print statements from `StreamHandler` into CLI adapter (deferred -- backward compat maintained via dual callback approach)
 
-### 6A+: Multi-Agent Scaling Foundation
-
-- [x] `AgentInstance` wrapper for runtime identity and cost tracking
-- [x] `CostGuard` thread-safe budget enforcement (per-task, per-session, per-workflow)
-- [x] `TaskQueue` with `ThreadPoolExecutor` for parallel agent execution
-- [x] `RateLimiter` token bucket for API call throttling
-- [x] DAG-based `Workflow` / `WorkflowExecutor` with topological sort validation
-- [x] `OutputSchema` for structured inter-agent communication
-- [x] `run_workflow` tool for JARVIS
-- [x] `MessageBroker` protocol + `InProcessBroker`
-- [x] `Dockerfile` + `docker-compose.yaml` template for homelab (Scenario B vision)
-- [x] Architecture doc: `docs/engineering/multi-agent-architecture.md`
-- [x] 85 new tests, 1244 total pass
-
 ### 6B: API Layer
 
 - [ ] FastAPI backend with SSE streaming (`apps/web/`)

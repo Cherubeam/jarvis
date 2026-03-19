@@ -573,14 +573,6 @@ jarvis/
 │   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (Phase 6A)
 │   │   ├── app.py                  # Shared bootstrap (config, init)
-│   │   ├── agent_instance.py       # AgentInstance wrapper (multi-instance identity)
-│   │   ├── cost_control.py         # CostGuard + CostBudget (budget enforcement)
-│   │   ├── task_queue.py           # TaskQueue (ThreadPoolExecutor)
-│   │   ├── rate_limiter.py         # Token bucket rate limiter
-│   │   ├── workflow.py             # Workflow + WorkflowStep (DAG definitions)
-│   │   ├── workflow_executor.py    # DAG-based workflow execution engine
-│   │   ├── output_schema.py        # Structured output validation
-│   │   ├── broker.py               # MessageBroker protocol + InProcessBroker
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
 │   │   │   ├── indexer.py          # ConversationIndexer
@@ -752,16 +744,12 @@ jarvis/
 
 ### Current State
 
-Multi-agent scaling infrastructure is in place (Phase 6A+):
+Phase 6A (Event Decoupling) is implemented:
 
-- **Parallel execution**: `TaskQueue` with `ThreadPoolExecutor` (I/O-bound LLM calls)
-- **Agent instances**: `AgentInstance` wrapper with unique IDs, cost budgets
-- **Cost controls**: `CostGuard` with thread-safe per-task/session/workflow budgets
-- **Rate limiting**: Token bucket `RateLimiter` for API call throttling
-- **Workflows**: DAG-based `WorkflowExecutor` with topological sort, structured output
-- **Events**: Typed event dataclasses for decoupled streaming output
+- **Events**: Typed event dataclasses (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`, `DelegationRequested`) for decoupled streaming output
+- **Shared bootstrap**: `packages/core/app.py` extracts config/init logic reusable by CLI, Web UI, and future worker processes
 
-See `docs/engineering/multi-agent-architecture.md` for the full architecture vision.
+See `docs/engineering/multi-agent-architecture.md` for the full multi-agent architecture vision (Scenarios A/B/C).
 
 ### Limitations
 
