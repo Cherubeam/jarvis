@@ -8,6 +8,10 @@ reusable class shared by all agents.
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from packages.core.events import (
+    Event, TextChunk, ToolCallStarted, ToolResult as ToolResultEvent,
+    UsageReport, AgentFinished,
+)
 from packages.core.llm_client import LLMClient, StreamToolResult, StreamingResponse, TokenUsage
 from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
@@ -41,6 +45,8 @@ class StreamHandler:
         on_tool_call: Callable[[str], None] | None = None,
         on_chunk: Callable[[str], None] | None = None,
         max_tokens: int | None = None,
+        on_event: Callable[[Event], None] | None = None,
+        instance_id: str = "",
     ):
         self.client = client
         self.metrics_tracker = metrics_tracker
@@ -49,8 +55,15 @@ class StreamHandler:
         self.on_tool_call = on_tool_call
         self.on_chunk = on_chunk
         self.max_tokens = max_tokens
+        self.on_event = on_event
+        self.instance_id = instance_id
         self.on_before_tool_exec: Callable[[], None] | None = None
         self.on_after_tool_exec: Callable[[], None] | None = None
+
+    def _emit(self, event: Event) -> None:
+        """Emit a typed event to the event callback if registered."""
+        if self.on_event is not None:
+            self.on_event(event)
 
     def _try_with_credit_fallback(self, api_call):
         """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
@@ -196,6 +209,12 @@ class StreamHandler:
 
             # UX feedback for each tool call
             for call in tool_result.tool_calls:
+                self._emit(ToolCallStarted(
+                    tool_name=call.function.name,
+                    tool_call_id=call.id,
+                    arguments=call.function.arguments,
+                    instance_id=self.instance_id,
+                ))
                 if self.on_tool_call is not None:
                     self.on_tool_call(call.function.name)
                 else:
@@ -222,6 +241,16 @@ class StreamHandler:
             tool_results = execute_tool_calls(tool_result.tool_calls, tool_registry)
             if self.on_after_tool_exec:
                 self.on_after_tool_exec()
+
+            # Emit tool result events
+            for tr in tool_results:
+                self._emit(ToolResultEvent(
+                    tool_name=tr.get("name", ""),
+                    result=tr.get("content", ""),
+                    tool_call_id=tr.get("tool_call_id", ""),
+                    instance_id=self.instance_id,
+                ))
+
             messages = [*messages, assistant_msg, *tool_results]
 
             # Track tool messages for history persistence
@@ -253,6 +282,7 @@ class StreamHandler:
             if first_token:
                 self.metrics_tracker.record_first_token()
                 first_token = False
+            self._emit(TextChunk(text=chunk, instance_id=self.instance_id))
             if self.on_chunk is not None:
                 self.on_chunk(chunk)
             elif print_chunks:
@@ -287,6 +317,15 @@ class StreamHandler:
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
 
+        self._emit(UsageReport(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            cost_usd=cost_usd,
+            model=self.model_id,
+            instance_id=self.instance_id,
+        ))
+
         return StreamResult(
             text="".join(chunks),
             usage=usage,
@@ -307,6 +346,7 @@ class StreamHandler:
             if first_token:
                 self.metrics_tracker.record_first_token()
                 first_token = False
+            self._emit(TextChunk(text=chunk, instance_id=self.instance_id))
             if self.on_chunk is not None:
                 self.on_chunk(chunk)
             elif print_chunks:
@@ -341,6 +381,15 @@ class StreamHandler:
         # Collect any tool messages from the agentic loop
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
+
+        self._emit(UsageReport(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            cost_usd=cost_usd,
+            model=self.model_id,
+            instance_id=self.instance_id,
+        ))
 
         return StreamResult(
             text="".join(chunks),
