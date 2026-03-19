@@ -471,6 +471,91 @@ class TestStreamHandlerAgenticLoop:
         assert result.tool_messages[0]["role"] == "assistant"
         assert result.tool_messages[1]["role"] == "tool"
 
+    def test_terminal_tool_uses_litellm_fallback_when_no_pricing(self):
+        """Terminal tool path falls back to zero cost when pricing is None and no raw_response."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="delegate_to_agent",
+            description="delegate",
+            parameters={},
+            execute=lambda agent_name, task: f"Delegating to {agent_name}",
+            terminal=True,
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj(
+            "tc1", "delegate_to_agent",
+            json.dumps({"agent_name": "writer", "task": "review blog"}),
+        )
+        usage = TokenUsage(prompt_tokens=500, completion_tokens=100, total_tokens=600)
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result([call], usage),
+        ]
+
+        # No pricing — terminal tool path should still return without error
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, None, "test-model")
+        result = handler.stream(
+            [{"role": "user", "content": "review my blog"}],
+            tool_registry=registry,
+        )
+
+        # Cost is 0.0 (no pricing, no raw_response available in terminal path)
+        assert result.cost_usd == 0.0
+        assert result.usage.prompt_tokens == 500
+        assert result.usage.completion_tokens == 100
+
+    def test_terminal_tool_emits_usage_report(self):
+        """Terminal tool path emits a UsageReport event."""
+        import json
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.events import UsageReport
+
+        tool = ToolDefinition(
+            name="delegate_to_agent",
+            description="delegate",
+            parameters={},
+            execute=lambda agent_name, task: f"Delegating to {agent_name}",
+            terminal=True,
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = _make_tool_call_obj(
+            "tc1", "delegate_to_agent",
+            json.dumps({"agent_name": "writer", "task": "review blog"}),
+        )
+        usage = TokenUsage(prompt_tokens=200, completion_tokens=50, total_tokens=250)
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result([call], usage),
+        ]
+
+        events = []
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            on_event=events.append, instance_id="jarvis-1",
+        )
+        result = handler.stream(
+            [{"role": "user", "content": "review my blog"}],
+            tool_registry=registry,
+        )
+
+        usage_events = [e for e in events if isinstance(e, UsageReport)]
+        assert len(usage_events) == 1
+        assert usage_events[0].prompt_tokens == 200
+        assert usage_events[0].completion_tokens == 50
+        assert usage_events[0].cost_usd == result.cost_usd
+        assert usage_events[0].instance_id == "jarvis-1"
+
     def test_duplicate_parallel_tool_calls_deduplicated(self, capsys):
         """LLM returns 3 identical tool calls; only one is executed."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition

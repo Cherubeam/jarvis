@@ -65,6 +65,14 @@ class StreamHandler:
         if self.on_event is not None:
             self.on_event(event)
 
+    def _calculate_cost(self, usage: TokenUsage, raw_response=None) -> float:
+        """Calculate cost using pricing, LiteLLM fallback, or zero."""
+        if self.pricing:
+            return self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+        if raw_response is not None:
+            return calculate_cost_from_litellm(raw_response)
+        return 0.0
+
     def _try_with_credit_fallback(self, api_call):
         """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
         from packages.core.llm_client import InsufficientCreditsError, PromptTokenLimitError
@@ -131,9 +139,7 @@ class StreamHandler:
             self._intermediate_usage = None
             self._tool_messages = []
 
-            cost_usd = 0.0
-            if self.pricing:
-                cost_usd = self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
+            cost_usd = self._calculate_cost(usage)
 
             response_metrics = self.metrics_tracker.finish_request(
                 prompt_tokens=usage.prompt_tokens,
@@ -141,6 +147,16 @@ class StreamHandler:
                 cost_usd=cost_usd,
                 model=self.model_id,
             )
+
+            self._emit(UsageReport(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+                instance_id=self.instance_id,
+            ))
+
             return StreamResult(
                 text="",
                 usage=usage,
@@ -301,11 +317,7 @@ class StreamHandler:
             )
             self._intermediate_usage = None
 
-        cost_usd = 0.0
-        if self.pricing:
-            cost_usd = self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
-        else:
-            cost_usd = calculate_cost_from_litellm(response.raw_response)
+        cost_usd = self._calculate_cost(usage, response.raw_response)
 
         response_metrics = self.metrics_tracker.finish_request(
             prompt_tokens=usage.prompt_tokens,
@@ -365,11 +377,7 @@ class StreamHandler:
             )
             self._intermediate_usage = None
 
-        cost_usd = 0.0
-        if self.pricing:
-            cost_usd = self.pricing.calculate_cost(usage.prompt_tokens, usage.completion_tokens)
-        else:
-            cost_usd = calculate_cost_from_litellm(response.raw_response)
+        cost_usd = self._calculate_cost(usage, response.raw_response)
 
         response_metrics = self.metrics_tracker.finish_request(
             prompt_tokens=usage.prompt_tokens,
