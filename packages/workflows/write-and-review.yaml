@@ -1,0 +1,31 @@
+# Write and Review Workflow
+#
+# A multi-step workflow that researches a topic, writes a blog post,
+# reviews it, and produces a revised draft.
+#
+# Usage: /workflow write-and-review --topic "Quantum Computing"
+
+name: write_and_review
+description: "Research, write, review, and revise a blog post on a given topic."
+max_total_cost_usd: 3.00
+
+steps:
+  - step_id: research
+    role: researcher
+    task: "Research the topic: {topic}. Provide a comprehensive summary with key sources."
+
+  - step_id: draft
+    role: writer
+    task: "Write a blog post about {topic}. Use these research findings: {research.output}"
+    depends_on: [research]
+
+  - step_id: review
+    role: content_reviewer
+    task: "Review this draft for clarity, accuracy, and engagement: {draft.output}"
+    depends_on: [draft]
+
+  - step_id: revise
+    role: writer
+    task: "Revise this blog post based on the review feedback.\n\nReview: {review.output}\n\nOriginal draft: {draft.output}"
+    depends_on: [draft, review]
+    requires_approval: true
