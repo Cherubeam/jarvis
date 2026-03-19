@@ -183,12 +183,12 @@ class TestLiveStreamDisplay:
         mock_live.stop.assert_called_once()
 
     @patch("apps.cli.display.Live")
-    def test_finish_live_stream_skips_markdown_for_plain_text(self, MockLive):
+    def test_finish_live_stream_renders_plain_text_as_markdown(self, MockLive):
         mock_live = MagicMock()
 
         finish_live_stream(mock_live, "Just a plain answer.")
 
-        mock_live.update.assert_not_called()
+        mock_live.update.assert_called_once()
         mock_live.stop.assert_called_once()
 
     @patch("apps.cli.display.Live")

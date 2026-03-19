@@ -110,17 +110,13 @@ def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]
     """Return a closure that appends chunks to *buf* and updates the Live display."""
     def handler(chunk: str) -> None:
         buf.append(chunk)
-        live.update(Text("".join(buf)))
+        live.update(Markdown("".join(buf)))
     return handler
 
 
 def finish_live_stream(live: Live, full_text: str) -> None:
-    """Finish the live display, rendering markdown if detected.
-
-    Replaces the raw streamed text with a rich Markdown rendering in-place
-    when markdown syntax is detected; otherwise leaves the plain text as-is.
-    """
-    if full_text.strip() and _has_markdown(full_text):
+    """Finish the live display with a final Markdown render."""
+    if full_text.strip():
         live.update(Markdown(full_text))
     live.stop()
 

@@ -447,7 +447,13 @@ def _run_agent_session(
 
     # Process initial message if provided (e.g. from delegation)
     if initial_message:
-        _process_message(initial_message)
+        framed = (
+            f"[JARVIS delegated this goal to you: {initial_message}]\n\n"
+            "Start by confirming what I want — acknowledge the goal, "
+            "ask scoping questions, and propose a session plan before "
+            "taking any action."
+        )
+        _process_message(framed)
 
     try:
         while True:
