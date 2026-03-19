@@ -39,15 +39,42 @@ def make_vault_write_tools(
 
     template_full_path = vault_config.vault_path / template_path if template_path else None
 
+    # --- path helpers ---
+
+    def _resolve_path(path: str) -> Path | None:
+        """Resolve an agent-provided path to an absolute path within the target boundary.
+
+        1. Strips redundant target_dir prefix if agent included it
+        2. Resolves to absolute path under target_path (or vault root)
+        3. Validates result stays within boundary (no '../' traversal escape)
+        """
+        path_obj = Path(path)
+        if target_dir:
+            target_dir_path = Path(target_dir)
+            if path_obj.is_relative_to(target_dir_path):
+                path_obj = path_obj.relative_to(target_dir_path)
+            full = (target_path / path_obj).resolve()
+            if not full.is_relative_to(target_path.resolve()):
+                return None
+        else:
+            full = (vault_config.vault_path / path_obj).resolve()
+            if not full.is_relative_to(vault_config.vault_path.resolve()):
+                return None
+        return full
+
+    def _to_relative(absolute: Path) -> str:
+        """Convert an absolute path to a target-relative string for display to the agent."""
+        base = target_path if target_dir else vault_config.vault_path
+        return str(absolute.relative_to(base))
+
     tools: list[ToolDefinition] = []
 
     # --- create_note ---
 
     def _create_note(path: str, content: str, use_template: bool = True) -> str:
-        if target_dir:
-            full_path = (target_path / path).resolve()
-        else:
-            full_path = (vault_config.vault_path / path).resolve()
+        full_path = _resolve_path(path)
+        if full_path is None:
+            return f"Error: Path '{path}' escapes the target directory."
 
         if full_path.exists():
             return f"Error: File already exists: {path}. Use edit_note to modify it."
@@ -80,7 +107,11 @@ def make_vault_write_tools(
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path for the new note (e.g. 'Concept for Method of the Year.md').",
+                    "description": (
+                        "File path relative to the target directory "
+                        "(e.g. 'My Pattern.md' or 'Subfolder/Note.md'). "
+                        "Do NOT include the target directory prefix."
+                    ),
                 },
                 "content": {
                     "type": "string",
@@ -160,13 +191,18 @@ def make_vault_write_tools(
 
             lines = []
             for note in notes:
-                rel = note.relative_to(vault_config.vault_path)
+                rel = _to_relative(note)
                 lines.append(str(rel))
             return "\n".join(lines)
 
         list_tool = ToolDefinition(
             name="list_notes_in_dir",
-            description="List markdown files in the target directory. Optionally filter by subfolder.",
+            description=(
+                "List markdown files in the target directory. "
+                "Returns paths relative to the target directory — "
+                "use these paths directly with create_note. "
+                "Optionally filter by subfolder."
+            ),
             parameters={
                 "type": "object",
                 "properties": {

@@ -171,6 +171,33 @@ class TestCreateNote:
         assert "Successfully" in result
         assert (target / "Sub Category" / "Deep Pattern.md").exists()
 
+    def test_strips_redundant_target_dir_prefix(self, tools_with_target):
+        """Agent passes 'Patterns/Note.md' with target_dir='Patterns' — should not double-nest."""
+        tools, target, *_ = tools_with_target
+        tool = _get_tool(tools, "create_note")
+        result = tool.execute(
+            path="Patterns/My Pattern.md",
+            content="# Pattern",
+            use_template=False,
+        )
+
+        assert "Successfully" in result
+        # File lands at target/My Pattern.md, NOT target/Patterns/My Pattern.md
+        assert (target / "My Pattern.md").exists()
+        assert not (target / "Patterns" / "My Pattern.md").exists()
+
+    def test_rejects_path_traversal(self, tools_with_target):
+        """Agent passes '../../etc/passwd' — should be rejected."""
+        tools, target, *_ = tools_with_target
+        tool = _get_tool(tools, "create_note")
+        result = tool.execute(
+            path="../../etc/passwd",
+            content="hacked",
+            use_template=False,
+        )
+
+        assert "escapes" in result.lower()
+
 
 # ==================== edit_note ====================
 
@@ -259,6 +286,20 @@ class TestListNotesInDir:
 
         assert "draft.md" in result
         assert "published.md" not in result
+
+    def test_paths_are_relative_to_target_dir(self, tools_with_target):
+        """Listing returns target-relative paths, not vault-root-relative."""
+        tools, target, *_ = tools_with_target
+        sub = target / "Category"
+        sub.mkdir()
+        (sub / "Note.md").write_text("# Note")
+
+        tool = _get_tool(tools, "list_notes_in_dir")
+        result = tool.execute()
+
+        # Should be "Category/Note.md", NOT "Patterns/Category/Note.md"
+        assert "Category/Note.md" in result
+        assert "Patterns/Category/Note.md" not in result
 
     def test_not_available_without_target(self, tools_no_target):
         tools, *_ = tools_no_target
