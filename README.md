@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Developer)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Strategyzer, Developer)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -149,6 +149,7 @@ During a chat session, you can use slash commands:
 /tactics                Enters Tactics Coach agent session (Pip Decks coaching)
 /okr-architect          Enters OKR Architect agent session
 /pattern-language-expert  Enters Pattern Language Expert session
+/strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
 /develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary          Generates an Obsidian daily note summary
 ```

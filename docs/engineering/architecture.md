@@ -26,7 +26,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • Pricing      │  • Tactics Coach   │                           │
 │  • Stream       │  • Developer Agent │                           │
 │    Handler      │  • Data-driven     │                           │
-│  • Tools        │    agents (12)     │                           │
+│  • Tools        │    agents (13)     │                           │
 │  • RAG          │  • Registry        │                           │
 ├─────────────────┴──────────────────┴───────────────────────────┤
 │                    packages/telemetry                           │
@@ -427,7 +427,7 @@ rag:
 - **`_assemble_agent_tools()`** (in `apps/cli/main.py`): Builds tool list for an agent from shared tools + its declared `tool_groups`.
 - **`_instantiate_agent()`** (in `apps/cli/main.py`): Thin wrapper around `agent_from_meta()`.
 
-**Data-driven delegate agents** (12 total): content_reviewer, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, researcher, simplifier, substack_image_creator, substack_publisher, tactics_coach, writer.
+**Data-driven delegate agents** (13 total): content_reviewer, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, researcher, simplifier, strategyzer, substack_image_creator, substack_publisher, tactics_coach, writer.
 
 **Python-class agent**: jarvis (orchestrator with delegation logic — the only agent with custom Python code).
 
@@ -638,6 +638,9 @@ jarvis/
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── simplifier/             # Data-driven agent (/simplify)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── strategyzer/            # Data-driven agent (/strategize)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── substack_image_creator/ # Data-driven agent (/substack-image)
