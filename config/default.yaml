@@ -92,18 +92,6 @@ obsidian:
       target_dir: ""                # User sets in local.yaml
       template_path: ""             # User sets in local.yaml
 
-# Multi-agent concurrency
-concurrency:
-  max_workers: 3                    # ThreadPoolExecutor worker count
-  max_per_task_usd: 1.00            # Cost budget per individual task
-  max_per_session_usd: 5.00         # Cost budget per session
-  rate_limit_per_minute: 30         # API calls per minute (all agents combined)
-
-# Workflow engine
-workflows:
-  dir: "packages/workflows"         # Directory containing workflow YAML files
-  max_total_cost_usd: 3.00          # Default per-workflow cost budget
-
 # Developer agent — JARVIS self-improvement
 developer:
   enabled: true
