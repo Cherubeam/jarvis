@@ -1,9 +1,8 @@
 """
-Agent delegation tools — allows JARVIS to hand off tasks to specialized
-agents or trigger multi-agent workflows.
+Agent delegation tools — allows JARVIS to hand off tasks to specialized agents.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from packages.core.tools.base import ToolDefinition
 
@@ -14,8 +13,6 @@ class DelegationState:
     agent_name: str | None = None
     task: str | None = None
     context: str | None = None
-    workflow_name: str | None = None
-    workflow_inputs: dict[str, str] | None = None
 
 
 def make_delegate_tool(
@@ -71,70 +68,5 @@ def make_delegate_tool(
             "required": ["agent_name", "task"],
         },
         execute=_delegate,
-        terminal=True,
-    )
-
-
-def make_workflow_tool(
-    available_workflows: list[dict],
-    state: DelegationState,
-) -> ToolDefinition:
-    """Create a workflow tool that triggers multi-agent workflows.
-
-    Args:
-        available_workflows: List of dicts with "name" and "description" keys.
-        state: Mutable DelegationState — set when the tool is called.
-
-    Returns:
-        A ToolDefinition for workflow triggering.
-    """
-    workflow_names = [w["name"] for w in available_workflows]
-
-    def _run_workflow(workflow_name: str, inputs: str = "{}") -> str:
-        import json
-
-        if workflow_name not in workflow_names:
-            return f"Unknown workflow '{workflow_name}'. Available: {', '.join(workflow_names)}"
-
-        try:
-            parsed_inputs = json.loads(inputs) if isinstance(inputs, str) else inputs
-        except json.JSONDecodeError:
-            return f"Invalid inputs JSON: {inputs}"
-
-        state.workflow_name = workflow_name
-        state.workflow_inputs = parsed_inputs
-        return f"Triggering workflow '{workflow_name}'."
-
-    workflow_descriptions = "\n".join(
-        f"- {w['name']}: {w.get('description', 'No description')}"
-        for w in available_workflows
-    )
-
-    return ToolDefinition(
-        name="run_workflow",
-        description=(
-            "Trigger a multi-agent workflow. Use when a task requires "
-            "coordinated work across multiple specialized agents.\n\n"
-            f"Available workflows:\n{workflow_descriptions}"
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "workflow_name": {
-                    "type": "string",
-                    "description": "Name of the workflow to run.",
-                    "enum": workflow_names,
-                },
-                "inputs": {
-                    "type": "string",
-                    "description": (
-                        "JSON object with input variables for the workflow. "
-                        "E.g., '{\"topic\": \"Quantum Computing\"}'"
-                    ),
-                },
-            },
-            "required": ["workflow_name"],
-        },
-        execute=_run_workflow,
         terminal=True,
     )
