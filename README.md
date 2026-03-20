@@ -151,7 +151,7 @@ During a chat session, you can use slash commands:
 /pattern-language-expert  Enters Pattern Language Expert session
 /strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
 /develop                Enters Developer agent session (codebase, git, tests)
-/daily-summary          Generates an Obsidian daily note summary
+/daily-summary [date]   Generates an Obsidian daily note summary (default: today)
 ```
 
 Type `quit` or `exit` to end the session.
