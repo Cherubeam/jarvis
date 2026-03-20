@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Delegation Message Framing**: When JARVIS delegates to a specialist agent, the task is now framed as a goal with explicit instructions to confirm, ask scoping questions, and propose a plan before acting.
 
 ### Fixed
+- **Raw Markdown in Pattern Expert Output**: Pattern language expert now outputs regular markdown in conversation instead of wrapping drafts in fenced code blocks, so Rich renders styled headings, tables, and bold text in the terminal.
 - **Cost Tracking in Terminal Tool Path**: When `pricing` was `None`, the delegation (terminal tool) path silently reported `cost_usd = 0.0` instead of falling back to LiteLLM cost calculation. Also added missing `UsageReport` event emission so delegation costs appear in session summaries. Extracted `_calculate_cost()` helper to centralize pricing→fallback logic across all three streaming paths.
 - **JARVIS Iteration Limit**: JARVIS exhausted the default 5-iteration limit calling vault tools before it could delegate to specialist agents. `BaseAgent.run()` now passes `max_iterations` from config (removing duplicated logic in `DataDrivenAgent`), JARVIS is set to 15, and the delegation directive more strongly instructs first-turn delegation.
 - **Credit Error Crash**: 402 errors from OpenRouter now handled gracefully — max_tokens is automatically reduced to what the user can afford, with a warning message. If credits are too low for a useful response (< 256 tokens), a clear error with a link to add credits is shown.
