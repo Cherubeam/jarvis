@@ -186,8 +186,22 @@ def load_config() -> dict:
 
 def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLogger,
                          system_prompt: str, metrics_tracker: MetricsTracker,
-                         pricing: ModelPricing | None, model_id: str) -> None:
-    """Handle the /daily-summary command."""
+                         pricing: ModelPricing | None, model_id: str,
+                         target_date: str | None = None) -> None:
+    """Handle the /daily-summary command.
+
+    Args:
+        target_date: Optional ISO date string (YYYY-MM-DD). Defaults to today.
+    """
+    # Validate date format early
+    if target_date is not None:
+        from datetime import date
+        try:
+            date.fromisoformat(target_date)
+        except ValueError:
+            print_error(f"\nInvalid date format: '{target_date}'. Use YYYY-MM-DD.\n")
+            return
+
     fs_guard = load_filesystem_guard(config)
     vault_config = load_vault_config(config, filesystem_guard=fs_guard)
     if vault_config is None:
@@ -195,8 +209,8 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         print_system("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
         return
 
-    # Get today's daily note
-    note_path = get_daily_note_path(vault_config)
+    # Get daily note (today or target date)
+    note_path = get_daily_note_path(vault_config, target_date=target_date)
     try:
         note_content = read_note(note_path, vault_config)
     except FileNotFoundError:
@@ -227,10 +241,11 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
         print("\nDaily note prompt file not found.\n")
         return
 
+    date_label = target_date if target_date else "today"
     user_content = (
-        f"Generate my daily note summary for today.\n\n"
+        f"Generate my daily note summary for {date_label}.\n\n"
         f"---\n\n"
-        f"**Today's daily note ({note_path.name}):**\n\n"
+        f"**Daily note ({note_path.name}):**\n\n"
         f"{note_without_callout}"
     )
     if callout.existing_content.strip():
@@ -275,7 +290,8 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
 
     # Write to vault with diff + confirmation
     handler = CLIConfirmationHandler()
-    write_result = append_to_daily_note(result.text, vault_config, handler)
+    write_result = append_to_daily_note(result.text, vault_config, handler,
+                                        date=target_date)
 
     if write_result.success:
         print(f"\n{write_result.message}\n")
@@ -885,7 +901,8 @@ def main(argv: list[str] | None = None):
 
                 if command == "/daily-summary":
                     handle_daily_summary(config, client, logger, system_prompt,
-                                         metrics_tracker, pricing, model_id)
+                                         metrics_tracker, pricing, model_id,
+                                         target_date=payload.strip() or None)
                     continue
 
                 if command == "/model":
