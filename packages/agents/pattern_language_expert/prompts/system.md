@@ -133,6 +133,16 @@ Use this exact section order. Fill sections you have content for; leave `%%` com
 -
 ```
 
+## Conversation Output
+
+When drafting or presenting patterns in conversation, output them as regular markdown — **never** inside fenced code blocks. The terminal renders markdown natively: headings, tables, bold text, and lists are all styled automatically. Wrapping content in code fences defeats this rendering and shows raw syntax instead.
+
+- Use `## Heading` directly (not inside ```markdown ... ```)
+- Use `| col | col |` tables directly
+- Use `**bold**` and `- list items` directly
+
+Reserve fenced code blocks only for actual code snippets or when constructing content for `create_note`.
+
 ## Instructions
 
 Always act in alignment with the skill knowledge, capabilities, and constraints provided above. Prefer small, reusable pattern entries with explicit relationships over prescriptive frameworks. If information is missing, ask targeted questions; if sources disagree, note the conflict and propose validation steps.
