@@ -1858,4 +1858,221 @@ Three interlocking constraints make the developer agent safe by default:
 
 ---
 
-*Last updated: 2026-03-13*
+## ADR-029: Cortex — Shared Knowledge Layer for the Cherubeam Ecosystem
+
+**Date**: 2026-03-20
+**Status**: 📋 Proposed
+
+### Context
+
+JARVIS (CLI assistant) and the Obsidian Inbox Processor (Streamlit app) both perform semantic search over the same Obsidian vault using identical stacks (ChromaDB + `openai/text-embedding-3-small` via OpenRouter). Each maintains its own vector database independently. This creates three problems:
+
+1. **Duplicate indexing** — both apps embed the same vault content separately
+2. **No cross-app access** — JARVIS can't leverage the inbox processor's vault index (and vice versa)
+3. **No extensibility** — adding a new knowledge source (Readwise articles, Zotero papers) means modifying each consumer
+
+Additionally, JARVIS needs vault-level semantic search for insight generation and synthesis across notes — functionality the inbox processor already partially implements.
+
+### Decision
+
+Create a **Cortex** — a standalone local service that owns all knowledge indexing and provides unified semantic search via API.
+
+**Architecture:**
+```
+cherubeam/
+├── jarvis/                          # Consumer
+├── obsidian-inbox-processor/        # Consumer (may be rewritten)
+└── cortex/                          # New: shared RAG layer
+    ├── sources/                     # Source plugins
+    │   ├── obsidian.py              # File watcher + heading-based chunking
+    │   ├── readwise.py              # API sync (unread articles)
+    │   └── zotero.py                # Local DB/filesystem reader
+    ├── core/
+    │   ├── indexer.py               # Unified indexing pipeline
+    │   ├── retriever.py             # Multi-source search + ranking
+    │   ├── embeddings.py            # Shared embedding logic
+    │   └── chunking.py              # Configurable chunking strategies
+    └── api/
+        └── server.py                # FastAPI + optional MCP interface
+```
+
+**Key design choices:**
+- **Source plugin model**: Each knowledge source is a plugin that implements `fetch()`, `chunk()`, and `metadata()`. Core handles embedding and storage.
+- **Knowledge tiers**: Results carry a tier label — `processed` (vault notes), `curated_unread` (Readwise articles, Zotero papers), `highlight` (extracted passages). Consumers can filter by tier.
+- **Dual indexing mode**: File watcher for vault (real-time), periodic API polling for Readwise/Zotero, plus manual `POST /refresh` for on-demand re-indexing.
+- **ChromaDB server mode**: Single ChromaDB instance, HTTP access for all consumers.
+- **Local-first**: All data stays on the local machine. External calls only for embeddings (OpenRouter) and source APIs (Readwise).
+- **MCP-ready**: The API can later be exposed as an MCP server so Claude Code can query the knowledge base.
+
+**What stays in JARVIS:**
+- Conversation recall (JARVIS-specific data, single consumer)
+- Deck-skill card search (JARVIS-specific data, single consumer)
+
+**What moves to the service:**
+- Vault note indexing and search (currently duplicated across both apps)
+- Chunking logic for vault notes (heading-based, from inbox processor)
+
+### API Contract Sketch
+
+**Endpoints:**
+
+```
+# Search across all indexed knowledge
+POST /search
+{
+  "query": "decision-making under uncertainty",
+  "top_k": 10,                                    // default: 10
+  "sources": ["obsidian", "readwise"],             // optional filter, default: all
+  "tiers": ["processed", "curated_unread"],        // optional filter, default: all
+  "filters": {
+    "path_prefix": "03 – Areas/",                  // source-specific, optional
+    "min_score": 0.3                               // similarity threshold, default: 0.2
+  }
+}
+
+→ Response:
+{
+  "results": [
+    {
+      "id": "abc123",
+      "source": "obsidian",
+      "tier": "processed",
+      "score": 0.87,
+      "title": "Mental Models for Decision-Making",
+      "content": "...",                            // chunk text
+      "metadata": {
+        "path": "03 – Areas/Thinking/mental-models.md",
+        "heading": "Under Uncertainty",
+        "updated_at": "2026-02-15T10:30:00Z"
+      }
+    },
+    {
+      "id": "def456",
+      "source": "readwise",
+      "tier": "curated_unread",
+      "score": 0.72,
+      "title": "The Art of Decision Making in Complex Systems",
+      "content": "...",                            // article summary/excerpt
+      "metadata": {
+        "url": "https://example.com/article",
+        "author": "...",
+        "saved_at": "2026-01-20T08:00:00Z",
+        "reading_progress": 0
+      }
+    }
+  ],
+  "total": 2
+}
+
+
+# Trigger re-indexing
+POST /index/refresh
+{
+  "sources": ["obsidian"]     // optional, default: all
+}
+
+→ Response:
+{
+  "status": "completed",
+  "sources": {
+    "obsidian": {"added": 12, "updated": 3, "removed": 1, "total": 847}
+  }
+}
+
+
+# Service health + index stats
+GET /status
+
+→ Response:
+{
+  "status": "healthy",
+  "sources": {
+    "obsidian": {"indexed": 847, "last_indexed": "2026-03-20T14:00:00Z"},
+    "readwise": {"indexed": 234, "last_synced": "2026-03-20T12:00:00Z"},
+    "zotero": {"indexed": 56, "last_indexed": "2026-03-20T10:00:00Z"}
+  }
+}
+```
+
+### Implementation Order
+
+**Phase 1: Vault-Only MVP (start here)**
+1. Create `cherubeam/cortex` repo (Python 3.13+, uv, FastAPI)
+2. Port vault indexing from `obsidian-inbox-processor` (`chroma_store.py`, `indexer.py`, `chunking.py`, `retrieval.py`)
+3. Implement `POST /search` and `POST /index/refresh` endpoints
+4. Add file watcher (watchdog) for automatic vault re-indexing
+5. Wire JARVIS to call the service instead of its own vault read tools for semantic search
+6. Verify: JARVIS can semantically search vault notes via the service
+
+**Phase 2: Readwise Integration**
+1. Add Readwise source plugin (API client for Reader articles)
+2. Periodic sync (configurable interval)
+3. Index article metadata + content excerpts
+4. Results tagged as `curated_unread` tier
+5. Verify: search returns both vault notes and unread Readwise articles
+
+**Phase 3: Zotero Integration**
+1. Add Zotero source plugin (read local SQLite DB + filesystem PDFs)
+2. Extract paper metadata, abstracts, and annotations
+3. Index with `curated_unread` tier (papers) and `highlight` tier (annotations)
+4. Verify: search surfaces relevant papers alongside vault notes
+
+**Phase 4: MCP Interface**
+1. Add MCP server mode alongside FastAPI
+2. Claude Code can query the knowledge service via MCP
+3. This completes the ecosystem loop: Claude Code → Cortex → vault + Readwise + Zotero
+
+**Phase 5: Obsidian Inbox Processor Rewrite**
+1. Rewrite inbox processor as a consumer of the knowledge service
+2. Remove its own ChromaDB/indexing code
+3. It becomes a thin Streamlit UI that calls the service for link suggestions
+
+### Alternatives Considered
+
+1. **Extend JARVIS's existing RAG**
+   - ✅ No new service to maintain
+   - ❌ Couples vault indexing to JARVIS — inbox processor can't benefit
+   - ❌ Adding Readwise/Zotero to JARVIS muddies its scope
+
+2. **Extend the Obsidian Inbox Processor**
+   - ✅ Already has vault indexing
+   - ❌ Streamlit app — wrong shape for an API service
+   - ❌ JARVIS would depend on a Streamlit app for knowledge access
+
+3. **Standalone service (chosen)**
+   - ✅ Single source of truth for vault knowledge — no duplicate embeddings
+   - ✅ Both JARVIS and inbox processor consume the same API
+   - ✅ Adding new sources happens in one place
+   - ✅ MCP interface enables Claude Code integration
+   - ⚠️ Another local service to run and maintain
+
+### Consequences
+
+**Benefits:**
+- ✅ Single source of truth for vault knowledge — no duplicate embeddings
+- ✅ JARVIS gains vault semantic search without implementing its own indexer
+- ✅ Adding new sources (Readwise, Zotero) happens in one place
+- ✅ MCP interface enables Claude Code integration
+- ✅ Local-first: all data stays on the machine
+
+**Drawbacks:**
+- ⚠️ Another local service to run and maintain
+- ⚠️ Network hop (localhost) adds marginal latency vs. in-process ChromaDB
+- ⚠️ Source plugins need ongoing maintenance as APIs change
+
+**Mitigation:**
+- Service is simple (FastAPI + ChromaDB) — minimal maintenance surface
+- Localhost latency is negligible for personal use
+- Source plugins are isolated — one breaking doesn't affect others
+
+### Related ADRs
+- Extends: ADR-024 (Conversation Recall via ChromaDB — same tech stack, different scope)
+- Relates to: ADR-005 (Start Without Database — this is the next evolution of the RAG story)
+- Relates to: ADR-007 (Local-first Architecture — service stays fully local)
+- Relates to: ADR-013 (Obsidian Vault Integration — vault access moves to shared service)
+
+**Current Status**: Proposed. Implementation starts with Phase 1 (Vault-Only MVP).
+
+---
+
+*Last updated: 2026-03-20*
