@@ -46,6 +46,21 @@ Implementation depends on provider:
 
 This maps to **Phase 7** on the roadmap (Context Window Management) and could be done independently.
 
+**Status: Done** — prompt caching implemented (provider-aware, Anthropic `cache_control` breakpoints).
+
+### Step C.5: Tool Result Trimming for Delegate Sessions ✅
+
+Lightweight first step for history management. Delegate agent sessions accumulate tool results (vault reads, searches, web fetches) that are rarely needed verbatim after the LLM processes them. `trim_tool_results()` in `packages/core/history.py` truncates old tool result content to 200 chars while keeping recent messages intact.
+
+- **Zero API cost**: No summarization call needed
+- **Targeted**: Only truncates tool results, not user/assistant messages
+- **Preserves flow**: Messages are never dropped, only tool content is shortened
+- **Reusable**: Module can be applied to JARVIS main loop too
+
+This addresses the most common bloat pattern. Full summarization (Step D below) remains an option for sessions where even trimmed history grows too large.
+
+**Status: Done** — applied to `_run_agent_session()` in `apps/cli/main.py`.
+
 ### Step D: Context Tiering (only if data warrants it)
 
 If Step B reveals that certain sections are rarely utilized (e.g., projects referenced in <20% of sessions):

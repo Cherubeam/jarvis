@@ -38,6 +38,7 @@ from packages.core.memory import ConversationLogger, hash_content
 from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
+from packages.core.history import trim_tool_results
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
 from packages.core.filesystem_access import load_filesystem_guard
@@ -435,7 +436,7 @@ def _run_agent_session(
             user_input,
             stream_handler,
             print_chunks=True,
-            messages_override=session_history[:-1],
+            messages_override=trim_tool_results(session_history[:-1]),
         )
         stream_handler.on_chunk = None
         stream_handler.on_before_tool_exec = None
