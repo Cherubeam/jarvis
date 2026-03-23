@@ -14,6 +14,8 @@ filesystem:
       access: read-write
     - path: "/Users/marcobraun/Obsidian/Marcos Vault/04 – Resources/06 – Patterns"
       access: read-write
+    - path: "/Users/marcobraun/Obsidian/Marcos Vault/05 – Slip-Box"
+      access: read-write
     - path: "/Users/marcobraun/Obsidian/Marcos Vault/99 – Meta/00 – Templates"
       access: read
 
@@ -29,5 +31,8 @@ obsidian:
     template_path: "99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md"
     patterns:
       target_dir: "04 – Resources/06 – Patterns"
+      template_path: ""
+    slip_box:
+      target_dir: "05 – Slip-Box"
       template_path: ""
   prompts_dir: "data/prompts/obsidian"
