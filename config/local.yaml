@@ -34,5 +34,5 @@ obsidian:
       template_path: ""
     slip_box:
       target_dir: "05 – Slip-Box"
-      template_path: ""
+      template_path: "99 – Meta/00 – Templates/(TEMPLATE) Permanent Note"
   prompts_dir: "data/prompts/obsidian"
