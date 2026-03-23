@@ -44,7 +44,7 @@ def execute_tool_calls(tool_calls: list, registry: ToolRegistry) -> list[dict]:
             elapsed_ms = (time.perf_counter() - start) * 1000
             logger.info("Tool %s executed in %.1fms", name, elapsed_ms)
         except Exception as e:
-            content = f"Error executing tool '{name}': {e}"
+            content = f"Error executing tool '{name}': {e}. Do not retry this tool with the same arguments — try a different tool or approach."
 
         results.append({"role": "tool", "tool_call_id": tool_call_id, "content": content})
 

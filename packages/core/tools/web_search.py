@@ -1,11 +1,11 @@
 """
 Web search tool — search the web using DuckDuckGo.
 
-Uses duckduckgo-search for zero-config web search (no API key required).
+Uses ddgs for zero-config web search (no API key required).
 All errors are returned as strings so the LLM can reason about failures.
 """
 
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from packages.core.tools.base import ToolDefinition
 
@@ -17,10 +17,9 @@ def _search_web(query: str, max_results: int = 5) -> str:
     """Search the web and return formatted results."""
     try:
         clamped = max(1, min(int(max_results), _MAX_RESULTS))
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=clamped))
+        results = DDGS().text(query, max_results=clamped)
     except Exception as e:
-        return f"Error: Web search failed: {e}"
+        return f"Error: Web search failed: {e}. Do not retry — use a different approach or answer from your existing knowledge."
 
     if not results:
         return "No results found."
