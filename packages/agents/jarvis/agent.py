@@ -13,8 +13,6 @@ from packages.core.context_builder import build_system_prompt
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
-from packages.core.tools.web_fetch import FETCH_URL_TOOL
-from packages.core.tools.web_search import WEB_SEARCH_TOOL
 
 _SPECIAL_HINTS: dict[str, str] = {
     "developer": " (uses a git sandbox — creates branches, commits safely, never pushes)",
@@ -109,7 +107,7 @@ class JarvisAgent(BaseAgent):
         # Build system prompt from context (soul.md is loaded internally)
         system_prompt = build_system_prompt(context_dir)
 
-        tools = [FETCH_URL_TOOL, WEB_SEARCH_TOOL]
+        tools = []
         if extra_tools:
             tools.extend(extra_tools)
 

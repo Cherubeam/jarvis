@@ -355,7 +355,8 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Enhanced CLI UX (rich rendering, prompt_toolkit)
 - [x] Skills framework (SKILL.md-driven, vendor-portable, used as passive knowledge packs)
 - [x] JARVIS delegation (orchestrator auto-routes to specialists)
-- [ ] Extended tools (web search, Playwright)
+- [x] Extended tools — web search (DuckDuckGo + URL fetch via `web_tools` group)
+- [ ] Extended tools — Playwright browser automation
 - [ ] Intelligent model routing (task complexity → model selection)
 
 **Phase 6A: Event Decoupling (Partially Complete)**

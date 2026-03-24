@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive architecture doc: `docs/engineering/multi-agent-architecture.md` covering Phase 6A status and Scenarios A/B/C design.
 
 ### Changed
+- **Web Tools Refactor**: Extracted `WEB_SEARCH_TOOL` and `FETCH_URL_TOOL` from hardcoded JARVIS init into a `web_tools` tool group. Researcher agent now has independent web search capability via `tools: [web_tools]` in meta.yaml.
 - **Simplifier Agent Redesign**: Rewrote the simplifier from a 5-rule placeholder into a technique-aware clarity specialist. New system prompt includes 12 simplification techniques with selection criteria, 4 adaptive output modes (Quick Explain, Deep Dive, Compare/Contrast, Misconception Correction), audience assessment protocol, domain-specific heuristics, quality self-check, and multi-turn refinement guidance. Added `max_iterations: 5` for follow-up conversations.
 - **Streaming Always Markdown**: All streaming responses now render as Markdown in the CLI, removing the conditional `_has_markdown()` detection. Simpler and more consistent rendering.
 - **Delegation Message Framing**: When JARVIS delegates to a specialist agent, the task is now framed as a goal with explicit instructions to confirm, ask scoping questions, and propose a plan before acting.
