@@ -46,7 +46,21 @@ Implementation depends on provider:
 
 This maps to **Phase 7** on the roadmap (Context Window Management) and could be done independently.
 
-**Status: Done** — prompt caching implemented (provider-aware, Anthropic `cache_control` breakpoints).
+**Status: Implemented but NOT effective via OpenRouter streaming.**
+
+**Investigation (2026-03-24):** Diagnostic confirmed that:
+- OpenRouter *does* support prompt caching for Anthropic models
+- Non-streaming calls correctly write to and read from cache (verified with `scripts/test_prompt_caching.py`)
+- **Streaming calls produce different prompt token counts** (e.g., 8026 vs 8823 for identical messages), indicating LiteLLM reformats messages for streaming — different prompt = different cache key = no cache reuse
+- `prompt_tokens_details` (with `cached_tokens`, `cache_write_tokens`) is present in non-streaming responses but `None` in streaming responses
+- JARVIS uses streaming exclusively, so caching is currently ineffective
+
+**Blocked by:** LiteLLM streaming format inconsistency via OpenRouter. The `_apply_cache_control()` implementation in `llm_client.py` is correct — the issue is upstream.
+
+**Next steps:**
+- File LiteLLM GitHub issue about streaming/non-streaming format inconsistency
+- Monitor LiteLLM releases for a fix
+- Alternative: switch to direct Anthropic API (`anthropic/claude-sonnet-4.6`) which may handle streaming caching correctly
 
 ### Step C.5: Tool Result Trimming for Delegate Sessions ✅
 

@@ -56,7 +56,7 @@ Most sessions (72%) are 1-2 requests. The expensive long-tail sessions drive the
 
 ## Cost-Saving Opportunities (Ranked by Impact)
 
-### 1. Prompt Caching — HIGH IMPACT, LOW EFFORT
+### 1. Prompt Caching — HIGH IMPACT, LOW EFFORT ⚠️ BLOCKED
 
 **Estimated savings: 14–40% ($1.50–$4.40)**
 
@@ -64,8 +64,10 @@ Anthropic's prompt caching reduces cost of cached tokens by 90% on reads. The sy
 
 - **Within-session**: $1.52 (13.9%) — guaranteed savings
 - **Cross-session** (if within 5-min TTL): up to $4.16 additional
-- **Implementation**: Add `cache_control` breakpoints to LiteLLM calls
+- **Implementation**: `cache_control` breakpoints implemented in `llm_client.py`
 - **Info loss**: None
+
+**Current status (2026-03-24):** Implemented but ineffective. LiteLLM reformats messages differently for streaming vs non-streaming via OpenRouter (8026 vs 8823 prompt tokens for identical messages), invalidating cache keys. Non-streaming caching works; streaming (which JARVIS uses exclusively) does not. Blocked on upstream LiteLLM fix. See `scripts/test_prompt_caching.py` for diagnostic and `docs/research/token-economics-next-steps.md` Step C for details.
 
 ### 2. History Summarization for Long Sessions — HIGH IMPACT for outliers
 
@@ -128,7 +130,8 @@ Simple queries don't need Sonnet. Routing to Gemini Flash (~10x cheaper) for tri
 
 | Priority | Action | Savings | Effort | Info Loss |
 |----------|--------|---------|--------|-----------|
-| **1** | Prompt caching | 14-40% | Low | None |
+| **1** | Prompt caching | 14-40% | Low | None | ⚠️ Blocked (LiteLLM streaming) |
+| **1b** | History tool-result trimming | High for delegates | Low | None | ✅ Done |
 | **2** | History cap/summarization | High for outliers | Medium | Minimal |
 | **3** | Project context tiering | ~11% of prompt cost | Low | None |
 | **4** | Model routing | Variable | Medium | Possible |
