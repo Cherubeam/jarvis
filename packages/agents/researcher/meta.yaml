@@ -1,3 +1,5 @@
 name: researcher
 description: Analysis, synthesis, and structured answers
 command: /research
+tools:
+  - web_tools

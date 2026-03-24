@@ -76,7 +76,10 @@ class TestDiscoverAgents:
     def test_tool_groups_empty_when_not_declared(self):
         agents = discover_agents()
         assert agents["simplifier"].tool_groups == ()
-        assert agents["researcher"].tool_groups == ()
+
+    def test_researcher_has_web_tools(self):
+        agents = discover_agents()
+        assert agents["researcher"].tool_groups == ("web_tools",)
 
 
 @pytest.mark.unit

@@ -750,6 +750,13 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Tools] Suggest improvements failed: {e}")
 
+    # Web tools — search and fetch for agents that need web access
+    from packages.core.tools.web_search import WEB_SEARCH_TOOL
+    from packages.core.tools.web_fetch import FETCH_URL_TOOL
+
+    tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
+    print_system("[Tools] Web search + fetch loaded.")
+
     # Build the active agent
     if args.agent:
         if args.agent not in agent_registry:
@@ -770,11 +777,12 @@ def main(argv: list[str] | None = None):
             {"name": meta.name, "description": meta.description}
             for meta in agent_registry.values()
         ]
+        jarvis_tools = list(shared_tools) + tool_groups.get("web_tools", [])
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,
             model=model_id,
-            extra_tools=shared_tools or None,
+            extra_tools=jarvis_tools or None,
             available_agents=available_agents or None,
         )
         agent_name = "JARVIS"
