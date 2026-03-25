@@ -673,6 +673,27 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
 
+    # Cortex semantic search — shared tool
+    cortex_cfg = config.get("cortex", {})
+    if cortex_cfg.get("enabled", False):
+        try:
+            from packages.integrations.cortex.client import CortexClient
+            from packages.core.tools.cortex_search import make_cortex_search_tool
+
+            cortex_client = CortexClient(
+                base_url=cortex_cfg.get("base_url", "http://127.0.0.1:8100"),
+                timeout=cortex_cfg.get("timeout_seconds", 10),
+            )
+            cortex_tool = make_cortex_search_tool(cortex_client)
+            shared_tools.append(cortex_tool)
+
+            if cortex_client.is_available():
+                print_system("[Cortex] Connected — vault semantic search enabled.")
+            else:
+                print_system("[Cortex] Service unreachable — tool registered but may fail.")
+        except Exception as e:
+            print_system(f"[Cortex] Startup failed — semantic search disabled. ({e})")
+
     # Blog tools — tool group for writing agent
     if vault_config is not None:
         try:
