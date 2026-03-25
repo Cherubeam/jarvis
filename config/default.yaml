@@ -92,6 +92,12 @@ obsidian:
       target_dir: ""                # User sets in local.yaml
       template_path: ""             # User sets in local.yaml
 
+# Cortex — shared knowledge layer (semantic vault search)
+cortex:
+  enabled: false                    # Set to true in local.yaml to activate
+  base_url: "http://127.0.0.1:8100"
+  timeout_seconds: 10
+
 # Developer agent — JARVIS self-improvement
 developer:
   enabled: true
