@@ -79,6 +79,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
 - **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
 - **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
+- **Vault Semantic Search**: Meaning-based search over the Obsidian vault via Cortex (opt-in)
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history

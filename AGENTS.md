@@ -183,7 +183,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 3. Add `prompts/system.md` with the system prompt
 4. Done — the registry discovers it automatically
 
-**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`. Shared tools (vault read, recall) go to all agents automatically.
+**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`. Shared tools (vault read, recall, cortex search) go to all agents automatically.
 
 **Shared prompt includes**: If a prompt include file isn't found in the agent's `prompts/` dir, the resolver falls back to `packages/agents/_shared/prompts/`. Voice profile and anti-patterns live there.
 
