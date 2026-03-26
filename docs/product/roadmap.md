@@ -199,15 +199,15 @@ packages/skills/
 
 ### 5H: Cortex — Vault Semantic Search
 
-**Status**: ✅ Phase 1 Complete
+**Status**: ✅ Complete (JARVIS side)
 
 Opt-in semantic search over the Obsidian vault via the external Cortex service (`cherubeam/cortex`). See ADR-029.
 
 - [x] Phase 1: Vault-Only MVP — `CortexClient`, `search_vault_semantic` tool, graceful degradation, 14 tests
-- [ ] Phase 2: Readwise Integration
-- [ ] Phase 3: Zotero Integration
-- [ ] Phase 4: MCP Interface (Claude Code → Cortex)
-- [ ] Phase 5: Obsidian Inbox Processor Rewrite
+- [x] `refresh_index()` method for on-demand reindexing
+- [x] Project knowledge migrated to Obsidian — context_builder no longer loads `projects/` statically
+
+Further Cortex evolution (Readwise, Zotero, MCP, Inbox Processor) is tracked in the [`cherubeam/cortex` roadmap](https://github.com/Cherubeam/cortex/blob/main/docs/roadmap.md).
 
 ### 5B: Agent Orchestration
 
@@ -369,3 +369,4 @@ Opt-in semantic search over the Obsidian vault via the external Cortex service (
 ---
 
 *Last updated: 2026-03-26*
+

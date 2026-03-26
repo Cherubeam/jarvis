@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive architecture doc: `docs/engineering/multi-agent-architecture.md` covering Phase 6A status and Scenarios A/B/C design.
 
 ### Changed
+- **Hybrid Context: Project Knowledge via Obsidian**: Removed static project file loading from `context_builder.py`. Project knowledge now lives exclusively in Obsidian (`02 – Projects/`) and is retrieved on demand via `search_vault_semantic` and `read_note` tools. Reduces system prompt size and eliminates dual-maintenance of project docs. `current_focus.md` slimmed to a lightweight pointer with project names only.
+- **CortexClient `refresh_index()`**: New method to trigger incremental re-indexing via `POST /index/refresh`, enabling JARVIS to request a reindex after bulk vault writes.
+- **Cortex Roadmap Transfer**: Phases 2–5 (Readwise, Zotero, MCP, Inbox Processor) moved to the `cherubeam/cortex` repository's own roadmap. JARVIS roadmap 5H now references the external roadmap.
 - **Web Tools Refactor**: Extracted `WEB_SEARCH_TOOL` and `FETCH_URL_TOOL` from hardcoded JARVIS init into a `web_tools` tool group. Researcher agent now has independent web search capability via `tools: [web_tools]` in meta.yaml.
 - **Simplifier Agent Redesign**: Rewrote the simplifier from a 5-rule placeholder into a technique-aware clarity specialist. New system prompt includes 12 simplification techniques with selection criteria, 4 adaptive output modes (Quick Explain, Deep Dive, Compare/Contrast, Misconception Correction), audience assessment protocol, domain-specific heuristics, quality self-check, and multi-turn refinement guidance. Added `max_iterations: 5` for follow-up conversations.
 - **Streaming Always Markdown**: All streaming responses now render as Markdown in the CLI, removing the conditional `_has_markdown()` detection. Simpler and more consistent rendering.

@@ -103,23 +103,11 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 1. `personal_context.md` - Who the user is (personal background)
 2. `professional_context.md` - Professional background and skills
 3. `preferences.md` - How to behave
-4. `current_focus.md` - What's currently relevant
+4. `current_focus.md` - What's currently relevant (includes project names and Obsidian vault pointer)
 5. `tasks.md` - Current tasks from Things 3 (auto-generated)
-6. **Project index** - Summary of all projects (active + inactive)
-7. `projects/*.md` - Full content for `active: true` projects only (alphabetical)
 
-**Project Frontmatter:**
-Project files support optional YAML frontmatter for selective loading:
-```yaml
----
-active: true          # false = summary only in index, full content excluded
-topics: [python, ai]  # For future topic-based auto-activation
-summary: "One-line project description for the index"
----
-```
-Files without frontmatter default to `active: true` (backwards compatible).
-
-**Design Principle**: Intentionally simple. Frontmatter adds minimal complexity while enabling significant token savings as projects grow.
+**Project Knowledge:**
+Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on demand via `search_vault_semantic` and `read_note` tools, rather than being statically loaded into the system prompt. This keeps the prompt lean and ensures project knowledge is always up to date with the single source of truth in the vault.
 
 ---
 
@@ -715,8 +703,7 @@ jarvis/
 │   │   ├── professional_context.md # Professional background
 │   │   ├── preferences.md
 │   │   ├── current_focus.md
-│   │   ├── tasks.md                # Auto-generated from Things 3
-│   │   └── projects/               # Project-specific context
+│   │   └── tasks.md                # Auto-generated from Things 3
 │   ├── conversations/              # Session logs (gitignored)
 │   │   └── YYYY/                   # Year-based subdirectories
 │   │       └── YYYY-MM-DD_HH-MM-SS.json
