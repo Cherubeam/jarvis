@@ -115,67 +115,6 @@ def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMe
                 approx_tokens=_approx_tokens(section_text),
             ))
 
-    # Load project context files with frontmatter-based filtering
-    projects_dir = context_dir / "projects"
-    projects_total_bytes = 0
-    projects_total_tokens = 0
-
-    if projects_dir.is_dir():
-        active_projects = []   # (name, summary, content)
-        inactive_projects = [] # (name, summary)
-
-        for project_file in sorted(projects_dir.glob("*.md")):
-            raw = load_context_file(project_file)
-            if not raw:
-                continue
-
-            meta, content = parse_frontmatter(raw)
-            is_active = meta.get("active", True)  # default to active
-            summary = meta.get("summary", "")
-            name = project_file.stem.replace("-", " ").replace("_", " ").title()
-
-            if is_active:
-                active_projects.append((name, summary, content))
-            else:
-                inactive_projects.append((name, summary))
-
-        # Build project index if any projects exist
-        if active_projects or inactive_projects:
-            index_lines = ["## Project index", ""]
-            if active_projects:
-                index_lines.append("Active projects (full context below):")
-                for name, summary, _ in active_projects:
-                    line = f"- {name}"
-                    if summary:
-                        line += f": {summary}"
-                    index_lines.append(line)
-            if inactive_projects:
-                if active_projects:
-                    index_lines.append("")
-                index_lines.append("Other projects (context available on request):")
-                for name, summary in inactive_projects:
-                    line = f"- {name}"
-                    if summary:
-                        line += f": {summary}"
-                    index_lines.append(line)
-            index_text = "\n".join(index_lines)
-            sections.append(index_text)
-            projects_total_bytes += len(index_text.encode("utf-8"))
-            projects_total_tokens += _approx_tokens(index_text)
-
-        # Append full content for active projects only
-        for _name, _summary, content in active_projects:
-            section_text = f"## Project context\n\n{content}"
-            sections.append(section_text)
-            projects_total_bytes += len(section_text.encode("utf-8"))
-            projects_total_tokens += _approx_tokens(section_text)
-
-    if projects_total_tokens > 0:
-        metadata.sections.append(ContextSection(
-            name="projects", size_bytes=projects_total_bytes,
-            approx_tokens=projects_total_tokens,
-        ))
-
     context_block = "\n\n---\n\n".join(sections)
 
     if soul:

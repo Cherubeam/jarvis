@@ -232,77 +232,28 @@ class TestBuildSystemPromptSplitProfile:
 
 
 @pytest.mark.unit
-class TestBuildSystemPromptProjects:
-    """Tests for project context file loading."""
+class TestBuildSystemPromptProjectsDirIgnored:
+    """Tests that projects/ directory is no longer loaded into the prompt.
 
-    def test_loads_project_files(self, temp_context_dir: Path):
-        """Test that project .md files are loaded."""
+    Project knowledge has been migrated to Obsidian and is fetched
+    on demand via vault search tools instead of static loading.
+    """
+
+    def test_projects_dir_not_loaded(self, temp_context_dir: Path):
+        """Test that project files in projects/ are NOT loaded."""
         projects_dir = temp_context_dir / "projects"
         projects_dir.mkdir()
         (projects_dir / "jarvis.md").write_text("# Jarvis\nPersonal AI assistant.")
 
         result = build_system_prompt(temp_context_dir)
-        assert "## Project context" in result
-        assert "Personal AI assistant." in result
+        assert "## Project context" not in result
+        assert "## Project index" not in result
+        assert "Personal AI assistant." not in result
 
-    def test_alphabetical_order(self, temp_context_dir: Path):
-        """Test that project files are loaded in alphabetical order."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "beta.md").write_text("Beta project")
-        (projects_dir / "alpha.md").write_text("Alpha project")
-
-        result = build_system_prompt(temp_context_dir)
-        alpha_pos = result.find("Alpha project")
-        beta_pos = result.find("Beta project")
-        assert alpha_pos < beta_pos
-
-    def test_empty_projects_dir(self, temp_context_dir: Path):
-        """Test with an empty projects directory."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-
+    def test_no_projects_dir_still_works(self, temp_context_dir: Path):
+        """Test that missing projects directory causes no issues."""
         result = build_system_prompt(temp_context_dir)
         assert "## Project context" not in result
-
-    def test_no_projects_dir(self, temp_context_dir: Path):
-        """Test when projects directory doesn't exist."""
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project context" not in result
-
-    def test_projects_after_tasks(self, temp_context_dir: Path):
-        """Test that projects appear after tasks in the prompt."""
-        (temp_context_dir / "tasks.md").write_text("- Buy groceries")
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "test.md").write_text("Test project")
-
-        result = build_system_prompt(temp_context_dir)
-        tasks_pos = result.find("## Their tasks")
-        project_pos = result.find("## Project context")
-        assert tasks_pos < project_pos
-
-    def test_ignores_non_md_files(self, temp_context_dir: Path):
-        """Test that non-.md files in projects/ are ignored."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "notes.txt").write_text("Should be ignored")
-        (projects_dir / "data.json").write_text("{}")
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project context" not in result
-
-    def test_skips_empty_project_files(self, temp_context_dir: Path):
-        """Test that empty project files are not included."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "empty.md").write_text("")
-        (projects_dir / "real.md").write_text("Real content")
-
-        result = build_system_prompt(temp_context_dir)
-        # Should only have one project context section
-        assert result.count("## Project context") == 1
-        assert "Real content" in result
 
 
 @pytest.mark.unit
@@ -365,164 +316,6 @@ class TestParseFrontmatter:
         text = "---\nactive: true\n---\n\n# Title\n\nParagraph."
         meta, content = parse_frontmatter(text)
         assert content == "\n# Title\n\nParagraph."
-
-
-@pytest.mark.unit
-class TestProjectFrontmatterFiltering:
-    """Tests for frontmatter-based active/inactive project filtering."""
-
-    def test_active_project_loaded_fully(self, temp_context_dir: Path):
-        """Test that active projects have full content in prompt."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "myproject.md").write_text(
-            "---\nactive: true\nsummary: \"My project\"\n---\n# My Project\nDetailed content here."
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project context" in result
-        assert "Detailed content here." in result
-
-    def test_inactive_project_excluded_from_full_context(self, temp_context_dir: Path):
-        """Test that inactive projects are NOT loaded as full context."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "old-project.md").write_text(
-            "---\nactive: false\nsummary: \"Old project\"\n---\n# Old Project\nThis should not appear."
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project context" not in result
-        assert "This should not appear." not in result
-
-    def test_inactive_project_appears_in_index(self, temp_context_dir: Path):
-        """Test that inactive projects still appear in the project index."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "old-project.md").write_text(
-            "---\nactive: false\nsummary: \"Old project\"\n---\n# Old Project\nThis should not appear."
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project index" in result
-        assert "Other projects (context available on request):" in result
-        assert "Old project" in result
-
-    def test_mixed_active_inactive(self, temp_context_dir: Path):
-        """Test mix of active and inactive projects."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "active-one.md").write_text(
-            "---\nactive: true\nsummary: \"Active project\"\n---\n# Active\nFull content."
-        )
-        (projects_dir / "inactive-one.md").write_text(
-            "---\nactive: false\nsummary: \"Inactive project\"\n---\n# Inactive\nHidden content."
-        )
-
-        result = build_system_prompt(temp_context_dir)
-
-        # Project index should list both
-        assert "## Project index" in result
-        assert "Active projects (full context below):" in result
-        assert "Active project" in result
-        assert "Other projects (context available on request):" in result
-        assert "Inactive project" in result
-
-        # Only active project gets full context
-        assert "Full content." in result
-        assert "Hidden content." not in result
-
-    def test_no_frontmatter_defaults_to_active(self, temp_context_dir: Path):
-        """Test that project files without frontmatter are treated as active."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "legacy.md").write_text("# Legacy\nLegacy content here.")
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project context" in result
-        assert "Legacy content here." in result
-        # Should be in index as active
-        assert "## Project index" in result
-        assert "Active projects (full context below):" in result
-
-
-@pytest.mark.unit
-class TestProjectIndex:
-    """Tests for the project index section."""
-
-    def test_project_index_format(self, temp_context_dir: Path):
-        """Test the format of the project index."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "alpha.md").write_text(
-            "---\nactive: true\nsummary: \"Alpha summary\"\n---\n# Alpha"
-        )
-        (projects_dir / "beta.md").write_text(
-            "---\nactive: false\nsummary: \"Beta summary\"\n---\n# Beta"
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "- Alpha: Alpha summary" in result
-        assert "- Beta: Beta summary" in result
-
-    def test_project_index_no_summary(self, temp_context_dir: Path):
-        """Test project index entry without summary."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "no-summary.md").write_text(
-            "---\nactive: true\n---\n# No Summary"
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project index" in result
-        # Name without colon+summary
-        assert "- No Summary\n" in result
-
-    def test_project_name_from_filename(self, temp_context_dir: Path):
-        """Test that project name is derived from filename with title case."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "my-cool-project.md").write_text(
-            "---\nactive: true\nsummary: \"Cool stuff\"\n---\n# Content"
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "My Cool Project: Cool stuff" in result
-
-    def test_project_index_appears_before_full_context(self, temp_context_dir: Path):
-        """Test that project index appears before full project contexts."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "test.md").write_text(
-            "---\nactive: true\nsummary: \"Test\"\n---\n# Test\nFull content."
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        index_pos = result.find("## Project index")
-        context_pos = result.find("## Project context")
-        assert index_pos < context_pos
-
-    def test_no_index_when_no_projects(self, temp_context_dir: Path):
-        """Test that no project index appears when projects dir is empty."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project index" not in result
-
-    def test_index_only_inactive(self, temp_context_dir: Path):
-        """Test project index with only inactive projects."""
-        projects_dir = temp_context_dir / "projects"
-        projects_dir.mkdir()
-        (projects_dir / "archived.md").write_text(
-            "---\nactive: false\nsummary: \"Archived\"\n---\n# Archived"
-        )
-
-        result = build_system_prompt(temp_context_dir)
-        assert "## Project index" in result
-        assert "Other projects (context available on request):" in result
-        assert "Active projects" not in result
-        assert "## Project context" not in result
 
 
 @pytest.mark.unit
@@ -602,14 +395,15 @@ class TestBuildSystemPromptWithMetadata:
         _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
         assert meta.total_approx_tokens > 0
 
-    def test_metadata_includes_projects(self, temp_context_dir: Path):
+    def test_metadata_excludes_projects(self, temp_context_dir: Path):
+        """Projects dir is no longer loaded — metadata should not include it."""
         projects_dir = temp_context_dir / "projects"
         projects_dir.mkdir()
         (projects_dir / "myproject.md").write_text("# My Project\nSome content here.")
 
         _prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
         section_names = [s.name for s in meta.sections]
-        assert "projects" in section_names
+        assert "projects" not in section_names
 
     def test_empty_context_dir(self, temp_context_dir: Path):
         prompt, meta = build_system_prompt_with_metadata(temp_context_dir)
