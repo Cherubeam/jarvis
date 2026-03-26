@@ -37,6 +37,16 @@ class CortexClient:
             logger.warning("Cortex search failed: %s", exc)
             return None
 
+    def refresh_index(self) -> bool:
+        """POST /index/refresh — trigger incremental re-indexing. Returns True on success."""
+        try:
+            resp = self._client.post("/index/refresh")
+            resp.raise_for_status()
+            return True
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            logger.warning("Cortex index refresh failed: %s", exc)
+            return False
+
     def is_available(self) -> bool:
         """GET /status — True if Cortex responds healthy."""
         try:
