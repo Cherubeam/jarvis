@@ -197,6 +197,18 @@ packages/skills/
 - [x] 14 tools across four modules (codebase, git, project writes, tests)
 - [x] Extended agentic loop (`max_iterations: 20`) for multi-step edit-test-fix cycles
 
+### 5H: Cortex — Vault Semantic Search
+
+**Status**: ✅ Phase 1 Complete
+
+Opt-in semantic search over the Obsidian vault via the external Cortex service (`cherubeam/cortex`). See ADR-029.
+
+- [x] Phase 1: Vault-Only MVP — `CortexClient`, `search_vault_semantic` tool, graceful degradation, 14 tests
+- [ ] Phase 2: Readwise Integration
+- [ ] Phase 3: Zotero Integration
+- [ ] Phase 4: MCP Interface (Claude Code → Cortex)
+- [ ] Phase 5: Obsidian Inbox Processor Rewrite
+
 ### 5B: Agent Orchestration
 
 - [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)
@@ -356,4 +368,4 @@ packages/skills/
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-26*

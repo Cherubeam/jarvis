@@ -22,7 +22,8 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │                 │                  │                           │
 │  • LLM Client   │  • Base Agent      │  • Things 3               │
 │  • Context      │  • JARVIS Agent    │  • Obsidian               │
-│  • Memory       │  • Writer Agent    │  • (Future: Calendar)     │
+│  • Memory       │  • Writer Agent    │  • Cortex (semantic search)│
+│  • (Future: Calendar)     │
 │  • Pricing      │  • Tactics Coach   │                           │
 │  • Stream       │  • Developer Agent │                           │
 │    Handler      │  • Data-driven     │                           │
@@ -290,6 +291,35 @@ User types: /daily-summary
 
 ---
 
+### 6b. Cortex Integration (`packages/integrations/cortex/`)
+
+**Purpose**: Semantic search over the Obsidian vault via the external Cortex service.
+
+**Location**: `packages/integrations/cortex/client.py`, `packages/core/tools/cortex_search.py`
+
+**Responsibilities:**
+- HTTP client for the Cortex API (`POST /search`, `GET /status`)
+- Tool wrapper (`search_vault_semantic`) with parameter clamping, output truncation, and graceful degradation
+- Startup health check with user-visible status message
+
+**Key Classes:**
+- `CortexClient`: Synchronous httpx client with tiered timeouts (connect 3s, read configurable)
+- `make_cortex_search_tool()`: Factory that wraps `CortexClient` in a `ToolDefinition`
+
+**Configuration** (`config/default.yaml`):
+```yaml
+cortex:
+  enabled: false                    # Set to true in local.yaml to activate
+  base_url: "http://127.0.0.1:8100"
+  timeout_seconds: 10
+```
+
+**Opt-in**: Disabled by default. Enable with `cortex.enabled: true` in `local.yaml` after starting the Cortex service (`cherubeam/cortex`). When Cortex is unreachable, the tool returns a fallback message directing agents to `search_notes`.
+
+**Design Decision**: See ADR-029 (Cortex — Shared Knowledge Layer).
+
+---
+
 ### 7. Tool Calling (`packages/core/tools/`)
 
 **Purpose**: Provide a composable function-calling layer for LLM tool use.
@@ -549,6 +579,11 @@ skills:
 7b. Blog tools initialization (if obsidian.enabled: true)
    └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
+7c. Cortex initialization (if cortex.enabled: true)
+   ├─ CortexClient(base_url, timeout)
+   ├─ make_cortex_search_tool() → shared_tools
+   └─ Health check: print connected/unreachable status
+   ↓
 8. Agent discovery (meta.yaml registry)
    └─ Scan agent directories for meta.yaml (all agents discovered via meta.yaml)
    ↓
@@ -598,6 +633,7 @@ jarvis/
 │   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
 │   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
 │   │   │   ├── git_tools.py            # git_status, git_diff, git_branch, git_add, git_commit, git_log
+│   │   │   ├── cortex_search.py          # make_cortex_search_tool() (vault semantic search)
 │   │   │   ├── project_write_tools.py  # write_file, edit_file, create_directory (scoped, guarded)
 │   │   │   └── test_tools.py           # run_tests via subprocess
 │   │   └── importers/              # Conversation importers
@@ -663,6 +699,8 @@ jarvis/
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
 │   │   │   └── task_sync.py        # ~520 lines
+│   │   ├── cortex/                 # Cortex semantic search client
+│   │   │   └── client.py           # CortexClient (HTTP)
 │   │   └── obsidian/               # Obsidian vault integration
 │   │       ├── vault.py            # Vault access + path validation
 │   │       ├── callout.py          # Callout block parser (pure string ops)
@@ -845,4 +883,4 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-26*

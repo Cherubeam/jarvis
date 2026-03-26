@@ -79,6 +79,8 @@ tests/
 - ✅ `analyze_context.py` - 31 tests (context utilization analysis)
 - ✅ `analyze_costs.py` - 32 tests (cost-by-type analysis)
 - ✅ `filesystem_access` - 24 tests (FilesystemGuard access control)
+- ✅ `cortex_client` - 8 tests (HTTP client: success, errors, timeouts, health check)
+- ✅ `cortex_search` - 6 tests (tool: formatting, fallback, clamping, truncation, path_prefix)
 
 **Integration Tests:**
 - ✅ Full conversation flow (5 tests)
@@ -721,4 +723,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-26*

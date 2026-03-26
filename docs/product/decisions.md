@@ -1861,7 +1861,7 @@ Three interlocking constraints make the developer agent safe by default:
 ## ADR-029: Cortex — Shared Knowledge Layer for the Cherubeam Ecosystem
 
 **Date**: 2026-03-20
-**Status**: 📋 Proposed
+**Status**: ✅ Accepted (Phase 1 complete)
 
 ### Context
 
@@ -1913,6 +1913,8 @@ cherubeam/
 - Chunking logic for vault notes (heading-based, from inbox processor)
 
 ### API Contract Sketch
+
+> **Note**: This was the initial design sketch. The actual Phase 1 implementation uses `n_results` (not `top_k`), flat `min_score`/`path_prefix` parameters (not nested `filters`), and defers `sources`/`tiers` filtering to Phase 2+. See `cherubeam/cortex` for the live API.
 
 **Endpoints:**
 
@@ -2071,7 +2073,7 @@ GET /status
 - Relates to: ADR-007 (Local-first Architecture — service stays fully local)
 - Relates to: ADR-013 (Obsidian Vault Integration — vault access moves to shared service)
 
-**Current Status**: Proposed. Implementation starts with Phase 1 (Vault-Only MVP).
+**Current Status**: Phase 1 (Vault-Only MVP) is complete. Cortex service lives at `cherubeam/cortex`. JARVIS client integration ships with `CortexClient`, `search_vault_semantic` tool, and 14 unit tests. Enabled via `cortex.enabled: true` in `local.yaml`.
 
 ---
 

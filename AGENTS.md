@@ -185,6 +185,8 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 
 **Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`. Shared tools (vault read, recall, cortex search) go to all agents automatically.
 
+**Cortex semantic search** (`search_vault_semantic`): Shared tool that queries the Obsidian vault by meaning via the Cortex API. Opt-in — requires `cortex.enabled: true` in `config/local.yaml` and the Cortex service running (`cherubeam/cortex`, `uv run cortex`). Degrades gracefully when unreachable (agents fall back to `search_notes`). Config: `cortex.base_url` (default `http://127.0.0.1:8100`), `cortex.timeout_seconds` (default 10).
+
 **Shared prompt includes**: If a prompt include file isn't found in the agent's `prompts/` dir, the resolver falls back to `packages/agents/_shared/prompts/`. Voice profile and anti-patterns live there.
 
 **Skill binding**: The `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.

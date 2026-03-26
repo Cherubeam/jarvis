@@ -521,6 +521,52 @@ Estimate costs for a benchmark run using LiteLLM pricing data and the latest gol
 
 ---
 
+## Module: `integrations.cortex.client` — Cortex Semantic Search
+
+### `class CortexClient`
+
+Synchronous HTTP client for the Cortex semantic search API.
+
+**Constructor:**
+
+#### `__init__(base_url: str = "http://127.0.0.1:8100", timeout: float = 10.0)`
+
+**Parameters:**
+- `base_url` - Cortex service URL
+- `timeout` - Read timeout in seconds (connect timeout is fixed at 3s)
+
+**Methods:**
+
+#### `search(query: str, n_results: int = 5, path_prefix: str | None = None) -> dict | None`
+
+POST `/search`. Returns response dict or `None` on any failure (connection, timeout, HTTP error, malformed JSON).
+
+**Parameters:**
+- `query` - Natural language search query
+- `n_results` - Number of results to return
+- `path_prefix` - Optional path filter (e.g. `"Projects/"`)
+
+#### `is_available() -> bool`
+
+GET `/status`. Returns `True` if Cortex responds with HTTP 200.
+
+#### `close() -> None`
+
+Close the underlying httpx connection pool.
+
+---
+
+### `make_cortex_search_tool(client: CortexClient) -> ToolDefinition`
+
+Factory that wraps a `CortexClient` in a `search_vault_semantic` tool.
+
+**Behavior:**
+- Clamps `n_results` to 1–20
+- Truncates output to 6,000 characters
+- Returns fallback message (suggesting `search_notes`) when Cortex is unreachable
+
+---
+
 ## Environment Variables
 
 ### `.env` File
@@ -577,4 +623,4 @@ def chat_stream(
 
 ---
 
-*Last updated: 2026-03-12*
+*Last updated: 2026-03-26*

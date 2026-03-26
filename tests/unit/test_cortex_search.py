@@ -66,6 +66,17 @@ class TestCortexSearchTool:
         _, kwargs = mock_client.search.call_args
         assert kwargs["n_results"] == 1
 
+    def test_search_passes_path_prefix(self) -> None:
+        mock_client = MagicMock()
+        mock_client.search.return_value = {"results": [], "count": 0}
+        tool = _make_tool(mock_client)
+
+        tool.execute(query="test", path_prefix="Projects/")
+
+        mock_client.search.assert_called_once()
+        _, kwargs = mock_client.search.call_args
+        assert kwargs["path_prefix"] == "Projects/"
+
     def test_search_truncates_long_output(self) -> None:
         mock_client = MagicMock()
         # Create results that exceed _MAX_OUTPUT_CHARS

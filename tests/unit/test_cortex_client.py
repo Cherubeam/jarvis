@@ -46,6 +46,37 @@ class TestSearch:
         assert result is None
 
 
+    @respx.mock
+    def test_search_http_500(self, client: CortexClient) -> None:
+        respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(500, text="Internal Server Error"))
+
+        result = client.search("test query")
+
+        assert result is None
+
+    @respx.mock
+    def test_search_malformed_json(self, client: CortexClient) -> None:
+        respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, text="not json"))
+
+        result = client.search("test query")
+
+        assert result is None
+
+    @respx.mock
+    def test_search_sends_path_prefix(self, client: CortexClient) -> None:
+        payload = {"results": [], "count": 0}
+        route = respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, json=payload))
+
+        client.search("test query", path_prefix="Projects/")
+
+        assert route.called
+        sent_json = route.calls[0].request.content
+        import json
+
+        body = json.loads(sent_json)
+        assert body["path_prefix"] == "Projects/"
+
+
 class TestIsAvailable:
     @respx.mock
     def test_is_available_healthy(self, client: CortexClient) -> None:
