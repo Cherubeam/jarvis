@@ -58,9 +58,9 @@ This maps to **Phase 7** on the roadmap (Context Window Management) and could be
 **Blocked by:** LiteLLM streaming format inconsistency via OpenRouter. The `_apply_cache_control()` implementation in `llm_client.py` is correct — the issue is upstream.
 
 **Next steps:**
-- File LiteLLM GitHub issue about streaming/non-streaming format inconsistency
-- Monitor LiteLLM releases for a fix
-- Alternative: switch to direct Anthropic API (`anthropic/claude-sonnet-4.6`) which may handle streaming caching correctly
+- Monitor LiteLLM releases for a fix to streaming format inconsistency (PR #23799 fixes `prompt_tokens_details` mapping but not the underlying cache key divergence)
+- Switching to direct Anthropic API is not an option (OpenRouter is required per ADR-001)
+- LiteLLM pinned to `<1.82.7` due to supply chain attack on versions 1.82.7-1.82.8 (March 24, 2026)
 
 ### Step C.5: Tool Result Trimming for Delegate Sessions ✅
 
@@ -73,7 +73,7 @@ Lightweight first step for history management. Delegate agent sessions accumulat
 
 This addresses the most common bloat pattern. Full summarization (Step D below) remains an option for sessions where even trimmed history grows too large.
 
-**Status: Done** — applied to `_run_agent_session()` in `apps/cli/main.py`.
+**Status: Done** — applied to both `_run_agent_session()` (delegate sessions, line 439) and the main JARVIS loop (line 991) in `apps/cli/main.py`. Analysis of 63 conversations showed tool results account for 40-91% of conversation size during heavy tool-use phases; trimming reduces cumulative tool-related input tokens by ~88% in long sessions.
 
 ### Step D: Context Tiering (only if data warrants it)
 
