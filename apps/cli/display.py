@@ -121,6 +121,21 @@ def finish_live_stream(live: Live, full_text: str) -> None:
     live.stop()
 
 
+def start_waiting_spinner() -> Live:
+    """Show a spinner while waiting for a non-streaming response."""
+    spinner = Spinner("dots", text=Text(" Waiting…", style="dim"))
+    live = Live(spinner, console=console, refresh_per_second=8, vertical_overflow="crop")
+    live.start()
+    return live
+
+
+def finish_waiting(live: Live, full_text: str) -> None:
+    """Stop the spinner and render the full response."""
+    if full_text.strip():
+        live.update(Markdown(full_text))
+    live.stop()
+
+
 # ---------------------------------------------------------------------------
 # Stats & feedback
 # ---------------------------------------------------------------------------

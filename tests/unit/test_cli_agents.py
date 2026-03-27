@@ -117,6 +117,7 @@ class TestHandleAgentCommand:
 
         logger = Mock(spec=ConversationLogger)
         handler = Mock(spec=StreamHandler)
+        handler.streaming = True
 
         with patch("apps.cli.main.agent_from_meta") as mock_factory:
             mock_agent = Mock()
@@ -158,6 +159,7 @@ class TestHandleAgentCommand:
 
         client = Mock(spec=LLMClient)
         handler = Mock(spec=StreamHandler)
+        handler.streaming = True
         logger = Mock(spec=ConversationLogger)
 
         with patch("apps.cli.main.agent_from_meta") as mock_factory:
@@ -273,6 +275,7 @@ class TestRunAgentSession:
         agent = Mock()
         logger = Mock(spec=ConversationLogger)
         handler = Mock(spec=StreamHandler)
+        handler.streaming = True
 
         _run_agent_session(agent, "tactics", handler, logger, Mock())
 
@@ -307,6 +310,7 @@ class TestRunAgentSession:
         agent.run.side_effect = [result1, result2]
         logger = Mock(spec=ConversationLogger)
         handler = Mock(spec=StreamHandler)
+        handler.streaming = True
 
         _run_agent_session(agent, "tactics", handler, logger, Mock())
 

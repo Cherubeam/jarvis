@@ -9,6 +9,7 @@
 models:
   default: "openrouter/anthropic/claude-sonnet-4.6"
   default_max_tokens: 16384
+  streaming: true  # Set to false for non-streaming mode (enables prompt caching via OpenRouter)
   presets:
     fast: "openrouter/google/gemini-2.0-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"

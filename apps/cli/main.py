@@ -27,6 +27,8 @@ from apps.cli.display import (
     print_usage_stats,
     prompt_user,
     start_live_stream,
+    start_waiting_spinner,
+    finish_waiting,
 )
 from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
@@ -428,20 +430,10 @@ def _run_agent_session(
         session_history.append({"role": "user", "content": user_input})
 
         print_agent_prefix(agent_name)
-        live, buf = start_live_stream()
-        stream_handler.on_chunk = make_live_chunk_handler(live, buf)
-        stream_handler.on_before_tool_exec = lambda: live.stop()
-        stream_handler.on_after_tool_exec = lambda: live.start()
-        result = agent.run(
-            user_input,
-            stream_handler,
-            print_chunks=True,
+        result = _run_with_display(
+            stream_handler, agent, user_input,
             messages_override=trim_tool_results(session_history[:-1]),
         )
-        stream_handler.on_chunk = None
-        stream_handler.on_before_tool_exec = None
-        stream_handler.on_after_tool_exec = None
-        finish_live_stream(live, result.text)
 
         print_usage_stats(result)
         print_separator()
@@ -494,6 +486,32 @@ def _run_agent_session(
 
     print_system(f"\nReturning to JARVIS.\n")
     return session_history
+
+
+def _run_with_display(stream_handler, agent, user_input, print_chunks=True, messages_override=None):
+    """Run agent with appropriate display (streaming or spinner)."""
+    if stream_handler.streaming:
+        live, buf = start_live_stream()
+        stream_handler.on_chunk = make_live_chunk_handler(live, buf)
+    else:
+        live = start_waiting_spinner()
+
+    stream_handler.on_before_tool_exec = lambda: live.stop()
+    stream_handler.on_after_tool_exec = lambda: live.start()
+    result = agent.run(
+        user_input, stream_handler,
+        print_chunks=print_chunks,
+        messages_override=messages_override,
+    )
+    stream_handler.on_chunk = None
+    stream_handler.on_before_tool_exec = None
+    stream_handler.on_after_tool_exec = None
+
+    if stream_handler.streaming:
+        finish_live_stream(live, result.text)
+    else:
+        finish_waiting(live, result.text)
+    return result
 
 
 def _handle_agent_command(
@@ -883,10 +901,12 @@ def main(argv: list[str] | None = None):
     else:
         price_info = "(pricing unavailable)"
 
+    streaming_enabled = config.get("models", {}).get("streaming", True)
     stream_handler = StreamHandler(
         client, metrics_tracker, pricing, model_id,
         on_tool_call=print_tool_feedback,
         max_tokens=config.get("models", {}).get("default_max_tokens"),
+        streaming=streaming_enabled,
     )
 
     # Print startup info
@@ -895,6 +915,7 @@ def main(argv: list[str] | None = None):
         cmds = [m.command for m in agent_registry.values()]
         cmds.append("/daily-summary")
         cmds.append("/model")
+        cmds.append("/stream")
         commands = cmds
     print_startup(agent_name, model_id, price_info, commands)
 
@@ -939,6 +960,12 @@ def main(argv: list[str] | None = None):
                     model_id, pricing = handle_model_command(
                         payload, config, client, model_id, stream_handler,
                     )
+                    continue
+
+                if command == "/stream":
+                    stream_handler.streaming = not stream_handler.streaming
+                    state = "on" if stream_handler.streaming else "off (caching enabled)"
+                    print_system(f"\nStreaming: {state}\n")
                     continue
 
                 # Agent-routed commands
@@ -992,20 +1019,10 @@ def main(argv: list[str] | None = None):
                     stream_handler.model_id = decision.resolved.model_id
 
             print_assistant_prefix(agent_name)
-            live, buf = start_live_stream()
-            stream_handler.on_chunk = make_live_chunk_handler(live, buf)
-            stream_handler.on_before_tool_exec = lambda: live.stop()
-            stream_handler.on_after_tool_exec = lambda: live.start()
-            result = active_agent.run(
-                user_input,
-                stream_handler,
-                print_chunks=True,
+            result = _run_with_display(
+                stream_handler, active_agent, user_input,
                 messages_override=trim_tool_results(history),
             )
-            stream_handler.on_chunk = None
-            stream_handler.on_before_tool_exec = None
-            stream_handler.on_after_tool_exec = None
-            finish_live_stream(live, result.text)
 
             # Restore original model after routed call
             if routed_model_id is not None:
