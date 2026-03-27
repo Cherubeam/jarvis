@@ -185,15 +185,18 @@ class LLMClient:
         model: str | None = None,
         tools: list[dict] | None = None,
         temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> object:
         """
-        Non-streaming completion. Used in the agentic tool-calling loop.
+        Non-streaming completion. Used in the agentic tool-calling loop
+        and as the primary path when streaming is disabled.
 
         Args:
             messages: List of {"role": "...", "content": "..."} dicts
             model: Override default model if needed
             tools: LiteLLM-formatted tool definitions
             temperature: Sampling temperature override
+            max_tokens: Maximum tokens to generate
 
         Returns:
             Raw LiteLLM ModelResponse object
@@ -211,6 +214,8 @@ class LLMClient:
             kwargs["tools"] = tools
         if temperature is not None:
             kwargs["temperature"] = temperature
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
 
         return litellm.completion(**kwargs)
 
