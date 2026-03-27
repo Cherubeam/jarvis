@@ -38,7 +38,7 @@ from packages.core.memory import ConversationLogger, hash_content
 from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
-from packages.core.history import trim_tool_results
+from packages.core.history import trim_tool_results, summarize_history
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.integrations.things3.task_sync import sync_tasks_to_file
 from packages.core.filesystem_access import load_filesystem_guard
@@ -967,6 +967,18 @@ def main(argv: list[str] | None = None):
                 len(str(m.get("content", "")).encode("utf-8")) for m in history
             )
             logger.metrics.record_history_tokens(history_bytes // 4)
+
+            # History summarization (opt-in via config)
+            summ_config = config.get("summarization", {})
+            if summ_config.get("enabled", False):
+                fast_model = resolve_model("fast", config).model_id
+                history = summarize_history(
+                    history,
+                    client,
+                    model_id=fast_model,
+                    token_threshold=summ_config.get("token_threshold", 40000),
+                    keep_recent=summ_config.get("keep_recent", 10),
+                )
 
             logger.add_message("user", user_input)
 

@@ -66,6 +66,14 @@ routing:
   simple_threshold: 200             # Chars below which query is "simple"
   complex_threshold: 800            # Chars above which query is "complex"
 
+# History summarization (opt-in)
+# Compresses old conversation history using the fast model to reduce token costs.
+# Only triggers once when threshold is exceeded; avoids re-summarizing every turn.
+summarization:
+  enabled: false                    # Set to true in local.yaml to activate
+  token_threshold: 40000            # Approx tokens before summarization triggers
+  keep_recent: 10                   # Number of recent messages to preserve intact
+
 # CLI display settings
 cli:
   colors: true
