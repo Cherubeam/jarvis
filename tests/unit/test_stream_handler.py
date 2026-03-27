@@ -844,3 +844,172 @@ class TestCreditFallback:
         # The third chat_stream call should have been made with reduced tokens
         third_call = client.chat_stream.call_args_list[2]
         assert third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612
+
+
+def _make_complete_response(content="", tool_calls=None, prompt_tokens=10, completion_tokens=5):
+    """Create a mock LiteLLM ModelResponse for non-streaming complete()."""
+    usage = Mock(spec=[
+        "prompt_tokens", "completion_tokens", "total_tokens",
+        "cache_read_input_tokens", "cache_creation_input_tokens",
+        "prompt_tokens_details",
+    ])
+    usage.prompt_tokens = prompt_tokens
+    usage.completion_tokens = completion_tokens
+    usage.total_tokens = prompt_tokens + completion_tokens
+    usage.cache_read_input_tokens = 0
+    usage.cache_creation_input_tokens = 0
+    usage.prompt_tokens_details = None
+
+    choice = Mock()
+    choice.message.content = content
+    choice.message.tool_calls = tool_calls
+    choice.finish_reason = "tool_calls" if tool_calls else "stop"
+
+    response = Mock()
+    response.choices = [choice]
+    response.usage = usage
+    return response
+
+
+@pytest.mark.unit
+class TestStreamHandlerNonStreaming:
+    """Tests for non-streaming mode (streaming=False)."""
+
+    def test_simple_nonstreaming_returns_stream_result(self):
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("Hello world")
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        assert isinstance(result, StreamResult)
+        assert result.text == "Hello world"
+        assert result.usage.prompt_tokens == 10
+        client.complete.assert_called_once()
+        client.chat_stream.assert_not_called()
+
+    def test_tool_call_then_content(self):
+        """Non-streaming agentic loop: tool call → final content."""
+        tool_call = Mock()
+        tool_call.id = "tc_1"
+        tool_call.function.name = "read_note"
+        tool_call.function.arguments = '{"path": "test.md"}'
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [
+            _make_complete_response(tool_calls=[tool_call]),
+            _make_complete_response("Done reading the note."),
+        ]
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+
+        # Need a real tool registry
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(
+            name="read_note",
+            description="Read a note",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda **kwargs: "note content",
+        ))
+
+        result = handler.stream(
+            [{"role": "user", "content": "read test.md"}],
+            tool_registry=registry,
+        )
+
+        assert result.text == "Done reading the note."
+        assert client.complete.call_count == 2
+        assert len(result.tool_messages) > 0
+
+    def test_terminal_tool_returns_early(self):
+        """Terminal tool fires in non-streaming agentic loop."""
+        tool_call = Mock()
+        tool_call.id = "tc_1"
+        tool_call.function.name = "delegate"
+        tool_call.function.arguments = '{"agent": "writer"}'
+
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response(tool_calls=[tool_call])
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(
+            name="delegate",
+            description="Delegate to agent",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda **kwargs: "delegated",
+            terminal=True,
+        ))
+
+        result = handler.stream(
+            [{"role": "user", "content": "delegate"}],
+            tool_registry=registry,
+        )
+
+        assert result.text == ""
+        assert client.complete.call_count == 1
+
+    def test_usage_report_emitted(self):
+        """UsageReport event is emitted in non-streaming mode."""
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("response")
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        events = []
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            streaming=False,
+            on_event=lambda e: events.append(e),
+        )
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        from packages.core.events import UsageReport, TextChunk
+        usage_events = [e for e in events if isinstance(e, UsageReport)]
+        text_events = [e for e in events if isinstance(e, TextChunk)]
+        assert len(usage_events) == 1
+        assert usage_events[0].prompt_tokens == 10
+        assert len(text_events) == 1
+        assert text_events[0].text == "response"
+
+    def test_max_tokens_forwarded(self):
+        """max_tokens is passed to client.complete()."""
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("ok")
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            streaming=False, max_tokens=4096,
+        )
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        call_kwargs = client.complete.call_args
+        assert call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
+
+    def test_streaming_toggle_uses_different_methods(self):
+        """Changing streaming flag mid-session switches client methods."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["streamed"])
+        client.complete.return_value = _make_complete_response("completed")
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+
+        handler = StreamHandler(client, MetricsTracker(), pricing, "test-model", streaming=True)
+        result1 = handler.stream([{"role": "user", "content": "hi"}])
+        assert result1.text == "streamed"
+        client.chat_stream.assert_called_once()
+
+        handler.streaming = False
+        result2 = handler.stream([{"role": "user", "content": "hi"}])
+        assert result2.text == "completed"
+        client.complete.assert_called_once()
