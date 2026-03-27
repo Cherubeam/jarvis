@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tool Result Trimming in Main Loop**: Extended `trim_tool_results()` to the main JARVIS conversation loop (previously only applied to delegate sessions). Reduces cumulative tool-related input tokens by ~88% in long sessions, addressing the primary cost driver for token accumulation.
 
 ### Added
+- **History Summarization** (opt-in): Compresses old conversation turns using the fast model (Gemini Flash) when history exceeds a token threshold (~40K). Implements a summarize-once pattern with `[JARVIS_SUMMARY]` marker to avoid re-summarizing every turn. Enable via `summarization.enabled: true` in config.
 - **Cortex Semantic Search**: New `search_vault_semantic` tool queries the Obsidian vault by meaning (not just keywords) via the Cortex API. Gracefully degrades to a fallback message when Cortex is unreachable. Available as a shared tool to all agents when `cortex.enabled` is set in config.
 - **Daily Summary Date Argument**: `/daily-summary` now accepts an optional `YYYY-MM-DD` date argument to generate summaries for past dates (e.g., `/daily-summary 2026-03-18`). Defaults to today when no date is provided.
 - **Strategyzer Agent** (`/strategize`): Strategy consulting agent for competitive analysis, growth loops, pricing, unit economics, and market positioning. Binds `strategy-tactics` (deck-skill with card search) and `pm-strategist` (simple skill) for evidence-driven strategic advice.

@@ -75,6 +75,18 @@ This addresses the most common bloat pattern. Full summarization (Step D below) 
 
 **Status: Done** — applied to both `_run_agent_session()` (delegate sessions, line 439) and the main JARVIS loop (line 991) in `apps/cli/main.py`. Analysis of 63 conversations showed tool results account for 40-91% of conversation size during heavy tool-use phases; trimming reduces cumulative tool-related input tokens by ~88% in long sessions.
 
+### Step C.7: History Summarization ✅
+
+Compresses old conversation turns into a concise summary using the fast model (Gemini Flash) when history tokens exceed a configurable threshold (default: 40K). This directly addresses the token accumulation problem in long sessions.
+
+- **Summarize-once pattern**: Detects prior `[JARVIS_SUMMARY]` marker to avoid re-summarizing every turn. Only re-summarizes when new content since the last summary exceeds the threshold.
+- **Safe split**: Adjusts the old/recent split point to never break assistant→tool message pairs.
+- **Error-tolerant**: On LLM failure, returns history unchanged and falls through to `trim_tool_results()`.
+- **Composable**: Runs before `trim_tool_results()` — summarization handles bulk compression, trimming handles remaining recent tool results.
+- **Opt-in**: `summarization.enabled: true` in config. Default threshold: 40K tokens, keep recent: 10 messages.
+
+**Status: Done** — implemented in `packages/core/history.py`, integrated into main loop in `apps/cli/main.py`. 7 unit tests in `tests/unit/test_history.py`.
+
 ### Step D: Context Tiering (only if data warrants it)
 
 If Step B reveals that certain sections are rarely utilized (e.g., projects referenced in <20% of sessions):
@@ -86,7 +98,7 @@ If Step B reveals that certain sections are rarely utilized (e.g., projects refe
 
 - **RAG for context**: Only needed if context grows beyond ~20K tokens (currently ~8K)
 - **Two-pass architecture**: Over-engineered for current scale
-- **Summarization**: Only pays off for sessions >5 turns; need data on typical length first
+- **Summarization**: ✅ Implemented (Step C.7) — opt-in via config
 
 ## Relationship to Roadmap
 
