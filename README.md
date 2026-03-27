@@ -84,6 +84,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
+- **Non-Streaming Mode** (opt-in): Toggle with `/stream` or configure via `models.streaming`. Enables prompt caching via OpenRouter (blocked in streaming mode due to upstream LiteLLM format inconsistency)
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Latency Metrics**: TTFT and total latency captured per response
@@ -153,6 +154,7 @@ During a chat session, you can use slash commands:
 /strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
 /develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary [date]   Generates an Obsidian daily note summary (default: today)
+/stream                 Toggles between streaming and non-streaming response modes
 ```
 
 Type `quit` or `exit` to end the session.

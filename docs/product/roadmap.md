@@ -277,7 +277,7 @@ Further Cortex evolution (Readwise, Zotero, MCP, Inbox Processor) is tracked in 
 ### Features
 
 - [ ] Intelligent truncation strategies
-- [ ] Summarization for old conversation context
+- [x] Summarization for old conversation context
 - [ ] Token budget management
 - [ ] Full-text + semantic search over conversations
 - [ ] Conversation export and statistics

@@ -332,6 +332,8 @@ cortex:
    - Default: 5 (all agents except developer)
    - Developer Agent: 20 (multi-step edit-test-fix cycles)
 
+StreamHandler supports both streaming and non-streaming modes (`streaming` flag). Non-streaming mode uses `LLMClient.complete()` for all API calls, enabling prompt caching via OpenRouter. Toggle at runtime with `/stream` or via `models.streaming` config.
+
 **Key Design Choices:**
 - Non-streaming intermediate calls (simpler delta parsing, no user-visible cost)
 - Errors returned as strings, never raised, so LLM can reason about failures
@@ -800,7 +802,9 @@ See `docs/engineering/multi-agent-architecture.md` for the full multi-agent arch
 
 - **Single user**: No multi-user support
 - **Single machine**: Distributed execution (Scenario B) is vision-only
-- **In-memory history**: Full conversation in context window
+- **In-memory history**: Full conversation in context window (mitigated by history summarization — see below)
+
+History summarization (`summarize_history()` in `history.py`) compresses old conversation turns using the fast model when history exceeds ~40K tokens. Uses a `[JARVIS_SUMMARY]` marker to avoid re-summarizing every turn.
 
 ---
 

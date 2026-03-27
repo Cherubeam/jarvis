@@ -57,6 +57,8 @@ This maps to **Phase 7** on the roadmap (Context Window Management) and could be
 
 **Blocked by:** LiteLLM streaming format inconsistency via OpenRouter. The `_apply_cache_control()` implementation in `llm_client.py` is correct — the issue is upstream.
 
+**Workaround available (2026-03-27):** Non-streaming mode (`models.streaming: false` or `/stream` toggle) enables prompt caching via OpenRouter by using `LLMClient.complete()` instead of streaming. Verified to produce consistent token counts and cache key stability.
+
 **Next steps:**
 - Monitor LiteLLM releases for a fix to streaming format inconsistency (PR #23799 fixes `prompt_tokens_details` mapping but not the underlying cache key divergence)
 - Switching to direct Anthropic API is not an option (OpenRouter is required per ADR-001)
