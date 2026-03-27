@@ -988,7 +988,7 @@ def main(argv: list[str] | None = None):
                 user_input,
                 stream_handler,
                 print_chunks=True,
-                messages_override=history,
+                messages_override=trim_tool_results(history),
             )
             stream_handler.on_chunk = None
             stream_handler.on_before_tool_exec = None
