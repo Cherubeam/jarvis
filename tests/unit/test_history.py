@@ -1,10 +1,17 @@
 """
-Unit tests for session history trimming.
+Unit tests for session history trimming and summarization.
 """
+
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from packages.core.history import trim_tool_results, _TOOL_RESULT_SUMMARY_LEN
+from packages.core.history import (
+    trim_tool_results,
+    summarize_history,
+    _TOOL_RESULT_SUMMARY_LEN,
+    _SUMMARY_MARKER,
+)
 
 
 @pytest.mark.unit
@@ -128,3 +135,128 @@ class TestTrimToolResults:
         ]
         result = trim_tool_results(history, keep_recent=0)
         assert result[0]["content"].startswith("A" * _TOOL_RESULT_SUMMARY_LEN)
+
+
+def _make_long_history(n_exchanges: int = 20) -> list[dict]:
+    """Build a history with enough content to exceed the default 40K threshold."""
+    history: list[dict] = []
+    for i in range(n_exchanges):
+        history.append({"role": "user", "content": f"Question {i}: " + "x" * 4000})
+        history.append({"role": "assistant", "content": f"Answer {i}: " + "y" * 4000})
+    return history
+
+
+def _mock_client(summary_text: str = "Summary of conversation.") -> MagicMock:
+    """Create a mock LLMClient that returns a canned summary."""
+    client = MagicMock()
+    response = MagicMock()
+    response.choices = [MagicMock()]
+    response.choices[0].message.content = summary_text
+    client.complete.return_value = response
+    return client
+
+
+@pytest.mark.unit
+class TestSummarizeHistory:
+    """Tests for summarize_history()."""
+
+    def test_short_history_unchanged(self):
+        """History shorter than keep_recent is returned as-is, no LLM call."""
+        history = [
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "hi"},
+        ]
+        client = _mock_client()
+        result = summarize_history(history, client, model_id="fast-model")
+        assert result is history
+        client.complete.assert_not_called()
+
+    def test_below_token_threshold_unchanged(self):
+        """History with many short messages below threshold is not summarized."""
+        history = [
+            {"role": "user", "content": "q"},
+            {"role": "assistant", "content": "a"},
+        ] * 20  # 40 messages but tiny content
+        client = _mock_client()
+        result = summarize_history(history, client, model_id="fast-model")
+        assert result is history
+        client.complete.assert_not_called()
+
+    def test_above_threshold_triggers_summarization(self):
+        """History exceeding threshold triggers an LLM call with the correct model."""
+        history = _make_long_history(20)
+        client = _mock_client("The user asked 20 questions.")
+        result = summarize_history(
+            history, client, model_id="openrouter/google/gemini-2.0-flash",
+            token_threshold=1000,  # low threshold to force trigger
+        )
+
+        client.complete.assert_called_once()
+        call_kwargs = client.complete.call_args
+        assert call_kwargs.kwargs.get("model") == "openrouter/google/gemini-2.0-flash"
+
+        # Result should start with summary + recent messages
+        assert result[0]["role"] == "assistant"
+        assert result[0]["content"].startswith(_SUMMARY_MARKER)
+        assert "The user asked 20 questions." in result[0]["content"]
+        assert len(result) == 11  # 1 summary + 10 recent (default keep_recent)
+
+    def test_split_adjusts_to_user_message(self):
+        """Split point walks forward to land on a user message, not a tool result."""
+        history = [
+            {"role": "user", "content": "x" * 8000},
+            {"role": "assistant", "content": "called tool", "tool_calls": [{"function": {"name": "foo"}}]},
+            {"role": "tool", "tool_call_id": "t1", "content": "tool output " * 500},
+            {"role": "user", "content": "follow up " * 500},
+            {"role": "assistant", "content": "response " * 500},
+        ]
+        client = _mock_client("Summary.")
+        result = summarize_history(
+            history, client, model_id="fast-model",
+            token_threshold=100, keep_recent=3,
+        )
+        # With keep_recent=3, naive split_idx=2 lands on a tool message.
+        # Should walk forward to idx=3 (user message).
+        # So old = history[:3], recent = history[3:]
+        assert result[0]["role"] == "assistant"
+        assert result[0]["content"].startswith(_SUMMARY_MARKER)
+        # Recent should be the last 2 messages (from idx 3 onward)
+        assert result[1]["role"] == "user"
+        assert result[1]["content"].startswith("follow up")
+
+    def test_summary_message_format(self):
+        """Summary message has role 'assistant' and contains the marker."""
+        history = _make_long_history(10)
+        client = _mock_client("Concise summary here.")
+        result = summarize_history(
+            history, client, model_id="fast-model", token_threshold=100,
+        )
+        summary = result[0]
+        assert summary["role"] == "assistant"
+        assert summary["content"].startswith(_SUMMARY_MARKER)
+        assert "Concise summary here." in summary["content"]
+
+    def test_llm_failure_returns_original(self):
+        """If the LLM call fails, original history is returned unchanged."""
+        history = _make_long_history(10)
+        client = _mock_client()
+        client.complete.side_effect = RuntimeError("API down")
+        result = summarize_history(
+            history, client, model_id="fast-model", token_threshold=100,
+        )
+        assert result is history
+
+    def test_prior_summary_skips_resummarization(self):
+        """When prior summary exists and new content is below threshold, skip."""
+        history = [
+            {"role": "assistant", "content": f"{_SUMMARY_MARKER} Previous summary."},
+            {"role": "user", "content": "short question"},
+            {"role": "assistant", "content": "short answer"},
+        ]
+        client = _mock_client()
+        result = summarize_history(
+            history, client, model_id="fast-model",
+            token_threshold=40000,
+        )
+        assert result is history
+        client.complete.assert_not_called()
