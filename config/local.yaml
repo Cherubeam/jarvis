@@ -3,6 +3,10 @@
 rag:
   enabled: true
 
+# Cortex — Vault semantic search via external Cortex service
+cortex:
+  enabled: true
+
 # Filesystem access control — per-path read/read-write rules
 filesystem:
   access_rules:
