@@ -484,13 +484,8 @@ class StreamHandler:
             if not choice.message.tool_calls:
                 final_text = choice.message.content or ""
                 final_usage = call_usage
-                accumulated_usage = TokenUsage(
-                    prompt_tokens=accumulated_usage.prompt_tokens + call_usage.prompt_tokens,
-                    completion_tokens=accumulated_usage.completion_tokens + call_usage.completion_tokens,
-                    total_tokens=accumulated_usage.total_tokens + call_usage.total_tokens,
-                    cache_read_tokens=accumulated_usage.cache_read_tokens + call_usage.cache_read_tokens,
-                    cache_write_tokens=accumulated_usage.cache_write_tokens + call_usage.cache_write_tokens,
-                )
+                # Don't add to accumulated_usage — final_usage is passed
+                # separately to _complete_from_text() which merges them.
                 break
 
             # Tool calls detected

@@ -559,15 +559,7 @@ def _handle_agent_command(
     logger.add_message("user", f"{command} {payload}")
 
     print_agent_prefix(meta.name)
-    live, buf = start_live_stream()
-    stream_handler.on_chunk = make_live_chunk_handler(live, buf)
-    stream_handler.on_before_tool_exec = lambda: live.stop()
-    stream_handler.on_after_tool_exec = lambda: live.start()
-    result = agent.run(payload, stream_handler, print_chunks=True)
-    stream_handler.on_chunk = None
-    stream_handler.on_before_tool_exec = None
-    stream_handler.on_after_tool_exec = None
-    finish_live_stream(live, result.text)
+    result = _run_with_display(stream_handler, agent, payload)
 
     print_usage_stats(result)
     print_separator()

@@ -173,7 +173,7 @@ class TestHandleAgentCommand:
 
             # run() was called with payload
             mock_agent.run.assert_called_once_with(
-                "fix this text", handler, print_chunks=True
+                "fix this text", handler, print_chunks=True, messages_override=None
             )
 
         # User message logged

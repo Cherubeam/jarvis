@@ -926,6 +926,11 @@ class TestStreamHandlerNonStreaming:
         assert client.complete.call_count == 2
         assert len(result.tool_messages) > 0
 
+        # Verify no double-counting: total = tool call tokens + final response tokens
+        # Each call has prompt_tokens=10, completion_tokens=5
+        assert result.usage.prompt_tokens == 20  # 10 + 10, not 10 + 10 + 10
+        assert result.usage.completion_tokens == 10  # 5 + 5, not 5 + 5 + 5
+
     def test_terminal_tool_returns_early(self):
         """Terminal tool fires in non-streaming agentic loop."""
         tool_call = Mock()
