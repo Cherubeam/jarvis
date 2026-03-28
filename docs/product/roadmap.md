@@ -272,12 +272,13 @@ Further Cortex evolution (Readwise, Zotero, MCP, Inbox Processor) is tracked in 
 
 ## Phase 7: Context Window Management & Search
 
-**Status**: Not Started
+**Status**: In Progress
 
 ### Features
 
-- [ ] Intelligent truncation strategies
+- [x] Intelligent truncation strategies (tool result trimming in main loop + delegates)
 - [x] Summarization for old conversation context
+- [x] Non-streaming mode for prompt caching (workaround for LiteLLM streaming bug)
 - [ ] Token budget management
 - [ ] Full-text + semantic search over conversations
 - [ ] Conversation export and statistics

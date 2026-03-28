@@ -130,13 +130,21 @@ Simple queries don't need Sonnet. Routing to Gemini Flash (~10x cheaper) for tri
 
 | Priority | Action | Savings | Effort | Info Loss |
 |----------|--------|---------|--------|-----------|
-| **1** | Prompt caching | 14-40% | Low | None | ⚠️ Blocked (LiteLLM streaming) |
-| **1b** | History tool-result trimming | High for delegates | Low | None | ✅ Done |
-| **2** | History cap/summarization | High for outliers | Medium | Minimal |
+| **1** | Prompt caching | 14-40% | Low | None | ✅ Workaround: non-streaming mode |
+| **1b** | History tool-result trimming | High for delegates + main | Low | None | ✅ Done (main loop + delegates) |
+| **2** | History cap/summarization | High for outliers | Medium | Minimal | ✅ Done (opt-in) |
 | **3** | Project context tiering | ~11% of prompt cost | Low | None |
-| **4** | Model routing | Variable | Medium | Possible |
+| **4** | Model routing | Variable | Medium | Possible | Implemented, opt-in |
 
 ---
+
+## Status Update (2026-03-28)
+
+- **Tool result trimming** now applied to the main JARVIS loop (not just delegates). Expected ~88% reduction in tool-related input tokens for long sessions.
+- **History summarization** implemented (opt-in via `summarization.enabled`). Compresses old turns using Gemini Flash when history exceeds ~40K tokens.
+- **Non-streaming mode** available as prompt caching workaround (`models.streaming: false` or `/stream` toggle). Bypasses the LiteLLM streaming format inconsistency that blocks caching.
+- **LiteLLM pinned** to `<1.82.7` due to supply chain attack on versions 1.82.7-1.82.8.
+- **Model routing** fully implemented, opt-in via `routing.enabled: true`.
 
 ## Verification
 
