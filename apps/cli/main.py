@@ -788,6 +788,26 @@ def main(argv: list[str] | None = None):
     tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
     print_system("[Tools] Web search + fetch loaded.")
 
+    # Pattern card generator tools
+    if vault_config is not None:
+        obsidian_cfg = config.get("obsidian", {})
+        writing_cfg = obsidian_cfg.get("writing", {})
+        patterns_cfg = writing_cfg.get("patterns", {})
+        patterns_dir = patterns_cfg.get("target_dir", "")
+        if patterns_dir:
+            try:
+                from packages.core.tools.card_generator_tools import make_card_generator_tools
+
+                card_cfg = config.get("pattern_cards", {})
+                card_output = jarvis_dir / card_cfg.get("output_dir", "data/pattern-cards")
+                card_gen_tools = make_card_generator_tools(
+                    vault_config, patterns_dir, card_output,
+                )
+                tool_groups["card_generator"] = card_gen_tools
+                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded.")
+            except Exception as e:
+                print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
+
     # Build the active agent
     if args.agent:
         if args.agent not in agent_registry:

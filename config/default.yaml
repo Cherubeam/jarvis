@@ -107,6 +107,15 @@ cortex:
   base_url: "http://127.0.0.1:8100"
   timeout_seconds: 10
 
+# Pattern card generator
+pattern_cards:
+  output_dir: "data/pattern-cards"
+  image_generation:
+    enabled: false                  # Set to true + provide GEMINI_API_KEY for API image gen
+    model: "gemini/imagen-4.0-generate-001"
+    size: "1024x1024"
+    max_images_per_run: 10
+
 # Developer agent — JARVIS self-improvement
 developer:
   enabled: true
