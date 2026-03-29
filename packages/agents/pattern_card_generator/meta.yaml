@@ -1,0 +1,6 @@
+name: pattern_card_generator
+description: Generate visual pattern cards from Obsidian patterns for workshop facilitation
+command: /pattern-cards
+max_iterations: 15
+tools:
+  - card_generator
