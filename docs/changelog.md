@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Pattern Card Generator** (`/pattern-cards`): New agent that generates visual "playing cards" from Obsidian pattern notes for workshop facilitation. Parses pattern frontmatter and markdown sections, renders cards as HTML/CSS + PNG via WeasyPrint. Cards show pattern name, category, intent, problem/solution summary, and related patterns with category-based color coding. Supports user-provided images or renders gradient placeholders. Output: individual card files in `data/pattern-cards/cards/`. Config: `pattern_cards` section in `default.yaml`. Dependencies: `weasyprint`, `jinja2`. 36 unit tests.
+
 ### Fixed
 - **LiteLLM Security Pin**: Pinned `litellm>=1.82,<1.82.7` to block supply-chain-compromised versions 1.82.7-1.82.8 (TeamPCP attack, March 24 2026).
 - **Tool Result Trimming in Main Loop**: Extended `trim_tool_results()` to the main JARVIS conversation loop (previously only applied to delegate sessions). Reduces cumulative tool-related input tokens by ~88% in long sessions, addressing the primary cost driver for token accumulation.
