@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Pattern Card Generator** (`/pattern-cards`): New agent that generates visual "playing cards" from Obsidian pattern notes for workshop facilitation. Parses pattern frontmatter and markdown sections, renders cards as HTML/CSS + PNG via WeasyPrint. Cards show pattern name, category, intent, problem/solution summary, and related patterns with category-based color coding. Supports user-provided images or renders gradient placeholders. Output: individual card files in `data/pattern-cards/cards/`. Config: `pattern_cards` section in `default.yaml`. Dependencies: `weasyprint`, `jinja2`. 36 unit tests.
+- **Pattern Card Generator** (`/pattern-cards`): New agent that generates visual "playing cards" from Obsidian pattern notes for workshop facilitation. Parses pattern frontmatter and markdown sections, renders cards as HTML/CSS + PNG via WeasyPrint. Cards show pattern name, category, intent, problem/solution summary, and related patterns with category-based color coding. Two-track image support: Track A generates image prompts for manual use in Gemini/DALL-E (`generate_image_prompts` tool); Track B auto-generates images via litellm API (opt-in, `pattern_cards.image_generation.enabled: true`). Output: `data/pattern-cards/cards/`. Config: `pattern_cards` section in `default.yaml`. Dependencies: `weasyprint`, `jinja2`. 56 unit tests.
 
 ### Fixed
 - **LiteLLM Security Pin**: Pinned `litellm>=1.82,<1.82.7` to block supply-chain-compromised versions 1.82.7-1.82.8 (TeamPCP attack, March 24 2026).
