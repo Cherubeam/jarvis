@@ -3,10 +3,15 @@ Pattern card renderer for JARVIS.
 
 Parses Obsidian pattern notes and renders them as visual cards
 (HTML/CSS + PNG via WeasyPrint) for workshop facilitation.
+
+Phase 2 adds image generation:
+- Track A: build_image_prompt() + export_image_prompts() for manual use
+- Track B: generate_pattern_image() via litellm API (opt-in)
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +19,8 @@ from pathlib import Path
 from jinja2 import Template
 
 from packages.core.context_builder import parse_frontmatter
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -476,3 +483,180 @@ def generate_card_files(
     render_card_to_png(html_content, png_path)
 
     return {"html": html_path, "png": png_path}
+
+
+# ---------------------------------------------------------------------------
+# Image prompt generation (Track A — manual)
+# ---------------------------------------------------------------------------
+
+# Map categories to visual palette descriptions for consistent image style
+_CATEGORY_PALETTE: dict[str, str] = {
+    "reasoning & planning": "deep blues and silver, geometric precision, crystalline structures",
+    "knowledge & retrieval": "emerald greens and gold, flowing information streams, library motifs",
+    "interaction & interface": "warm amber and copper, human silhouettes, bridge-like connections",
+    "reliability & safety": "crimson and steel grey, shields, fortress-like solidity",
+    "orchestration & architecture": "violet and indigo, interconnected nodes, constellation patterns",
+    "learning & adaptation": "coral pink and teal, organic growth spirals, neural branching",
+    "flow management": "ocean blue and white, water currents, smooth gradients",
+}
+
+_DEFAULT_PALETTE = "slate blue and warm grey, abstract geometric forms"
+
+
+def build_image_prompt(pattern: PatternData) -> str:
+    """Craft an image generation prompt from a pattern's content.
+
+    Produces a prompt suitable for Imagen, DALL-E, or Gemini image models.
+    Style: abstract conceptual illustration, no text in image.
+    """
+    palette = _CATEGORY_PALETTE.get(pattern.category.lower(), _DEFAULT_PALETTE)
+
+    # Build the core concept from available fields
+    concept_parts: list[str] = []
+    if pattern.intent:
+        concept_parts.append(pattern.intent)
+    elif pattern.problem:
+        concept_parts.append(_truncate(pattern.problem, 150))
+
+    concept = concept_parts[0] if concept_parts else pattern.name
+
+    return (
+        f"Abstract conceptual illustration representing '{pattern.name}'. "
+        f"The core idea: {concept} "
+        f"Visual style: modern, clean, abstract art with {palette}. "
+        f"No text, no letters, no words in the image. "
+        f"Minimalist composition with a single strong visual metaphor. "
+        f"Suitable as a card illustration at 1024x1024 resolution. "
+        f"Professional, polished, slightly futuristic aesthetic."
+    )
+
+
+def export_image_prompts(
+    patterns: list[PatternData],
+    output_path: Path,
+) -> Path:
+    """Write image generation prompts for all patterns to a markdown file.
+
+    The user can copy these prompts into Gemini UI or another image tool.
+    Returns the path to the written file.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines: list[str] = [
+        "# Pattern Card — Image Prompts",
+        "",
+        "Copy each prompt into your image generation tool (e.g. Gemini, DALL-E).",
+        f"Save the generated image as `data/pattern-cards/images/{{slug}}.png`.",
+        "",
+        "---",
+        "",
+    ]
+
+    for p in patterns:
+        if not p.name:
+            continue
+        slug = _slugify(p.name)
+        prompt = build_image_prompt(p)
+        lines.extend([
+            f"## {p.name}",
+            f"**Slug:** `{slug}`  ",
+            f"**Save as:** `images/{slug}.png`",
+            "",
+            f"> {prompt}",
+            "",
+            "---",
+            "",
+        ])
+
+    output_path.write_text("\n".join(lines), encoding="utf-8")
+    return output_path
+
+
+# ---------------------------------------------------------------------------
+# API image generation (Track B — opt-in)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ImageGenerationConfig:
+    """Configuration for API-based image generation."""
+
+    enabled: bool = False
+    model: str = "gemini/imagen-4.0-generate-001"
+    size: str = "1024x1024"
+    max_images_per_run: int = 10
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ImageGenerationConfig:
+        img_cfg = d.get("image_generation", {})
+        return cls(
+            enabled=img_cfg.get("enabled", False),
+            model=img_cfg.get("model", "gemini/imagen-4.0-generate-001"),
+            size=img_cfg.get("size", "1024x1024"),
+            max_images_per_run=img_cfg.get("max_images_per_run", 10),
+        )
+
+
+def generate_pattern_image(
+    pattern: PatternData,
+    images_dir: Path,
+    config: ImageGenerationConfig,
+    force: bool = False,
+) -> Path:
+    """Generate an image for a pattern using the litellm image generation API.
+
+    Args:
+        pattern: The pattern to generate an image for.
+        images_dir: Directory to save images in.
+        config: Image generation configuration.
+        force: If True, regenerate even if image already exists.
+
+    Returns:
+        Path to the generated image file.
+
+    Raises:
+        RuntimeError: If image generation fails or is not enabled.
+    """
+    if not config.enabled:
+        raise RuntimeError(
+            "Image generation is disabled. "
+            "Set pattern_cards.image_generation.enabled: true in local.yaml "
+            "and ensure GEMINI_API_KEY is set."
+        )
+
+    slug = _slugify(pattern.name)
+    output_path = images_dir / f"{slug}.png"
+
+    # Cache check — skip if image already exists
+    if output_path.is_file() and not force:
+        logger.info("Image already exists for '%s', skipping.", pattern.name)
+        return output_path
+
+    import litellm
+
+    prompt = build_image_prompt(pattern)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    response = litellm.image_generation(
+        model=config.model,
+        prompt=prompt,
+        size=config.size,
+        n=1,
+    )
+
+    # Extract image data — litellm returns URL or base64
+    image_data = response.data[0]
+
+    if hasattr(image_data, "b64_json") and image_data.b64_json:
+        import base64
+        img_bytes = base64.b64decode(image_data.b64_json)
+        output_path.write_bytes(img_bytes)
+    elif hasattr(image_data, "url") and image_data.url:
+        import httpx
+        resp = httpx.get(image_data.url, timeout=60)
+        resp.raise_for_status()
+        output_path.write_bytes(resp.content)
+    else:
+        raise RuntimeError(f"Unexpected image response format: {image_data}")
+
+    logger.info("Generated image for '%s' at %s", pattern.name, output_path)
+    return output_path
