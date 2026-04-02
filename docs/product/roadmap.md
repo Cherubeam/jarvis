@@ -209,6 +209,20 @@ Opt-in semantic search over the Obsidian vault via the external Cortex service (
 
 Further Cortex evolution (Readwise, Zotero, MCP, Inbox Processor) is tracked in the [`cherubeam/cortex` roadmap](https://github.com/Cherubeam/cortex/blob/main/docs/roadmap.md).
 
+### 5I: Pattern Card Generator
+
+**Status**: ✅ Complete
+
+Visual card generator for workshop facilitation — turns Obsidian pattern notes into playing-card-style PNG/HTML cards.
+
+- [x] `card_renderer.py` — pattern parser, HTML/CSS templates, WeasyPrint PNG rendering
+- [x] `card_generator_tools.py` — `generate_card`, `generate_deck`, `generate_image_prompts` tools
+- [x] Pattern Card Generator agent (`/pattern-cards`) with 15-iteration agentic loop
+- [x] Two-track image support: Track A (manual prompts for Gemini UI), Track B (API via litellm, opt-in)
+- [x] Category-based color coding, poker-card proportions (750x1050px)
+- [x] `pattern_cards` config section in `default.yaml`
+- [x] 56 unit tests
+
 ### 5B: Agent Orchestration
 
 - [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)

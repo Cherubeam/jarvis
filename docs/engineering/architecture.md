@@ -319,6 +319,7 @@ cortex:
 - `executor.py`: `execute_tool_calls()` — runs tool calls from LLM, returns formatted result messages
 - `web_fetch.py`: `FETCH_URL_TOOL` singleton — fetches URLs with `httpx`, extracts text with `trafilatura`
 - `blog_tools.py`: `make_blog_tools()` factory — scoped blog post tools for the Writing Agent (list, read, create, edit)
+- `card_generator_tools.py`: `make_card_generator_tools()` factory — pattern card tools (generate_card, generate_deck, generate_image_prompts) for the Pattern Card Generator agent
 - `vault_write_tools.py`: `make_vault_write_tools()` factory — generic vault write tools (create_note, edit_note, list_notes_in_dir) for any agent
 - `codebase_tools.py`: `read_source_file`, `search_code`, `list_directory`, `read_architecture_map` — read-only codebase introspection tools for the Developer Agent
 - `git_tools.py`: `git_status`, `git_diff`, `git_branch`, `git_add`, `git_commit`, `git_log` — git operations with branch-prefix enforcement and `[JARVIS-auto]` commit tagging
@@ -608,6 +609,7 @@ jarvis/
 │   │   ├── events.py               # Typed event dataclasses (Phase 6A)
 │   │   ├── app.py                  # Shared bootstrap (config, init)
 │   │   ├── filesystem_access.py    # Filesystem access control (FilesystemGuard)
+│   │   ├── card_renderer.py         # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
 │   │   │   ├── indexer.py          # ConversationIndexer
@@ -620,6 +622,7 @@ jarvis/
 │   │   │   ├── delegate.py             # delegate_to_agent tool
 │   │   │   ├── vault_read_tools.py     # Obsidian vault read tools (read_note, search_notes, read_daily_note)
 │   │   │   ├── blog_tools.py           # make_blog_tools() for Writing Agent
+│   │   │   ├── card_generator_tools.py # make_card_generator_tools() for Pattern Card Generator
 │   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
 │   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
 │   │   │   ├── git_tools.py            # git_status, git_diff, git_branch, git_add, git_commit, git_log
@@ -658,6 +661,9 @@ jarvis/
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
+│   │   ├── pattern_card_generator/ # Data-driven agent (/pattern-cards)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── researcher/             # Data-driven agent (/research)

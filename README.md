@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Strategyzer, Developer)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -152,6 +152,7 @@ During a chat session, you can use slash commands:
 /tactics                Enters Tactics Coach agent session (Pip Decks coaching)
 /okr-architect          Enters OKR Architect agent session
 /pattern-language-expert  Enters Pattern Language Expert session
+/pattern-cards          Enters Pattern Card Generator session (visual cards from patterns)
 /strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
 /develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary [date]   Generates an Obsidian daily note summary (default: today)
@@ -226,6 +227,7 @@ jarvis/
 │   │   ├── app.py                      # Shared bootstrap (load_config, init_llm_client, etc.)
 │   │   ├── events.py                   # Typed event dataclasses for streaming decoupling
 │   │   ├── filesystem_access.py        # Filesystem access control (FilesystemGuard)
+│   │   ├── card_renderer.py             # Pattern card rendering (HTML/PNG via WeasyPrint)
 │   │   ├── benchmark_costs.py          # Benchmark cost estimation
 │   │   ├── importers/                  # Conversation importers (ChatGPT, Claude)
 │   │   ├── rag/                        # Conversation recall (optional, ChromaDB)
@@ -240,6 +242,7 @@ jarvis/
 │   │       ├── vault_read_tools.py     # Obsidian vault read tools
 │   │       ├── vault_write_tools.py    # Obsidian vault write tools (scoped per agent)
 │   │       ├── blog_tools.py           # Blog management tools
+│   │       ├── card_generator_tools.py # Pattern card generator tools
 │   │       ├── codebase_tools.py       # Codebase analysis tools
 │   │       └── git_tools.py            # Git operations tools
 │   ├── agents/                         # Agent implementations
@@ -258,6 +261,7 @@ jarvis/
 │   │   ├── okr_architect/              # OKR Architect
 │   │   ├── obsidian_note_creator/      # Obsidian Note Creator
 │   │   ├── pattern_language_expert/    # Pattern Language Expert
+│   │   ├── pattern_card_generator/    # Pattern Card Generator (visual cards)
 │   │   └── developer/                 # Developer agent (git sandbox, code tools)
 │   ├── skills/                         # Skills (passive knowledge packs for card indexing)
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)

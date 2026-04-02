@@ -2078,3 +2078,35 @@ GET /status
 ---
 
 *Last updated: 2026-03-20*
+
+---
+
+## ADR-030: Pattern Card Generator — WeasyPrint and Two-Track Image Generation
+
+**Date**: 2026-04-02
+
+### Context
+
+JARVIS stores pattern language patterns as rich markdown notes in Obsidian. Users need visual "playing cards" from these patterns for workshop facilitation — both virtual (Miro, presentations) and physical (printed). This requires HTML-to-image rendering and optional AI image generation.
+
+### Decision
+
+**Rendering: WeasyPrint over Playwright.** Playwright would add ~200MB of Chromium binaries, require a post-install step (`playwright install chromium`), and is slow for simple card layouts. WeasyPrint is a pure-Python HTML/CSS-to-PNG/PDF renderer with no browser dependency. It handles the card layout (fixed dimensions, category colors, text truncation) without CSS3 features that would require a full browser engine.
+
+**Images: Two-track approach.** Track A (default) generates image prompts to a markdown file for manual use in Gemini UI — zero cost, works immediately with the user's existing Google AI Pro subscription. Track B (opt-in) uses `litellm.image_generation()` for automated generation via the Gemini API. This avoids forcing API billing setup as a prerequisite.
+
+**Module structure: flat.** A single `card_renderer.py` module contains the parser, templates (as string constants), and rendering functions. No nested `card_renderer/` package — consistent with the flat structure of `packages/core/`.
+
+**Config reuse.** The patterns directory is already configured at `obsidian.writing.patterns.target_dir`. The card generator reads from there rather than duplicating the path in a separate config section.
+
+### Consequences
+
+- ✅ No heavy binary dependencies (WeasyPrint is pip-installable)
+- ✅ Users can start generating cards immediately without API keys
+- ✅ Image generation is cost-controlled and opt-in
+- ⚠️ WeasyPrint has limited CSS3 support (no flexbox) — card layouts use block/inline positioning
+- ⚠️ litellm version pin may need bumping for Gemini image generation support
+
+### Related ADRs
+- Relates to: ADR-017 (Skills Framework — pattern card generator is an agent, not a skill)
+- Relates to: ADR-027 (Vault Write Routing — card generator is read-only, no vault writes needed)
