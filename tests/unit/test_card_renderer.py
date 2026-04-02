@@ -2,9 +2,14 @@
 
 import pytest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from packages.core.card_renderer import (
+    ImageGenerationConfig,
     PatternData,
+    build_image_prompt,
+    export_image_prompts,
+    generate_pattern_image,
     parse_pattern,
     list_vault_patterns,
     render_card_html,
@@ -298,3 +303,177 @@ class TestRenderCardBack:
         assert "Pattern" in html
         assert "Language" in html
         assert "card-back" in html
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Image prompt generation
+# ---------------------------------------------------------------------------
+
+class TestBuildImagePrompt:
+    def test_includes_pattern_name(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "Chain-of-Thought" in prompt
+
+    def test_includes_intent(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "show its work" in prompt
+
+    def test_no_text_instruction(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "No text" in prompt
+
+    def test_uses_category_palette(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        # "Reasoning & Planning" maps to "deep blues and silver"
+        assert "deep blues" in prompt
+
+    def test_fallback_palette_for_unknown_category(self):
+        p = PatternData(name="Test", category="Unknown Category")
+        prompt = build_image_prompt(p)
+        assert "slate blue" in prompt
+
+    def test_uses_problem_when_no_intent(self):
+        p = PatternData(name="Test", problem="Something is broken.")
+        prompt = build_image_prompt(p)
+        assert "broken" in prompt
+
+    def test_uses_name_when_no_intent_or_problem(self):
+        p = PatternData(name="Bare Pattern")
+        prompt = build_image_prompt(p)
+        assert "Bare Pattern" in prompt
+
+
+class TestExportImagePrompts:
+    def test_writes_file(self, tmp_path):
+        patterns = [parse_pattern(FULL_PATTERN)]
+        output = tmp_path / "prompts.md"
+        result = export_image_prompts(patterns, output)
+        assert result == output
+        assert output.is_file()
+
+    def test_contains_pattern_heading(self, tmp_path):
+        patterns = [parse_pattern(FULL_PATTERN)]
+        output = tmp_path / "prompts.md"
+        export_image_prompts(patterns, output)
+        content = output.read_text()
+        assert "## Chain-of-Thought" in content
+
+    def test_contains_slug(self, tmp_path):
+        patterns = [parse_pattern(FULL_PATTERN)]
+        output = tmp_path / "prompts.md"
+        export_image_prompts(patterns, output)
+        content = output.read_text()
+        assert "chain-of-thought" in content
+
+    def test_contains_prompt_text(self, tmp_path):
+        patterns = [parse_pattern(FULL_PATTERN)]
+        output = tmp_path / "prompts.md"
+        export_image_prompts(patterns, output)
+        content = output.read_text()
+        assert "Abstract conceptual illustration" in content
+
+    def test_skips_nameless_patterns(self, tmp_path):
+        patterns = [PatternData(name=""), PatternData(name="Valid")]
+        output = tmp_path / "prompts.md"
+        export_image_prompts(patterns, output)
+        content = output.read_text()
+        assert "## Valid" in content
+        assert content.count("## ") == 1  # only one pattern heading
+
+    def test_multiple_patterns(self, tmp_path):
+        patterns = [
+            parse_pattern(FULL_PATTERN),
+            parse_pattern(MINIMAL_PATTERN),
+        ]
+        output = tmp_path / "prompts.md"
+        export_image_prompts(patterns, output)
+        content = output.read_text()
+        assert "Chain-of-Thought" in content
+        assert "Simple Pattern" in content
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: ImageGenerationConfig
+# ---------------------------------------------------------------------------
+
+class TestImageGenerationConfig:
+    def test_defaults(self):
+        cfg = ImageGenerationConfig()
+        assert cfg.enabled is False
+        assert "imagen" in cfg.model
+        assert cfg.max_images_per_run == 10
+
+    def test_from_dict_empty(self):
+        cfg = ImageGenerationConfig.from_dict({})
+        assert cfg.enabled is False
+
+    def test_from_dict_enabled(self):
+        d = {"image_generation": {"enabled": True, "model": "gemini/test-model", "size": "512x512"}}
+        cfg = ImageGenerationConfig.from_dict(d)
+        assert cfg.enabled is True
+        assert cfg.model == "gemini/test-model"
+        assert cfg.size == "512x512"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: API image generation (mocked)
+# ---------------------------------------------------------------------------
+
+class TestGeneratePatternImage:
+    def test_raises_when_disabled(self, tmp_path):
+        p = parse_pattern(FULL_PATTERN)
+        cfg = ImageGenerationConfig(enabled=False)
+        with pytest.raises(RuntimeError, match="disabled"):
+            generate_pattern_image(p, tmp_path, cfg)
+
+    def test_skips_when_cached(self, tmp_path):
+        p = parse_pattern(FULL_PATTERN)
+        cfg = ImageGenerationConfig(enabled=True)
+        # Pre-create the cached image
+        (tmp_path / "chain-of-thought.png").write_bytes(b"fake image")
+
+        result = generate_pattern_image(p, tmp_path, cfg)
+        assert result == tmp_path / "chain-of-thought.png"
+
+    def test_force_regenerates(self, tmp_path):
+        p = parse_pattern(FULL_PATTERN)
+        cfg = ImageGenerationConfig(enabled=True)
+        (tmp_path / "chain-of-thought.png").write_bytes(b"old image")
+
+        mock_image = MagicMock()
+        mock_image.b64_json = None
+        mock_image.url = "https://example.com/image.png"
+        mock_response = MagicMock()
+        mock_response.data = [mock_image]
+
+        mock_httpx_response = MagicMock()
+        mock_httpx_response.content = b"new image data"
+
+        with patch("litellm.image_generation", return_value=mock_response), \
+             patch("httpx.get", return_value=mock_httpx_response):
+            result = generate_pattern_image(p, tmp_path, cfg, force=True)
+
+        assert result == tmp_path / "chain-of-thought.png"
+        assert (tmp_path / "chain-of-thought.png").read_bytes() == b"new image data"
+
+    def test_handles_b64_response(self, tmp_path):
+        import base64
+        p = parse_pattern(FULL_PATTERN)
+        cfg = ImageGenerationConfig(enabled=True)
+
+        fake_b64 = base64.b64encode(b"png image bytes").decode()
+        mock_image = MagicMock()
+        mock_image.b64_json = fake_b64
+        mock_image.url = None
+        mock_response = MagicMock()
+        mock_response.data = [mock_image]
+
+        with patch("litellm.image_generation", return_value=mock_response):
+            result = generate_pattern_image(p, tmp_path, cfg)
+
+        assert result == tmp_path / "chain-of-thought.png"
+        assert (tmp_path / "chain-of-thought.png").read_bytes() == b"png image bytes"
