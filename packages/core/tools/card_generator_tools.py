@@ -8,19 +8,22 @@ from Obsidian vault notes. Uses the closure pattern to capture config.
 from pathlib import Path
 
 from packages.core.card_renderer import (
+    ImageGenerationConfig,
+    export_image_prompts,
     generate_card_files,
+    generate_pattern_image,
     list_vault_patterns,
-    parse_pattern,
     _slugify,
 )
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.vault import VaultConfig, read_note
+from packages.integrations.obsidian.vault import VaultConfig
 
 
 def make_card_generator_tools(
     vault_config: VaultConfig,
     patterns_dir: str,
     output_dir: Path,
+    image_config: ImageGenerationConfig | None = None,
 ) -> list[ToolDefinition]:
     """Create pattern card generator tools.
 
@@ -28,35 +31,52 @@ def make_card_generator_tools(
         vault_config: Vault configuration with path validation.
         patterns_dir: Patterns directory relative to vault root.
         output_dir: Directory for generated card files (absolute).
+        image_config: Optional image generation configuration.
 
     Returns:
-        List of 2 ToolDefinitions: generate_card, generate_deck.
+        List of 3 ToolDefinitions: generate_card, generate_deck, generate_image_prompts.
     """
     images_dir = output_dir / "images"
+    img_cfg = image_config or ImageGenerationConfig()
+
+    def _find_pattern(pattern_name: str):
+        """Find a pattern by name (case-insensitive). Returns (pattern, error_msg)."""
+        patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
+        for p in patterns:
+            if p.name.lower() == pattern_name.lower():
+                return p, None
+        available = ", ".join(p.name for p in patterns) if patterns else "(none found)"
+        return None, f"Error: Pattern '{pattern_name}' not found. Available: {available}"
 
     # --- generate_card ---
 
-    def _generate_card(pattern_name: str) -> str:
-        patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
-        match = None
-        for p in patterns:
-            if p.name.lower() == pattern_name.lower():
-                match = p
-                break
-
-        if not match:
-            available = ", ".join(p.name for p in patterns) if patterns else "(none found)"
-            return f"Error: Pattern '{pattern_name}' not found. Available: {available}"
+    def _generate_card(pattern_name: str, include_image: bool = False) -> str:
+        match, err = _find_pattern(pattern_name)
+        if err:
+            return err
 
         if not match.name:
             return f"Error: Pattern at '{match.source_path}' has no name in frontmatter."
 
+        # Optionally generate image via API first
+        if include_image and img_cfg.enabled:
+            try:
+                generate_pattern_image(match, images_dir, img_cfg)
+            except Exception as e:
+                return f"Error generating image for '{match.name}': {e}"
+        elif include_image and not img_cfg.enabled:
+            return (
+                "Image generation via API is disabled. Either:\n"
+                "1. Use `generate_image_prompts` to get prompts for manual image creation, or\n"
+                "2. Enable API generation in config: pattern_cards.image_generation.enabled: true"
+            )
+
         try:
             files = generate_card_files(match, output_dir, images_dir=images_dir)
             slug = _slugify(match.name)
-            has_image = (images_dir / f"{slug}.png").is_file() or any(
+            has_image = any(
                 (images_dir / f"{slug}{ext}").is_file()
-                for ext in (".jpg", ".jpeg", ".webp")
+                for ext in (".png", ".jpg", ".jpeg", ".webp")
             )
             image_status = "with image" if has_image else "without image (placeholder used)"
             return (
@@ -71,7 +91,8 @@ def make_card_generator_tools(
         name="generate_card",
         description=(
             "Generate a visual pattern card (PNG + HTML) from an Obsidian pattern note. "
-            "Provide the pattern name exactly as it appears in the vault."
+            "Set include_image=true to generate an AI image via API (requires config). "
+            "If images exist in data/pattern-cards/images/, they are used automatically."
         ),
         parameters={
             "type": "object",
@@ -79,6 +100,10 @@ def make_card_generator_tools(
                 "pattern_name": {
                     "type": "string",
                     "description": "The name of the pattern to generate a card for.",
+                },
+                "include_image": {
+                    "type": "boolean",
+                    "description": "If true, generate an AI image via API before rendering the card. Requires image generation to be enabled in config.",
                 },
             },
             "required": ["pattern_name"],
@@ -88,7 +113,7 @@ def make_card_generator_tools(
 
     # --- generate_deck ---
 
-    def _generate_deck(category: str = "") -> str:
+    def _generate_deck(category: str = "", include_images: bool = False) -> str:
         patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
 
         if not patterns:
@@ -101,6 +126,32 @@ def make_card_generator_tools(
             ]
             if not patterns:
                 return f"No patterns found in category '{category}'."
+
+        # Image generation via API (Track B)
+        if include_images and img_cfg.enabled:
+            image_count = 0
+            image_errors: list[str] = []
+            for p in patterns:
+                if not p.name or image_count >= img_cfg.max_images_per_run:
+                    break
+                slug = _slugify(p.name)
+                # Skip if image already exists
+                if any(
+                    (images_dir / f"{slug}{ext}").is_file()
+                    for ext in (".png", ".jpg", ".jpeg", ".webp")
+                ):
+                    continue
+                try:
+                    generate_pattern_image(p, images_dir, img_cfg)
+                    image_count += 1
+                except Exception as e:
+                    image_errors.append(f"  {p.name}: {e}")
+        elif include_images and not img_cfg.enabled:
+            return (
+                "Image generation via API is disabled. Either:\n"
+                "1. Use `generate_image_prompts` to get prompts for manual image creation, or\n"
+                "2. Enable API generation in config: pattern_cards.image_generation.enabled: true"
+            )
 
         results: list[str] = []
         errors: list[str] = []
@@ -128,7 +179,7 @@ def make_card_generator_tools(
         name="generate_deck",
         description=(
             "Generate visual cards (PNG + HTML) for all patterns in the vault, "
-            "or filtered by category. Cards are saved to the pattern-cards output directory."
+            "or filtered by category. Set include_images=true to generate AI images via API."
         ),
         parameters={
             "type": "object",
@@ -137,10 +188,60 @@ def make_card_generator_tools(
                     "type": "string",
                     "description": "Optional category filter. Only patterns in this category will be generated. Leave empty for all.",
                 },
+                "include_images": {
+                    "type": "boolean",
+                    "description": "If true, generate AI images via API for patterns that don't already have images.",
+                },
             },
             "required": [],
         },
         execute=_generate_deck,
     )
 
-    return [generate_card_tool, generate_deck_tool]
+    # --- generate_image_prompts (Track A) ---
+
+    def _generate_image_prompts(category: str = "") -> str:
+        patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
+
+        if not patterns:
+            return "No patterns found in the vault."
+
+        if category:
+            patterns = [
+                p for p in patterns
+                if p.category.lower() == category.lower()
+            ]
+            if not patterns:
+                return f"No patterns found in category '{category}'."
+
+        prompts_path = output_dir / "image-prompts.md"
+        export_image_prompts(patterns, prompts_path)
+
+        return (
+            f"Generated image prompts for {len(patterns)} pattern(s).\n"
+            f"File: {prompts_path}\n\n"
+            "Copy each prompt into Gemini or another image tool, "
+            "then save the image as data/pattern-cards/images/{slug}.png"
+        )
+
+    generate_prompts_tool = ToolDefinition(
+        name="generate_image_prompts",
+        description=(
+            "Generate image creation prompts for all patterns (or filtered by category). "
+            "Writes prompts to a markdown file for manual use in Gemini, DALL-E, etc. "
+            "Use this when API image generation is not available."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Optional category filter. Leave empty for all patterns.",
+                },
+            },
+            "required": [],
+        },
+        execute=_generate_image_prompts,
+    )
+
+    return [generate_card_tool, generate_deck_tool, generate_prompts_tool]

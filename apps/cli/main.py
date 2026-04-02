@@ -797,14 +797,18 @@ def main(argv: list[str] | None = None):
         if patterns_dir:
             try:
                 from packages.core.tools.card_generator_tools import make_card_generator_tools
+                from packages.core.card_renderer import ImageGenerationConfig
 
                 card_cfg = config.get("pattern_cards", {})
                 card_output = jarvis_dir / card_cfg.get("output_dir", "data/pattern-cards")
+                img_config = ImageGenerationConfig.from_dict(card_cfg)
                 card_gen_tools = make_card_generator_tools(
                     vault_config, patterns_dir, card_output,
+                    image_config=img_config,
                 )
                 tool_groups["card_generator"] = card_gen_tools
-                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded.")
+                img_status = "enabled" if img_config.enabled else "prompts only"
+                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status}).")
             except Exception as e:
                 print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
 

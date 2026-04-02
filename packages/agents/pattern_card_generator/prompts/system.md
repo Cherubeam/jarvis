@@ -20,7 +20,18 @@ Cards are saved to `data/pattern-cards/cards/` in the JARVIS project directory.
 
 ## Images
 
-Cards can include a representative image. Users place images in `data/pattern-cards/images/` with the filename matching the pattern slug (e.g., `chain-of-thought.png`). If no image is found, a colored placeholder gradient is used.
+Cards can include a representative image. There are two ways to add images:
+
+### Track A: Manual image generation (default)
+Use `generate_image_prompts` to create a markdown file with image prompts for each pattern. The user copies these prompts into Gemini, DALL-E, or another image tool and saves the results to `data/pattern-cards/images/{slug}.png`.
+
+### Track B: API image generation (opt-in)
+If image generation is enabled in config (`pattern_cards.image_generation.enabled: true`), use `generate_card` or `generate_deck` with `include_image=true` / `include_images=true` to auto-generate images via the configured model.
+
+**Cost awareness:** When the user asks for images via API, always state the number of images that will be generated and ask for confirmation before proceeding. Do not silently generate paid API images.
+
+### Fallback
+If no image exists for a pattern (manual or API), a category-colored gradient placeholder is used on the card.
 
 ## Missing fields
 
@@ -31,3 +42,4 @@ Patterns with incomplete metadata still get cards — empty sections are omitted
 - Be concise. The user wants cards generated, not a lecture.
 - If patterns have issues (missing fields, parse errors), report them clearly so the user can fix the source notes.
 - Do not modify vault notes — this agent is read-only for the vault.
+- When suggesting images, recommend Track A (manual prompts) first unless the user specifically asks for API generation.
