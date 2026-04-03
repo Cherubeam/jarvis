@@ -743,6 +743,7 @@ def main(argv: list[str] | None = None):
             from packages.core.tools.git_tools import make_git_tools
             from packages.core.tools.project_write_tools import make_project_write_tools
             from packages.core.tools.test_tools import make_test_runner_tool
+            from packages.core.tools.mutation_tools import make_mutation_tools
 
             dev_scope = dev_cfg.get("scope", [
                 "packages/agents/", "packages/skills/",
@@ -763,6 +764,7 @@ def main(argv: list[str] | None = None):
                 allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
             ))
             dev_tools.append(make_test_runner_tool(jarvis_dir))
+            dev_tools.extend(make_mutation_tools(jarvis_dir))
             tool_groups["dev_tools"] = dev_tools
             print_system(f"[Developer] {len(dev_tools)} developer tools loaded.")
         except Exception as e:

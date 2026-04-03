@@ -17,6 +17,7 @@
 - [x] Automatic cost fallback via LiteLLM pricing
 - [x] Testing framework setup (pytest, coverage, fixtures)
 - [x] Comprehensive test suite (run `uv run pytest` for current counts)
+- [x] Mutation testing via mutmut (test quality auditing)
 - [x] 8 golden test conversations defined
 
 ---

@@ -92,7 +92,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Obsidian Integration**: Generate daily note summaries from conversation history
 - **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses
-- **Comprehensive Testing**: Automated test suite with high code coverage
+- **Comprehensive Testing**: Automated test suite with high code coverage + mutation testing via mutmut
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 - **Conversation Import**: Import ChatGPT and Claude exports into Jarvis format
 
@@ -424,7 +424,7 @@ This project demonstrates several things I value as an engineer:
 - **Vector DB**: ChromaDB (optional, for conversation recall / RAG)
 - **HTTP**: httpx + trafilatura (web fetch tool)
 - **Configuration**: YAML + environment variables
-- **Testing**: pytest ([details](docs/engineering/testing.md))
+- **Testing**: pytest + mutmut ([details](docs/engineering/testing.md))
 - **Package Management**: uv (fast Python package installer)
 
 ## Contributing

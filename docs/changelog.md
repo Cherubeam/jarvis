@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mutation Testing**: Integrated mutmut for mutation testing to identify weak, redundant, or missing tests. Two developer agent tools (`run_mutation_tests`, `show_mutation_results`) wrap mutmut CLI for LLM-assisted analysis. Also usable directly via `uv run mutmut run --paths-to-mutate <module>`. Configured in `[tool.mutmut]` in pyproject.toml with fast-fail runner (`-x --tb=no -q`). 19 unit tests.
 - **Pattern Card Generator** (`/pattern-cards`): New agent that generates visual "playing cards" from Obsidian pattern notes for workshop facilitation. Parses pattern frontmatter and markdown sections, renders cards as HTML/CSS + PNG via WeasyPrint. Cards show pattern name, category, intent, problem/solution summary, and related patterns with category-based color coding. Two-track image support: Track A generates image prompts for manual use in Gemini/DALL-E (`generate_image_prompts` tool); Track B auto-generates images via litellm API (opt-in, `pattern_cards.image_generation.enabled: true`). Output: `data/pattern-cards/cards/`. Config: `pattern_cards` section in `default.yaml`. Dependencies: `weasyprint`, `jinja2`. 56 unit tests.
 
 ### Fixed

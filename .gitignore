@@ -44,6 +44,7 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+.mutmut-cache
 tests/golden/results/
 
 # Personal voice profile

@@ -44,6 +44,7 @@
 - ✅ pytest-xdist for parallel execution
 - ✅ respx for HTTP mocking
 - ✅ freezegun for time mocking
+- ✅ mutmut for mutation testing
 
 **Test Structure:**
 ```
@@ -129,6 +130,19 @@ uv run pytest tests/golden/ --evaluate -v
 
 # View coverage
 open htmlcov/index.html
+
+# Mutation testing — find weak or redundant tests
+# First set paths_to_mutate in pyproject.toml to target a specific module,
+# then run (mutmut 3.x reads config from pyproject.toml, no CLI path flags):
+uv run mutmut run
+
+# View mutation results summary
+uv run mutmut results
+
+# Inspect a specific surviving mutant
+uv run mutmut show <mutant_name>
+
+# See the full report: docs/engineering/mutation-testing-report.md
 ```
 
 See [tests/README.md](../../tests/README.md) and [tests/golden/README.md](../../tests/golden/README.md) for complete guides.

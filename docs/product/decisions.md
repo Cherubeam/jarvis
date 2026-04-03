@@ -2110,3 +2110,50 @@ JARVIS stores pattern language patterns as rich markdown notes in Obsidian. User
 ### Related ADRs
 - Relates to: ADR-017 (Skills Framework — pattern card generator is an agent, not a skill)
 - Relates to: ADR-027 (Vault Write Routing — card generator is read-only, no vault writes needed)
+
+---
+
+## ADR-031: Mutation Testing via mutmut
+
+**Date**: 2026-04-03
+**Status**: ✅ Accepted
+
+### Context
+
+JARVIS has 1094+ tests with 97.5% coverage on core modules. High coverage is necessary but not sufficient — it doesn't reveal whether assertions are meaningful or if tests would catch real bugs. We need a way to audit test quality systematically and identify weak, redundant, or missing tests.
+
+### Decision
+
+Use **mutmut** as the mutation testing tool, integrated as a dev dependency and exposed through both direct CLI usage and developer agent tools.
+
+### Alternatives Considered
+
+1. **cosmic-ray**
+   - ✅ More mutation operators (9 types)
+   - ❌ Complex multi-step workflow (init → exec → report)
+   - ❌ Steeper learning curve, more configuration
+
+2. **pytest-gremlins**
+   - ✅ Fastest, native pytest plugin
+   - ❌ Least mature, limited mutation operators
+   - ❌ Smaller community and ecosystem
+
+3. **mutatest**
+   - ✅ Doesn't modify source (only `__pycache__`)
+   - ❌ Less ecosystem adoption
+   - ❌ Weaker reporting than mutmut
+
+### Consequences
+
+**Benefits:**
+- ✅ Simple CLI with excellent caching (SQLite `.mutmut-cache` for incremental runs)
+- ✅ Module-by-module scoping via `--paths-to-mutate` keeps runs fast
+- ✅ Developer agent can analyze surviving mutants with LLM reasoning
+- ✅ Direct CLI usage requires zero JARVIS infrastructure
+
+**Drawbacks:**
+- ⚠️ Full-codebase mutation runs would take hours — must always target single files
+- ⚠️ Some mutations may be equivalent (semantically identical) producing false positives
+
+### Related ADRs
+- Relates to: ADR-028 (Developer Agent — mutation tools extend the dev_tools group)

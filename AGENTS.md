@@ -93,6 +93,12 @@ uv run pytest --cov=packages --cov=apps --cov-report=html
 
 # Unit tests only
 uv run pytest tests/unit/ -v
+
+# Mutation testing — find weak or redundant tests
+# Set paths_to_mutate in pyproject.toml to target a module, then:
+uv run mutmut run
+uv run mutmut results
+uv run mutmut show <mutant_name>
 ```
 
 Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](docs/engineering/testing.md) for test statistics, strategy, and the full command reference. See [tests/README.md](tests/README.md) for quick-reference test commands.

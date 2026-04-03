@@ -106,6 +106,24 @@ uv run pytest -x
 uv run pytest --lf
 ```
 
+### Mutation Testing
+
+```bash
+# Run mutation tests (set paths_to_mutate in pyproject.toml first)
+uv run mutmut run
+
+# View results summary (survived/killed/timeout counts)
+uv run mutmut results
+
+# Inspect a specific surviving mutant diff
+uv run mutmut show <mutant_name>
+
+# Re-run only untested/surviving mutants (incremental via .mutmut-cache)
+uv run mutmut run
+
+# See the full report: docs/engineering/mutation-testing-report.md
+```
+
 ### Debugging Options
 
 ```bash

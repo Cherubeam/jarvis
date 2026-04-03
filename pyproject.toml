@@ -30,6 +30,7 @@ test = [
     "pytest-xdist>=3.5.0",
     "respx>=0.21.0",
     "freezegun>=1.4.0",
+    "mutmut>=3.0.0",
 ]
 web = [
     "fastapi>=0.115.0",
@@ -62,6 +63,12 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
 ]
+
+[tool.mutmut]
+paths_to_mutate = ["packages/core/"]
+tests_dir = ["tests/"]
+runner = "uv run pytest -x --tb=no -q"
+also_copy = ["packages/", "apps/", "config/", "data/context/", "scripts/"]
 
 [build-system]
 requires = ["hatchling"]

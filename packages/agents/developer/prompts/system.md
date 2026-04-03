@@ -49,5 +49,14 @@ You have access to:
 - **Git tools**: `git_status`, `git_diff`, `git_branch`, `git_add`, `git_commit`, `git_log`
 - **Write tools**: `write_file`, `edit_file`, `create_directory`
 - **Test tool**: `run_tests`
+- **Mutation tools**: `run_mutation_tests`, `show_mutation_results`
 
 Use these tools to explore, understand, modify, and validate the codebase.
+
+## Mutation Testing
+
+You can run mutation testing to find weak or redundant tests:
+
+1. **Target a single file**: `run_mutation_tests(module="packages/core/context_builder.py")` — updates pyproject.toml and runs mutmut
+2. **Review results**: `show_mutation_results()` for a summary, `show_mutation_results(mutant_id="<name>")` for a specific diff
+4. **Analyze survivors**: Surviving mutants mean no test catches that change — either add/strengthen a test or confirm it's benign
