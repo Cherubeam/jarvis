@@ -55,25 +55,25 @@ def make_suggest_improvements_tool(
 
     return ToolDefinition(
         name="suggest_improvements",
-        description=(
-            "Show suggested improvements to a file as a colored diff — preview only, "
-            "nothing is written. Use this to propose concrete changes the user can "
-            "review and discuss before deciding to apply them."
+        description=(  # pragma: no mutate
+            "Show suggested improvements to a file as a colored diff — preview only, "  # pragma: no mutate
+            "nothing is written. Use this to propose concrete changes the user can "  # pragma: no mutate
+            "review and discuss before deciding to apply them."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",
+                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
                 },
                 "improved_content": {
                     "type": "string",
-                    "description": "The complete improved content for the file.",
+                    "description": "The complete improved content for the file.",  # pragma: no mutate
                 },
                 "reasoning": {
                     "type": "string",
-                    "description": "Explanation of what was changed and why (shown to user before the diff).",
+                    "description": "Explanation of what was changed and why (shown to user before the diff).",  # pragma: no mutate
                 },
             },
             "required": ["path", "improved_content"],

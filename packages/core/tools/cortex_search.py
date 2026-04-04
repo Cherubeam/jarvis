@@ -58,26 +58,26 @@ def make_cortex_search_tool(client: CortexClient) -> ToolDefinition:
 
     return ToolDefinition(
         name="search_vault_semantic",
-        description=(
-            "Search the Obsidian vault using semantic similarity (meaning-based, not keyword). "
-            "Use this to find notes by concept or topic, even when exact words don't match. "
-            "For exact filename or path searches, use search_notes instead."
+        description=(  # pragma: no mutate
+            "Search the Obsidian vault using semantic similarity (meaning-based, not keyword). "  # pragma: no mutate
+            "Use this to find notes by concept or topic, even when exact words don't match. "  # pragma: no mutate
+            "For exact filename or path searches, use search_notes instead."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Natural language query describing what to search for.",
+                    "description": "Natural language query describing what to search for.",  # pragma: no mutate
                 },
                 "n_results": {
                     "type": "integer",
-                    "description": "Number of results to return (default 5, max 20).",
+                    "description": "Number of results to return (default 5, max 20).",  # pragma: no mutate
                     "default": 5,
                 },
                 "path_prefix": {
                     "type": "string",
-                    "description": "Optional path prefix to filter results (e.g. 'Projects/' or 'Literature Notes/').",
+                    "description": "Optional path prefix to filter results (e.g. 'Projects/' or 'Literature Notes/').",  # pragma: no mutate
                 },
             },
             "required": ["query"],

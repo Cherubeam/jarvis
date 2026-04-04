@@ -68,33 +68,33 @@ def make_conversation_recall_tool(
 
     return ToolDefinition(
         name="recall_conversations",
-        description=(
-            "Search past conversations for relevant context. "
-            f"Today is {date.today().strftime('%A, %Y-%m-%d')}. "
-            "IMPORTANT: When the user asks about a time period "
-            "(this week, last month, yesterday, recently, etc.), "
-            "you MUST set date_from and/or date_to to restrict results to that period. "
-            "For broad queries like weekly summaries, request more results with n_results. "
-            "Returns excerpts from the most semantically similar past exchanges."
+        description=(  # pragma: no mutate
+            "Search past conversations for relevant context. "  # pragma: no mutate
+            f"Today is {date.today().strftime('%A, %Y-%m-%d')}. "  # pragma: no mutate
+            "IMPORTANT: When the user asks about a time period "  # pragma: no mutate
+            "(this week, last month, yesterday, recently, etc.), "  # pragma: no mutate
+            "you MUST set date_from and/or date_to to restrict results to that period. "  # pragma: no mutate
+            "For broad queries like weekly summaries, request more results with n_results. "  # pragma: no mutate
+            "Returns excerpts from the most semantically similar past exchanges."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "What to search for in past conversations.",
+                    "description": "What to search for in past conversations.",  # pragma: no mutate
                 },
                 "date_from": {
                     "type": "string",
-                    "description": "Optional start date filter (YYYY-MM-DD, inclusive).",
+                    "description": "Optional start date filter (YYYY-MM-DD, inclusive).",  # pragma: no mutate
                 },
                 "date_to": {
                     "type": "string",
-                    "description": "Optional end date filter (YYYY-MM-DD, inclusive).",
+                    "description": "Optional end date filter (YYYY-MM-DD, inclusive).",  # pragma: no mutate
                 },
                 "n_results": {
                     "type": "integer",
-                    "description": "Number of results to return (default 10, max 20).",
+                    "description": "Number of results to return (default 10, max 20).",  # pragma: no mutate
                     "default": 10,
                 },
             },
