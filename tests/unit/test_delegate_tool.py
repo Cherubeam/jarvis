@@ -43,7 +43,7 @@ class TestDelegateTool:
 
         assert state.agent_name == "writer"
         assert state.task == "Review my blog post"
-        assert "Delegating to writer" in result
+        assert result == "Delegating to writer agent."
 
     def test_execute_unknown_agent_returns_error(self):
         state = DelegationState()
@@ -53,8 +53,7 @@ class TestDelegateTool:
 
         assert state.agent_name is None
         assert state.task is None
-        assert "Unknown agent" in result
-        assert "writer" in result
+        assert result == "Unknown agent 'unknown'. Available: writer, researcher"
 
     def test_terminal_flag_is_true(self):
         state = DelegationState()

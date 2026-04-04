@@ -45,13 +45,29 @@ class TestExecuteToolCalls:
         assert results[0]["content"] == "Hello, Alice!"
 
     def test_unknown_tool_returns_error_string(self):
-        registry = _make_registry()
-        call = _make_tool_call("c2", "unknown_tool", {})
+        tool = ToolDefinition(
+            name="valid",
+            description="valid",
+            parameters={},
+            execute=lambda: "ok",
+        )
+        registry = _make_registry(tool)
+        calls = [
+            _make_tool_call("c2", "unknown_tool", {}),
+            _make_tool_call("c2b", "valid", {}),
+        ]
 
-        results = execute_tool_calls([call], registry)
+        results = execute_tool_calls(calls, registry)
 
-        assert results[0]["content"].startswith("Error: Unknown tool")
-        assert "unknown_tool" in results[0]["content"]
+        # Unknown tool produces error with tool name
+        assert len(results) == 2
+        assert results[0]["role"] == "tool"
+        assert results[0]["tool_call_id"] == "c2"
+        assert results[0]["content"] == "Error: Unknown tool 'unknown_tool'."
+        # Continue: remaining tools still execute after unknown tool error
+        assert results[1]["role"] == "tool"
+        assert results[1]["tool_call_id"] == "c2b"
+        assert results[1]["content"] == "ok"
 
     def test_exception_in_tool_returns_error_string(self):
         def bad_execute(**kwargs):
@@ -68,8 +84,11 @@ class TestExecuteToolCalls:
 
         results = execute_tool_calls([call], registry)
 
-        assert results[0]["content"].startswith("Error executing tool")
-        assert "boom" in results[0]["content"]
+        assert len(results) == 1
+        assert results[0]["role"] == "tool"
+        assert results[0]["tool_call_id"] == "c3"
+        assert results[0]["content"].startswith("Error executing tool 'bad': boom.")
+        assert "Do not retry" in results[0]["content"]
 
     def test_multiple_tool_calls_all_executed(self):
         tool = ToolDefinition(
@@ -87,7 +106,11 @@ class TestExecuteToolCalls:
         results = execute_tool_calls(calls, registry)
 
         assert len(results) == 2
+        assert results[0]["role"] == "tool"
+        assert results[0]["tool_call_id"] == "c4"
         assert results[0]["content"] == "6"
+        assert results[1]["role"] == "tool"
+        assert results[1]["tool_call_id"] == "c5"
         assert results[1]["content"] == "14"
 
     def test_arguments_as_dict_not_string(self):
@@ -124,7 +147,13 @@ class TestExecuteToolCalls:
         call = _make_tool_call("c7", "slow", {})
 
         with caplog.at_level(logging.INFO, logger="packages.core.tools.executor"):
-            execute_tool_calls([call], registry)
+            results = execute_tool_calls([call], registry)
 
+        assert results[0]["content"] == "done"
         assert "Tool slow executed in" in caplog.text
-        assert "ms" in caplog.text
+        # Verify log contains a reasonable elapsed_ms value (format: "X.Yms")
+        import re
+        match = re.search(r"executed in (\d+\.?\d*)ms", caplog.text)
+        assert match is not None, "Log should contain timing in ms"
+        elapsed = float(match.group(1))
+        assert 0.0 <= elapsed < 5000, f"Elapsed time {elapsed}ms should be reasonable"

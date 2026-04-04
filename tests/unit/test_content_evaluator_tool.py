@@ -89,15 +89,14 @@ class TestContentEvaluatorTool:
         tool.execute(content="My post", audience="Engineering managers")
 
         messages = mock_client.complete.call_args[0][0]
-        assert "Engineering managers" in messages[1]["content"]
+        assert messages[1]["content"] == "Target audience: Engineering managers\n\nMy post"
 
     def test_execute_handles_llm_failure(self, skill_dir, mock_client):
         mock_client.complete.side_effect = RuntimeError("API timeout")
         tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
 
         result = tool.execute(content="test")
-        assert "Content evaluation failed" in result
-        assert "API timeout" in result
+        assert result == "Content evaluation failed: API timeout"
 
     def test_execute_handles_empty_response(self, skill_dir, mock_client):
         mock_client.complete.return_value.choices[0].message.content = None
