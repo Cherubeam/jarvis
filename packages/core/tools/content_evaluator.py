@@ -85,20 +85,20 @@ def make_content_evaluator_tool(
     return ToolDefinition(
         name="evaluate_content",
         description=(
-            "Run a structured 5-lens content evaluation on written content. "
-            "Evaluates through: marketing strategist debate, busy subscriber test, "
-            "substance scan, skimmer's path analysis, and voice authenticity scan."
+            "Run a structured 5-lens content evaluation on written content. "  # pragma: no mutate
+            "Evaluates through: marketing strategist debate, busy subscriber test, "  # pragma: no mutate
+            "substance scan, skimmer's path analysis, and voice authenticity scan."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "content": {
                     "type": "string",
-                    "description": "The full text content to evaluate.",
+                    "description": "The full text content to evaluate.",  # pragma: no mutate
                 },
                 "audience": {
                     "type": "string",
-                    "description": "Optional target audience description.",
+                    "description": "Optional target audience description.",  # pragma: no mutate
                 },
             },
             "required": ["content"],

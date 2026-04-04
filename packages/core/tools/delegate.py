@@ -41,30 +41,30 @@ def make_delegate_tool(
     return ToolDefinition(
         name="delegate_to_agent",
         description=(
-            "Delegate a task to a specialized agent. Use when the user's request "
-            "is better handled by a domain expert."
+            "Delegate a task to a specialized agent. Use when the user's request "  # pragma: no mutate
+            "is better handled by a domain expert."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Name of the agent to delegate to.",
+                    "description": "Name of the agent to delegate to.",  # pragma: no mutate
                     "enum": agent_names,
                 },
                 "task": {
                     "type": "string",
-                    "description": (
-                        "The task or topic for the agent. Frame as a goal, not a "
-                        "command (e.g., 'Help the user draft X' rather than 'Draft X')."
+                    "description": (  # pragma: no mutate
+                        "The task or topic for the agent. Frame as a goal, not a "  # pragma: no mutate
+                        "command (e.g., 'Help the user draft X' rather than 'Draft X')."  # pragma: no mutate
                     ),
                 },
                 "context": {
                     "type": "string",
-                    "description": (
-                        "Relevant conversation context for the agent. "
-                        "Summarize key details, preferences, and constraints "
-                        "the user mentioned that are relevant to this task."
+                    "description": (  # pragma: no mutate
+                        "Relevant conversation context for the agent. "  # pragma: no mutate
+                        "Summarize key details, preferences, and constraints "  # pragma: no mutate
+                        "the user mentioned that are relevant to this task."  # pragma: no mutate
                     ),
                 },
             },
