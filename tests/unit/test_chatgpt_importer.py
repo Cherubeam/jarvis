@@ -131,6 +131,9 @@ class TestConvertContentParts:
         content = {"content_type": "text", "parts": ["Part 1", "Part 2"]}
         result = convert_content_parts(content)
         assert result == [{"type": "text", "text": "Part 1\nPart 2"}]
+        # Verify newline join (not space, comma, etc.)
+        assert "\n" in result[0]["text"]
+        assert result[0]["text"].count("\n") == 1
 
     def test_text_empty_parts(self):
         content = {"content_type": "text", "parts": []}
@@ -157,22 +160,40 @@ class TestConvertContentParts:
         assert len(result) == 2
         assert result[0] == {"type": "text", "text": "What is this?"}
         assert result[1]["text"] == "[Image not available]"
-        assert result[1]["metadata"]["original_type"] == "image"
+        assert result[1]["metadata"] == {
+            "original_type": "image",
+            "asset_pointer": "sediment://file_abc",
+        }
 
     def test_multimodal_empty(self):
         content = {"content_type": "multimodal_text", "parts": []}
         result = convert_content_parts(content)
+        assert len(result) == 1
         assert result == [{"type": "text", "text": ""}]
 
     def test_code_with_language(self):
         content = {"content_type": "code", "language": "python", "text": "print('hello')"}
         result = convert_content_parts(content)
         assert result == [{"type": "text", "text": "```python\nprint('hello')\n```"}]
+        # Verify backtick fencing format
+        text = result[0]["text"]
+        assert text.startswith("```python\n")
+        assert text.endswith("\n```")
 
     def test_code_unknown_language(self):
         content = {"content_type": "code", "language": "unknown", "text": "some code"}
         result = convert_content_parts(content)
         assert result == [{"type": "text", "text": "```\nsome code\n```"}]
+        text = result[0]["text"]
+        assert text.startswith("```\n")
+        assert text.endswith("\n```")
+
+    def test_code_no_language(self):
+        content = {"content_type": "code", "language": "", "text": "x = 1"}
+        result = convert_content_parts(content)
+        text = result[0]["text"]
+        assert text.startswith("```\n")
+        assert text.endswith("\n```")
 
     def test_thoughts(self):
         content = {
@@ -181,8 +202,10 @@ class TestConvertContentParts:
         }
         result = convert_content_parts(content)
         assert len(result) == 1
+        # content takes precedence over summary when both exist
         assert result[0]["text"] == "Deep analysis here"
-        assert result[0]["metadata"]["thought"] is True
+        assert result[0]["text"] != "Thinking..."
+        assert result[0]["metadata"] == {"thought": True}
 
     def test_thoughts_empty_content_falls_back_to_summary(self):
         content = {
@@ -191,23 +214,30 @@ class TestConvertContentParts:
         }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Brief thought"
+        assert result[0]["metadata"] == {"thought": True}
+
+    def test_thoughts_empty_list(self):
+        content = {"content_type": "thoughts", "thoughts": []}
+        result = convert_content_parts(content)
+        assert result == [{"type": "text", "text": ""}]
 
     def test_execution_output(self):
         content = {"content_type": "execution_output", "text": "/mnt/data/output.txt"}
         result = convert_content_parts(content)
         assert result[0]["text"] == "/mnt/data/output.txt"
-        assert result[0]["metadata"]["execution_output"] is True
+        assert result[0]["metadata"] == {"execution_output": True}
 
     def test_tether_browsing_display(self):
         content = {"content_type": "tether_browsing_display", "result": "Search results here", "summary": ""}
         result = convert_content_parts(content)
         assert result[0]["text"] == "Search results here"
+        assert result[0]["metadata"] == {"browsing_display": True}
 
     def test_tether_quote(self):
         content = {"content_type": "tether_quote", "text": "Quoted text", "domain": "example.com", "url": "https://example.com"}
         result = convert_content_parts(content)
         assert result[0]["text"] == "Quoted text"
-        assert result[0]["metadata"]["quote_source"] == "example.com"
+        assert result[0]["metadata"] == {"quote_source": "example.com", "quote_url": "https://example.com"}
 
     def test_reasoning_recap(self):
         content = {"content_type": "reasoning_recap", "content": "Thought for 5s"}

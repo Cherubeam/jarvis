@@ -76,16 +76,50 @@ class TestSearch:
         body = json.loads(sent_json)
         assert body["path_prefix"] == "Projects/"
 
+    @respx.mock
+    def test_search_omits_path_prefix_when_none(self, client: CortexClient) -> None:
+        payload = {"results": [], "count": 0}
+        route = respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, json=payload))
+
+        client.search("test query", n_results=5, path_prefix=None)
+
+        import json
+
+        body = json.loads(route.calls[0].request.content)
+        assert "path_prefix" not in body
+        assert body == {"query": "test query", "n_results": 5}
+
+    @respx.mock
+    def test_search_handles_value_error(self, client: CortexClient) -> None:
+        """Verify ValueError (e.g. malformed JSON response) is caught and returns None."""
+        respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, text="not json"))
+
+        result = client.search("test query")
+
+        assert result is None
+
 
 class TestIsAvailable:
     @respx.mock
     def test_is_available_healthy(self, client: CortexClient) -> None:
         respx.get(f"{BASE_URL}/status").mock(return_value=httpx.Response(200, json={"status": "ok"}))
 
-        assert client.is_available() is True
+        result = client.is_available()
+        assert result is True
+        assert isinstance(result, bool)
 
     @respx.mock
     def test_is_available_unreachable(self, client: CortexClient) -> None:
         respx.get(f"{BASE_URL}/status").mock(side_effect=httpx.ConnectError("connection refused"))
 
-        assert client.is_available() is False
+        result = client.is_available()
+        assert result is False
+        assert isinstance(result, bool)
+
+    @respx.mock
+    def test_is_available_non_200(self, client: CortexClient) -> None:
+        respx.get(f"{BASE_URL}/status").mock(return_value=httpx.Response(503))
+
+        result = client.is_available()
+        assert result is False
+        assert isinstance(result, bool)

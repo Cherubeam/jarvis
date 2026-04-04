@@ -92,6 +92,39 @@ class TestTaskSyncCache:
 
         assert cache.get() is None
 
+    def test_cache_expired_at_exact_ttl(self, tmp_path):
+        """Test cache returns None when exactly at TTL boundary."""
+        cache = TaskSyncCache(cache_ttl_seconds=60)
+        cache.cache_file = tmp_path / "cache.json"
+
+        test_data = {"inbox": [{"title": "Task 1"}]}
+        cache.set(test_data)
+
+        # Set timestamp to exactly TTL seconds ago
+        data = json.loads(cache.cache_file.read_text())
+        boundary_time = datetime.now() - timedelta(seconds=60)
+        data["timestamp"] = boundary_time.isoformat()
+        cache.cache_file.write_text(json.dumps(data))
+
+        # At exactly TTL, timedelta is NOT < TTL, so cache should be expired
+        assert cache.get() is None
+
+    def test_cache_valid_just_before_ttl(self, tmp_path):
+        """Test cache returns data when just under TTL."""
+        cache = TaskSyncCache(cache_ttl_seconds=60)
+        cache.cache_file = tmp_path / "cache.json"
+
+        test_data = {"inbox": [{"title": "Task 1"}]}
+        cache.set(test_data)
+
+        # Set timestamp to 1 second before TTL
+        data = json.loads(cache.cache_file.read_text())
+        just_before = datetime.now() - timedelta(seconds=59)
+        data["timestamp"] = just_before.isoformat()
+        cache.cache_file.write_text(json.dumps(data))
+
+        assert cache.get() is not None
+
     def test_cache_invalid_json(self, tmp_path):
         """Test cache handles invalid JSON gracefully."""
         cache = TaskSyncCache()
@@ -120,11 +153,26 @@ class TestToTask:
         task = _to_task(t)
         assert task.title == "Review PR"
         assert task.notes == "Check auth changes"
+        # deadline maps to due_date, start_date maps to when_date
         assert task.due_date == "2026-03-15"
         assert task.when_date == "2026-03-12"
+        # Verify exact separator: comma-space
         assert task.tags == "urgent, code-review"
+        assert ", " in task.tags
         assert task.project == "Jarvis Dev"
         assert task.area == "Work"
+
+    def test_deadline_maps_to_due_date_not_start_date(self):
+        """Verify deadline maps to due_date by providing conflicting values."""
+        t = {
+            "title": "Task",
+            "deadline": "2026-06-01",
+            "start_date": "2026-05-01",
+        }
+        task = _to_task(t)
+        assert task.due_date == "2026-06-01"
+        assert task.when_date == "2026-05-01"
+        assert task.due_date != task.when_date
 
     def test_minimal_task(self):
         """Test converting a task with only a title."""
@@ -137,7 +185,7 @@ class TestToTask:
         assert task.area == ""
 
     def test_none_values_become_empty_strings(self):
-        """Test that None values from things.py are converted to empty strings."""
+        """Test that None values from things.py are converted to empty strings via `or ''` fallback."""
         t = {
             "title": "Task",
             "notes": None,
@@ -148,17 +196,31 @@ class TestToTask:
             "area_title": None,
         }
         task = _to_task(t)
+        # Each field should be exactly "" (not None, not "None")
+        assert task.notes is not None
         assert task.notes == ""
+        assert task.due_date is not None
         assert task.due_date == ""
+        assert task.when_date is not None
         assert task.when_date == ""
+        assert task.tags is not None
         assert task.tags == ""
+        assert task.project is not None
         assert task.project == ""
+        assert task.area is not None
         assert task.area == ""
 
     def test_empty_tags_list(self):
         """Test that empty tags list produces empty string."""
         task = _to_task({"title": "Task", "tags": []})
         assert task.tags == ""
+
+    def test_tag_separator_is_comma_space(self):
+        """Verify the exact separator is ', ' (comma followed by space)."""
+        task = _to_task({"title": "Task", "tags": ["a", "b", "c"]})
+        assert task.tags == "a, b, c"
+        parts = task.tags.split(", ")
+        assert parts == ["a", "b", "c"]
 
 
 @pytest.mark.unit
