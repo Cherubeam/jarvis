@@ -79,8 +79,11 @@ class TestSuggestImprovements:
             improved_content="# Hello\n\nThis is the improved content.\n",
         )
         assert handler.presented_diff is not None
-        assert "displayed to user" in result
-        assert "NOT been applied" in result
+        assert result.startswith("Suggested improvements displayed to user (")
+        assert result.endswith(
+            "The changes have NOT been applied. The user can discuss them, "
+            "ask for modifications, or request applying via edit_blog_post."
+        )
 
     def test_diff_summary_in_result(self, tool_and_handler):
         tool, handler, _ = tool_and_handler
@@ -88,6 +91,8 @@ class TestSuggestImprovements:
             path="content/post.md",
             improved_content="# Hello\n\nThis is the improved content.\n",
         )
+        # Result must contain the diff summary in parentheses
+        assert "Suggested improvements displayed to user (" in result
         # Summary should mention added/removed lines
         assert "+" in result or "-" in result
 
@@ -97,7 +102,7 @@ class TestSuggestImprovements:
             path="content/post.md",
             improved_content="# Hello\n\nThis is the original content.\n",
         )
-        assert "No changes" in result
+        assert result == "No changes to suggest — the content looks good as-is."
         assert handler.presented_diff is None
 
     def test_file_not_found(self, tool_and_handler):
@@ -106,7 +111,7 @@ class TestSuggestImprovements:
             path="content/nonexistent.md",
             improved_content="anything",
         )
-        assert "Error: File not found" in result
+        assert result == "Error: File not found: content/nonexistent.md"
         assert handler.presented_diff is None
 
     def test_permission_error(self, vault):
@@ -122,7 +127,8 @@ class TestSuggestImprovements:
             path="secret/file.md",
             improved_content="new content",
         )
-        assert "Error" in result
+        assert result.startswith("Error: ")
+        assert "secret/file.md" in result or "not in allowed" in result.lower() or "permission" in result.lower()
         assert handler.presented_diff is None
 
     def test_reasoning_displayed(self, tool_and_handler, capsys):

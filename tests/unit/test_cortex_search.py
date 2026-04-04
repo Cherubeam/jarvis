@@ -25,12 +25,14 @@ class TestCortexSearchTool:
         tool = _make_tool(mock_client)
         output = tool.execute(query="alpha project")
 
-        assert "Projects/Alpha.md" in output
-        assert "> Overview" in output
-        assert "0.92" in output
-        assert "Alpha project details." in output
-        assert "Notes/Beta.md" in output
-        assert "Beta notes here." in output
+        expected = (
+            "--- Projects/Alpha.md > Overview (score: 0.92) ---\n"
+            "Alpha project details."
+            "\n\n"
+            "--- Notes/Beta.md (score: 0.85) ---\n"
+            "Beta notes here."
+        )
+        assert output == expected
 
     def test_search_service_down(self) -> None:
         mock_client = MagicMock()
@@ -39,8 +41,10 @@ class TestCortexSearchTool:
 
         output = tool.execute(query="anything")
 
-        assert "unreachable" in output.lower()
-        assert "search_notes" in output
+        assert output == (
+            "Cortex service is unreachable. "
+            "Try search_notes (glob-based) as a fallback, or check that Cortex is running."
+        )
 
     def test_search_empty_results(self) -> None:
         mock_client = MagicMock()
@@ -49,7 +53,7 @@ class TestCortexSearchTool:
 
         output = tool.execute(query="nonexistent")
 
-        assert "No results found" in output
+        assert output == "No results found in the vault for this query."
 
     def test_search_clamps_n_results(self) -> None:
         mock_client = MagicMock()
@@ -65,6 +69,26 @@ class TestCortexSearchTool:
         tool.execute(query="test", n_results=-5)
         _, kwargs = mock_client.search.call_args
         assert kwargs["n_results"] == 1
+
+        # Test boundary: exactly 20 stays 20
+        tool.execute(query="test", n_results=20)
+        _, kwargs = mock_client.search.call_args
+        assert kwargs["n_results"] == 20
+
+        # Test boundary: exactly 1 stays 1
+        tool.execute(query="test", n_results=1)
+        _, kwargs = mock_client.search.call_args
+        assert kwargs["n_results"] == 1
+
+        # Test boundary: 0 clamps to 1
+        tool.execute(query="test", n_results=0)
+        _, kwargs = mock_client.search.call_args
+        assert kwargs["n_results"] == 1
+
+        # Test boundary: 21 clamps to 20
+        tool.execute(query="test", n_results=21)
+        _, kwargs = mock_client.search.call_args
+        assert kwargs["n_results"] == 20
 
     def test_search_passes_path_prefix(self) -> None:
         mock_client = MagicMock()

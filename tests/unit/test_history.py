@@ -44,17 +44,29 @@ class TestTrimToolResults:
         ]
         result = trim_tool_results(history)
 
-        # Old long tool result (t1) should be truncated
-        assert len(result[1]["content"]) < len(long_content)
-        assert result[1]["content"].endswith("[... truncated]")
+        # Old long tool result (t1) should be truncated to exactly
+        # _TOOL_RESULT_SUMMARY_LEN chars + "\n[... truncated]"
+        expected_truncated = long_content[:_TOOL_RESULT_SUMMARY_LEN] + "\n[... truncated]"
+        assert result[1]["content"] == expected_truncated
         assert result[1]["tool_call_id"] == "t1"
 
-        # Old short tool result (t2) should be unchanged
+        # Old short tool result (t2) should be unchanged (below threshold)
         assert result[4]["content"] == "short result"
+
+        # Non-tool messages in old region must stay intact
+        assert result[0]["content"] == "first question"
+        assert result[0]["role"] == "user"
+        assert result[2]["content"] == "first answer"
+        assert result[2]["role"] == "assistant"
 
         # Recent tool results (t3, t4) should be intact
         assert result[7]["content"] == long_content
         assert result[10]["content"] == long_content
+
+        # Exactly keep_recent=6 messages at the end are preserved
+        for msg in result[6:]:
+            if msg.get("role") == "tool":
+                assert "\n[... truncated]" not in msg["content"]
 
     def test_non_tool_messages_never_modified(self):
         long_msg = "x" * 1000
@@ -89,8 +101,16 @@ class TestTrimToolResults:
         ]
         result = trim_tool_results(history)
 
-        # Old tool result truncated
-        assert result[1]["content"].endswith("[... truncated]")
+        # Old tool result truncated with exact format
+        expected_truncated = long_content[:_TOOL_RESULT_SUMMARY_LEN] + "\n[... truncated]"
+        assert result[1]["content"] == expected_truncated
+        assert result[1]["role"] == "tool"
+
+        # Non-tool messages in old region stay intact regardless of length
+        assert result[0]["content"] == "old"
+        assert result[0]["role"] == "user"
+        assert result[2]["content"] == "old answer"
+        assert result[2]["role"] == "assistant"
 
         # Recent tool results preserved
         assert result[4]["content"] == long_content
@@ -106,8 +126,9 @@ class TestTrimToolResults:
 
         # keep_recent=1: only last message preserved
         result = trim_tool_results(history, keep_recent=1)
-        assert result[0]["content"].endswith("[... truncated]")
-        assert result[1]["content"].endswith("[... truncated]")
+        expected_truncated = long_content[:_TOOL_RESULT_SUMMARY_LEN] + "\n[... truncated]"
+        assert result[0]["content"] == expected_truncated
+        assert result[1]["content"] == expected_truncated
         assert result[2]["content"] == long_content  # last one preserved
 
     def test_empty_history(self):
@@ -127,14 +148,15 @@ class TestTrimToolResults:
         assert result is history  # identity — no changes needed
 
     def test_truncation_length(self):
-        """Truncated content starts with first N chars of original."""
+        """Truncated content is exactly prefix + truncation marker."""
         original = "A" * 500
         history = [
             {"role": "tool", "tool_call_id": "t1", "content": original},
             # keep_recent=0 to force everything to be old
         ]
         result = trim_tool_results(history, keep_recent=0)
-        assert result[0]["content"].startswith("A" * _TOOL_RESULT_SUMMARY_LEN)
+        expected = "A" * _TOOL_RESULT_SUMMARY_LEN + "\n[... truncated]"
+        assert result[0]["content"] == expected
 
 
 def _make_long_history(n_exchanges: int = 20) -> list[dict]:
@@ -233,8 +255,10 @@ class TestSummarizeHistory:
         )
         summary = result[0]
         assert summary["role"] == "assistant"
-        assert summary["content"].startswith(_SUMMARY_MARKER)
-        assert "Concise summary here." in summary["content"]
+        assert summary["content"] == (
+            f"{_SUMMARY_MARKER} Here is a summary of our conversation so far:\n"
+            "Concise summary here."
+        )
 
     def test_llm_failure_returns_original(self):
         """If the LLM call fails, original history is returned unchanged."""

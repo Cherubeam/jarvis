@@ -149,7 +149,7 @@ class TestRecallToolOutput:
             tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
 
         result = self._call_tool(tool, "anything", mock_results=[])
-        assert "No relevant past conversations found." in result
+        assert result == "No relevant past conversations found."
 
     def test_single_result_formatted_correctly(self, tmp_path):
         mock_chroma = MagicMock()
@@ -169,10 +169,12 @@ class TestRecallToolOutput:
         )
         output = self._call_tool(tool, "ChromaDB", mock_results=[r])
 
-        assert "2026-02-20" in output
-        assert "conv_20260220_100000_abc" in output
-        assert "How does ChromaDB work?" in output
-        assert "ChromaDB is a vector database." in output
+        expected = (
+            "--- 2026-02-20 (conv_20260220_100000_abc) ---\n"
+            "User: How does ChromaDB work?\n\n"
+            "Assistant: ChromaDB is a vector database."
+        )
+        assert output == expected
 
     def test_output_capped_at_6000_chars(self, tmp_path):
         mock_chroma = MagicMock()
