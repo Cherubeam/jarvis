@@ -40,6 +40,8 @@ class TestStreamHandler:
         assert result.text == "Hello world"
         assert result.usage.prompt_tokens == 10
         assert result.usage.completion_tokens == 5
+        assert result.usage.total_tokens == 15
+        assert result.tool_messages == []
 
     def test_stream_calculates_cost_with_pricing(self):
         client = Mock(spec=LLMClient)
@@ -267,15 +269,17 @@ class TestStreamHandlerAgenticLoop:
             tool_registry=registry,
         )
 
-        # Tool feedback printed to stdout
+        # Tool feedback printed to stdout — exact format
         captured = capsys.readouterr()
         assert "[Tool: fetch_url]" in captured.out
 
-        # Final content
-        assert "content of https://example.com" in result.text
+        # Final content — exact text
+        assert result.text == "The article says: content of https://example.com"
 
         # stream_with_tool_detection called twice: tool call then content
         assert client.stream_with_tool_detection.call_count == 2
+        # No fallback to chat_stream since we got a streaming response
+        client.chat_stream.assert_not_called()
 
     def test_multi_tool_chain(self, capsys):
         """LLM calls tool A, then tool B, then streams final answer."""
@@ -290,12 +294,17 @@ class TestStreamHandlerAgenticLoop:
 
         call_a = _make_tool_call_obj("tc1", "tool_a")
         call_b = _make_tool_call_obj("tc2", "tool_b")
-        final_stream = _make_streaming_response(["final answer"])
+
+        # Use distinct token counts per iteration so we can verify accumulation is a SUM
+        usage_a = TokenUsage(prompt_tokens=20, completion_tokens=10, total_tokens=30)
+        usage_b = TokenUsage(prompt_tokens=30, completion_tokens=15, total_tokens=45)
+        final_usage = TokenUsage(prompt_tokens=40, completion_tokens=20, total_tokens=60)
+        final_stream = _make_streaming_response(["final answer"], final_usage)
 
         client = Mock(spec=LLMClient)
         client.stream_with_tool_detection.side_effect = [
-            _make_stream_tool_result([call_a]),
-            _make_stream_tool_result([call_b]),
+            _make_stream_tool_result([call_a], usage_a),
+            _make_stream_tool_result([call_b], usage_b),
             final_stream,
         ]
 
@@ -311,6 +320,11 @@ class TestStreamHandlerAgenticLoop:
         assert "[Tool: tool_a]" in captured.out
         assert "[Tool: tool_b]" in captured.out
         assert result.text == "final answer"
+
+        # Token accumulation must be a SUM across all iterations, not just the last value
+        # intermediate: 20+30=50 prompt, 10+15=25 completion; final: 40 prompt, 20 completion
+        assert result.usage.prompt_tokens == 20 + 30 + 40
+        assert result.usage.completion_tokens == 10 + 15 + 20
 
     def test_on_tool_call_callback_invoked(self, capsys):
         """When on_tool_call is set, it is called instead of plain print()."""
@@ -404,11 +418,23 @@ class TestStreamHandlerAgenticLoop:
             tool_registry=registry,
         )
 
-        assert len(result.tool_messages) >= 2
+        assert len(result.tool_messages) == 2
         # First message is the assistant with tool_calls
-        assert result.tool_messages[0]["role"] == "assistant"
+        assistant_msg = result.tool_messages[0]
+        assert assistant_msg["role"] == "assistant"
+        assert assistant_msg["content"] is None
+        assert len(assistant_msg["tool_calls"]) == 1
+        tc = assistant_msg["tool_calls"][0]
+        assert tc["id"] == "tc1"
+        assert tc["type"] == "function"
+        assert tc["function"]["name"] == "my_tool"
+        assert tc["function"]["arguments"] == "{}"
+
         # Second message is the tool result
-        assert result.tool_messages[1]["role"] == "tool"
+        tool_msg = result.tool_messages[1]
+        assert tool_msg["role"] == "tool"
+        assert tool_msg["tool_call_id"] == "tc1"
+        assert "result_value" in tool_msg["content"]
 
     def test_tool_messages_empty_when_no_tools(self):
         """StreamResult.tool_messages is empty when no tool_registry is used."""
@@ -464,12 +490,18 @@ class TestStreamHandlerAgenticLoop:
 
         # Only one stream_with_tool_detection call — stops after terminal tool
         assert client.stream_with_tool_detection.call_count == 1
+        # No further API calls made after terminal tool
+        client.chat_stream.assert_not_called()
         # Result has empty text
         assert result.text == ""
-        # Tool messages are preserved
-        assert len(result.tool_messages) >= 2
+        # Tool messages are preserved with correct structure
+        assert len(result.tool_messages) == 2
         assert result.tool_messages[0]["role"] == "assistant"
+        assert result.tool_messages[0]["content"] is None
+        assert result.tool_messages[0]["tool_calls"][0]["id"] == "tc1"
+        assert result.tool_messages[0]["tool_calls"][0]["function"]["name"] == "delegate_to_agent"
         assert result.tool_messages[1]["role"] == "tool"
+        assert result.tool_messages[1]["tool_call_id"] == "tc1"
 
     def test_terminal_tool_uses_litellm_fallback_when_no_pricing(self):
         """Terminal tool path falls back to zero cost when pricing is None and no raw_response."""
@@ -553,7 +585,9 @@ class TestStreamHandlerAgenticLoop:
         assert len(usage_events) == 1
         assert usage_events[0].prompt_tokens == 200
         assert usage_events[0].completion_tokens == 50
+        assert usage_events[0].total_tokens == 250
         assert usage_events[0].cost_usd == result.cost_usd
+        assert usage_events[0].model == "test-model"
         assert usage_events[0].instance_id == "jarvis-1"
 
     def test_duplicate_parallel_tool_calls_deduplicated(self, capsys):
@@ -688,11 +722,40 @@ class TestStreamHandlerAgenticLoop:
             max_iterations=max_iter,
         )
 
+        # Exactly max_iter tool detection calls were made
+        assert client.stream_with_tool_detection.call_count == max_iter
         # All iterations consumed — final chat_stream called with tools=None
         client.chat_stream.assert_called_once()
         _, kwargs = client.chat_stream.call_args
         assert kwargs.get("tools") is None
         assert result.text == "forced text"
+
+    def test_default_max_iterations_is_5(self):
+        """Without explicit max_iterations, the loop runs up to _MAX_AGENTIC_ITERATIONS=5."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.stream_handler import _MAX_AGENTIC_ITERATIONS
+
+        assert _MAX_AGENTIC_ITERATIONS == 5
+
+        tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        def make_tool_iteration():
+            return _make_stream_tool_result([_make_tool_call_obj("tc1", "my_tool", "{}")])
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [make_tool_iteration() for _ in range(5)]
+        client.chat_stream.return_value = _make_streaming_response(["done"])
+
+        handler = self._make_handler(client)
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        assert client.stream_with_tool_detection.call_count == 5
+        assert result.text == "done"
 
     def test_max_tokens_passed_to_chat_stream(self):
         """When max_tokens is set, it is forwarded to chat_stream on the simple path."""
@@ -786,7 +849,9 @@ class TestCreditFallback:
         assert result.text == "ok"
         assert client.chat_stream.call_count == 2
         captured = capsys.readouterr()
-        assert "8612" in captured.out
+        # Check exact format of the warning message
+        assert "Credit limit: reduced max_tokens from 16384" in captured.out
+        assert "→ 8612" in captured.out
 
     def test_402_too_few_tokens_raises_runtime_error(self):
         """When affordable tokens < minimum, RuntimeError is raised."""
@@ -799,8 +864,13 @@ class TestCreditFallback:
             requested=16384, affordable=100, original_error=Exception(),
         )
 
-        with pytest.raises(RuntimeError, match="Insufficient OpenRouter credits"):
+        with pytest.raises(RuntimeError, match="Insufficient OpenRouter credits") as exc_info:
             handler.stream([{"role": "user", "content": "hi"}])
+
+        msg = str(exc_info.value)
+        assert "100 tokens affordable" in msg
+        assert "minimum 256 needed" in msg
+        assert "openrouter.ai/settings/credits" in msg
 
     def test_prompt_limit_error_raises_runtime_error(self):
         """PromptTokenLimitError is converted to RuntimeError with helpful message."""
@@ -924,7 +994,19 @@ class TestStreamHandlerNonStreaming:
 
         assert result.text == "Done reading the note."
         assert client.complete.call_count == 2
-        assert len(result.tool_messages) > 0
+
+        # Verify tool message structure
+        assert len(result.tool_messages) == 2
+        assistant_msg = result.tool_messages[0]
+        assert assistant_msg["role"] == "assistant"
+        assert assistant_msg["content"] is None
+        assert assistant_msg["tool_calls"][0]["id"] == "tc_1"
+        assert assistant_msg["tool_calls"][0]["type"] == "function"
+        assert assistant_msg["tool_calls"][0]["function"]["name"] == "read_note"
+
+        tool_msg = result.tool_messages[1]
+        assert tool_msg["role"] == "tool"
+        assert tool_msg["tool_call_id"] == "tc_1"
 
         # Verify no double-counting: total = tool call tokens + final response tokens
         # Each call has prompt_tokens=10, completion_tokens=5
@@ -962,6 +1044,12 @@ class TestStreamHandlerNonStreaming:
 
         assert result.text == ""
         assert client.complete.call_count == 1
+        # Tool messages preserved after terminal tool
+        assert len(result.tool_messages) == 2
+        assert result.tool_messages[0]["role"] == "assistant"
+        assert result.tool_messages[0]["tool_calls"][0]["function"]["name"] == "delegate"
+        assert result.tool_messages[1]["role"] == "tool"
+        assert result.tool_messages[1]["tool_call_id"] == "tc_1"
 
     def test_usage_report_emitted(self):
         """UsageReport event is emitted in non-streaming mode."""

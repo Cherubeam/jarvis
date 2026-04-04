@@ -61,13 +61,16 @@ class TestStreamHandlerEvents:
         client.chat_stream.return_value = _make_streaming_response(["ok"], usage)
 
         events = []
-        handler = _make_handler(client, on_event=events.append)
+        handler = _make_handler(client, on_event=events.append, instance_id="test-inst")
         handler.stream([{"role": "user", "content": "hi"}])
 
         usage_events = [e for e in events if isinstance(e, UsageReport)]
         assert len(usage_events) == 1
         assert usage_events[0].prompt_tokens == 100
         assert usage_events[0].completion_tokens == 50
+        assert usage_events[0].total_tokens == 150
+        assert usage_events[0].model == "test-model"
+        assert usage_events[0].instance_id == "test-inst"
 
     def test_tool_call_events_emitted(self):
         from packages.core.tools.base import ToolRegistry, ToolDefinition
@@ -98,7 +101,16 @@ class TestStreamHandlerEvents:
         tool_events = [e for e in events if isinstance(e, ToolCallStarted)]
         assert len(tool_events) == 1
         assert tool_events[0].tool_name == "my_tool"
+        assert tool_events[0].tool_call_id == "tc1"
+        assert tool_events[0].arguments == "{}"
         assert tool_events[0].instance_id == "test-1"
+
+        # Verify ToolResult event was also emitted
+        result_events = [e for e in events if isinstance(e, ToolResultEvent)]
+        assert len(result_events) == 1
+        assert result_events[0].result == "result"
+        assert result_events[0].tool_call_id == "tc1"
+        assert result_events[0].instance_id == "test-1"
 
     def test_no_events_when_callback_not_set(self):
         """When on_event is None, no events are emitted (no error)."""
