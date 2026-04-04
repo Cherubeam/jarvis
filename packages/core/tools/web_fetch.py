@@ -51,17 +51,17 @@ def _fetch_url(url: str) -> str:
 
 FETCH_URL_TOOL = ToolDefinition(
     name="fetch_url",
-    description=(
-        "Fetch the text content of a web page. "
-        "Use this to read articles, documentation, or any public URL. "
-        "Returns the extracted text. Returns an error string on failure."
+    description=(  # pragma: no mutate
+        "Fetch the text content of a web page. "  # pragma: no mutate
+        "Use this to read articles, documentation, or any public URL. "  # pragma: no mutate
+        "Returns the extracted text. Returns an error string on failure."  # pragma: no mutate
     ),
     parameters={
         "type": "object",
         "properties": {
             "url": {
                 "type": "string",
-                "description": "The full URL to fetch (must start with http:// or https://).",
+                "description": "The full URL to fetch (must start with http:// or https://).",  # pragma: no mutate
             }
         },
         "required": ["url"],

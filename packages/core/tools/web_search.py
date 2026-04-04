@@ -39,21 +39,21 @@ def _search_web(query: str, max_results: int = 5) -> str:
 
 WEB_SEARCH_TOOL = ToolDefinition(
     name="web_search",
-    description=(
-        "Search the web for information. Returns titles, URLs, and snippets. "
-        "Use this to find current information, research topics, or discover URLs "
-        "that can then be fetched with fetch_url for full content."
+    description=(  # pragma: no mutate
+        "Search the web for information. Returns titles, URLs, and snippets. "  # pragma: no mutate
+        "Use this to find current information, research topics, or discover URLs "  # pragma: no mutate
+        "that can then be fetched with fetch_url for full content."  # pragma: no mutate
     ),
     parameters={
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "The search query.",
+                "description": "The search query.",  # pragma: no mutate
             },
             "max_results": {
                 "type": "integer",
-                "description": "Number of results to return (default 5, max 10).",
+                "description": "Number of results to return (default 5, max 10).",  # pragma: no mutate
                 "default": 5,
             },
         },
