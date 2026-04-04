@@ -32,11 +32,11 @@ class TestParseMemorySections:
             "**Brief history**\nHumanities to AI."
         )
         result = parse_memory_sections(text)
-        assert len(result) == 4
-        assert "I work in tech." in result["Work context"]
-        assert "I live in Berlin." in result["Personal context"]
-        assert "Building Jarvis." in result["Top of mind"]
-        assert "Humanities to AI." in result["Brief history"]
+        assert set(result.keys()) == {"Work context", "Personal context", "Top of mind", "Brief history"}
+        assert result["Work context"] == "I work in tech."
+        assert result["Personal context"] == "I live in Berlin."
+        assert result["Top of mind"] == "Building Jarvis."
+        assert result["Brief history"] == "Humanities to AI."
 
     def test_empty_input(self):
         assert parse_memory_sections("") == {}
@@ -48,19 +48,18 @@ class TestParseMemorySections:
     def test_section_with_multiple_lines(self):
         text = "**Work context**\nLine one.\nLine two.\nLine three."
         result = parse_memory_sections(text)
-        assert "Line one." in result["Work context"]
-        assert "Line three." in result["Work context"]
+        assert result["Work context"] == "Line one.\nLine two.\nLine three."
 
     def test_inline_bold_not_treated_as_header(self):
         text = "**Work context**\nUses **Python** for scripting."
         result = parse_memory_sections(text)
-        assert "**Python**" in result["Work context"]
+        assert result["Work context"] == "Uses **Python** for scripting."
 
     def test_empty_section_body(self):
         text = "**Empty section**\n\n**Next section**\nHas content."
         result = parse_memory_sections(text)
         assert "Empty section" not in result
-        assert "Has content." in result["Next section"]
+        assert result["Next section"] == "Has content."
 
 
 # ==================== parse_existing_profile ====================
@@ -78,9 +77,10 @@ class TestParseExistingProfile:
             "## Skills & knowledge\n- Python"
         )
         result = parse_existing_profile(text)
-        assert "Name: Marco" in result["Personal Information"]
-        assert "Consultant" in result["Professional background"]
-        assert "Python" in result["Skills & knowledge"]
+        assert set(result.keys()) == {"Personal Information", "Professional background", "Skills & knowledge"}
+        assert result["Personal Information"] == "- Name: Marco"
+        assert result["Professional background"] == "- Consultant"
+        assert result["Skills & knowledge"] == "- Python"
 
     def test_empty_input(self):
         assert parse_existing_profile("") == {}
@@ -89,8 +89,7 @@ class TestParseExistingProfile:
     def test_partial_profile(self):
         text = "## Personal Information\n- Name: Marco"
         result = parse_existing_profile(text)
-        assert len(result) == 1
-        assert "Name: Marco" in result["Personal Information"]
+        assert result == {"Personal Information": "- Name: Marco"}
 
     def test_ignores_h1_header(self):
         text = "# Profile\n\nSome intro text."
@@ -141,25 +140,25 @@ class TestBuildPersonalContext:
         }
         memory = {"Personal context": "Lives in Berlin with family."}
         result = build_personal_context(profile, memory)
-        assert "# Personal Context" in result
-        assert "Name: Marco" in result
-        assert "Introvert" in result
-        assert "Lives in Berlin" in result
+        assert result.startswith("# Personal Context\n")
+        assert "## Personal Information\n- Name: Marco\n" in result
+        assert "## Personality Traits\n- Introvert\n" in result
+        assert "## From Claude Memories\nLives in Berlin with family.\n" in result
 
     def test_memory_only(self):
         result = build_personal_context({}, {"Personal context": "Berlin."})
-        assert "# Personal Context" in result
-        assert "Berlin." in result
+        assert result.startswith("# Personal Context\n")
+        assert "## From Claude Memories\nBerlin." in result
 
     def test_profile_only(self):
         profile = {"Personal Information": "- Name: Marco"}
         result = build_personal_context(profile, {})
-        assert "Name: Marco" in result
+        assert "## Personal Information\n- Name: Marco\n" in result
         assert "From Claude Memories" not in result
 
     def test_empty_inputs(self):
         result = build_personal_context({}, {})
-        assert "# Personal Context" in result
+        assert result == "# Personal Context\n"
 
 
 # ==================== build_professional_context ====================
@@ -179,20 +178,21 @@ class TestBuildProfessionalContext:
             "Brief history": "Humanities to AI.",
         }
         result = build_professional_context(profile, memory)
-        assert "# Professional Context" in result
-        assert "Consultant" in result
-        assert "Automotive" in result
-        assert "Agile coaching" in result
-        assert "Humanities to AI" in result
+        assert result.startswith("# Professional Context\n")
+        assert "## Professional background\n- Consultant\n" in result
+        assert "## Industry Context\n- Automotive\n" in result
+        assert "## From Claude Memories — Work\nAgile coaching in automotive.\n" in result
+        assert "## From Claude Memories — Career History\nHumanities to AI.\n" in result
 
     def test_memory_only(self):
         result = build_professional_context({}, {"Work context": "Tech consultant."})
-        assert "Tech consultant." in result
+        assert result.startswith("# Professional Context\n")
+        assert "## From Claude Memories — Work\nTech consultant." in result
 
     def test_profile_only(self):
         profile = {"Professional background": "- Engineer"}
         result = build_professional_context(profile, {})
-        assert "Engineer" in result
+        assert "## Professional background\n- Engineer\n" in result
         assert "From Claude Memories" not in result
 
 
@@ -254,13 +254,13 @@ class TestBuildProjectFile:
             "Project uses Python.",
             "You are helping with Python.",
         )
-        assert "# My Project" in result
-        assert "Project uses Python." in result
-        assert "You are helping with Python." in result
+        assert result.startswith("# My Project\n")
+        assert "## Project Memory\nProject uses Python.\n" in result
+        assert "## Prompt Template\nYou are helping with Python.\n" in result
 
     def test_memory_only(self):
         result = build_project_file("My Project", "Memory text.", None)
-        assert "Memory text." in result
+        assert "## Project Memory\nMemory text.\n" in result
         assert "Prompt Template" not in result
 
     def test_with_docs(self):
@@ -270,14 +270,16 @@ class TestBuildProjectFile:
             None,
             doc_filenames=["notes.md", "data.md"],
         )
-        assert "Reference Documents" in result
-        assert "notes.md" in result
-        assert "data.md" in result
+        assert "## Reference Documents" in result
+        assert "- notes.md" in result
+        assert "- data.md" in result
+        assert "data/context/projects/docs/research-project/" in result
 
     def test_empty_memory_and_prompt(self):
         result = build_project_file("Empty", "", "")
-        assert "# Empty" in result
+        assert result.startswith("# Empty\n")
         assert "Project Memory" not in result
+        assert "Prompt Template" not in result
 
 
 # ==================== import_context ====================
@@ -411,7 +413,8 @@ class TestImportContext:
             target_dir=target_dir,
         )
 
-        assert any("not found" in w for w in summary.warnings)
+        assert len(summary.warnings) == 1
+        assert summary.warnings[0] == "Memories file not found: /nonexistent/memories.json"
 
     def test_missing_projects_file(self, tmp_path):
         target_dir = tmp_path / "context"
@@ -423,7 +426,8 @@ class TestImportContext:
             target_dir=target_dir,
         )
 
-        assert any("not found" in w for w in summary.warnings)
+        assert len(summary.warnings) == 1
+        assert summary.warnings[0] == "Projects file not found: /nonexistent/projects.json"
 
     def test_none_paths(self, tmp_path):
         target_dir = tmp_path / "context"
@@ -436,7 +440,11 @@ class TestImportContext:
         )
 
         assert summary.projects_imported == 0
-        assert len(summary.files_written) == 0
+        assert summary.projects_skipped == 0
+        assert summary.docs_saved == 0
+        assert summary.files_written == []
+        assert summary.files_skipped == []
+        assert summary.warnings == []
 
     def test_project_memory_joined_by_uuid(self, tmp_path, fixtures_dir):
         """Project memories from memories.json are joined to projects by UUID."""

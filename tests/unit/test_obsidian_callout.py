@@ -28,8 +28,7 @@ Some other text"""
         assert isinstance(result, CalloutBlock)
         assert result.start_line == 2
         assert result.end_line == 4
-        assert "First entry line" in result.existing_content
-        assert "Second entry line" in result.existing_content
+        assert result.existing_content == "First entry line\nSecond entry line"
 
     def test_finds_empty_callout(self):
         content = """\
@@ -54,12 +53,16 @@ Some other text"""
         result = find_jarvis_callout(content)
         assert isinstance(result, CalloutBlock)
         assert result.start_line == 0
+        assert result.end_line == 1
+        assert result.existing_content == "content here"
 
     def test_callout_with_title(self):
         content = "> [!JARVIS] End of Day Summary\n> content here"
         result = find_jarvis_callout(content)
         assert isinstance(result, CalloutBlock)
-        assert "content here" in result.existing_content
+        assert result.start_line == 0
+        assert result.end_line == 1
+        assert result.existing_content == "content here"
 
     def test_callout_at_end_of_file(self):
         content = "# Note\n\n> [!JARVIS]\n> final line"
@@ -77,8 +80,7 @@ This is not part of callout
         result = find_jarvis_callout(content)
         assert isinstance(result, CalloutBlock)
         assert result.end_line == 2
-        assert "line two" in result.existing_content
-        assert "not part" not in result.existing_content
+        assert result.existing_content == "line one\nline two"
 
     def test_empty_content(self):
         result = find_jarvis_callout("")
@@ -102,8 +104,7 @@ This is not part of callout
         result = find_jarvis_callout(content)
         assert isinstance(result, CalloutBlock)
         assert result.end_line == 3
-        assert "line one" in result.existing_content
-        assert "line three" in result.existing_content
+        assert result.existing_content == "line one\n\nline three"
 
 
 # ==================== format_callout_entry ====================
@@ -133,8 +134,8 @@ class TestBuildUpdatedContent:
         original = "# Note\n\n> [!JARVIS]\n\nOther content"
         callout = CalloutBlock(start_line=2, end_line=2, existing_content="")
         result = build_updated_content(original, callout, "New entry")
-        assert "> New entry" in result
-        assert "Other content" in result
+        # No separator for empty callout, new entry right after header
+        assert result == "# Note\n\n> [!JARVIS]\n> New entry\n\nOther content"
 
     def test_append_to_existing_callout(self):
         original = "# Note\n\n> [!JARVIS]\n> Existing line\n\nOther"
@@ -142,22 +143,17 @@ class TestBuildUpdatedContent:
             start_line=2, end_line=3, existing_content="Existing line"
         )
         result = build_updated_content(original, callout, "New entry")
-        lines = result.split("\n")
-        assert "> Existing line" in lines
-        assert "> New entry" in lines
-        # Separator between old and new
-        assert ">" in lines
+        # With existing content: separator ">" between old and new
+        assert result == "# Note\n\n> [!JARVIS]\n> Existing line\n>\n> New entry\n\nOther"
 
     def test_preserves_surrounding_content(self):
         original = "# Title\n\n> [!JARVIS]\n> Old\n\n## Section"
         callout = CalloutBlock(start_line=2, end_line=3, existing_content="Old")
         result = build_updated_content(original, callout, "New")
-        assert result.startswith("# Title")
-        assert "## Section" in result
+        assert result == "# Title\n\n> [!JARVIS]\n> Old\n>\n> New\n\n## Section"
 
     def test_multi_line_entry(self):
         original = "> [!JARVIS]\n> existing"
         callout = CalloutBlock(start_line=0, end_line=1, existing_content="existing")
         result = build_updated_content(original, callout, "Line A\nLine B")
-        assert "> Line A" in result
-        assert "> Line B" in result
+        assert result == "> [!JARVIS]\n> existing\n>\n> Line A\n> Line B"

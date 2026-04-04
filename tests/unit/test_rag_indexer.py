@@ -7,7 +7,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 
-from packages.core.rag.indexer import _MAX_EMBED_CHARS, _CHUNK_OVERLAP_CHARS, _chunk_document
+from packages.core.rag.indexer import _MAX_EMBED_CHARS, _CHUNK_OVERLAP_CHARS, _EMBED_BATCH_SIZE, _chunk_document, _date_str_to_int
 
 
 # ---------------------------------------------------------------------------
@@ -127,8 +127,10 @@ class TestExtractPairs:
 
         assert len(pairs) == 1
         assert pairs[0]["id"] == "conv_20260220_100000_abc123_pair_0"
-        assert "User: Hello" in pairs[0]["document"]
-        assert "Assistant: Hi there!" in pairs[0]["document"]
+        assert pairs[0]["document"] == "User: Hello\n\nAssistant: Hi there!"
+        # Verify all expected metadata keys are present
+        expected_keys = {"conv_id", "session_date", "session_date_int", "pair_index", "user_snippet", "assistant_snippet", "title"}
+        assert set(pairs[0]["metadata"].keys()) == expected_keys
 
     def test_multiple_pairs_in_order(self):
         indexer = self._make_indexer()
@@ -181,8 +183,8 @@ class TestExtractPairs:
         )
         pairs = indexer._extract_pairs(conv)
 
-        assert len(pairs[0]["metadata"]["user_snippet"]) <= 200
-        assert len(pairs[0]["metadata"]["assistant_snippet"]) <= 200
+        assert len(pairs[0]["metadata"]["user_snippet"]) == 200
+        assert len(pairs[0]["metadata"]["assistant_snippet"]) == 200
 
     def test_user_message_without_following_assistant_still_indexed(self):
         indexer = self._make_indexer()
@@ -201,8 +203,7 @@ class TestExtractPairs:
         pairs = indexer._extract_pairs(conv)
 
         assert len(pairs) == 1
-        assert "User: Lone user message" in pairs[0]["document"]
-        assert "Assistant: " in pairs[0]["document"]
+        assert pairs[0]["document"] == "User: Lone user message\n\nAssistant: "
 
     def test_empty_user_message_skipped(self):
         indexer = self._make_indexer()
@@ -257,11 +258,13 @@ class TestExtractPairs:
         pairs = indexer._extract_pairs(conv)
 
         assert len(pairs) > 1
+        expected_keys = {"conv_id", "session_date", "session_date_int", "pair_index", "user_snippet", "assistant_snippet", "title", "chunk_index", "total_chunks"}
         for i, pair in enumerate(pairs):
             assert pair["id"] == f"conv_20260220_100000_abc123_pair_0_chunk_{i}"
             assert pair["metadata"]["chunk_index"] == i
             assert pair["metadata"]["total_chunks"] == len(pairs)
             assert len(pair["document"]) <= _MAX_EMBED_CHARS
+            assert set(pair["metadata"].keys()) == expected_keys
 
     def test_short_pair_keeps_original_id_format(self):
         """Short documents must NOT get a _chunk_0 suffix."""
@@ -491,3 +494,46 @@ class TestIndexNew:
             n_new = indexer.index_new(tmp_path)
 
         assert n_new == 1
+
+
+# ---------------------------------------------------------------------------
+# _date_str_to_int boundary conditions
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestDateStrToInt:
+    def test_valid_date(self):
+        assert _date_str_to_int("2026-02-20") == 20260220
+
+    def test_invalid_date_returns_zero(self):
+        assert _date_str_to_int("not-a-date") == 0
+
+    def test_empty_string_returns_zero(self):
+        assert _date_str_to_int("") == 0
+
+    def test_none_returns_zero(self):
+        assert _date_str_to_int(None) == 0
+
+
+# ---------------------------------------------------------------------------
+# _chunk_document boundary: exact boundary at max_chars + 1
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestChunkDocumentBoundary:
+    def test_one_char_over_max_produces_two_chunks(self):
+        doc = "a" * (_MAX_EMBED_CHARS + 1)
+        chunks = _chunk_document(doc)
+        assert len(chunks) == 2
+        assert len(chunks[0]) == _MAX_EMBED_CHARS
+        # Second chunk = overlap region + 1 extra char
+        expected_second_len = _CHUNK_OVERLAP_CHARS + 1
+        assert len(chunks[1]) == expected_second_len
+
+    def test_custom_max_and_overlap(self):
+        doc = "abcdefghij"  # 10 chars
+        chunks = _chunk_document(doc, max_chars=6, overlap=2)
+        # step = 6 - 2 = 4; chunks at [0:6], [4:10], [8:10]
+        assert chunks == ["abcdef", "efghij", "ij"]
+        # Overlap between first two chunks
+        assert chunks[0][-2:] == chunks[1][:2]

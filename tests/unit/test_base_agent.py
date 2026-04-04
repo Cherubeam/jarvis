@@ -43,9 +43,23 @@ class TestBaseAgentRun:
             description="test agent",
             model="test-model",
             system_prompt="You are a test agent.",
+            temperature=0.5,
         )
         client = Mock(spec=LLMClient)
         return ConcreteAgent(config, client)
+
+    def test_agent_config_fields_passed_through(self):
+        agent = self._make_agent()
+        assert agent.config.name == "test"
+        assert agent.config.description == "test agent"
+        assert agent.config.model == "test-model"
+        assert agent.config.system_prompt == "You are a test agent."
+        assert agent.config.temperature == 0.5
+        assert agent.config.max_tokens is None
+        assert agent.config.max_iterations is None
+        assert agent.config.tools == []
+        assert agent.name == "test"
+        assert agent.description == "test agent"
 
     def test_run_with_messages_override(self):
         agent = self._make_agent()
@@ -74,9 +88,10 @@ class TestBaseAgentRun:
         # Should add to internal history and use it
         call_args = handler.stream.call_args
         messages = call_args[0][0]
-        assert messages[0]["role"] == "system"
+        assert len(messages) == 2
+        assert messages[0] == {"role": "system", "content": "You are a test agent."}
         assert messages[1] == {"role": "user", "content": "hello"}
-        assert len(agent.conversation_history) == 1
+        assert agent.conversation_history == [{"role": "user", "content": "hello"}]
 
     def test_run_does_not_modify_internal_history_with_override(self):
         agent = self._make_agent()
@@ -117,5 +132,54 @@ class TestBaseAgentLoadPrompt:
 
     def test_load_prompt_missing_file_raises(self):
         from packages.agents.jarvis.agent import JarvisAgent
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError, match="Prompt file not found"):
             JarvisAgent.load_prompt("nonexistent")
+
+
+@pytest.mark.unit
+class TestBaseAgentHistoryAndSerialization:
+    """Tests for conversation history and to_dict."""
+
+    def _make_agent(self) -> ConcreteAgent:
+        config = AgentConfig(
+            name="test",
+            description="test agent",
+            model="test-model",
+            system_prompt="You are a test agent.",
+        )
+        client = Mock(spec=LLMClient)
+        return ConcreteAgent(config, client)
+
+    def test_add_to_history_structure(self):
+        agent = self._make_agent()
+        agent.add_to_history("user", "hello")
+        agent.add_to_history("assistant", "hi there")
+        assert agent.conversation_history == [
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "hi there"},
+        ]
+
+    def test_clear_history(self):
+        agent = self._make_agent()
+        agent.add_to_history("user", "hello")
+        agent.clear_history()
+        assert agent.conversation_history == []
+
+    def test_get_messages_for_api(self):
+        agent = self._make_agent()
+        agent.add_to_history("user", "hello")
+        messages = agent.get_messages_for_api()
+        assert messages == [
+            {"role": "system", "content": "You are a test agent."},
+            {"role": "user", "content": "hello"},
+        ]
+
+    def test_to_dict(self):
+        agent = self._make_agent()
+        result = agent.to_dict()
+        assert result == {
+            "name": "test",
+            "description": "test agent",
+            "model": "test-model",
+            "tools": [],
+        }

@@ -110,11 +110,16 @@ class TestCardIndexerIndexNew:
         assert call_kwargs["ids"] == ["storyteller-tactics_the-hero"]
         assert call_kwargs["documents"] == ["# The Hero\n\nA tactic about heroes."]
         meta = call_kwargs["metadatas"][0]
-        assert meta["deck"] == "Storyteller Tactics"
-        assert meta["card_id"] == "the-hero"
-        assert meta["category"] == "Story Shapes"
-        assert meta["tags"] == "protagonist,journey"
-        assert meta["when"] == "When you need a hero"
+        assert set(meta.keys()) == {"deck", "deck_dir", "card_id", "name", "category", "tags", "when"}
+        assert meta == {
+            "deck": "Storyteller Tactics",
+            "deck_dir": "storyteller-tactics",
+            "card_id": "the-hero",
+            "name": "The Hero",
+            "category": "Story Shapes",
+            "tags": "protagonist,journey",
+            "when": "When you need a hero",
+        }
 
     def test_indexes_multiple_cards(self, tmp_path):
         indexer, mock_collection = _make_card_indexer()
@@ -232,10 +237,15 @@ class TestCardIndexerIndexNew:
 
         assert n_new == 1
         meta = mock_collection.upsert.call_args[1]["metadatas"][0]
-        assert meta["card_id"] == "unlisted-card"
-        assert meta["name"] == "unlisted-card"  # fallback to card_id
-        assert meta["category"] == ""
-        assert meta["tags"] == ""
+        assert meta == {
+            "deck": "Storyteller Tactics",
+            "deck_dir": "storyteller-tactics",
+            "card_id": "unlisted-card",
+            "name": "unlisted-card",  # fallback to card_id
+            "category": "",
+            "tags": "",
+            "when": "",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +260,7 @@ class TestLoadDeckYaml:
         path = tmp_path / "deck.yaml"
         path.write_text("name: Test Deck\ncards: []\n")
         result = indexer._load_deck_yaml(path)
-        assert result["name"] == "Test Deck"
+        assert result == {"name": "Test Deck", "cards": []}
 
     def test_returns_none_for_invalid_yaml(self, tmp_path):
         indexer, _ = _make_card_indexer()
@@ -300,11 +310,21 @@ class TestCardSearcher:
             results = searcher.search("hero story")
 
         assert len(results) == 1
-        assert results[0]["card_id"] == "the-hero"
-        assert results[0]["deck"] == "Storyteller Tactics"
-        assert results[0]["name"] == "The Hero"
-        assert results[0]["content"] == "# The Hero\n\nHero content."
-        assert results[0]["distance"] == 0.15
+        assert set(results[0].keys()) == {
+            "card_id", "deck", "deck_dir", "name", "category",
+            "tags", "when", "content", "distance",
+        }
+        assert results[0] == {
+            "card_id": "the-hero",
+            "deck": "Storyteller Tactics",
+            "deck_dir": "storyteller-tactics",
+            "name": "The Hero",
+            "category": "Story Shapes",
+            "tags": "protagonist,journey",
+            "when": "When you need a hero",
+            "content": "# The Hero\n\nHero content.",
+            "distance": 0.15,
+        }
 
     def test_deck_filter_passed_as_where(self):
         searcher, mock_collection = _make_card_searcher()
@@ -372,7 +392,7 @@ class TestMakeCardSearchTool:
             tool = make_card_search_tool("/tmp/fake", "test-model")
             result = tool.execute(query="test")
 
-        assert "No matching" in result
+        assert result == "No matching tactics cards found."
 
     def test_execute_clamps_n_results(self):
         mock_chroma = MagicMock()

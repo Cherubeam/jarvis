@@ -91,12 +91,13 @@ class TestParsePattern:
         assert p.name == "Chain-of-Thought"
         assert p.category == "Reasoning & Planning"
         assert p.intent == "Make AI reasoning visible by forcing it to show its work."
-        assert "multiple steps" in p.context
-        assert "plausible-sounding" in p.problem
-        assert "step by step" in p.solution
+        assert p.context == "A language model is asked a question requiring multiple steps."
+        assert p.problem == "Models jump to plausible-sounding answers, skipping intermediate reasoning."
+        assert p.solution == "Instruct the model to reason step by step before producing its final answer."
         assert "auditable" in p.consequences
         assert p.related_patterns == ["ReAct", "Reflection"]
         assert p.status == "draft"
+        assert p.tags == ["collection-patterns"]
 
     def test_minimal_pattern(self):
         p = parse_pattern(MINIMAL_PATTERN)
@@ -193,13 +194,28 @@ class TestSlugify:
 
 class TestCategoryColor:
     def test_known_category(self):
-        assert _category_color("Reasoning & Planning") == CATEGORY_COLORS["reasoning & planning"]
+        assert _category_color("Reasoning & Planning") == "#4A90D9"
 
     def test_unknown_category(self):
-        assert _category_color("Unknown Category") == DEFAULT_COLOR
+        assert _category_color("Unknown Category") == "#64748B"
+        assert DEFAULT_COLOR == "#64748B"
 
     def test_case_insensitive(self):
-        assert _category_color("REASONING & PLANNING") == CATEGORY_COLORS["reasoning & planning"]
+        assert _category_color("REASONING & PLANNING") == "#4A90D9"
+
+    def test_all_categories_have_hex_colors(self):
+        """Every mapped category should return a valid hex color."""
+        for cat_key, color in CATEGORY_COLORS.items():
+            assert color.startswith("#"), f"{cat_key} color should be hex"
+            assert len(color) == 7, f"{cat_key} color should be #RRGGBB"
+            result = _category_color(cat_key)
+            assert result == color
+
+    def test_specific_category_mappings(self):
+        assert _category_color("knowledge & retrieval") == "#50B88E"
+        assert _category_color("interaction & interface") == "#E8A840"
+        assert _category_color("reliability & safety") == "#D94A4A"
+        assert _category_color("orchestration & architecture") == "#8B5CF6"
 
 
 # ---------------------------------------------------------------------------
@@ -260,49 +276,62 @@ class TestRenderCardHtml:
     def test_contains_pattern_name(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
-        assert "Chain-of-Thought" in html
+        assert '<div class="card-title">Chain-of-Thought</div>' in html
 
     def test_contains_category(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
-        assert "Reasoning &amp; Planning" in html or "Reasoning & Planning" in html
+        assert '<div class="card-header">Reasoning &amp; Planning</div>' in html or \
+               '<div class="card-header">Reasoning & Planning</div>' in html
 
     def test_contains_intent(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
+        assert "card-intent" in html
         assert "show its work" in html
+
+    def test_uses_category_color_in_styles(self):
+        p = parse_pattern(FULL_PATTERN)
+        html = render_card_html(p)
+        # "Reasoning & Planning" → #4A90D9
+        assert "#4A90D9" in html
 
     def test_image_placeholder_when_no_image(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
-        assert "card-image-placeholder" in html
+        assert 'class="card-image-placeholder"' in html
         assert "<img" not in html
 
     def test_image_included_when_provided(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p, image_path="/tmp/test.png")
-        assert '<img' in html
-        assert "/tmp/test.png" in html
+        assert '<img class="card-image" src="file:///tmp/test.png"' in html
+        # The placeholder div should not appear in the body (only in styles)
+        assert '<div class="card-image-placeholder">' not in html
 
     def test_missing_sections_omitted(self):
         p = parse_pattern(MINIMAL_PATTERN)
         html = render_card_html(p)
-        assert "Problem" not in html
-        assert "Solution" not in html
+        # Problem/Solution section divs should not appear in body
+        assert '<div class="card-section-label">Problem</div>' not in html
+        assert '<div class="card-section-label">Solution</div>' not in html
+        assert '<div class="card-footer">' not in html
 
     def test_related_patterns_shown(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
-        assert "ReAct" in html
-        assert "Reflection" in html
+        assert '<span class="card-related-tag">ReAct</span>' in html
+        assert '<span class="card-related-tag">Reflection</span>' in html
+        assert "card-footer" in html
 
 
 class TestRenderCardBack:
     def test_card_back_html(self):
         html = render_card_back_html()
-        assert "Pattern" in html
-        assert "Language" in html
-        assert "card-back" in html
+        assert '<div class="card-back-title">Pattern</div>' in html
+        assert '<div class="card-back-subtitle">Language</div>' in html
+        assert '<div class="card-back">' in html
+        assert '<div class="card-back-ornament"></div>' in html
 
 
 # ---------------------------------------------------------------------------
@@ -404,19 +433,24 @@ class TestImageGenerationConfig:
     def test_defaults(self):
         cfg = ImageGenerationConfig()
         assert cfg.enabled is False
-        assert "imagen" in cfg.model
+        assert cfg.model == "gemini/imagen-4.0-generate-001"
+        assert cfg.size == "1024x1024"
         assert cfg.max_images_per_run == 10
 
     def test_from_dict_empty(self):
         cfg = ImageGenerationConfig.from_dict({})
         assert cfg.enabled is False
+        assert cfg.model == "gemini/imagen-4.0-generate-001"
+        assert cfg.size == "1024x1024"
+        assert cfg.max_images_per_run == 10
 
     def test_from_dict_enabled(self):
-        d = {"image_generation": {"enabled": True, "model": "gemini/test-model", "size": "512x512"}}
+        d = {"image_generation": {"enabled": True, "model": "gemini/test-model", "size": "512x512", "max_images_per_run": 5}}
         cfg = ImageGenerationConfig.from_dict(d)
         assert cfg.enabled is True
         assert cfg.model == "gemini/test-model"
         assert cfg.size == "512x512"
+        assert cfg.max_images_per_run == 5
 
 
 # ---------------------------------------------------------------------------
@@ -427,7 +461,7 @@ class TestGeneratePatternImage:
     def test_raises_when_disabled(self, tmp_path):
         p = parse_pattern(FULL_PATTERN)
         cfg = ImageGenerationConfig(enabled=False)
-        with pytest.raises(RuntimeError, match="disabled"):
+        with pytest.raises(RuntimeError, match="Image generation is disabled"):
             generate_pattern_image(p, tmp_path, cfg)
 
     def test_skips_when_cached(self, tmp_path):

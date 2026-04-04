@@ -42,7 +42,7 @@ class TestModelPricing:
         cost = pricing.calculate_cost(1000, 200)
 
         # (1000 * 0.000003) + (200 * 0.000015) = 0.003 + 0.003 = 0.006
-        assert cost == pytest.approx(0.006)
+        assert cost == 0.006
 
     def test_model_pricing_zero_tokens(self):
         """Test that zero tokens returns zero cost."""
@@ -67,7 +67,7 @@ class TestModelPricing:
         cost = pricing.calculate_cost(1_000_000, 500_000)
 
         # (1M * 0.000003) + (500k * 0.000015) = 3.0 + 7.5 = 10.5
-        assert cost == pytest.approx(10.5)
+        assert cost == 10.5
 
 
 @pytest.mark.unit
@@ -88,6 +88,9 @@ class TestGetModelPricing:
         assert result is not None
         assert result.prompt_cost == 0.000003
         assert result.completion_cost == 0.000015
+        assert result.model_id == "anthropic/claude-sonnet-4.6"
+        assert result.cache_read_cost is None
+        assert result.cache_write_cost is None
 
     def test_get_model_pricing_not_found(self):
         """Test that None is returned for unknown models."""
@@ -241,7 +244,7 @@ class TestCacheAwarePricing:
         cost_old = (1000 * 0.000003) + (200 * 0.000015)
         cost_new = pricing.calculate_cost(1000, 200)
 
-        assert cost_new == pytest.approx(cost_old)
+        assert cost_new == cost_old
 
     def test_get_model_pricing_includes_cache_costs(self):
         """get_model_pricing populates cache cost fields from LiteLLM cost map."""
@@ -274,3 +277,62 @@ class TestCacheAwarePricing:
         assert result is not None
         assert result.cache_read_cost is None
         assert result.cache_write_cost is None
+
+
+@pytest.mark.unit
+class TestPricingEdgeCases:
+    """Edge cases and boundary conditions for pricing."""
+
+    def test_format_cost_boundary_at_0001(self):
+        """Boundary: exactly $0.0001 should use 4-decimal format."""
+        assert format_cost(0.0001) == "$0.0001"
+
+    def test_format_cost_boundary_at_001(self):
+        """Boundary: exactly $0.01 should use 2-decimal format."""
+        assert format_cost(0.01) == "$0.01"
+
+    def test_calculate_cost_negative_cache_tokens_clamped(self):
+        """When cache tokens exceed prompt tokens, regular_prompt is clamped to 0."""
+        pricing = ModelPricing(
+            prompt_cost=0.000003,
+            completion_cost=0.000015,
+            model_id="test-model",
+        )
+        # cache_read + cache_write > prompt_tokens; regular_prompt = max(0, ...)
+        cost = pricing.calculate_cost(100, 200, cache_read_tokens=80, cache_write_tokens=50)
+        # regular = max(0, 100 - 80 - 50) = 0
+        # read = 80 * 0.000003 * 0.1 = 0.000024
+        # write = 50 * 0.000003 * 1.25 = 0.0001875
+        # completion = 200 * 0.000015 = 0.003
+        expected = 0.0 + 0.000024 + 0.0001875 + 0.003
+        assert cost == pytest.approx(expected)
+
+    def test_get_model_pricing_bare_name_fallback(self):
+        """Model lookup falls back to bare model name (last segment)."""
+        mock_cost_map = {
+            "claude-sonnet-4.6": {
+                "input_cost_per_token": 0.000003,
+                "output_cost_per_token": 0.000015,
+            }
+        }
+        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+            result = get_model_pricing("openrouter/anthropic/claude-sonnet-4.6")
+
+        assert result is not None
+        assert result.prompt_cost == 0.000003
+        # model_id should be the original full ID, not the bare name
+        assert result.model_id == "openrouter/anthropic/claude-sonnet-4.6"
+
+    def test_get_model_pricing_no_slash_not_found(self):
+        """Model without slashes: only tries the exact ID."""
+        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value={}):
+            result = get_model_pricing("nonexistent-model")
+        assert result is None
+
+    def test_calculate_cost_from_litellm_returns_exact_value(self):
+        """calculate_cost_from_litellm returns exactly what litellm returns."""
+        mock_response = Mock()
+        with patch('litellm.completion_cost') as mock_cost:
+            mock_cost.return_value = 0.0
+            result = calculate_cost_from_litellm(mock_response)
+        assert result == 0.0

@@ -109,11 +109,16 @@ def test_estimate_benchmark_costs_calculates(tmp_path: Path, monkeypatch):
     estimate = estimates["anthropic/claude-sonnet-4.5"]
     expected_response_cost = (220 * 0.000003) + (80 * 0.000015)
     expected_judge_cost = (380 * 0.000015) + (180 * 0.000075)
-    assert estimate.response_cost_usd == pytest.approx(expected_response_cost)
-    assert estimate.judge_cost_usd == pytest.approx(expected_judge_cost)
-    assert estimate.total_cost_usd == pytest.approx(
-        expected_response_cost + expected_judge_cost
-    )
+    # Exact arithmetic: response = (220 * 0.000003) + (80 * 0.000015) = 0.00066 + 0.0012 = 0.00186
+    # judge = (380 * 0.000015) + (180 * 0.000075) = 0.0057 + 0.0135 = 0.0192
+    assert estimate.response_cost_usd == expected_response_cost
+    assert estimate.judge_cost_usd == expected_judge_cost
+    assert estimate.total_cost_usd == expected_response_cost + expected_judge_cost
+    # Verify model_id is stored in the estimate
+    assert estimate.model_id == "anthropic/claude-sonnet-4.5"
+    # Verify token baselines are carried through
+    assert estimate.response_tokens is baseline.response
+    assert estimate.judge_tokens is baseline.judge
 
 
 def test_estimate_benchmark_costs_warns_on_missing_pricing(
@@ -147,6 +152,57 @@ def test_estimate_benchmark_costs_warns_on_missing_pricing(
         )
 
     assert estimates == {}
-    assert any(
-        "Pricing unavailable for model" in str(warning.message) for warning in caught
-    )
+    assert len(caught) == 1
+    assert str(caught[0].message) == "Pricing unavailable for model anthropic/claude-sonnet-4.5; skipping."
+    assert caught[0].category is RuntimeWarning
+
+
+def test_get_run_dir_raises_on_missing(tmp_path: Path):
+    """get_run_dir raises ValueError with exact message when no runs exist."""
+    with pytest.raises(ValueError, match="No golden test runs found. Run golden tests first to create a baseline."):
+        benchmark_costs.get_run_dir(tmp_path)
+
+
+def test_get_run_dir_raises_on_specific_missing_run(tmp_path: Path):
+    """get_run_dir raises ValueError when a specific run_id doesn't exist."""
+    with pytest.raises(ValueError, match="No golden test runs found"):
+        benchmark_costs.get_run_dir(tmp_path, run_id="nonexistent-run")
+
+
+def test_token_totals_total_tokens():
+    """TokenTotals.total_tokens property returns sum."""
+    totals = benchmark_costs.TokenTotals(prompt_tokens=100, completion_tokens=50)
+    assert totals.total_tokens == 150
+
+
+def test_warns_on_missing_judge_pricing(tmp_path: Path, monkeypatch):
+    """When judge model pricing is unavailable, warn and return empty estimates."""
+    results_dir = tmp_path / "results"
+    run_dir = results_dir / "runs" / "2026-01-21_09-59-53"
+    run_dir.mkdir(parents=True)
+    _write_result(run_dir, "basic_qa", 10, 5, 20, 10)
+
+    monkeypatch.setattr(benchmark_costs, "get_model_pricing", lambda model_id: None)
+
+    with warnings.catch_warnings(record=True) as caught:
+        estimates, baseline = benchmark_costs.estimate_benchmark_costs(
+            models=["some-model"],
+            judge_model="unknown-judge",
+            results_dir=results_dir,
+        )
+
+    assert estimates == {}
+    assert len(caught) == 1
+    assert str(caught[0].message) == "Pricing unavailable for judge model unknown-judge."
+    assert caught[0].category is RuntimeWarning
+
+
+def test_load_run_token_totals_raises_on_empty_dir(tmp_path: Path):
+    """_load_run_token_totals raises ValueError when no test result JSONs exist."""
+    run_dir = tmp_path / "empty_run"
+    run_dir.mkdir()
+    # Only a run_summary.json, no actual test results
+    _write_run_summary(run_dir)
+
+    with pytest.raises(ValueError, match=f"No test result JSON files found in {run_dir}"):
+        benchmark_costs._load_run_token_totals(run_dir)

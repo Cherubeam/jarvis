@@ -79,6 +79,8 @@ class TestConvertContentBlocks:
         blocks = [{"type": "tool_use", "input": {}}]
         result = convert_content_blocks(blocks)
         assert result[0]["text"] == "[Tool: unknown_tool]"
+        assert result[0]["metadata"]["tool_name"] == "unknown_tool"
+        assert result[0]["metadata"]["tool_input"] == {}
 
     def test_tool_result_block(self):
         blocks = [{
@@ -218,8 +220,7 @@ class TestConvertConversation:
 
     def test_tags(self, sample_conv):
         result = convert_conversation(sample_conv)
-        assert "imported" in result["tags"]
-        assert "claude" in result["tags"]
+        assert result["tags"] == ["imported", "claude"]
 
     def test_model_is_none(self, sample_conv):
         """Claude export doesn't include model info."""
@@ -235,10 +236,30 @@ class TestConvertConversation:
         result = convert_conversation(sample_conv)
         assert len(result["messages"]) == 2
 
-    def test_message_roles(self, sample_conv):
+    def test_message_roles_human_maps_to_user(self, sample_conv):
+        """Verify human→user and assistant→assistant role mapping."""
         result = convert_conversation(sample_conv)
         assert result["messages"][0]["role"] == "user"
         assert result["messages"][1]["role"] == "assistant"
+
+    def test_unknown_sender_maps_to_system(self):
+        """Verify unknown sender role falls back to 'system'."""
+        conv = {
+            "uuid": "test-uuid-role",
+            "name": "Role test",
+            "created_at": "2025-12-10T10:30:00.000000Z",
+            "updated_at": "2025-12-10T10:30:00.000000Z",
+            "chat_messages": [
+                {
+                    "sender": "unknown_sender",
+                    "content": [{"type": "text", "text": "hello"}],
+                    "created_at": "2025-12-10T10:30:00.000000Z",
+                    "updated_at": "2025-12-10T10:30:00.000000Z",
+                },
+            ],
+        }
+        result = convert_conversation(conv)
+        assert result["messages"][0]["role"] == "system"
 
     def test_message_ids_sequential(self, sample_conv):
         result = convert_conversation(sample_conv)
@@ -252,9 +273,27 @@ class TestConvertConversation:
 
     def test_metadata_import_fields(self, sample_conv):
         result = convert_conversation(sample_conv)
+        assert set(result["metadata"].keys()) == {"import_source", "claude_id", "import_timestamp"}
         assert result["metadata"]["import_source"] == "claude"
         assert result["metadata"]["claude_id"] == "aaaa1111-bbbb-cccc-dddd-eeeeeeee0001"
-        assert "import_timestamp" in result["metadata"]
+        assert isinstance(result["metadata"]["import_timestamp"], str)
+
+    def test_conversation_top_level_keys(self, sample_conv):
+        """Verify all required top-level keys are present."""
+        result = convert_conversation(sample_conv)
+        expected_keys = {
+            "schema_version", "id", "title", "topic", "tags",
+            "session_start", "session_end", "model", "agent",
+            "context", "metrics", "environment", "messages",
+            "feedback", "metadata",
+        }
+        assert set(result.keys()) == expected_keys
+        assert result["topic"] is None
+        assert result["model"] is None
+        assert result["agent"] is None
+        assert result["context"] is None
+        assert result["environment"] is None
+        assert result["feedback"] is None
 
     def test_deterministic_conv_id(self, sample_conv):
         """Same input should produce same conv_id."""
@@ -269,11 +308,21 @@ class TestConvertConversation:
         assert len(parts) == 4
         assert len(parts[3]) == 4  # 4 hex chars
 
-    def test_no_usage_data(self, sample_conv):
+    def test_message_structure_complete(self, sample_conv):
+        """Every message has all required keys with correct types."""
         result = convert_conversation(sample_conv)
+        expected_keys = {"id", "parent_id", "role", "timestamp", "content",
+                         "usage", "latency", "stop_reason", "status", "error", "metadata"}
         for msg in result["messages"]:
+            assert set(msg.keys()) == expected_keys
             assert msg["usage"] is None
             assert msg["latency"] is None
+            assert msg["stop_reason"] is None
+            assert msg["status"] == "completed"
+            assert msg["error"] is None
+            assert msg["metadata"] == {}
+            assert msg["parent_id"] is None
+            assert isinstance(msg["content"], list)
 
     def test_empty_metrics(self, sample_conv):
         result = convert_conversation(sample_conv)
