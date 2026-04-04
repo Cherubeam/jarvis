@@ -96,11 +96,11 @@ def make_vault_write_tools(
     create_tool = ToolDefinition(
         name="create_note",
         description=(
-            "Create a new note in the vault. "
-            "Path is relative to the target directory (or vault root if no target directory is configured). "
-            "Set use_template=true to prepend the configured template. "
-            "Use descriptive file names with spaces (e.g. 'Concept for Method of the Year.md'). "
-            "The user will see a diff and must confirm before the file is written."
+            "Create a new note in the vault. "  # pragma: no mutate
+            "Path is relative to the target directory (or vault root if no target directory is configured). "  # pragma: no mutate
+            "Set use_template=true to prepend the configured template. "  # pragma: no mutate
+            "Use descriptive file names with spaces (e.g. 'Concept for Method of the Year.md'). "  # pragma: no mutate
+            "The user will see a diff and must confirm before the file is written."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
@@ -108,18 +108,18 @@ def make_vault_write_tools(
                 "path": {
                     "type": "string",
                     "description": (
-                        "File path relative to the target directory "
-                        "(e.g. 'My Pattern.md' or 'Subfolder/Note.md'). "
-                        "Do NOT include the target directory prefix."
+                        "File path relative to the target directory "  # pragma: no mutate
+                        "(e.g. 'My Pattern.md' or 'Subfolder/Note.md'). "  # pragma: no mutate
+                        "Do NOT include the target directory prefix."  # pragma: no mutate
                     ),
                 },
                 "content": {
                     "type": "string",
-                    "description": "Full markdown content for the note.",
+                    "description": "Full markdown content for the note.",  # pragma: no mutate
                 },
                 "use_template": {
                     "type": "boolean",
-                    "description": "Prepend the configured template (default: true).",
+                    "description": "Prepend the configured template (default: true).",  # pragma: no mutate
                     "default": True,
                 },
             },
@@ -149,25 +149,25 @@ def make_vault_write_tools(
     edit_tool = ToolDefinition(
         name="edit_note",
         description=(
-            "Edit an existing note by replacing its full content. "
-            "Path is relative to the vault root. "
-            "Provide reasoning to explain the changes — it will be shown alongside the diff. "
-            "The user must confirm before the edit is applied."
+            "Edit an existing note by replacing its full content. "  # pragma: no mutate
+            "Path is relative to the vault root. "  # pragma: no mutate
+            "Provide reasoning to explain the changes — it will be shown alongside the diff. "  # pragma: no mutate
+            "The user must confirm before the edit is applied."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",
+                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
                 },
                 "new_content": {
                     "type": "string",
-                    "description": "The complete new content for the file.",
+                    "description": "The complete new content for the file.",  # pragma: no mutate
                 },
                 "reasoning": {
                     "type": "string",
-                    "description": "Explanation of what changed and why (shown to user before diff).",
+                    "description": "Explanation of what changed and why (shown to user before diff).",  # pragma: no mutate
                 },
             },
             "required": ["path", "new_content"],
@@ -198,17 +198,17 @@ def make_vault_write_tools(
         list_tool = ToolDefinition(
             name="list_notes_in_dir",
             description=(
-                "List markdown files in the target directory. "
-                "Returns paths relative to the target directory — "
-                "use these paths directly with create_note. "
-                "Optionally filter by subfolder."
+                "List markdown files in the target directory. "  # pragma: no mutate
+                "Returns paths relative to the target directory — "  # pragma: no mutate
+                "use these paths directly with create_note. "  # pragma: no mutate
+                "Optionally filter by subfolder."  # pragma: no mutate
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "subfolder": {
                         "type": "string",
-                        "description": "Optional subfolder within the target directory to list.",
+                        "description": "Optional subfolder within the target directory to list.",  # pragma: no mutate
                     },
                 },
                 "required": [],

@@ -46,13 +46,13 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     read_tool = ToolDefinition(
         name="read_note",
-        description="Read the full content of a note from the Obsidian vault. Path is relative to the vault root.",
+        description="Read the full content of a note from the Obsidian vault. Path is relative to the vault root.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the note, relative to the vault root.",
+                    "description": "Path to the note, relative to the vault root.",  # pragma: no mutate
                 },
             },
             "required": ["path"],
@@ -99,26 +99,26 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     search_tool = ToolDefinition(
         name="search_notes",
-        description="List notes in the Obsidian vault matching a glob pattern. Returns paths relative to the vault root. Supports sorting by name or modification time.",
+        description="List notes in the Obsidian vault matching a glob pattern. Returns paths relative to the vault root. Supports sorting by name or modification time.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "directory": {
                     "type": "string",
-                    "description": "Directory to search in, relative to vault root. Defaults to the vault root.",
+                    "description": "Directory to search in, relative to vault root. Defaults to the vault root.",  # pragma: no mutate
                 },
                 "pattern": {
                     "type": "string",
-                    "description": "Glob pattern to match files (default: '**/*.md').",
+                    "description": "Glob pattern to match files (default: '**/*.md').",  # pragma: no mutate
                 },
                 "sort_by": {
                     "type": "string",
                     "enum": ["name", "modified"],
-                    "description": "Sort order: 'name' (alphabetical, default) or 'modified' (most recent first, includes timestamps).",
+                    "description": "Sort order: 'name' (alphabetical, default) or 'modified' (most recent first, includes timestamps).",  # pragma: no mutate
                 },
                 "limit": {
                     "type": "integer",
-                    "description": "Maximum number of results to return (default: 100, clamped 1–100).",
+                    "description": "Maximum number of results to return (default: 100, clamped 1–100).",  # pragma: no mutate
                 },
             },
             "required": [],
@@ -149,13 +149,13 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     daily_tool = ToolDefinition(
         name="read_daily_note",
-        description="Read today's daily note (or a specific date's note) from the Obsidian vault.",
+        description="Read today's daily note (or a specific date's note) from the Obsidian vault.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "date": {
                     "type": "string",
-                    "description": "Date in YYYY-MM-DD format. Defaults to today if omitted.",
+                    "description": "Date in YYYY-MM-DD format. Defaults to today if omitted.",  # pragma: no mutate
                 },
             },
             "required": [],
