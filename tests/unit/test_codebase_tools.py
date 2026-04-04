@@ -29,55 +29,66 @@ def tools(project_dir):
 class TestReadSourceFile:
     def test_read_existing_file(self, tools, project_dir):
         result = tools["read_source_file"].execute(path="README.md")
-        assert "# Test Project" in result
+        assert result == "# Test Project\n"
 
     def test_read_nested_file(self, tools, project_dir):
         result = tools["read_source_file"].execute(path="packages/core/main.py")
-        assert 'print("hello")' in result
+        assert result == '"""Main module."""\nprint("hello")\n'
 
     def test_read_nonexistent_file(self, tools):
         result = tools["read_source_file"].execute(path="nonexistent.py")
-        assert "Error" in result
-        assert "not found" in result
+        assert result == "Error: File not found: nonexistent.py"
 
     def test_path_traversal_blocked(self, tools):
         result = tools["read_source_file"].execute(path="../../../etc/passwd")
-        assert "Error" in result
-        assert "outside" in result
+        assert result.startswith("Error: Path '")
+        assert "outside the project directory" in result
 
     def test_large_file_rejected(self, tools, project_dir):
         large_file = project_dir / "large.py"
         large_file.write_text("x" * 60_000)
         result = tools["read_source_file"].execute(path="large.py")
-        assert "Error" in result
-        assert "too large" in result.lower()
+        assert result.startswith("Error: File too large (")
+        assert "60000 bytes" in result
+        assert "max 50000" in result
 
 
 class TestSearchCode:
     def test_search_finds_match(self, tools, project_dir):
         result = tools["search_code"].execute(pattern="hello")
-        assert "main.py" in result
-        assert "hello" in result
+        # Format: file:line: content
+        assert 'packages/core/main.py:2: print("hello")' in result
+
+    def test_search_result_format_colon_separated(self, tools, project_dir):
+        result = tools["search_code"].execute(pattern="Main module")
+        # Verify exact format: relative_path:line_number: line_content
+        assert 'packages/core/main.py:1: """Main module."""' in result
 
     def test_search_no_matches(self, tools):
         result = tools["search_code"].execute(pattern="nonexistent_pattern_xyz")
-        assert "No matches" in result
+        assert result == "No matches found for pattern 'nonexistent_pattern_xyz' in '**/*.py'."
 
     def test_search_invalid_regex(self, tools):
         result = tools["search_code"].execute(pattern="[invalid")
-        assert "Error" in result
-        assert "regex" in result.lower()
+        assert result.startswith("Error: Invalid regex pattern:")
 
     def test_search_with_glob_filter(self, tools, project_dir):
         result = tools["search_code"].execute(pattern="Test Project", glob="**/*.md")
-        assert "README.md" in result
+        assert "README.md:1: # Test Project" in result
 
     def test_search_respects_max_results(self, tools, project_dir):
         # Create a file with many matching lines
         many_lines = "\n".join(f"match_line_{i}" for i in range(100))
         (project_dir / "many.py").write_text(many_lines)
         result = tools["search_code"].execute(pattern="match_line", max_results=5)
-        assert "Truncated" in result
+        assert result.endswith("[Truncated at 5 results]")
+
+    def test_search_skips_pycache(self, tools, project_dir):
+        pycache = project_dir / "__pycache__"
+        pycache.mkdir()
+        (pycache / "cached.py").write_text("hello_from_cache")
+        result = tools["search_code"].execute(pattern="hello_from_cache", glob="**/*.py")
+        assert result == "No matches found for pattern 'hello_from_cache' in '**/*.py'."
 
 
 class TestListDirectory:
@@ -92,11 +103,12 @@ class TestListDirectory:
 
     def test_list_nonexistent_directory(self, tools):
         result = tools["list_directory"].execute(path="nonexistent")
-        assert "Error" in result
+        assert result == "Error: Not a directory: nonexistent"
 
     def test_path_traversal_blocked(self, tools):
         result = tools["list_directory"].execute(path="../../../")
-        assert "Error" in result
+        assert result.startswith("Error: Path '")
+        assert "outside the project directory" in result
 
     def test_filters_pycache(self, tools, project_dir):
         (project_dir / "__pycache__").mkdir()
@@ -114,8 +126,7 @@ class TestReadArchitectureMap:
     def test_missing_map(self, tools, project_dir):
         (project_dir / "data" / "codebase_map.md").unlink()
         result = tools["read_architecture_map"].execute()
-        assert "Error" in result
-        assert "not found" in result
+        assert result == "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
 
 
 class TestToolFormat:

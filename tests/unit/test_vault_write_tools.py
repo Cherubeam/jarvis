@@ -127,6 +127,8 @@ class TestCreateNote:
         content = (target / "Templated.md").read_text(encoding="utf-8")
         assert "type: pattern" in content  # from template
         assert "# Pattern Body" in content  # user content
+        # Template and content are joined with \n\n (double newline separator)
+        assert "---\n\n# Pattern Body" in content
 
     def test_creates_without_target_dir(self, tools_no_target):
         tools, config, handler = tools_no_target
@@ -143,7 +145,7 @@ class TestCreateNote:
         tool = _get_tool(tools, "create_note")
         result = tool.execute(path="exists.md", content="new")
 
-        assert "already exists" in result
+        assert result == "Error: File already exists: exists.md. Use edit_note to modify it."
 
     def test_rejected_by_user(self, vault_with_target):
         config, target, template = vault_with_target
@@ -196,7 +198,7 @@ class TestCreateNote:
             use_template=False,
         )
 
-        assert "escapes" in result.lower()
+        assert result == "Error: Path '../../etc/passwd' escapes the target directory."
 
 
 # ==================== edit_note ====================
@@ -223,7 +225,7 @@ class TestEditNote:
         tools, *_ = tools_with_target
         tool = _get_tool(tools, "edit_note")
         result = tool.execute(path="Patterns/ghost.md", new_content="content")
-        assert "not found" in result.lower()
+        assert result == "Error: File not found: Patterns/ghost.md. Use create_note for new files."
 
     def test_rejects_read_only_edit(self, tools_with_target):
         """Template dir has read-only access — edits are blocked."""
@@ -233,7 +235,7 @@ class TestEditNote:
             path="Templates/Pattern Template.md",
             new_content="hacked",
         )
-        assert "read-only" in result.lower()
+        assert result == "Error: Cannot edit this file (read-only)."
 
     def test_rejected_by_user(self, vault_with_target):
         config, target, template = vault_with_target
@@ -272,7 +274,7 @@ class TestListNotesInDir:
         tools, *_ = tools_with_target
         tool = _get_tool(tools, "list_notes_in_dir")
         result = tool.execute()
-        assert "No notes found" in result
+        assert result == "No notes found."
 
     def test_subfolder_filter(self, tools_with_target):
         tools, target, *_ = tools_with_target

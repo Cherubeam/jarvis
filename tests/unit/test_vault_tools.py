@@ -85,15 +85,13 @@ class TestReadNote:
         tool = _get_tool(tool_list, "read_note")
         result = tool.execute(path="Notes/test.md")
 
-        assert "# Test Note" in result
-        assert "Hello world." in result
+        assert result == "# Test Note\n\nHello world."
 
     def test_file_not_found(self, tools):
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "read_note")
         result = tool.execute(path="Notes/missing.md")
-        assert "Error" in result
-        assert "not found" in result.lower()
+        assert result == "Error: File not found: Notes/missing.md"
 
     def test_denied_path(self, tools):
         tool_list, vault_path, *_ = tools
@@ -111,8 +109,20 @@ class TestReadNote:
         tool = _get_tool(tool_list, "read_note")
         result = tool.execute(path="Notes/large.md")
 
-        assert "[Truncated" in result
-        assert len(result) < MAX_CONTENT_SIZE + 200  # truncation message overhead
+        assert result.endswith("\n\n[Truncated — content exceeds 50KB]")
+        assert len(result) == MAX_CONTENT_SIZE + len("\n\n[Truncated — content exceeds 50KB]")
+
+    def test_exactly_at_max_not_truncated(self, tools):
+        """Boundary: content exactly at MAX_CONTENT_SIZE should NOT be truncated."""
+        tool_list, vault_path, *_ = tools
+        exact_content = "y" * MAX_CONTENT_SIZE
+        (vault_path / "Notes" / "exact.md").write_text(exact_content)
+
+        tool = _get_tool(tool_list, "read_note")
+        result = tool.execute(path="Notes/exact.md")
+
+        assert result == exact_content
+        assert "[Truncated" not in result
 
 
 # ==================== search_notes ====================
@@ -145,7 +155,7 @@ class TestSearchNotes:
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Notes")
-        assert "No notes found" in result
+        assert result == "No notes found."
 
     def test_denied_directory(self, tools):
         tool_list, vault_path, *_ = tools
@@ -258,6 +268,19 @@ class TestSearchNotes:
         lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
         assert len(lines) == 1  # clamped to 1
 
+    def test_limit_clamped_negative(self, tools):
+        """Negative limit should be clamped to 1."""
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        for i in range(3):
+            (notes_dir / f"note-{i}.md").write_text(f"# Note {i}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", limit=-5)
+
+        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        assert len(lines) == 1  # clamped to 1
+
 
 # ==================== read_daily_note ====================
 
@@ -290,8 +313,7 @@ class TestReadDailyNote:
         tool = _get_tool(tool_list, "read_daily_note")
         result = tool.execute(date="2099-01-01")
 
-        assert "Error" in result
-        assert "not found" in result.lower()
+        assert result == "Error: Daily note not found for 2099-01-01."
 
     def test_defaults_to_today(self, tools):
         tool_list, vault_path, *_ = tools
@@ -300,15 +322,14 @@ class TestReadDailyNote:
         result = tool.execute()
 
         # No daily note for today — should get "not found" error with "today"
-        assert "today" in result.lower()
+        assert result == "Error: Daily note not found for today."
 
     def test_invalid_date_format(self, tools):
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "read_daily_note")
         result = tool.execute(date="not-a-date")
 
-        assert "Error" in result
-        assert "Invalid date" in result
+        assert result == "Error: Invalid date format: not-a-date. Use YYYY-MM-DD."
 
     def test_truncates_large_daily_note(self, tools):
         tool_list, vault_path, *_ = tools
@@ -319,4 +340,5 @@ class TestReadDailyNote:
         tool = _get_tool(tool_list, "read_daily_note")
         result = tool.execute()
 
-        assert "[Truncated" in result
+        assert result.endswith("\n\n[Truncated — content exceeds 50KB]")
+        assert len(result) == MAX_CONTENT_SIZE + len("\n\n[Truncated — content exceeds 50KB]")
