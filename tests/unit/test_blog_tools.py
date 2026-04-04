@@ -2,6 +2,7 @@
 
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
@@ -83,6 +84,57 @@ class TestMakeBlogTools:
             assert fmt["type"] == "function"
             assert "name" in fmt["function"]
 
+    def test_all_have_descriptions(self, tools):
+        """Every tool must have a non-None, non-empty description string."""
+        tool_list, *_ = tools
+        for t in tool_list:
+            assert isinstance(t.description, str), f"{t.name} description is not a string"
+            assert len(t.description) > 0, f"{t.name} has empty description"
+
+    def test_list_tool_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "list_blog_posts")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert "properties" in params
+        assert "subfolder" in params["properties"]
+        assert params["properties"]["subfolder"]["type"] == "string"
+        assert params["required"] == []
+
+    def test_read_tool_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "read_blog_post")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert "path" in params["properties"]
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["required"] == ["path"]
+
+    def test_create_tool_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "create_blog_post")
+        params = tool.parameters
+        assert params["type"] == "object"
+        props = params["properties"]
+        assert set(props.keys()) == {"filename", "content", "use_template"}
+        assert props["filename"]["type"] == "string"
+        assert props["content"]["type"] == "string"
+        assert props["use_template"]["type"] == "boolean"
+        assert props["use_template"]["default"] is True
+        assert params["required"] == ["filename", "content"]
+
+    def test_edit_tool_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "edit_blog_post")
+        params = tool.parameters
+        assert params["type"] == "object"
+        props = params["properties"]
+        assert set(props.keys()) == {"path", "new_content", "reasoning"}
+        assert props["path"]["type"] == "string"
+        assert props["new_content"]["type"] == "string"
+        assert props["reasoning"]["type"] == "string"
+        assert params["required"] == ["path", "new_content"]
+
 
 # ==================== list_blog_posts ====================
 
@@ -99,9 +151,13 @@ class TestListBlogPosts:
 
         assert "post-one.md" in result
         assert "post-two.md" in result
-        # Verify newline-separated format (not comma, not space)
+        # Verify clean newline-separated format (no extra characters around separator)
         lines = result.strip().split("\n")
         assert len(lines) == 2
+        for line in lines:
+            assert line == line.strip()  # no leading/trailing whitespace or junk
+            assert "XX" not in line  # no mutation artifacts
+            assert line.endswith(".md")  # each line is a clean path
 
     def test_empty_directory(self, tools):
         tool_list, *_ = tools
@@ -188,6 +244,45 @@ class TestCreateBlogPost:
         post_pos = content.index("# My Post")
         assert title_pos < post_pos
         assert "\n\n# My Post" in content  # double newline separator
+        # Template trailing newlines must be stripped (rstrip), not leading (lstrip)
+        assert not content.startswith("\n")  # template content starts at beginning
+
+    def test_default_uses_template(self, tools):
+        """use_template defaults to True — omitting it should prepend template."""
+        tool_list, blog_dir, *_ = tools
+        tool = _get_tool(tool_list, "create_blog_post")
+        # Call WITHOUT use_template — should default to True
+        result = tool.execute(filename="default-template.md", content="# Default Post")
+        content = (blog_dir / "default-template.md").read_text(encoding="utf-8")
+        assert "title" in content  # template was prepended
+
+    def test_template_rstrip_only_newlines(self, blog_vault):
+        """rstrip must strip only newlines, not all whitespace; must strip trailing not leading."""
+        config, blog_dir, template = blog_vault
+        # Template with trailing spaces+newlines — rstrip("\n") preserves spaces
+        template.write_text("---\ntitle: \"\"\n---\n  \n", encoding="utf-8")
+        handler = MockConfirmationHandler(confirm=True)
+        tool_list = make_blog_tools(
+            config, handler,
+            blog_dir="03 – Areas/02 – Substack",
+            template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
+        )
+        tool = _get_tool(tool_list, "create_blog_post")
+        tool.execute(filename="rstrip-test.md", content="# Body", use_template=True)
+        content = (blog_dir / "rstrip-test.md").read_text(encoding="utf-8")
+        # rstrip("\n") leaves trailing spaces, then \n\n is appended
+        # "---\ntitle: \"\"\n---\n  " + "\n\n" + "# Body"
+        assert "  \n\n# Body" in content  # trailing spaces preserved before separator
+
+    def test_template_requires_both_conditions(self, tools):
+        """Template is only used when use_template=True AND template file exists."""
+        tool_list, blog_dir, template, *_ = tools
+        tool = _get_tool(tool_list, "create_blog_post")
+        # use_template=False should skip template even if file exists
+        result = tool.execute(filename="no-template.md", content="# Plain Post", use_template=False)
+        content = (blog_dir / "no-template.md").read_text(encoding="utf-8")
+        assert "title" not in content  # template NOT prepended
+        assert content == "# Plain Post"
 
     def test_rejects_existing_file(self, tools):
         tool_list, blog_dir, *_ = tools
@@ -234,6 +329,51 @@ class TestEditBlogPost:
 
         assert "Successfully" in result
         assert post.read_text(encoding="utf-8") == "# New Title\n\nNew content."
+
+    def test_reasoning_passed_through(self, blog_vault):
+        """Reasoning argument must be forwarded to write_note, not dropped."""
+        config, blog_dir, template = blog_vault
+        handler = MockConfirmationHandler(confirm=True)
+        tool_list = make_blog_tools(
+            config, handler,
+            blog_dir="03 – Areas/02 – Substack",
+            template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
+        )
+        post = blog_dir / "reason-test.md"
+        post.write_text("old content")
+
+        tool = _get_tool(tool_list, "edit_blog_post")
+        with patch("packages.core.tools.blog_tools.write_note", wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note) as mock_write:
+            tool.execute(
+                path="03 – Areas/02 – Substack/reason-test.md",
+                new_content="new content",
+                reasoning="Improved clarity",
+            )
+            mock_write.assert_called_once()
+            assert mock_write.call_args.kwargs.get("reasoning") == "Improved clarity" or \
+                   (len(mock_write.call_args.args) > 4 and mock_write.call_args.args[4] == "Improved clarity")
+
+    def test_reasoning_default_is_empty(self, blog_vault):
+        """Default reasoning should be empty string, not some other value."""
+        config, blog_dir, template = blog_vault
+        handler = MockConfirmationHandler(confirm=True)
+        tool_list = make_blog_tools(
+            config, handler,
+            blog_dir="03 – Areas/02 – Substack",
+            template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
+        )
+        post = blog_dir / "no-reason.md"
+        post.write_text("old content")
+
+        tool = _get_tool(tool_list, "edit_blog_post")
+        with patch("packages.core.tools.blog_tools.write_note", wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note) as mock_write:
+            tool.execute(
+                path="03 – Areas/02 – Substack/no-reason.md",
+                new_content="new content",
+            )
+            mock_write.assert_called_once()
+            # reasoning kwarg should be "" (empty string), not None or "XXXX"
+            assert mock_write.call_args.kwargs.get("reasoning") == ""
 
     def test_file_not_found(self, tools):
         tool_list, *_ = tools

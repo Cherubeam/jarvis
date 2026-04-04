@@ -53,13 +53,13 @@ def make_blog_tools(
 
     list_tool = ToolDefinition(
         name="list_blog_posts",
-        description="List markdown files in the blog posts directory. Optionally filter by subfolder.",
+        description="List markdown files in the blog posts directory. Optionally filter by subfolder.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "subfolder": {
                     "type": "string",
-                    "description": "Optional subfolder within the blog directory to list.",
+                    "description": "Optional subfolder within the blog directory to list.",  # pragma: no mutate
                 },
             },
             "required": [],
@@ -81,13 +81,13 @@ def make_blog_tools(
 
     read_tool = ToolDefinition(
         name="read_blog_post",
-        description="Read the full content of a blog post or template. Path is relative to the vault root.",
+        description="Read the full content of a blog post or template. Path is relative to the vault root.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",
+                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
                 },
             },
             "required": ["path"],
@@ -120,25 +120,25 @@ def make_blog_tools(
 
     create_tool = ToolDefinition(
         name="create_blog_post",
-        description=(
-            "Create a new blog post in the blog directory. "
-            "Set use_template=true to prepend the blog post template. "
-            "The user will see a diff and must confirm before the file is written."
+        description=(  # pragma: no mutate
+            "Create a new blog post in the blog directory. "  # pragma: no mutate
+            "Set use_template=true to prepend the blog post template. "  # pragma: no mutate
+            "The user will see a diff and must confirm before the file is written."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "filename": {
                     "type": "string",
-                    "description": "Filename for the new post (e.g. 'my-new-post.md').",
+                    "description": "Filename for the new post (e.g. 'my-new-post.md').",  # pragma: no mutate
                 },
                 "content": {
                     "type": "string",
-                    "description": "Full markdown content for the blog post.",
+                    "description": "Full markdown content for the blog post.",  # pragma: no mutate
                 },
                 "use_template": {
                     "type": "boolean",
-                    "description": "Prepend the blog post template (default: true).",
+                    "description": "Prepend the blog post template (default: true).",  # pragma: no mutate
                     "default": True,
                 },
             },
@@ -167,26 +167,26 @@ def make_blog_tools(
 
     edit_tool = ToolDefinition(
         name="edit_blog_post",
-        description=(
-            "Edit an existing blog post by replacing its full content. "
-            "Provide reasoning to explain the changes — it will be shown alongside the diff. "
-            "The user must confirm before the edit is applied. "
-            "Cannot edit template files (read-only)."
+        description=(  # pragma: no mutate
+            "Edit an existing blog post by replacing its full content. "  # pragma: no mutate
+            "Provide reasoning to explain the changes — it will be shown alongside the diff. "  # pragma: no mutate
+            "The user must confirm before the edit is applied. "  # pragma: no mutate
+            "Cannot edit template files (read-only)."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",
+                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
                 },
                 "new_content": {
                     "type": "string",
-                    "description": "The complete new content for the file.",
+                    "description": "The complete new content for the file.",  # pragma: no mutate
                 },
                 "reasoning": {
                     "type": "string",
-                    "description": "Explanation of what changed and why (shown to user before diff).",
+                    "description": "Explanation of what changed and why (shown to user before diff).",  # pragma: no mutate
                 },
             },
             "required": ["path", "new_content"],
