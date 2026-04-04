@@ -170,6 +170,23 @@ Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](../
 
 ## Writing New Tests
 
+### Mutation-Resistant Assertions
+
+Every assertion should survive mutation testing. The rule: **assert on values, not existence**.
+
+```python
+# BAD — mutants survive
+assert result is not None
+assert "key" in result_dict
+
+# GOOD — mutants killed
+assert result == "expected output"
+assert result_dict["key"] == "expected_value"
+assert set(result_dict.keys()) == {"key1", "key2"}
+```
+
+For tool factories, always add schema validation and output content checks. See [docs/engineering/testing.md](../docs/engineering/testing.md#writing-mutation-resistant-tests) for the full checklist.
+
 ### Unit Test Template
 
 ```python

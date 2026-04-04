@@ -737,4 +737,116 @@ Notes:
 
 ---
 
-*Last updated: 2026-03-26*
+## Writing Mutation-Resistant Tests
+
+Mutation testing (mutmut) measures test quality by injecting small code changes ("mutants") and checking whether tests catch them. A surviving mutant means a test is too shallow. See [mutation-testing-report.md](mutation-testing-report.md) for the full audit.
+
+### The Core Rule
+
+**Assert on values, not just existence.** This is the #1 lesson from our mutation testing audit. Tests that check "something was returned" survive mutations; tests that check "the right thing was returned" kill them.
+
+```python
+# BAD — survives mutations (checks existence only)
+result = my_function()
+assert result is not None
+assert "key" in result
+assert len(result) > 0
+
+# GOOD — kills mutations (checks values)
+result = my_function()
+assert result == {"role": "tool", "content": "Expected output"}
+assert result["status"] == "success"
+assert set(result.keys()) == {"role", "content", "status"}
+```
+
+### Checklist for Every New Test
+
+When writing tests, verify your assertions catch these common mutation types:
+
+| Mutation Type | Example | What to Assert |
+|---------------|---------|----------------|
+| **String content** | `"Error: {x}"` → `"XXError: {x}XX"` | `assert result.startswith("Error:")` |
+| **Dictionary keys** | `{"role": "tool"}` → `{"XXroleXX": "tool"}` | `assert result["role"] == "tool"` |
+| **Dictionary values** | `{"role": "tool"}` → `{"role": "XXtoolXX"}` | `assert result["role"] == "tool"` |
+| **Operators** | `a * 1000` → `a / 1000` | Assert on computed values, not just existence |
+| **Boolean defaults** | `flag: bool = True` → `False` | Test behavior with and without the argument |
+| **Control flow** | `and` → `or`, `continue` → `break` | Test both branches of conditionals |
+| **Return values** | `return x` → `return None` | `assert result == expected` (exact match) |
+
+### Tool Factory Tests
+
+Tool factories (`make_*_tools()` functions) are the most mutation-prone pattern. Every tool factory test should include:
+
+1. **Schema validation** — verify parameter names, types, and required fields:
+   ```python
+   def test_tool_schema(self, tools):
+       tool = get_tool(tools, "my_tool")
+       params = tool.parameters
+       assert params["type"] == "object"
+       assert set(params["properties"].keys()) == {"arg1", "arg2"}
+       assert params["properties"]["arg1"]["type"] == "string"
+       assert params["required"] == ["arg1"]
+   ```
+
+2. **Output content assertions** — check what the tool returns, not just that it runs:
+   ```python
+   def test_tool_output(self, tools):
+       result = tool.execute(arg1="test")
+       assert "Expected substring" in result
+       # OR for structured output:
+       assert result == "exact expected string"
+   ```
+
+3. **Error path assertions** — verify error messages, not just that errors occur:
+   ```python
+   def test_tool_error(self, tools):
+       result = tool.execute(arg1="nonexistent")
+       assert result.startswith("Error:")
+       assert "nonexistent" in result
+   ```
+
+4. **Default argument tests** — call without optional args to test defaults:
+   ```python
+   def test_default_behavior(self, tools):
+       # Omit optional arg — exercises the default value
+       result = tool.execute(required_arg="value")
+       assert "expected default behavior" in result
+   ```
+
+### Suppressing Equivalent Mutants
+
+Some mutations don't change behavior (equivalent mutants). Use `# pragma: no mutate` to exclude them:
+
+```python
+# Description strings are LLM-facing metadata — text changes don't affect code behavior
+tool = ToolDefinition(
+    name="my_tool",
+    description=(  # pragma: no mutate
+        "Describe what the tool does. "  # pragma: no mutate
+        "This text is read by the LLM, not by code."  # pragma: no mutate
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "arg": {
+                "type": "string",
+                "description": "Parameter docs for the LLM.",  # pragma: no mutate
+            },
+        },
+    },
+)
+```
+
+**When to use `# pragma: no mutate`:**
+- ToolDefinition `description=` strings (LLM reads them, code doesn't)
+- Parameter `"description":` strings in JSON schemas
+- Log format strings (`logger.info("Processing %s", name)`)
+
+**When NOT to use it:**
+- Error messages returned to users (these should be tested)
+- Dictionary keys in data structures (these affect behavior)
+- Any value that code logic depends on
+
+---
+
+*Last updated: 2026-04-04*

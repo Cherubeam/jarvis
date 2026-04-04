@@ -205,6 +205,23 @@ Only used for JarvisAgent (the orchestrator) which needs custom delegation logic
 
 ---
 
+## Writing Tests
+
+When writing or updating tests, follow these rules to ensure tests are mutation-resistant:
+
+1. **Assert on values, not existence** — check `result == expected`, not `result is not None`
+2. **Verify dictionary keys and values** — `assert result["role"] == "tool"`, not `assert "role" in result`
+3. **Test both branches** of conditionals (happy path AND error path)
+4. **Test default arguments** — call functions without optional args to exercise defaults
+5. **Check error messages** — `assert result.startswith("Error:")`, not just `assert "Error" in result`
+6. **For tool factories**: validate parameter schemas (names, types, required fields) and output content
+
+Mark LLM-facing description strings with `# pragma: no mutate` — these are equivalent mutants.
+
+See [docs/engineering/testing.md](docs/engineering/testing.md) for the full mutation testing guide and checklist.
+
+---
+
 ## Before Committing Code
 
 ```bash
