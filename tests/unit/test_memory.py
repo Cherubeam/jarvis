@@ -146,21 +146,59 @@ class TestSessionMetrics:
         assert metrics.total_tokens == 150
         assert metrics.total_cost_usd == 0.0045
         assert metrics.request_count == 1
+        assert metrics.total_cache_read_tokens == 0
+        assert metrics.total_cache_write_tokens == 0
+        assert metrics.total_thinking_tokens == 0
+        assert metrics.total_ttft_ms == 0.0
+        assert metrics.total_latency_ms == 0.0
 
     def test_session_metrics_add_usage_multiple(self):
-        """Test that multiple add_usage calls accumulate properly."""
+        """Test that multiple add_usage calls accumulate as SUM not LAST."""
         metrics = SessionMetrics()
 
-        # First request
-        metrics.add_usage(100, 50, 150, 0.0045)
-        # Second request
-        metrics.add_usage(200, 75, 275, 0.0082)
+        # Use different values so += vs = is distinguishable
+        metrics.add_usage(100, 50, 150, 0.0045,
+                          ttft_ms=200.0, total_latency_ms=1000.0,
+                          cache_read_tokens=10, cache_write_tokens=5,
+                          thinking_tokens=300)
+        metrics.add_usage(200, 75, 275, 0.0082,
+                          ttft_ms=400.0, total_latency_ms=2000.0,
+                          cache_read_tokens=20, cache_write_tokens=15,
+                          thinking_tokens=700)
 
         assert metrics.total_prompt_tokens == 300
         assert metrics.total_completion_tokens == 125
         assert metrics.total_tokens == 425
         assert metrics.total_cost_usd == pytest.approx(0.0127)
         assert metrics.request_count == 2
+        assert metrics.total_ttft_ms == 600.0
+        assert metrics.total_latency_ms == 3000.0
+        assert metrics.total_cache_read_tokens == 30
+        assert metrics.total_cache_write_tokens == 20
+        assert metrics.total_thinking_tokens == 1000
+
+    def test_session_metrics_single_request_average(self):
+        """Average equals total when only 1 request (catches division bugs)."""
+        metrics = SessionMetrics()
+        metrics.add_usage(100, 50, 150, 0.001, ttft_ms=250.0, total_latency_ms=1500.0)
+
+        assert metrics.request_count == 1
+        assert metrics.average_ttft_ms == 250.0
+        assert metrics.average_latency_ms == 1500.0
+
+    def test_session_metrics_zero_accumulation(self):
+        """Adding 0 values doesn't break accumulation (catches += vs =)."""
+        metrics = SessionMetrics()
+        metrics.add_usage(100, 50, 150, 0.005, ttft_ms=200.0, total_latency_ms=1000.0)
+        metrics.add_usage(0, 0, 0, 0.0, ttft_ms=0.0, total_latency_ms=0.0)
+
+        assert metrics.total_prompt_tokens == 100
+        assert metrics.total_completion_tokens == 50
+        assert metrics.total_tokens == 150
+        assert metrics.total_cost_usd == pytest.approx(0.005)
+        assert metrics.request_count == 2
+        assert metrics.total_ttft_ms == 200.0
+        assert metrics.total_latency_ms == 1000.0
 
     def test_session_metrics_to_dict(self):
         """Test that to_dict serializes correctly with new fields."""
@@ -183,12 +221,26 @@ class TestSessionMetrics:
             "metadata": {},
         }
 
-    def test_session_metrics_to_dict_includes_metadata(self):
-        """Test that to_dict always includes metadata escape hatch."""
+    def test_session_metrics_to_dict_all_keys(self):
+        """Test that to_dict contains exactly the expected keys."""
         metrics = SessionMetrics()
         result = metrics.to_dict()
-        assert "metadata" in result
+        expected_keys = {
+            "total_prompt_tokens", "total_completion_tokens", "total_tokens",
+            "total_cost_usd", "total_cache_read_tokens", "total_cache_write_tokens",
+            "total_thinking_tokens", "request_count",
+            "average_ttft_ms", "average_latency_ms", "metadata",
+        }
+        assert set(result.keys()) == expected_keys
         assert result["metadata"] == {}
+        # All zero defaults
+        assert result["total_prompt_tokens"] == 0
+        assert result["total_completion_tokens"] == 0
+        assert result["total_tokens"] == 0
+        assert result["total_cost_usd"] == 0.0
+        assert result["request_count"] == 0
+        assert result["average_ttft_ms"] == 0.0
+        assert result["average_latency_ms"] == 0.0
 
     def test_session_metrics_zero_cost(self):
         """Test that zero cost is handled correctly."""
@@ -197,6 +249,16 @@ class TestSessionMetrics:
 
         assert metrics.total_cost_usd == 0.0
         assert metrics.request_count == 1
+
+    def test_session_metrics_cost_accumulation(self):
+        """Verify total_cost_usd sums correctly across multiple calls."""
+        metrics = SessionMetrics()
+        metrics.add_usage(100, 50, 150, cost_usd=0.003)
+        metrics.add_usage(200, 75, 275, cost_usd=0.007)
+        metrics.add_usage(50, 25, 75, cost_usd=0.001)
+
+        assert metrics.total_cost_usd == pytest.approx(0.011)
+        assert metrics.request_count == 3
 
     def test_session_metrics_latency_tracking(self):
         """Test that latency metrics are tracked and averaged correctly."""
@@ -714,6 +776,15 @@ class TestMigrateConversation:
 
         result = migrate_conversation(old_data)
 
+        # Verify all top-level keys exist
+        expected_top_keys = {
+            "schema_version", "id", "title", "topic", "tags",
+            "session_start", "session_end", "model", "agent",
+            "context", "metrics", "environment", "messages",
+            "feedback", "metadata",
+        }
+        assert set(result.keys()) == expected_top_keys
+
         assert result["schema_version"] == "1.0.0"
         assert result["id"] is None
         assert result["title"] is None
@@ -722,15 +793,32 @@ class TestMigrateConversation:
         assert result["metrics"] == {}
         assert result["feedback"] is None
         assert result["metadata"] == {}
+        assert result["model"] is None
+        assert result["agent"] is None
+        assert result["context"] is None
+        assert result["environment"] is None
+        assert result["session_start"] == "2025-11-28T14:23:43.228507"
+        assert result["session_end"] == "2025-11-28T14:24:18.407526"
 
         # Messages migrated
         assert len(result["messages"]) == 2
         msg0 = result["messages"][0]
         assert msg0["id"] == "msg_001"
+        assert msg0["parent_id"] is None
         assert msg0["role"] == "user"
         assert msg0["content"] == [{"type": "text", "text": "Hello"}]
+        assert msg0["timestamp"] == "2025-11-28T14:23:56"
         assert msg0["status"] == "completed"
         assert msg0["usage"] is None
+        assert msg0["latency"] is None
+        assert msg0["stop_reason"] is None
+        assert msg0["error"] is None
+        assert msg0["metadata"] == {}
+
+        # Second message
+        msg1 = result["messages"][1]
+        assert msg1["id"] == "msg_002"
+        assert msg1["role"] == "assistant"
 
     def test_migrate_v2_with_latency(self):
         """Test migration of latest old format (metrics with latency)."""
@@ -765,22 +853,36 @@ class TestMigrateConversation:
 
         result = migrate_conversation(old_data)
 
-        # Metrics migrated with new fields
-        assert result["metrics"]["total_cache_read_tokens"] == 0
-        assert result["metrics"]["total_cache_write_tokens"] == 0
-        assert result["metrics"]["total_thinking_tokens"] == 0
-        assert result["metrics"]["total_prompt_tokens"] == 1783
-        assert "metadata" in result["metrics"]
+        # Metrics migrated — verify exact dict
+        assert result["metrics"] == {
+            "total_prompt_tokens": 1783,
+            "total_completion_tokens": 13,
+            "total_tokens": 1796,
+            "total_cost_usd": 0.005544,
+            "total_cache_read_tokens": 0,
+            "total_cache_write_tokens": 0,
+            "total_thinking_tokens": 0,
+            "request_count": 1,
+            "average_ttft_ms": 1154.24,
+            "average_latency_ms": 1480.24,
+            "metadata": {},
+        }
 
-        # Message usage migrated with new fields
+        # Message usage migrated — verify exact dict
         msg1 = result["messages"][1]
-        assert msg1["usage"]["cache_read_tokens"] == 0
-        assert msg1["usage"]["thinking_tokens"] == 0
-        assert msg1["usage"]["prompt_tokens"] == 1783
-        assert "metadata" in msg1["usage"]
+        assert msg1["usage"] == {
+            "prompt_tokens": 1783,
+            "completion_tokens": 13,
+            "total_tokens": 1796,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "thinking_tokens": 0,
+            "cost_usd": 0.005544,
+            "metadata": {},
+        }
 
-        # Latency preserved
-        assert msg1["latency"]["ttft_ms"] == 1154.24
+        # Latency preserved — verify exact dict
+        assert msg1["latency"] == {"ttft_ms": 1154.24, "total_ms": 1480.24}
 
     def test_load_static_method(self, tmp_path: Path):
         """Test ConversationLogger.load() with an old format file."""
@@ -856,8 +958,10 @@ class TestConversationLoggerUtilization:
         )
         assert len(logger.utilization) == 1
         entry = logger.utilization[0]
-        assert "tasks" in entry["sections_utilized"]
+        assert set(entry.keys()) == {"turn", "sections_loaded", "sections_utilized"}
+        assert entry["turn"] == 0  # no requests added yet
         assert entry["sections_loaded"] == ["soul", "personal", "tasks", "projects"]
+        assert "tasks" in entry["sections_utilized"]
 
     def test_record_utilization_no_match(self, temp_conversations_dir: Path):
         logger = ConversationLogger(temp_conversations_dir)

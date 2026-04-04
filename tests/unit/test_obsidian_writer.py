@@ -80,21 +80,29 @@ class TestAppendToNote:
         result = append_to_note(note, "New summary line", config, handler)
         assert result.success is True
         assert result.action == "appended"
+        assert result.message == f"Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
+        assert result.diff is not None
         assert handler.presented_diff is not None
-        # Verify file was actually written
+        # Verify file was actually written with exact content structure
         content = note.read_text(encoding="utf-8")
         assert "> New summary line" in content
         assert "> Previous entry" in content
+        # Original content before callout preserved
+        assert content.startswith("# 2026-02-09\n")
+        # Content after callout preserved
+        assert "## Tasks\n- Buy milk" in content
 
     def test_rejected_write(self, vault_with_daily_note):
         config, note = vault_with_daily_note
+        original_content = note.read_text(encoding="utf-8")
         handler = MockConfirmationHandler(confirm=False)
         result = append_to_note(note, "Rejected content", config, handler)
         assert result.success is False
         assert result.action == "rejected"
-        # File should be unchanged
-        content = note.read_text(encoding="utf-8")
-        assert "Rejected content" not in content
+        assert result.message == "Write cancelled by user"
+        assert result.diff is not None
+        # File should be completely unchanged
+        assert note.read_text(encoding="utf-8") == original_content
 
     def test_no_callout_block(self, vault_no_callout):
         config, note = vault_no_callout
@@ -102,6 +110,7 @@ class TestAppendToNote:
         result = append_to_note(note, "Content", config, handler)
         assert result.success is False
         assert result.action == "no_callout"
+        assert result.message == "No > [!JARVIS] callout block found in Daily Notes/2026-02-09.md"
 
     def test_file_not_found(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
@@ -117,6 +126,7 @@ class TestAppendToNote:
         )
         assert result.success is False
         assert result.action == "error"
+        assert result.message == "Note not found: Daily Notes/missing.md"
 
     def test_path_outside_allowed_dirs(self, tmp_path):
         allowed = tmp_path / "allowed"
@@ -131,7 +141,7 @@ class TestAppendToNote:
         result = append_to_note(note, "Hack", config, handler)
         assert result.success is False
         assert result.action == "error"
-        assert "denied" in result.message.lower()
+        assert result.message == "Access denied: secret/note.md is not writable"
 
     def test_read_only_path_denies_append(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
@@ -143,14 +153,29 @@ class TestAppendToNote:
         handler = MockConfirmationHandler()
         result = append_to_note(note, "Content", config, handler)
         assert result.success is False
-        assert "denied" in result.message.lower()
+        assert result.action == "error"
+        assert result.message == "Access denied: Daily Notes/2026-02-09.md is not writable"
 
     def test_diff_attached_to_result(self, vault_with_daily_note):
         config, note = vault_with_daily_note
         handler = MockConfirmationHandler(confirm=True)
         result = append_to_note(note, "Entry", config, handler)
         assert result.diff is not None
-        assert result.diff.file_path
+        assert result.diff.file_path == "Daily Notes/2026-02-09.md"
+        # Diff should contain added lines
+        added_lines = [dl for dl in result.diff.diff_lines if dl.type == "added"]
+        assert any("> Entry" in dl.content for dl in added_lines)
+
+    def test_confirmation_handler_receives_correct_diff(self, vault_with_daily_note):
+        config, note = vault_with_daily_note
+        handler = MockConfirmationHandler(confirm=True)
+        append_to_note(note, "Check diff content", config, handler)
+        # Verify handler received a diff with added lines containing the new content
+        diff = handler.presented_diff
+        assert diff is not None
+        assert diff.file_path == "Daily Notes/2026-02-09.md"
+        added_contents = [dl.content for dl in diff.diff_lines if dl.type == "added"]
+        assert any("> Check diff content" in c for c in added_contents)
 
     def test_multi_line_content(self, vault_with_daily_note):
         config, note = vault_with_daily_note
@@ -177,6 +202,8 @@ class TestAppendToDailyNote:
         )
         assert result.success is True
         assert result.action == "appended"
+        assert "Daily Notes/2026-02-09.md" in result.message
+        assert result.diff is not None
 
     def test_missing_daily_note(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
@@ -191,6 +218,8 @@ class TestAppendToDailyNote:
             "Content", config, handler, date="2099-01-01"
         )
         assert result.success is False
+        assert result.action == "error"
+        assert "2099-01-01" in result.message
 
 
 # ==================== CLIConfirmationHandler ====================
@@ -198,15 +227,15 @@ class TestAppendToDailyNote:
 
 class TestCLIConfirmationHandler:
     def test_present_diff_prints(self, capsys):
+        from packages.integrations.obsidian.diff import compute_diff
         handler = CLIConfirmationHandler()
-        diff = VaultDiff(
-            file_path="test.md",
-            original_content="old",
-            proposed_content="new",
-        )
+        diff = compute_diff("test.md", "old line\n", "new line\n")
         handler.present_diff(diff)
         captured = capsys.readouterr()
         assert "test.md" in captured.out
+        # Verify diff output contains added/removed markers
+        assert "+ new line" in captured.out
+        assert "- old line" in captured.out
 
     def test_get_confirmation_yes(self, monkeypatch):
         handler = CLIConfirmationHandler()
