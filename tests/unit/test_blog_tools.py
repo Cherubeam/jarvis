@@ -99,12 +99,15 @@ class TestListBlogPosts:
 
         assert "post-one.md" in result
         assert "post-two.md" in result
+        # Verify newline-separated format (not comma, not space)
+        lines = result.strip().split("\n")
+        assert len(lines) == 2
 
     def test_empty_directory(self, tools):
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "list_blog_posts")
         result = tool.execute()
-        assert "No blog posts found" in result
+        assert result == "No blog posts found."
 
     def test_subfolder_filter(self, tools):
         tool_list, blog_dir, *_ = tools
@@ -143,14 +146,14 @@ class TestReadBlogPost:
         tool = _get_tool(tool_list, "read_blog_post")
         result = tool.execute(path="03 – Areas/02 – Substack/test.md")
 
-        assert "# Test Post" in result
-        assert "Hello world." in result
+        assert result == "# Test Post\n\nHello world."
 
     def test_file_not_found(self, tools):
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "read_blog_post")
         result = tool.execute(path="03 – Areas/02 – Substack/missing.md")
-        assert "Error" in result
+        assert result.startswith("Error:")
+        assert "missing.md" in result
 
     def test_reads_template(self, tools):
         tool_list, blog_dir, template, *_ = tools
@@ -180,6 +183,11 @@ class TestCreateBlogPost:
         content = (blog_dir / "templated.md").read_text(encoding="utf-8")
         assert "title" in content  # from template
         assert "# My Post" in content  # user content
+        # Template must come BEFORE user content, separated by \n\n
+        title_pos = content.index("title")
+        post_pos = content.index("# My Post")
+        assert title_pos < post_pos
+        assert "\n\n# My Post" in content  # double newline separator
 
     def test_rejects_existing_file(self, tools):
         tool_list, blog_dir, *_ = tools
@@ -188,7 +196,9 @@ class TestCreateBlogPost:
         tool = _get_tool(tool_list, "create_blog_post")
         result = tool.execute(filename="exists.md", content="new")
 
+        assert result.startswith("Error:")
         assert "already exists" in result
+        assert "exists.md" in result
 
     def test_rejected_by_user(self, blog_vault):
         config, blog_dir, template = blog_vault
@@ -232,7 +242,9 @@ class TestEditBlogPost:
             path="03 – Areas/02 – Substack/ghost.md",
             new_content="content",
         )
+        assert result.startswith("Error:")
         assert "not found" in result.lower()
+        assert "ghost.md" in result
 
     def test_rejects_template_edit(self, tools):
         """Template dir has read-only access — edits are blocked by validate_write."""
@@ -242,7 +254,7 @@ class TestEditBlogPost:
             path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
             new_content="hacked template",
         )
-        assert "read-only" in result.lower()
+        assert result == "Error: Cannot edit this file (read-only)."
 
     def test_rejected_by_user(self, blog_vault):
         config, blog_dir, template = blog_vault
