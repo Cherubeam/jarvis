@@ -28,6 +28,7 @@ class TestTask:
         """Test creating a Task object."""
         task = Task(
             title="Test Task",
+            uuid="ABC123",
             notes="Test notes",
             due_date="2026-01-25",
             when_date="2026-01-20",
@@ -36,6 +37,7 @@ class TestTask:
             area="Work",
         )
         assert task.title == "Test Task"
+        assert task.uuid == "ABC123"
         assert task.notes == "Test notes"
         assert task.due_date == "2026-01-25"
         assert task.when_date == "2026-01-20"
@@ -47,6 +49,7 @@ class TestTask:
         """Test Task with default values."""
         task = Task(title="Simple Task")
         assert task.title == "Simple Task"
+        assert task.uuid == ""
         assert task.notes == ""
         assert task.due_date == ""
         assert task.when_date == ""
@@ -134,6 +137,24 @@ class TestTaskSyncCache:
 
         assert cache.get() is None
 
+    def test_invalidate_deletes_cache_file(self, tmp_path):
+        """Test invalidate removes cache file."""
+        cache = TaskSyncCache()
+        cache.cache_file = tmp_path / "cache.json"
+        cache.set({"inbox": []})
+
+        assert cache.cache_file.exists()
+        cache.invalidate()
+        assert not cache.cache_file.exists()
+
+    def test_invalidate_no_file(self, tmp_path):
+        """Test invalidate is safe when no cache file exists."""
+        cache = TaskSyncCache()
+        cache.cache_file = tmp_path / "nonexistent.json"
+
+        cache.invalidate()  # Should not raise
+        assert not cache.cache_file.exists()
+
 
 @pytest.mark.unit
 class TestToTask:
@@ -142,6 +163,7 @@ class TestToTask:
     def test_full_task(self):
         """Test converting a full things.py dict."""
         t = {
+            "uuid": "6Hf2qWBjWhq7B1xszwdo34",
             "title": "Review PR",
             "notes": "Check auth changes",
             "deadline": "2026-03-15",
@@ -151,6 +173,7 @@ class TestToTask:
             "area_title": "Work",
         }
         task = _to_task(t)
+        assert task.uuid == "6Hf2qWBjWhq7B1xszwdo34"
         assert task.title == "Review PR"
         assert task.notes == "Check auth changes"
         # deadline maps to due_date, start_date maps to when_date
@@ -174,10 +197,21 @@ class TestToTask:
         assert task.when_date == "2026-05-01"
         assert task.due_date != task.when_date
 
+    def test_uuid_extracted(self):
+        """Test uuid is extracted from things.py dict."""
+        task = _to_task({"title": "Task", "uuid": "XYZ789"})
+        assert task.uuid == "XYZ789"
+
+    def test_missing_uuid_defaults_to_empty(self):
+        """Test missing uuid defaults to empty string."""
+        task = _to_task({"title": "Task"})
+        assert task.uuid == ""
+
     def test_minimal_task(self):
         """Test converting a task with only a title."""
         task = _to_task({"title": "Quick thought"})
         assert task.title == "Quick thought"
+        assert task.uuid == ""
         assert task.notes == ""
         assert task.due_date == ""
         assert task.tags == ""
@@ -378,11 +412,31 @@ class TestFormatTasksAsMarkdown:
         assert "- Random idea" in markdown
 
     def test_format_task_with_metadata(self):
-        """Test task line includes due date and tags."""
-        today = [Task(title="Review PR", due_date="2026-03-15", tags="urgent, code-review")]
+        """Test task line includes due date, tags, and UUID (UUID last)."""
+        today = [Task(
+            title="Review PR",
+            uuid="6Hf2qWBjWhq7B1xszwdo34",
+            due_date="2026-03-15",
+            tags="urgent, code-review",
+        )]
         markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
 
-        assert "[Due: 2026-03-15 | Tags: urgent, code-review]" in markdown
+        assert "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
+
+    def test_format_task_uuid_last_in_metadata(self):
+        """Test UUID appears after due date and tags in metadata."""
+        today = [Task(title="Task", uuid="ABC123", due_date="2026-01-01", tags="work")]
+        markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
+
+        # UUID should be last
+        assert "Due: 2026-01-01 | Tags: work | ID: ABC123" in markdown
+
+    def test_format_task_uuid_only(self):
+        """Test task with only UUID shows just the ID."""
+        today = [Task(title="Task", uuid="ABC123")]
+        markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
+
+        assert "[ID: ABC123]" in markdown
 
     def test_format_task_with_notes(self):
         """Test task notes appear indented below task."""
