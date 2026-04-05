@@ -20,6 +20,7 @@ class Task:
     """Represents a Things 3 task."""
 
     title: str
+    uuid: str = ""
     notes: str = ""
     due_date: str = ""
     when_date: str = ""
@@ -61,11 +62,21 @@ class TaskSyncCache:
         except Exception as e:
             logger.warning(f"Cache write error: {e}")
 
+    def invalidate(self) -> None:
+        """Delete cache file to force fresh read on next fetch."""
+        try:
+            if self.cache_file.exists():
+                self.cache_file.unlink()
+                logger.debug("Task cache invalidated")
+        except Exception as e:
+            logger.warning(f"Cache invalidation error: {e}")
+
 
 def _to_task(t: dict) -> Task:
     """Convert a things.py task dict to a Task dataclass."""
     return Task(
         title=t.get("title", ""),
+        uuid=t.get("uuid", ""),
         notes=t.get("notes", "") or "",
         due_date=t.get("deadline", "") or "",
         when_date=t.get("start_date", "") or "",
@@ -125,6 +136,7 @@ def fetch_tasks(config: dict, use_cache: bool = True) -> dict[str, list[Task]]:
         cache_data[key] = [
             {
                 "title": t.title,
+                "uuid": t.uuid,
                 "notes": t.notes,
                 "due_date": t.due_date,
                 "when_date": t.when_date,
@@ -146,6 +158,8 @@ def _format_task_line(task: Task) -> str:
         meta_parts.append(f"Due: {task.due_date}")
     if task.tags:
         meta_parts.append(f"Tags: {task.tags}")
+    if task.uuid:
+        meta_parts.append(f"ID: {task.uuid}")
 
     meta_str = f" [{' | '.join(meta_parts)}]" if meta_parts else ""
     line = f"- {task.title}{meta_str}"
