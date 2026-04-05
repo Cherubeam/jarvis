@@ -790,6 +790,19 @@ def main(argv: list[str] | None = None):
     tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
     print_system("[Tools] Web search + fetch loaded.")
 
+    # Things 3 write tools — create, complete, update tasks
+    things3_cfg = config.get("things3", {})
+    if things3_cfg.get("enabled", False):
+        try:
+            from packages.core.tools.things3_tools import make_things3_tools
+
+            things3_tools = make_things3_tools(things3_cfg)
+            if things3_tools:
+                tool_groups["things3_tools"] = things3_tools
+                print_system(f"[Tools] {len(things3_tools)} Things 3 tools loaded.")
+        except Exception as e:
+            print_system(f"[Tools] Things 3 tools failed: {e}")
+
     # Pattern card generator tools
     if vault_config is not None:
         obsidian_cfg = config.get("obsidian", {})
@@ -834,7 +847,11 @@ def main(argv: list[str] | None = None):
             {"name": meta.name, "description": meta.description}
             for meta in agent_registry.values()
         ]
-        jarvis_tools = list(shared_tools) + tool_groups.get("web_tools", [])
+        jarvis_tools = (
+            list(shared_tools)
+            + tool_groups.get("web_tools", [])
+            + tool_groups.get("things3_tools", [])
+        )
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,
