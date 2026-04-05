@@ -107,6 +107,11 @@ cortex:
   base_url: "http://127.0.0.1:8100"
   timeout_seconds: 10
 
+# MCP — connect to external MCP tool servers (Model Context Protocol)
+mcp:
+  enabled: false              # Set to true in local.yaml
+  servers: {}                 # Declare servers in local.yaml
+
 # Pattern card generator
 pattern_cards:
   output_dir: "data/pattern-cards"

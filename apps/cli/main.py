@@ -827,6 +827,23 @@ def main(argv: list[str] | None = None):
             except Exception as e:
                 print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
 
+    # MCP — connect to external MCP tool servers
+    mcp_manager = None
+    from packages.integrations.mcp.config import parse_mcp_config
+
+    try:
+        mcp_configs = parse_mcp_config(config)
+        if mcp_configs:
+            from packages.integrations.mcp import MCPManager
+
+            mcp_manager = MCPManager()
+            mcp_tool_groups = mcp_manager.start(mcp_configs)
+            tool_groups.update(mcp_tool_groups)
+            total = sum(len(v) for v in mcp_tool_groups.values())
+            print_system(f"[MCP] {total} tool(s) from {len(mcp_tool_groups)} server(s).")
+    except Exception as e:
+        print_system(f"[MCP] Startup failed: {e}")
+
     # Build the active agent
     if args.agent:
         if args.agent not in agent_registry:
@@ -1122,6 +1139,8 @@ def main(argv: list[str] | None = None):
         print("\n")
 
     finally:
+        if mcp_manager is not None:
+            mcp_manager.shutdown()
         logger.save()
         print("Goodbye!")
 
