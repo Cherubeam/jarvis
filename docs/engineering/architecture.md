@@ -308,6 +308,36 @@ cortex:
 
 ---
 
+### 6c. MCP Client Integration (`packages/integrations/mcp/`)
+
+**Purpose**: Connect JARVIS to external MCP (Model Context Protocol) servers, bridging their tools into the existing ToolDefinition system.
+
+**Location**: `packages/integrations/mcp/`
+
+**Responsibilities:**
+- Configuration parsing and validation (`config.py`)
+- Async connection lifecycle with background event loop thread (`client.py`)
+- MCP Tool → ToolDefinition conversion with namespacing (`bridge.py`)
+
+**Key Classes:**
+- `MCPServerConfig`: Frozen dataclass for validated server config
+- `MCPConnection`: Manages one server connection using `AsyncExitStack`
+- `MCPManager`: Manages all connections, background event loop, and sync/async bridge
+- `mcp_tools_to_tool_definitions()`: Converts MCP tools to namespaced `ToolDefinition` instances
+
+**Configuration** (`config/default.yaml`):
+```yaml
+mcp:
+  enabled: false              # Set to true in local.yaml
+  servers: {}                 # Declare servers in local.yaml
+```
+
+**Transports**: stdio, SSE, streamable HTTP. Each server's tools become a named tool group that agents reference in `meta.yaml`.
+
+**Opt-in**: Disabled by default. Adding/removing servers is a config-only change.
+
+---
+
 ### 7. Tool Calling (`packages/core/tools/`)
 
 **Purpose**: Provide a composable function-calling layer for LLM tool use.
@@ -575,6 +605,11 @@ skills:
    ├─ make_cortex_search_tool() → shared_tools
    └─ Health check: print connected/unreachable status
    ↓
+7d. MCP client initialization (if mcp.enabled: true)
+   ├─ parse_mcp_config() → list[MCPServerConfig]
+   ├─ MCPManager.start() → connect to servers, discover tools
+   └─ MCP tool groups → tool_groups dict
+   ↓
 8. Agent discovery (meta.yaml registry)
    └─ Scan agent directories for meta.yaml (all agents discovered via meta.yaml)
    ↓
@@ -697,6 +732,10 @@ jarvis/
 │   │   │   └── task_sync.py        # ~520 lines
 │   │   ├── cortex/                 # Cortex semantic search client
 │   │   │   └── client.py           # CortexClient (HTTP)
+│   │   ├── mcp/                    # MCP client integration
+│   │   │   ├── config.py           # Config parsing + validation
+│   │   │   ├── client.py           # Connection lifecycle + async/sync bridge
+│   │   │   └── bridge.py           # MCP Tool → ToolDefinition conversion
 │   │   └── obsidian/               # Obsidian vault integration
 │   │       ├── vault.py            # Vault access + path validation
 │   │       ├── callout.py          # Callout block parser (pure string ops)
