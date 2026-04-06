@@ -49,7 +49,7 @@ from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutN
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.telemetry.metrics import MetricsTracker
 
-CLIENT_VERSION = "0.4.0"
+CLIENT_VERSION = "0.12.0"
 
 
 def _assemble_agent_tools(

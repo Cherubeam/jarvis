@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.12.0] - 2026-04-05
+
 ### Added
 - **MCP Client Integration**: JARVIS can now connect to external MCP (Model Context Protocol) servers as a client. MCP server tools are bridged into the existing ToolDefinition system and appear as regular tool groups that agents can reference in `meta.yaml`. Supports stdio, SSE, and streamable HTTP transports. Adding/removing MCP servers is a config-only change (`mcp.servers` in `config/local.yaml`). Graceful degradation: unreachable servers are skipped at startup. Async/sync bridge via background event loop thread. 44 unit tests across config parsing, tool bridging, and client lifecycle.
 - **Things 3 Write Tools**: Three new tools (`create_task`, `complete_task`, `update_task`) for managing Things 3 tasks via URL scheme. Available to the JARVIS orchestrator and delegate agents via `things3_tools` tool group. Task UUIDs now included in synced task context for referencing. Operations are best-effort (fire-and-forget URL scheme). Gated on `things3.enabled` config and macOS platform. 24 unit tests.
