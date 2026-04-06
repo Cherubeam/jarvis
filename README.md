@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Obsidian Note Creator, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
@@ -91,7 +91,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Obsidian Integration**: Generate daily note summaries from conversation history
-- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses
+- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses. Write tools (`create_task`, `complete_task`, `update_task`) available via `things3_tools` group.
+- **MCP Client Integration**: Connect to external MCP (Model Context Protocol) servers. MCP server tools are bridged into the ToolDefinition system and appear as regular tool groups. Supports stdio, SSE, and streamable HTTP transports. Config-only setup via `mcp.servers` in `config/local.yaml`.
 - **Comprehensive Testing**: Automated test suite with high code coverage + mutation testing via mutmut
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 - **Conversation Import**: Import ChatGPT and Claude exports into Jarvis format
@@ -151,6 +152,7 @@ During a chat session, you can use slash commands:
 /navigator              Enters Navigator agent session (alignment, weekly reviews)
 /tactics                Enters Tactics Coach agent session (Pip Decks coaching)
 /okr-architect          Enters OKR Architect agent session
+/obsidian-note-creator  Enters Obsidian Note Creator session (evergreen note extraction)
 /pattern-language-expert  Enters Pattern Language Expert session
 /pattern-cards          Enters Pattern Card Generator session (visual cards from patterns)
 /strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
@@ -241,10 +243,18 @@ jarvis/
 │   │       ├── delegate.py             # Agent delegation tool
 │   │       ├── vault_read_tools.py     # Obsidian vault read tools
 │   │       ├── vault_write_tools.py    # Obsidian vault write tools (scoped per agent)
+│   │       ├── web_search.py            # DuckDuckGo web search tool
 │   │       ├── blog_tools.py           # Blog management tools
 │   │       ├── card_generator_tools.py # Pattern card generator tools
+│   │       ├── cortex_search.py        # Cortex semantic vault search tool
+│   │       ├── things3_tools.py        # Things 3 task management tools
 │   │       ├── codebase_tools.py       # Codebase analysis tools
-│   │       └── git_tools.py            # Git operations tools
+│   │       ├── git_tools.py            # Git operations tools
+│   │       ├── project_write_tools.py  # Project file write tools
+│   │       ├── test_tools.py           # Test runner tool
+│   │       ├── mutation_tools.py       # Mutation testing tools (mutmut)
+│   │       ├── suggest_improvements.py # Content improvement suggestions
+│   │       └── content_evaluator.py    # LLM-as-judge evaluation tool
 │   ├── agents/                         # Agent implementations
 │   │   ├── base.py                     # Base agent class + DataDrivenAgent
 │   │   ├── registry.py                 # Filesystem-based agent auto-discovery
@@ -262,6 +272,7 @@ jarvis/
 │   │   ├── obsidian_note_creator/      # Obsidian Note Creator
 │   │   ├── pattern_language_expert/    # Pattern Language Expert
 │   │   ├── pattern_card_generator/    # Pattern Card Generator (visual cards)
+│   │   ├── strategyzer/              # Strategyzer (competitive analysis, growth)
 │   │   └── developer/                 # Developer agent (git sandbox, code tools)
 │   ├── skills/                         # Skills (passive knowledge packs for card indexing)
 │   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
@@ -270,13 +281,17 @@ jarvis/
 │   │   ├── content-evaluator/          # Content evaluation (SKILL.md + skill.py)
 │   │   └── .../                        # Additional skills (each has SKILL.md)
 │   ├── integrations/                   # External service integrations
-│   │   ├── things3/                    # Things 3 task sync
-│   │   └── obsidian/                   # Obsidian daily note integration
+│   │   ├── things3/                    # Things 3 task sync + write tools
+│   │   ├── cortex/                     # Cortex semantic search client
+│   │   ├── mcp/                        # MCP client integration
+│   │   │   ├── config.py               # Config parsing + validation
+│   │   │   ├── client.py               # Connection lifecycle + async/sync bridge
+│   │   │   └── bridge.py               # MCP Tool → ToolDefinition conversion
+│   │   └── obsidian/                   # Obsidian vault integration
 │   │       ├── vault.py                # Vault reader with symlink protection
 │   │       ├── callout.py              # Callout block parser
 │   │       ├── diff.py                 # Diff computation and formatting
-│   │       ├── writer.py               # Note writer with confirmation
-│   │       └── prompts.py              # Prompt loader
+│   │       └── writer.py               # Note writer with confirmation
 │   └── telemetry/                      # Metrics and evaluation
 │
 ├── data/                               # User data
@@ -291,8 +306,6 @@ jarvis/
 │   │   ├── 2024/                      # e.g. 2024-02-10_17-50-05.json
 │   │   ├── 2025/
 │   │   └── 2026/
-│   ├── prompts/                        # Prompt templates
-│   │   └── obsidian/                   # Obsidian-specific prompts
 │   └── rag/                            # ChromaDB vector store (runtime, gitignored)
 │
 ├── scripts/                            # Utility scripts
@@ -374,7 +387,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 
 **Future Phases:**
 - [ ] Web interface (Phase 6B/C — FastAPI + frontend)
-- [ ] Context window management (truncation, summarization)
+- [x] Context window management — history summarization (opt-in, ~40K threshold) and tool result trimming
 - [ ] System monitoring and optimization
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
