@@ -118,7 +118,7 @@ pattern_cards:
   image_generation:
     enabled: false                  # Set to true + provide GEMINI_API_KEY for API image gen
     model: "gemini/imagen-4.0-generate-001"
-    size: "1024x1024"
+    size: "1536x640"                  # ~2.4:1 landscape to match card image slot (686x300)
     max_images_per_run: 10
 
 # Developer agent — JARVIS self-improvement

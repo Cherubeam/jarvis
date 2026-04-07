@@ -352,38 +352,70 @@ class TestRenderCardBack:
 # ---------------------------------------------------------------------------
 
 class TestBuildImagePrompt:
-    def test_includes_pattern_name(self):
-        p = parse_pattern(FULL_PATTERN)
-        prompt = build_image_prompt(p)
-        assert "Chain-of-Thought" in prompt
+    """Tests for two-layer prompt system: known patterns use _PATTERN_VISUALS,
+    unknown patterns fall back to intent/problem/name."""
 
-    def test_includes_intent(self):
+    # --- Known pattern (Chain-of-Thought has a visual entry) ---
+
+    def test_known_pattern_uses_visual_subject(self):
         p = parse_pattern(FULL_PATTERN)
         prompt = build_image_prompt(p)
-        assert "show its work" in prompt
+        assert "stepping stones" in prompt
+
+    def test_known_pattern_includes_composition(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "Composition:" in prompt
+        assert "horizontal progression" in prompt
+
+    def test_known_pattern_includes_mood(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "contemplative and methodical" in prompt
+
+    # --- Style preamble (all prompts) ---
+
+    def test_style_preamble_present(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "Geometric monoline" in prompt
 
     def test_no_text_instruction(self):
         p = parse_pattern(FULL_PATTERN)
         prompt = build_image_prompt(p)
         assert "No text" in prompt
 
+    def test_landscape_composition(self):
+        p = parse_pattern(FULL_PATTERN)
+        prompt = build_image_prompt(p)
+        assert "landscape" in prompt
+
+    # --- Category palette ---
+
     def test_uses_category_palette(self):
         p = parse_pattern(FULL_PATTERN)
         prompt = build_image_prompt(p)
-        # "Reasoning & Planning" maps to "deep blues and silver"
-        assert "deep blues" in prompt
+        # "Reasoning & Planning" maps to "deep sapphire blue"
+        assert "deep sapphire blue" in prompt
 
     def test_fallback_palette_for_unknown_category(self):
-        p = PatternData(name="Test", category="Unknown Category")
+        p = PatternData(name="Unknown Widget", category="Unknown Category")
         prompt = build_image_prompt(p)
         assert "slate blue" in prompt
 
-    def test_uses_problem_when_no_intent(self):
-        p = PatternData(name="Test", problem="Something is broken.")
+    # --- Fallback path (unknown patterns not in _PATTERN_VISUALS) ---
+
+    def test_fallback_uses_intent(self):
+        p = PatternData(name="Novel Pattern", intent="Do something novel.")
+        prompt = build_image_prompt(p)
+        assert "Do something novel" in prompt
+
+    def test_fallback_uses_problem_when_no_intent(self):
+        p = PatternData(name="Another Pattern", problem="Something is broken.")
         prompt = build_image_prompt(p)
         assert "broken" in prompt
 
-    def test_uses_name_when_no_intent_or_problem(self):
+    def test_fallback_uses_name_when_no_intent_or_problem(self):
         p = PatternData(name="Bare Pattern")
         prompt = build_image_prompt(p)
         assert "Bare Pattern" in prompt
@@ -416,7 +448,7 @@ class TestExportImagePrompts:
         output = tmp_path / "prompts.md"
         export_image_prompts(patterns, output)
         content = output.read_text()
-        assert "Abstract conceptual illustration" in content
+        assert "Geometric monoline" in content
 
     def test_skips_nameless_patterns(self, tmp_path):
         patterns = [PatternData(name=""), PatternData(name="Valid")]
@@ -447,14 +479,14 @@ class TestImageGenerationConfig:
         cfg = ImageGenerationConfig()
         assert cfg.enabled is False
         assert cfg.model == "gemini/imagen-4.0-generate-001"
-        assert cfg.size == "1024x1024"
+        assert cfg.size == "1536x640"
         assert cfg.max_images_per_run == 10
 
     def test_from_dict_empty(self):
         cfg = ImageGenerationConfig.from_dict({})
         assert cfg.enabled is False
         assert cfg.model == "gemini/imagen-4.0-generate-001"
-        assert cfg.size == "1024x1024"
+        assert cfg.size == "1536x640"
         assert cfg.max_images_per_run == 10
 
     def test_from_dict_enabled(self):

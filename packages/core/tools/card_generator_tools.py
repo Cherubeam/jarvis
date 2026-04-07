@@ -200,19 +200,27 @@ def make_card_generator_tools(
 
     # --- generate_image_prompts (Track A) ---
 
-    def _generate_image_prompts(category: str = "") -> str:
-        patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
+    def _generate_image_prompts(
+        pattern_name: str = "", category: str = "",
+    ) -> str:
+        if pattern_name:
+            match, err = _find_pattern(pattern_name)
+            if err:
+                return err
+            patterns = [match]
+        else:
+            patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
 
-        if not patterns:
-            return "No patterns found in the vault."
-
-        if category:
-            patterns = [
-                p for p in patterns
-                if p.category.lower() == category.lower()
-            ]
             if not patterns:
-                return f"No patterns found in category '{category}'."
+                return "No patterns found in the vault."
+
+            if category:
+                patterns = [
+                    p for p in patterns
+                    if p.category.lower() == category.lower()
+                ]
+                if not patterns:
+                    return f"No patterns found in category '{category}'."
 
         prompts_path = output_dir / "image-prompts.md"
         export_image_prompts(patterns, prompts_path)
@@ -227,16 +235,20 @@ def make_card_generator_tools(
     generate_prompts_tool = ToolDefinition(
         name="generate_image_prompts",
         description=(
-            "Generate image creation prompts for all patterns (or filtered by category). "
-            "Writes prompts to a markdown file for manual use in Gemini, DALL-E, etc. "
-            "Use this when API image generation is not available."
+            "Generate image creation prompts for a single pattern, a category, or all patterns. "  # pragma: no mutate
+            "Writes prompts to a markdown file for manual use in Gemini, DALL-E, etc. "  # pragma: no mutate
+            "Use this when API image generation is not available."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
+                "pattern_name": {
+                    "type": "string",
+                    "description": "Generate prompt for a single pattern by name. Takes precedence over category filter.",
+                },
                 "category": {
                     "type": "string",
-                    "description": "Optional category filter. Leave empty for all patterns.",
+                    "description": "Optional category filter. Leave empty for all patterns. Ignored if pattern_name is set.",
                 },
             },
             "required": [],

@@ -502,45 +502,120 @@ def generate_card_files(
 # Image prompt generation (Track A — manual)
 # ---------------------------------------------------------------------------
 
-# Map categories to visual palette descriptions for consistent image style
+# Map categories to accent colors for consistent image style
 _CATEGORY_PALETTE: dict[str, str] = {
-    "reasoning & planning": "deep blues and silver, geometric precision, crystalline structures",
-    "knowledge & retrieval": "emerald greens and gold, flowing information streams, library motifs",
-    "interaction & interface": "warm amber and copper, human silhouettes, bridge-like connections",
-    "reliability & safety": "crimson and steel grey, shields, fortress-like solidity",
-    "orchestration & architecture": "violet and indigo, interconnected nodes, constellation patterns",
-    "learning & adaptation": "coral pink and teal, organic growth spirals, neural branching",
-    "flow management": "ocean blue and white, water currents, smooth gradients",
+    "reasoning & planning": "deep sapphire blue",
+    "knowledge & retrieval": "emerald green",
+    "interaction & interface": "warm amber",
+    "reliability & safety": "vermillion red",
+    "orchestration & architecture": "deep violet",
+    "learning & adaptation": "coral pink",
+    "flow management": "cerulean blue",
 }
 
-_DEFAULT_PALETTE = "slate blue and warm grey, abstract geometric forms"
+_DEFAULT_PALETTE = "slate blue"
+
+# Shared style block ensuring visual consistency across all cards.
+_STYLE_PREAMBLE = (
+    "Geometric monoline illustration on a soft matte off-white background. "
+    "Clean vector-style line art with uniform stroke weight. "
+    "A single accent color — {palette} — against off-white and light grey. "
+    "No gradients, no drop shadows, no photorealism. "
+    "Flat shapes with subtle transparency overlaps. "
+    "Balanced white space. "
+    "No text, no letters, no numbers, no words anywhere in the image. "
+    "Wide landscape composition, approximately 2.3:1 aspect ratio. "
+    "The mood is {mood}. "
+    "Professional, polished, suitable for a printed card illustration."
+)
+
+# Per-pattern visual metadata for tailored image prompts.
+# Each entry provides a unique visual metaphor so cards are distinct.
+_PATTERN_VISUALS: dict[str, dict[str, str]] = {
+    "chain-of-thought": {
+        "subject": (
+            "A sequence of five translucent geometric stepping stones "
+            "suspended in mid-air, each one glowing as if activated in order "
+            "from left to right, connected by thin precise lines"
+        ),
+        "composition": "horizontal progression from left to right, slight upward arc",
+        "mood": "contemplative and methodical",
+    },
+    "context-engineering": {
+        "subject": (
+            "A precise geometric frame or window, with carefully arranged "
+            "abstract shapes being placed inside it by thin guide lines — "
+            "some shapes fitting perfectly, others being filtered away outside the frame"
+        ),
+        "composition": "centered frame with elements flowing inward from edges",
+        "mood": "deliberate and curated",
+    },
+    "prompt-chaining": {
+        "subject": (
+            "A chain of three distinct geometric modules — a triangle, a square, "
+            "and a pentagon — linked end-to-end by thin directional arrows, "
+            "each module slightly transforming the output shape passed to the next"
+        ),
+        "composition": "horizontal left-to-right sequence with clear spacing between modules",
+        "mood": "structured and sequential",
+    },
+    "react": {
+        "subject": (
+            "A circular loop formed by three distinct geometric phases — "
+            "a diamond (thought), a hexagon (action), and a circle (observation) — "
+            "connected by directional arrows in a continuous cycle"
+        ),
+        "composition": "centered circular arrangement with equal spacing",
+        "mood": "dynamic yet orderly",
+    },
+    "reflection": {
+        "subject": (
+            "Two identical geometric structures mirroring each other across "
+            "a horizontal axis, the lower one slightly refined and more detailed "
+            "than the upper, suggesting iterative improvement"
+        ),
+        "composition": "vertical symmetry with a thin dividing line",
+        "mood": "introspective, quiet precision",
+    },
+}
 
 
 def build_image_prompt(pattern: PatternData) -> str:
     """Craft an image generation prompt from a pattern's content.
 
-    Produces a prompt suitable for Imagen, DALL-E, or Gemini image models.
-    Style: abstract conceptual illustration, no text in image.
+    Produces a detailed prompt suitable for Imagen, DALL-E, or Gemini image
+    models.  Style: geometric monoline illustration, no text in image.
+
+    Known patterns get a tailored visual metaphor from ``_PATTERN_VISUALS``.
+    Unknown patterns fall back to deriving a subject from intent/problem/name.
     """
     palette = _CATEGORY_PALETTE.get(pattern.category.lower(), _DEFAULT_PALETTE)
+    slug = _slugify(pattern.name)
+    visuals = _PATTERN_VISUALS.get(slug)
 
-    # Build the core concept from available fields
-    concept_parts: list[str] = []
-    if pattern.intent:
-        concept_parts.append(pattern.intent)
-    elif pattern.problem:
-        concept_parts.append(_truncate(pattern.problem, 150))
+    if visuals:
+        subject = visuals["subject"]
+        composition = visuals.get("composition", "centered, symmetrical")
+        mood = visuals.get("mood", "calm and precise")
+    else:
+        # Fallback for patterns without a visual entry
+        concept_parts: list[str] = []
+        if pattern.intent:
+            concept_parts.append(pattern.intent)
+        elif pattern.problem:
+            concept_parts.append(_truncate(pattern.problem, 150))
 
-    concept = concept_parts[0] if concept_parts else pattern.name
+        concept = concept_parts[0] if concept_parts else pattern.name
+        subject = f"An abstract geometric symbol representing the concept: {concept}"
+        composition = "centered, symmetrical"
+        mood = "calm and precise"
+
+    style = _STYLE_PREAMBLE.format(palette=palette, mood=mood)
 
     return (
-        f"Abstract conceptual illustration representing '{pattern.name}'. "
-        f"The core idea: {concept} "
-        f"Visual style: modern, clean, abstract art with {palette}. "
-        f"No text, no letters, no words in the image. "
-        f"Minimalist composition with a single strong visual metaphor. "
-        f"Suitable as a card illustration at 1024x1024 resolution. "
-        f"Professional, polished, slightly futuristic aesthetic."
+        f"{subject}. "
+        f"Composition: {composition}. "
+        f"{style}"
     )
 
 
@@ -595,7 +670,7 @@ class ImageGenerationConfig:
 
     enabled: bool = False
     model: str = "gemini/imagen-4.0-generate-001"
-    size: str = "1024x1024"
+    size: str = "1536x640"
     max_images_per_run: int = 10
 
     @classmethod
@@ -604,7 +679,7 @@ class ImageGenerationConfig:
         return cls(
             enabled=img_cfg.get("enabled", False),
             model=img_cfg.get("model", "gemini/imagen-4.0-generate-001"),
-            size=img_cfg.get("size", "1024x1024"),
+            size=img_cfg.get("size", "1536x640"),
             max_images_per_run=img_cfg.get("max_images_per_run", 10),
         )
 
