@@ -20,7 +20,7 @@ imports/
 backup/
 data/context/
 data/conversations/
-data/learned_facts.md
+data/pattern-cards/
 data/rag/
 data/.cli_history
 imports/
@@ -45,6 +45,7 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 .mutmut-cache
+mutants/
 tests/golden/results/
 
 # Personal voice profile
