@@ -1062,10 +1062,12 @@ def main(argv: list[str] | None = None):
 
             # Intelligent model routing (opt-in via config)
             routed_model_id = None
+            routed_display: str | None = None
             if config.get("routing", {}).get("enabled", False):
                 decision = route_query(user_input, config, agent_name=agent_name)
                 if decision.resolved.model_id != model_id:
                     routed_model_id = model_id  # save original to restore
+                    routed_display = decision.resolved.display_name
                     client.set_model(decision.resolved.model_id)
                     stream_handler.model_id = decision.resolved.model_id
 
@@ -1080,7 +1082,7 @@ def main(argv: list[str] | None = None):
                 client.set_model(routed_model_id)
                 stream_handler.model_id = routed_model_id
 
-            print_usage_stats(result)
+            print_usage_stats(result, routed_model=routed_display)
             print_separator()
 
             # Persist tool call context before the final assistant message

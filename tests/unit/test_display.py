@@ -91,6 +91,19 @@ class TestPrintUsageStats:
         assert "50 tokens" in out
         assert "TTFT:" in out
 
+    def test_stats_shows_routed_model(self, capsys):
+        result = self._make_result(cost=0.005, tokens=100)
+        print_usage_stats(result, routed_model="google/gemini-2.5-flash via openrouter")
+        out = capsys.readouterr().out
+        assert "Model: google/gemini-2.5-flash via openrouter" in out
+        assert "100 tokens" in out
+
+    def test_stats_hides_model_when_not_routed(self, capsys):
+        result = self._make_result(cost=0.005, tokens=100)
+        print_usage_stats(result)
+        out = capsys.readouterr().out
+        assert "Model:" not in out
+
 
 # ---------------------------------------------------------------------------
 # print_startup

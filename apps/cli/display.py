@@ -142,14 +142,20 @@ def finish_waiting(live: Live, full_text: str) -> None:
 # Stats & feedback
 # ---------------------------------------------------------------------------
 
-def print_usage_stats(result: StreamResult) -> None:
-    """Print dim-styled token usage, cost, and latency stats."""
+def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> None:
+    """Print dim-styled token usage, cost, and latency stats.
+
+    Args:
+        routed_model: If set, the model was changed by routing — show it.
+    """
     ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms" if result.metrics.ttft_ms > 0 else "TTFT: N/A (tool call)"
     latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
     if result.cost_usd > 0:
         line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"
     else:
         line = f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]"
+    if routed_model:
+        line = f"[Model: {routed_model}] {line}"
     console.print()
     console.print(line, style="stats")
 
