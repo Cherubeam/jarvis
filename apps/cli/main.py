@@ -12,6 +12,9 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+from rich.spinner import Spinner
+from rich.text import Text
+
 from apps.cli.display import (
     console,
     create_prompt_session,
@@ -496,7 +499,13 @@ def _run_with_display(stream_handler, agent, user_input, print_chunks=True, mess
     else:
         live = start_waiting_spinner()
 
+    def _resume_spinner():
+        """Restart the spinner after a tool call so the user sees progress."""
+        live.update(Spinner("dots", text=Text(" Thinking…", style="dim")))
+        live.start()
+
     stream_handler.on_before_tool_exec = lambda: live.stop()
+    stream_handler.on_after_tool_exec = _resume_spinner
     result = agent.run(
         user_input, stream_handler,
         print_chunks=print_chunks,
