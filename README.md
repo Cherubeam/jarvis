@@ -198,6 +198,84 @@ uv run python scripts/import_claude_context.py --memories imports/memories.json 
 
 Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude), or skips unchanged conversations (ChatGPT).
 
+### Connecting MCP Servers
+
+JARVIS can connect to external [MCP](https://modelcontextprotocol.io/) servers and use their tools alongside native ones. Adding or removing a server is a config-only change — no code edits required.
+
+**Step 1: Enable MCP and declare servers** in `config/local.yaml`:
+
+```yaml
+mcp:
+  enabled: true
+  servers:
+    # Example: filesystem access via stdio
+    filesystem:
+      transport: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Documents"]
+      tool_group: fs_tools           # name used in agent meta.yaml
+      timeout_seconds: 30            # per-call timeout (default: 30)
+
+    # Example: remote server via SSE
+    github:
+      transport: sse
+      url: "http://localhost:3001/sse"
+      headers:
+        Authorization: "Bearer your-token-here"
+      tool_group: github_tools
+
+    # Example: remote server via streamable HTTP
+    my_api:
+      transport: streamable_http
+      url: "http://localhost:8080/mcp"
+      tool_group: my_api_tools
+```
+
+Each server key (e.g. `filesystem`) is used for tool namespacing — MCP tool `read_file` from server `filesystem` becomes `mcp_filesystem__read_file` in JARVIS. The `tool_group` field (defaults to the server key if omitted) is the name you reference from agents.
+
+**Step 2: Assign tool groups to agents.** Add the `tool_group` name to the agent's `meta.yaml`:
+
+```yaml
+# packages/agents/researcher/meta.yaml
+tools:
+  - web_tools
+  - fs_tools        # MCP server tool group
+  - github_tools    # another MCP server tool group
+```
+
+**Step 3: Restart JARVIS.** You should see the tools load at startup:
+
+```
+[MCP] 5 tool(s) from 2 server(s).
+```
+
+**Giving MCP tools to the JARVIS orchestrator:** By default, only delegate agents receive MCP tools (via `meta.yaml`). To make MCP tools available to the JARVIS orchestrator itself, add the tool group to `jarvis_tools` in `apps/cli/main.py`:
+
+```python
+jarvis_tools = (
+    list(shared_tools)
+    + tool_groups.get("web_tools", [])
+    + tool_groups.get("things3_tools", [])
+    + tool_groups.get("fs_tools", [])       # add your MCP tool group here
+)
+```
+
+**Transport reference:**
+
+| Transport | Required fields | Use case |
+|---|---|---|
+| `stdio` | `command`, `args` (optional) | Local servers launched as child processes |
+| `sse` | `url` | Remote servers with Server-Sent Events |
+| `streamable_http` | `url` | Remote servers with HTTP streaming |
+
+Optional fields for all transports: `tool_group`, `timeout_seconds`, `headers` (SSE/HTTP only), `env`, `cwd` (stdio only).
+
+**Troubleshooting:**
+- If a server fails to connect at startup, JARVIS logs a warning and continues — other servers and native tools are unaffected.
+- If a tool call fails at runtime, the error is returned to the LLM as tool output so it can adapt.
+- stdio servers require the command to be available on your `PATH` (e.g. `npx` requires Node.js).
+- To verify which tools loaded, check the `[MCP]` line in startup output.
+
 ### Switching LLM Providers
 
 Edit `config/default.yaml` or `config/local.yaml`:
