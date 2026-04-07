@@ -503,10 +503,24 @@ def _get_weasyprint_html():
 
 
 def render_card_to_png(html: str, output_path: Path) -> Path:
-    """Render an HTML card string to a PNG file using WeasyPrint."""
+    """Render an HTML card string to a PNG file.
+
+    Uses WeasyPrint to produce a PDF in memory, then PyMuPDF to rasterise
+    the first page to PNG (WeasyPrint 68+ removed write_png).
+    """
+    import fitz  # PyMuPDF
+
     HTML = _get_weasyprint_html()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    HTML(string=html).write_png(str(output_path))
+
+    pdf_bytes = HTML(string=html).write_pdf()
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    page = doc[0]
+    pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+    pixmap.save(str(output_path))
+    doc.close()
+
     return output_path
 
 

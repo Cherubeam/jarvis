@@ -567,15 +567,50 @@ class TestGeneratePatternImage:
 class TestRenderCardToPng:
     def test_missing_system_libs_raises_helpful_error(self):
         """Missing WeasyPrint libs should produce an actionable error message."""
-        with patch.dict(sys.modules, {"weasyprint": None}):
+        with patch(
+            "packages.core.card_renderer._get_weasyprint_html",
+            side_effect=RuntimeError("brew install pango"),
+        ):
             with pytest.raises(RuntimeError, match="brew install pango"):
                 render_card_to_png("<html></html>", Path("/tmp/test.png"))
+
+    def test_renders_png_via_pdf_and_pymupdf(self, tmp_path):
+        """render_card_to_png pipes WeasyPrint PDF through PyMuPDF."""
+        mock_html_cls = MagicMock()
+        mock_html_cls.return_value.write_pdf.return_value = b"%PDF-fake"
+
+        mock_pixmap = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_pixmap.return_value = mock_pixmap
+        mock_doc = MagicMock()
+        mock_doc.__getitem__ = MagicMock(return_value=mock_page)
+
+        mock_fitz = MagicMock()
+        mock_fitz.open.return_value = mock_doc
+        mock_fitz.Matrix.return_value = "2x_matrix"
+
+        out = tmp_path / "card.png"
+        with patch(
+            "packages.core.card_renderer._get_weasyprint_html",
+            return_value=mock_html_cls,
+        ), patch.dict("sys.modules", {"fitz": mock_fitz}):
+            result = render_card_to_png("<html></html>", out)
+
+        mock_html_cls.return_value.write_pdf.assert_called_once()
+        mock_fitz.open.assert_called_once_with(stream=b"%PDF-fake", filetype="pdf")
+        mock_page.get_pixmap.assert_called_once_with(matrix="2x_matrix")
+        mock_pixmap.save.assert_called_once_with(str(out))
+        mock_doc.close.assert_called_once()
+        assert result == out
 
 
 class TestRenderCardToPdf:
     def test_missing_system_libs_raises_helpful_error(self):
         """Missing WeasyPrint libs should produce an actionable error message."""
-        with patch.dict(sys.modules, {"weasyprint": None}):
+        with patch(
+            "packages.core.card_renderer._get_weasyprint_html",
+            side_effect=RuntimeError("brew install pango"),
+        ):
             with pytest.raises(RuntimeError, match="brew install pango"):
                 render_card_to_pdf("<html></html>", Path("/tmp/test.pdf"))
 
