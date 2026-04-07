@@ -184,6 +184,7 @@ def evaluate_tool_calls(
 
         # Check arguments
         expected_args = expected.get("expected_args", {})
+        exact_match_args = set(expected.get("exact_match_args", []))
         if expected_args:
             try:
                 actual_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
@@ -195,13 +196,8 @@ def evaluate_tool_calls(
                 if actual_value is None:
                     details.append(f"  Missing arg '{arg_name}' (expected: {expected_value})")
                     score_cap = min(score_cap, 0.5)
-                elif isinstance(expected_value, str) and expected_value in (
-                    # Detect enum-like values (short, no spaces = exact match)
-                    v for v in [expected_value] if " " not in v and len(v) < 30
-                ):
-                    # Check if the tool parameter has an enum constraint
-                    # For simplicity: if expected value is short and has no spaces,
-                    # use exact match (covers agent_name enums)
+                elif arg_name in exact_match_args:
+                    # Exact match (for enum args like agent_name)
                     actual_str = str(actual_value)
                     if actual_str.lower() == str(expected_value).lower():
                         details.append(f"  Arg '{arg_name}' matches: {expected_value}")
@@ -212,7 +208,7 @@ def evaluate_tool_calls(
                         )
                         score_cap = min(score_cap, 0.3)
                 else:
-                    # Substring match for free-text args
+                    # Substring match (default for free-text args)
                     actual_str = str(actual_value).lower()
                     if str(expected_value).lower() in actual_str:
                         details.append(f"  Arg '{arg_name}' contains '{expected_value}'")

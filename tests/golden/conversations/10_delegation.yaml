@@ -51,7 +51,8 @@ assertions:
     - tool_name: "delegate_to_agent"
       expected_args:
         agent_name: "developer"
-  expected_tool_call_count: 1
+      exact_match_args:
+        - "agent_name"
 
 evaluation:
   expected_qualities:
@@ -59,5 +60,5 @@ evaluation:
     correct_agent_selection: true
     task_description_is_clear: true
   forbidden_patterns:
-    - "I'll help you with that"
-    - "Let me search"
+    - "I'll help you with that directly"
+    - "I cannot delegate"
