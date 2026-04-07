@@ -11,7 +11,7 @@ _SAMPLE_CONFIG = {
     "models": {
         "default": "openrouter/anthropic/claude-sonnet-4.6",
         "presets": {
-            "fast": "openrouter/google/gemini-2.0-flash",
+            "fast": "openrouter/google/gemini-2.5-flash",
             "quality": "openrouter/anthropic/claude-opus-4.6",
             "balanced": "openrouter/anthropic/claude-sonnet-4.6",
         },
@@ -152,7 +152,7 @@ class TestRouteQuery:
     def test_fast_preset_resolves_to_fast_model(self):
         decision = route_query("hi", _SAMPLE_CONFIG)
         assert decision.preset == "fast"
-        assert decision.resolved.model_id == "openrouter/google/gemini-2.0-flash"
+        assert decision.resolved.model_id == "openrouter/google/gemini-2.5-flash"
         assert decision.reason == "short simple query"
         assert decision.confidence == 0.8
 

@@ -438,7 +438,7 @@ class TestCacheControl:
             {"role": "system", "content": "You are helpful."},
             {"role": "user", "content": "Hello"},
         ]
-        result = _apply_cache_control(messages, "openrouter/google/gemini-2.0-flash")
+        result = _apply_cache_control(messages, "openrouter/google/gemini-2.5-flash")
 
         assert result is messages  # Same object, no copy
         assert result[0]["content"] == "You are helpful."

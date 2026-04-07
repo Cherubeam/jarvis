@@ -31,14 +31,14 @@ class TestInferProvider:
         assert infer_provider("openai/gpt-4o") == "openai"
 
     def test_google_prefix(self):
-        assert infer_provider("google/gemini-2.0-flash") == "google"
+        assert infer_provider("google/gemini-2.5-flash") == "google"
 
     def test_bare_model_defaults_to_openai(self):
         """Bare model names (no prefix) default to openai per LiteLLM convention."""
         assert infer_provider("gpt-4o") == "openai"
 
     def test_nested_prefix_takes_first_segment(self):
-        assert infer_provider("openrouter/google/gemini-2.0-flash") == "openrouter"
+        assert infer_provider("openrouter/google/gemini-2.5-flash") == "openrouter"
 
 
 @pytest.mark.unit
@@ -50,15 +50,15 @@ class TestResolveModel:
             "models": {
                 "default": "openrouter/anthropic/claude-sonnet-4.6",
                 "presets": {
-                    "fast": "openrouter/google/gemini-2.0-flash",
+                    "fast": "openrouter/google/gemini-2.5-flash",
                     "quality": "openrouter/anthropic/claude-opus-4.6",
                 },
             }
         }
         result = resolve_model("fast", config)
-        assert result.model_id == "openrouter/google/gemini-2.0-flash"
+        assert result.model_id == "openrouter/google/gemini-2.5-flash"
         assert result.provider == "openrouter"
-        assert "gemini-2.0-flash" in result.display_name
+        assert "gemini-2.5-flash" in result.display_name
 
     def test_literal_model_id_passthrough(self):
         config = {"models": {"presets": {}}}

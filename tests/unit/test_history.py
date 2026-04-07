@@ -209,13 +209,13 @@ class TestSummarizeHistory:
         history = _make_long_history(20)
         client = _mock_client("The user asked 20 questions.")
         result = summarize_history(
-            history, client, model_id="openrouter/google/gemini-2.0-flash",
+            history, client, model_id="openrouter/google/gemini-2.5-flash",
             token_threshold=1000,  # low threshold to force trigger
         )
 
         client.complete.assert_called_once()
         call_kwargs = client.complete.call_args
-        assert call_kwargs.kwargs.get("model") == "openrouter/google/gemini-2.0-flash"
+        assert call_kwargs.kwargs.get("model") == "openrouter/google/gemini-2.5-flash"
 
         # Result should start with summary + recent messages
         assert result[0]["role"] == "assistant"

@@ -361,7 +361,7 @@ Edit `config/default.yaml` (or override in `config/local.yaml`):
 models:
   default: "openrouter/anthropic/claude-sonnet-4.6"
   presets:
-    fast: "openrouter/google/gemini-2.0-flash"
+    fast: "openrouter/google/gemini-2.5-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"
     balanced: "openrouter/anthropic/claude-sonnet-4.6"
 ```

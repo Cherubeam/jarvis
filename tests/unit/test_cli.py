@@ -23,7 +23,7 @@ class TestLoadConfig:
 models:
   default: "openrouter/anthropic/claude-sonnet-4.6"
   presets:
-    fast: "openrouter/google/gemini-2.0-flash"
+    fast: "openrouter/google/gemini-2.5-flash"
 
 paths:
   context_dir: "data/context"
