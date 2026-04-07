@@ -201,10 +201,15 @@ class TestGoldenConversations:
             from llm_client import LLMClient
         from evaluator import EvaluationCriteria
 
+        model_id = f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
-            default_model=f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested,
+            default_model=model_id,
         )
+
+        # Look up model pricing once (same approach as production StreamHandler)
+        from packages.core.pricing import get_model_pricing
+        pricing = get_model_pricing(model_id)
 
         # Extract context from test case
         context = test_case.get("context", {})
@@ -222,17 +227,24 @@ class TestGoldenConversations:
         if "tools" in test_case:
             self._run_agentic_test(
                 test_case, model_client, system_prompt, context,
-                evaluator, evaluation_config, result_storage,
+                evaluator, evaluation_config, result_storage, pricing,
             )
         else:
             self._run_conversation_test(
                 test_case, model_client, system_prompt, context,
-                evaluator, evaluation_config, result_storage,
+                evaluator, evaluation_config, result_storage, pricing,
             )
+
+    @staticmethod
+    def _calculate_cost(pricing, prompt_tokens: int, completion_tokens: int) -> float:
+        """Calculate cost using ModelPricing (same approach as production StreamHandler)."""
+        if pricing:
+            return pricing.calculate_cost(prompt_tokens, completion_tokens)
+        return 0.0
 
     def _run_conversation_test(
         self, test_case, model_client, system_prompt, context,
-        evaluator, evaluation_config, result_storage,
+        evaluator, evaluation_config, result_storage, pricing,
     ):
         """Execute a conversation-based golden test (tests 01-08)."""
         from evaluator import EvaluationCriteria
@@ -256,15 +268,9 @@ class TestGoldenConversations:
                 response_latency = (time.time() - start_time) * 1000
 
                 usage = stream.usage
-                raw_response = stream.raw_response
-
-                try:
-                    from packages.core.pricing import calculate_cost_from_litellm
-                    response_cost = calculate_cost_from_litellm(raw_response)
-                except Exception:
-                    response_cost = (usage.prompt_tokens * 0.000003) + (
-                        usage.completion_tokens * 0.000015
-                    )
+                response_cost = self._calculate_cost(
+                    pricing, usage.prompt_tokens, usage.completion_tokens,
+                )
 
             elif turn["role"] == "assistant":
                 criteria = EvaluationCriteria(
@@ -307,7 +313,7 @@ class TestGoldenConversations:
 
     def _run_agentic_test(
         self, test_case, model_client, system_prompt, context,
-        evaluator, evaluation_config, result_storage,
+        evaluator, evaluation_config, result_storage, pricing,
     ):
         """Execute an agentic golden test with tool calls (tests 09-12)."""
         from evaluator import EvaluationCriteria, evaluate_tool_calls
@@ -359,17 +365,11 @@ class TestGoldenConversations:
 
             # Accumulate token usage
             usage = response.usage
-            total_prompt_tokens += getattr(usage, "prompt_tokens", 0)
-            total_completion_tokens += getattr(usage, "completion_tokens", 0)
-
-            try:
-                from packages.core.pricing import calculate_cost_from_litellm
-                total_cost += calculate_cost_from_litellm(response)
-            except Exception:
-                total_cost += (
-                    getattr(usage, "prompt_tokens", 0) * 0.000003
-                    + getattr(usage, "completion_tokens", 0) * 0.000015
-                )
+            iter_prompt = getattr(usage, "prompt_tokens", 0)
+            iter_completion = getattr(usage, "completion_tokens", 0)
+            total_prompt_tokens += iter_prompt
+            total_completion_tokens += iter_completion
+            total_cost += self._calculate_cost(pricing, iter_prompt, iter_completion)
 
             msg = choice.message
             tool_calls = getattr(msg, "tool_calls", None) or []

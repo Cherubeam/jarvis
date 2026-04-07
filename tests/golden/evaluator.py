@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from packages.core.llm_client import LLMClient, TokenUsage
-from packages.core.pricing import calculate_cost_from_litellm
+from packages.core.pricing import calculate_cost_from_litellm, get_model_pricing
 
 from judge_prompts import build_judge_prompt
 
@@ -269,6 +269,7 @@ class JudgeEvaluator:
         self.judge_client = judge_client
         self.quality_threshold = config.get("quality_threshold", 0.70)
         self.judge_model = config.get("judge_model", "anthropic/claude-opus-4.5")
+        self.judge_pricing = get_model_pricing(f"openrouter/{self.judge_model}")
 
     def evaluate_response(
         self,
@@ -410,15 +411,13 @@ class JudgeEvaluator:
         usage = stream.usage
         raw_response = stream.raw_response
 
-        # Calculate cost
-        try:
-            cost_usd = calculate_cost_from_litellm(raw_response)
-        except Exception:
-            # Fallback cost calculation
-            # Opus 4.5: $15/1M input, $75/1M output
-            cost_usd = (usage.prompt_tokens * 0.000015) + (
-                usage.completion_tokens * 0.000075
+        # Calculate cost using model pricing (same approach as production)
+        if self.judge_pricing:
+            cost_usd = self.judge_pricing.calculate_cost(
+                usage.prompt_tokens, usage.completion_tokens,
             )
+        else:
+            cost_usd = 0.0
 
         # Parse judge response
         parsed = self._parse_judge_response(judge_output)
