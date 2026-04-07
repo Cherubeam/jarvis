@@ -80,20 +80,50 @@ def _clean_wikilinks(text: str) -> list[str]:
     return results
 
 
+def _md_inline_to_html(text: str) -> str:
+    """Convert basic Markdown inline formatting to HTML.
+
+    Handles **bold**, *italic*, and `code`.  Does not handle links, images,
+    or block-level elements — those are stripped or ignored on cards.
+    """
+    # Bold (**text** or __text__)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"__(.+?)__", r"<strong>\1</strong>", text)
+    # Italic (*text* or _text_ — but not inside words for underscores)
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
+    text = re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"<em>\1</em>", text)
+    # Inline code
+    text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+    # Markdown bullet lists → HTML line breaks
+    text = re.sub(r"\n- ", r"<br>• ", text)
+    # Remaining newlines → <br>
+    text = text.replace("\n\n", "<br><br>").replace("\n", "<br>")
+    return text
+
+
 def _truncate(text: str, max_chars: int = 400) -> str:
-    """Truncate text to max_chars, ending at a sentence or word boundary."""
+    """Truncate text to max_chars, ending at a sentence boundary.
+
+    Looks for the last sentence-ending punctuation (. ! ?) followed by a space
+    or newline within the first *max_chars* characters.  Falls back to a word
+    boundary with an ellipsis when no sentence break is found.
+    """
     if len(text) <= max_chars:
         return text
     truncated = text[:max_chars]
-    # Try to cut at last sentence end
-    last_period = truncated.rfind(". ")
-    if last_period > max_chars // 2:
-        return truncated[: last_period + 1]
+    # Find last sentence-ending punctuation followed by whitespace
+    best = -1
+    for end_pattern in (".\n", ".\r", ". ", "! ", "? ", "!\n", "?\n"):
+        pos = truncated.rfind(end_pattern)
+        if pos > best:
+            best = pos
+    if best > max_chars // 2:
+        return truncated[: best + 1]
     # Fall back to word boundary
     last_space = truncated.rfind(" ")
     if last_space > 0:
-        return truncated[:last_space] + "..."
-    return truncated + "..."
+        return truncated[:last_space] + " …"
+    return truncated + " …"
 
 
 def parse_pattern(markdown: str, source_path: str = "") -> PatternData:
@@ -282,6 +312,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    justify-content: center;
 }
 
 .card-related-tag {
@@ -312,7 +343,7 @@ CARD_TEMPLATE = """\
     <div class="card-intent">{{ intent }}</div>
     {% endif %}
     {% if image_path %}
-    <img class="card-image" src="file://{{ image_path }}" alt="{{ name }}">
+    <img class="card-image" src="{{ image_path }}" alt="{{ name }}">
     {% else %}
     <div class="card-image-placeholder"></div>
     {% endif %}
@@ -413,8 +444,8 @@ def render_card_html(
         category=pattern.category,
         intent=pattern.intent,
         image_path=image_path,
-        problem_short=_truncate(pattern.problem),
-        solution_short=_truncate(pattern.solution),
+        problem_short=_md_inline_to_html(_truncate(pattern.problem)),
+        solution_short=_md_inline_to_html(_truncate(pattern.solution)),
         related_patterns=pattern.related_patterns[:5],
         problem=pattern.problem,
         solution=pattern.solution,
@@ -464,6 +495,15 @@ def _slugify(name: str) -> str:
     return slug.strip("-")
 
 
+def _find_image(images_dir: Path, slug: str) -> Path | None:
+    """Find an image file for a pattern slug, checking common extensions."""
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
+        candidate = images_dir / f"{slug}{ext}"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def generate_card_files(
     pattern: PatternData,
     output_dir: Path,
@@ -474,26 +514,33 @@ def generate_card_files(
     Returns dict with keys 'html' and 'png' pointing to output paths.
     """
     slug = _slugify(pattern.name)
-
-    # Check for a user-provided image
-    image_path: str | None = None
-    if images_dir:
-        for ext in (".png", ".jpg", ".jpeg", ".webp"):
-            candidate = images_dir / f"{slug}{ext}"
-            if candidate.is_file():
-                image_path = str(candidate.resolve())
-                break
-
-    html_content = render_card_html(pattern, image_path=image_path)
-
     cards_dir = output_dir / "cards"
     cards_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find image and build paths for HTML (relative) and PNG rendering (absolute)
+    image_found = _find_image(images_dir, slug) if images_dir else None
+
+    # HTML uses a relative path so browsers can load the image when opening the file
+    rel_image_path: str | None = None
+    # WeasyPrint needs an absolute file:// URI
+    abs_image_path: str | None = None
+    if image_found:
+        try:
+            rel_image_path = str(image_found.resolve().relative_to(cards_dir.resolve()))
+        except ValueError:
+            # images_dir is not under cards_dir — use ../ relative path
+            rel_image_path = str(Path("..") / "images" / image_found.name)
+        abs_image_path = image_found.resolve().as_uri()
+
+    html_content = render_card_html(pattern, image_path=rel_image_path)
 
     html_path = cards_dir / f"{slug}.html"
     html_path.write_text(html_content, encoding="utf-8")
 
+    # WeasyPrint render uses absolute paths for reliable image loading
+    png_html = render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
     png_path = cards_dir / f"{slug}.png"
-    render_card_to_png(html_content, png_path)
+    render_card_to_png(png_html, png_path)
 
     return {"html": html_path, "png": png_path}
 

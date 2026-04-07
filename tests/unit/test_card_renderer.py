@@ -181,8 +181,8 @@ class TestTruncate:
     def test_truncation_at_word_boundary(self):
         text = "word " * 100
         result = _truncate(text, 30)
-        assert result.endswith("...")
-        assert len(result) <= 33  # 30 + "..."
+        assert result.endswith(" …")
+        assert len(result) <= 32  # 30 + " …"
 
     def test_default_max_chars_is_400(self):
         """Default truncation limit should be 400 characters."""
@@ -318,7 +318,7 @@ class TestRenderCardHtml:
     def test_image_included_when_provided(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p, image_path="/tmp/test.png")
-        assert '<img class="card-image" src="file:///tmp/test.png"' in html
+        assert '<img class="card-image" src="/tmp/test.png"' in html
         # The placeholder div should not appear in the body (only in styles)
         assert '<div class="card-image-placeholder">' not in html
 
