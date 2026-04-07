@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Default model switched to Qwen 3.5 Flash**: Benchmarked 7 models across 12 golden tests (8 conversation + 4 new agentic tool-use tests). Qwen 3.5 Flash scored 0.925 with 100% pass rate — higher than Claude Sonnet 4.6 (0.918, 92%) at 66x lower cost ($0.0001 vs $0.0066 per request). Quality preset remains Claude Opus 4.6 for complex tasks.
+
+### Added
+- **Agentic golden tests**: 4 new golden tests validating tool calling (09), agent delegation (10), multi-step tool chaining (11), and tool termination (12). Tests use mock tools with canned responses and a hybrid evaluation: programmatic checks for tool call correctness + LLM judge for response quality.
+
+### Fixed
+- **Golden test cost tracking**: Cost was always reported as $0.00 because `calculate_cost_from_litellm()` silently returned 0 for streaming responses. Now uses `get_model_pricing()` + `pricing.calculate_cost()` — the same approach as the production `StreamHandler`.
+
 ---
 
 ## [0.12.0] - 2026-04-05

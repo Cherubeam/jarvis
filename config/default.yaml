@@ -3,17 +3,17 @@
 
 # Model configuration
 # Model IDs use full LiteLLM-routable format (provider prefix included).
-# Default: Claude Sonnet 4.6 — highest golden test score (0.919), 100% pass
-# rate, and best quality/cost ratio across 7 benchmarked models.
+# Default: Qwen 3.5 Flash — 100% pass rate (0.925 avg score), 66x cheaper than
+# Sonnet 4.6, with confirmed tool-use support and 1M context.
 # See docs/research/models.md "Default Model Recommendation" for decision matrix.
 models:
-  default: "openrouter/anthropic/claude-sonnet-4.6"
+  default: "openrouter/qwen/qwen3.5-flash-02-23"
   default_max_tokens: 16384
   streaming: true  # Set to false for non-streaming mode (enables prompt caching via OpenRouter)
   presets:
     fast: "openrouter/google/gemini-2.5-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"
-    balanced: "openrouter/anthropic/claude-sonnet-4.6"
+    balanced: "openrouter/qwen/qwen3.5-flash-02-23"
 
 # Paths (relative to project root)
 paths:

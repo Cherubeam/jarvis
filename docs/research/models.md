@@ -285,65 +285,68 @@ Golden tests are defined; use them to benchmark models:
 ## Benchmark Results
 
 <!-- BENCHMARK_TABLE_START -->
-Generated: 2026-01-23 19:32 UTC
-Judge model(s): anthropic/claude-opus-4.5
+Generated: 2026-04-07 UTC
+Judge model: anthropic/claude-opus-4.5
+Test suite: 12 golden tests (8 conversation + 4 agentic tool-use)
 
-| Model | Run | Avg score | Pass rate | Avg response latency | Avg judge latency | Response tokens | Judge tokens | Est. total cost |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-anthropic/claude-opus-4.5 | 2026-01-23_20-06-30 | 0.907 | 100% | 6908 ms | 7023 ms | 1813 | 6288 | $0.11
-anthropic/claude-sonnet-4.5 | 2026-01-23_20-04-23 | 0.919 | 100% | 6693 ms | 7187 ms | 2117 | 6656 | $0.10
-google/gemini-3-flash-preview | 2026-01-23_20-19-23 | 0.903 | 100% | 5944 ms | 6799 ms | 3362 | 7848 | $0.09
-google/gemini-3-pro-preview | 2026-01-23_20-25-14 | 0.921 | 100% | 20304 ms | 6864 ms | 9419 | 8154 | $0.19
-openai/gpt-5.2 | 2026-01-23_20-14-47 | 0.885 | 89% | 13738 ms | 6493 ms | 3777 | 8200 | $0.13
-openai/gpt-5.2-codex | 2026-01-23_20-17-51 | 0.886 | 88% | 4199 ms | 6285 ms | 1534 | 5937 | $0.09
-openai/gpt-oss-120b | 2026-01-23_20-08-37 | 0.887 | 89% | 16293 ms | 7586 ms | 9459 | 13913 | $0.11
+| Model | Avg score | Pass rate | Avg response latency | Cost per request |
+| --- | --- | --- | --- | --- |
+| qwen/qwen3.5-plus-02-15 | 0.959 | 100% | 16,225 ms | $0.0006 |
+| qwen/qwen3.5-122b-a10b-20260224 | 0.954 | 100% | 9,864 ms | $0.0007 |
+| qwen/qwen3.5-flash-02-23 | 0.925 | 100% | 8,118 ms | $0.0001 |
+| anthropic/claude-sonnet-4.6 | 0.918 | 92% | 9,686 ms | $0.0066 |
+| google/gemini-2.5-flash | 0.874 | 92% | 4,289 ms | $0.0009 |
+| nvidia/nemotron-3-super-120b-a12b | 0.863 | 92% | 11,145 ms | $0.0002 |
+| google/gemini-2.5-flash-lite | 0.819 | 75% | 3,426 ms | $0.0002 |
 <!-- BENCHMARK_TABLE_END -->
 
 Notes:
-- `openai/gpt-5.2-pro` failed to run (OpenRouter returned 402 Payment Required).
-- Top score: `google/gemini-3-pro-preview` (0.921) with the highest response latency.
-- Fastest responses: `openai/gpt-5.2-codex` (~4.2s avg) with an 88% pass rate.
-- Best cost/quality balance: `google/gemini-3-flash-preview` and `anthropic/claude-sonnet-4.5` (both ~0.90+ score under $0.10).
+- All three Qwen 3.5 models achieved 100% pass rate, including the new agentic tool-use tests.
+- Claude Sonnet 4.6 failed `preferences_adherence` (too verbose for "max 3 sentences" constraint).
+- Gemini 2.5 Flash failed `tool_termination` (called tools unnecessarily on a general knowledge question).
+- Nemotron 3 Super failed `delegation` (hallucinated a non-existent tool name instead of using `delegate_to_agent`).
+- Gemini 2.5 Flash Lite failed 4 tests (25%) — too weak for agentic tasks.
+- Qwen 3.5 Flash is the best cost/quality balance: 100% pass, 0.925 score, 66x cheaper than Sonnet.
 
 ---
 
 ## Default Model Recommendation
 
-Based on golden test benchmarks across 7 models (see results above), we recommend **Claude Sonnet 4.5** as the default model.
+Based on golden test benchmarks across 7 models with 12 tests (8 conversation + 4 agentic tool-use), we recommend **Qwen 3.5 Flash** as the default model.
 
 ### Decision Matrix
 
-| Criteria | Claude Sonnet 4.5 | Claude Opus 4.5 | Gemini 3 Flash | GPT-5.2-Codex |
+| Criteria | Qwen 3.5 Flash | Qwen 3.5 Plus | Claude Sonnet 4.6 | Gemini 2.5 Flash |
 | --- | --- | --- | --- | --- |
-| **Avg Score** | 0.919 | 0.907 | 0.903 | 0.886 |
-| **Pass Rate** | 100% | 100% | 100% | 88% |
-| **Avg Latency** | 6,693 ms | 6,908 ms | 5,944 ms | 4,199 ms |
-| **Est. Cost (8 tests)** | ~$0.10 | ~$0.11 | ~$0.09 | ~$0.09 |
-| **Quality/Cost** | Best | High cost, lower score | Cheapest, lower score | Fastest, lower pass rate |
+| **Avg Score** | 0.925 | 0.959 | 0.918 | 0.874 |
+| **Pass Rate** | 100% | 100% | 92% | 92% |
+| **Avg Latency** | 8,118 ms | 16,225 ms | 9,686 ms | 4,289 ms |
+| **Cost/Request** | $0.0001 | $0.0006 | $0.0066 | $0.0009 |
+| **Tool Use** | 100% pass | 100% pass | 100% pass | 92% pass |
 
 ### Rationale
 
-1. **Highest quality score** (0.919) — tied with Gemini 3 Pro Preview but at lower cost and latency
-2. **100% pass rate** — all golden tests pass, no reliability concerns
-3. **Reasonable cost** — ~$0.10 per 8-test run, comparable to budget models
-4. **Good latency** — 6.7s average, acceptable for interactive use
-5. **Strong personalization** — consistently references user context in responses
+1. **100% pass rate** — all 12 golden tests pass including all 4 agentic tool-use tests
+2. **Higher quality than Sonnet** (0.925 vs 0.918) at **66x lower cost**
+3. **Confirmed tool use** — correct tool calling, delegation, multi-step chaining, and termination
+4. **1M context window** — larger than Sonnet's 200K, useful for long conversations
+5. **Good latency** — 8.1s average, comparable to Sonnet (9.7s)
 
 ### When to Override
 
-- **Budget-constrained**: Switch to `google/gemini-3-flash-preview` (similar quality at lower cost)
-- **Maximum quality**: Use `anthropic/claude-opus-4.5` for complex multi-step reasoning
-- **Lowest latency**: Use `openai/gpt-5.2-codex` (~4.2s avg) when speed matters most
+- **Maximum quality**: Use `quality` preset (Claude Opus 4.6) for complex multi-step reasoning
+- **Lowest latency**: Use `fast` preset (Gemini 2.5 Flash, ~4.3s avg) when speed matters most
+- **Higher quality at low cost**: Use `qwen/qwen3.5-plus-02-15` (0.959 score) at $0.0006/request
 
 ### Configuration
 
 Set in `config/default.yaml`:
 ```yaml
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
+models:
+  default: "openrouter/qwen/qwen3.5-flash-02-23"
 ```
 
-Override per-session in `config/local.yaml` or via future CLI flags (Phase 7).
+Override per-session via `--model` flag or `/model` command.
 
 ---
 
