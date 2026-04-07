@@ -80,7 +80,7 @@ def _clean_wikilinks(text: str) -> list[str]:
     return results
 
 
-def _truncate(text: str, max_chars: int = 280) -> str:
+def _truncate(text: str, max_chars: int = 400) -> str:
     """Truncate text to max_chars, ending at a sentence or word boundary."""
     if len(text) <= max_chars:
         return text
@@ -426,9 +426,19 @@ def render_card_back_html() -> str:
     return CARD_BACK_TEMPLATE
 
 
+_WEASYPRINT_INSTALL_HINT = (
+    "WeasyPrint system libraries not found. Install via: "
+    "brew install pango (macOS) or "
+    "apt install libpango1.0-dev libcairo2-dev (Linux)"
+)
+
+
 def render_card_to_png(html: str, output_path: Path) -> Path:
     """Render an HTML card string to a PNG file using WeasyPrint."""
-    from weasyprint import HTML
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(_WEASYPRINT_INSTALL_HINT) from exc
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html).write_png(str(output_path))
@@ -437,7 +447,10 @@ def render_card_to_png(html: str, output_path: Path) -> Path:
 
 def render_card_to_pdf(html: str, output_path: Path) -> Path:
     """Render an HTML card string to a PDF file using WeasyPrint."""
-    from weasyprint import HTML
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(_WEASYPRINT_INSTALL_HINT) from exc
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html).write_pdf(str(output_path))

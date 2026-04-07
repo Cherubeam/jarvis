@@ -1,5 +1,7 @@
 """Tests for packages.core.card_renderer."""
 
+import sys
+
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,6 +16,8 @@ from packages.core.card_renderer import (
     list_vault_patterns,
     render_card_html,
     render_card_back_html,
+    render_card_to_png,
+    render_card_to_pdf,
     _slugify,
     _truncate,
     _extract_intent,
@@ -179,6 +183,15 @@ class TestTruncate:
         result = _truncate(text, 30)
         assert result.endswith("...")
         assert len(result) <= 33  # 30 + "..."
+
+    def test_default_max_chars_is_400(self):
+        """Default truncation limit should be 400 characters."""
+        text = "A" * 399
+        assert _truncate(text) == text  # under limit, unchanged
+
+        text_over = "word " * 100  # 500 chars
+        result = _truncate(text_over)
+        assert len(result) <= 403  # 400 + "..."
 
 
 class TestSlugify:
@@ -511,3 +524,23 @@ class TestGeneratePatternImage:
 
         assert result == tmp_path / "chain-of-thought.png"
         assert (tmp_path / "chain-of-thought.png").read_bytes() == b"png image bytes"
+
+
+# ---------------------------------------------------------------------------
+# WeasyPrint system library error handling
+# ---------------------------------------------------------------------------
+
+class TestRenderCardToPng:
+    def test_missing_system_libs_raises_helpful_error(self):
+        """Missing WeasyPrint libs should produce an actionable error message."""
+        with patch.dict(sys.modules, {"weasyprint": None}):
+            with pytest.raises(RuntimeError, match="brew install pango"):
+                render_card_to_png("<html></html>", Path("/tmp/test.png"))
+
+
+class TestRenderCardToPdf:
+    def test_missing_system_libs_raises_helpful_error(self):
+        """Missing WeasyPrint libs should produce an actionable error message."""
+        with patch.dict(sys.modules, {"weasyprint": None}):
+            with pytest.raises(RuntimeError, match="brew install pango"):
+                render_card_to_pdf("<html></html>", Path("/tmp/test.pdf"))
