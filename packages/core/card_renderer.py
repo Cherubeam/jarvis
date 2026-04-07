@@ -12,7 +12,9 @@ Phase 2 adds image generation:
 from __future__ import annotations
 
 import logging
+import os
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -464,13 +466,45 @@ _WEASYPRINT_INSTALL_HINT = (
 )
 
 
-def render_card_to_png(html: str, output_path: Path) -> Path:
-    """Render an HTML card string to a PNG file using WeasyPrint."""
+def _ensure_homebrew_lib_path() -> None:
+    """Ensure Homebrew shared libraries are discoverable on macOS.
+
+    WeasyPrint depends on GLib/Pango/Cairo via cffi's ``ffi.dlopen()``.
+    On macOS, ``dlopen()`` does not search Homebrew's lib directory by
+    default, so we add it to ``DYLD_FALLBACK_LIBRARY_PATH`` before the
+    first WeasyPrint import.
+    """
+    if sys.platform != "darwin":
+        return
+
+    # Apple Silicon: /opt/homebrew/lib  |  Intel: /usr/local/lib
+    candidates = [Path("/opt/homebrew/lib"), Path("/usr/local/lib")]
+    existing = [str(p) for p in candidates if p.is_dir()]
+    if not existing:
+        return
+
+    current = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
+    current_parts = set(current.split(":")) if current else set()
+
+    to_add = [p for p in existing if p not in current_parts]
+    if to_add:
+        new_value = ":".join(filter(None, [current, *to_add]))
+        os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = new_value
+
+
+def _get_weasyprint_html():
+    """Lazily import WeasyPrint's HTML class, with Homebrew library fix."""
+    _ensure_homebrew_lib_path()
     try:
         from weasyprint import HTML
     except (ImportError, OSError) as exc:
         raise RuntimeError(_WEASYPRINT_INSTALL_HINT) from exc
+    return HTML
 
+
+def render_card_to_png(html: str, output_path: Path) -> Path:
+    """Render an HTML card string to a PNG file using WeasyPrint."""
+    HTML = _get_weasyprint_html()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html).write_png(str(output_path))
     return output_path
@@ -478,11 +512,7 @@ def render_card_to_png(html: str, output_path: Path) -> Path:
 
 def render_card_to_pdf(html: str, output_path: Path) -> Path:
     """Render an HTML card string to a PDF file using WeasyPrint."""
-    try:
-        from weasyprint import HTML
-    except (ImportError, OSError) as exc:
-        raise RuntimeError(_WEASYPRINT_INSTALL_HINT) from exc
-
+    HTML = _get_weasyprint_html()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html).write_pdf(str(output_path))
     return output_path
