@@ -17,17 +17,24 @@ Choosing the right model is a cost/quality tradeoff. No single model is best for
 
 ## Model Comparison Table
 
-Available via OpenRouter (as of January 2026):
+Available via OpenRouter (as of April 2026):
 
-| Model | Prompt (per 1M) | Completion (per 1M) | Notes |
-|-------|-----------------|---------------------|-------|
-| Claude Opus 4.5 | $5.00 | $25.00 | Best quality, highest cost. Complex reasoning, long context. |
-| Claude Sonnet 4.5 | $3.00 | $15.00 | Extended thinking model, **best quality/cost balance**. |
-| Claude Sonnet 4 | $3.00 | $15.00 | Strong balance of quality and cost. |
-| Claude Haiku 3.5 | $0.80 | $4.00 | Fast and cheap, good for simple tasks. |
-| GPT-4o | $2.50 | $10.00 | OpenAI's flagship, competitive with Sonnet. |
-| GPT-4o-mini | $0.15 | $0.60 | Very cheap, good for simple tasks. |
-| Gemini 2.0 Flash | $0.10 | $0.40 | Google's fast model, extremely cheap. |
+| Model | Prompt (per 1M) | Completion (per 1M) | Context | Tool Use | Notes |
+|-------|-----------------|---------------------|---------|----------|-------|
+| Claude Opus 4.6 | $5.00 | $25.00 | 200K | Yes | Best quality, highest cost |
+| Claude Sonnet 4.6 | $3.00 | $15.00 | 200K | Yes | Current default, strong all-round |
+| Claude Haiku 4.5 | $0.80 | $4.00 | 200K | Yes | Cheap Anthropic option |
+| Qwen 3.5 397B (MoE 17B) | $0.39 | $2.34 | 262K | Unclear | Flagship Qwen, large MoE |
+| Gemini 2.5 Flash | $0.30 | $2.50 | 1M | Yes | Current `fast` preset, reasoning |
+| Qwen 3.5 Plus | $0.26 | $1.56 | 1M | Yes | MoE, 1M context, multimodal |
+| Qwen 3.5 122B (MoE 10B) | $0.26 | $2.08 | 262K | Yes | "Second only to 397B" |
+| Qwen 3.5 27B | $0.195 | $1.56 | 262K | Yes | Dense, confirmed tool use |
+| Qwen 3.5 35B (MoE 3B) | $0.16 | $1.30 | 262K | Likely | Small active params |
+| Qwen 3 Coder Next | $0.12 | $0.75 | 262K | Yes | Code-focused |
+| Nemotron 3 Super (120B/12B) | $0.10 | $0.50 | 262K | Unclear | MoE, very fast inference |
+| Gemini 2.5 Flash Lite | $0.10 | $0.40 | 1M | Yes | Cheapest Gemini |
+| Qwen 3.5 Flash | $0.065 | $0.26 | 1M | Yes | MoE, 1M context, ultra-cheap |
+| Qwen 3.5 9B | $0.05 | $0.15 | 256K | Likely | Tiny, cheapest option |
 
 ---
 
@@ -43,13 +50,14 @@ For a typical Jarvis conversation:
 
 | Model | Cost per Request | 10-Request Session | 100-Request Month |
 |-------|------------------|-------------------|-------------------|
-| Claude Opus 4.5 | ~$0.011 | ~$0.11 | ~$1.10 |
-| Claude Sonnet 4.5 | ~$0.007 | ~$0.07 | ~$0.70 |
-| Claude Sonnet 4 | ~$0.007 | ~$0.07 | ~$0.70 |
-| Claude Haiku 3.5 | ~$0.002 | ~$0.02 | ~$0.20 |
-| GPT-4o | ~$0.006 | ~$0.06 | ~$0.60 |
-| GPT-4o-mini | ~$0.0003 | ~$0.003 | ~$0.03 |
-| Gemini 2.0 Flash | ~$0.0002 | ~$0.002 | ~$0.02 |
+| Claude Opus 4.6 | ~$0.011 | ~$0.11 | ~$1.10 |
+| Claude Sonnet 4.6 | ~$0.007 | ~$0.07 | ~$0.70 |
+| Claude Haiku 4.5 | ~$0.002 | ~$0.02 | ~$0.20 |
+| Qwen 3.5 Plus | ~$0.0006 | ~$0.006 | ~$0.06 |
+| Gemini 2.5 Flash | ~$0.0009 | ~$0.009 | ~$0.09 |
+| Qwen 3.5 Flash | ~$0.0001 | ~$0.001 | ~$0.01 |
+| Gemini 2.5 Flash Lite | ~$0.0002 | ~$0.002 | ~$0.02 |
+| Nemotron 3 Super | ~$0.0002 | ~$0.002 | ~$0.02 |
 
 ### Cost Comparison vs. Subscriptions
 
@@ -58,12 +66,17 @@ For a typical Jarvis conversation:
 - Claude Pro: $20/month
 - Copilot: $10-20/month
 
-**Jarvis with Sonnet 4.5:**
+**Jarvis with Sonnet 4.6:**
 - Light use (30 requests/month): ~$0.20
 - Moderate use (100 requests/month): ~$0.70
 - Heavy use (300 requests/month): ~$2.10
 
-**Savings**: 90-95% cost reduction vs. subscriptions!
+**Jarvis with Qwen 3.5 Flash (potential new default):**
+- Light use (30 requests/month): ~$0.003
+- Moderate use (100 requests/month): ~$0.01
+- Heavy use (300 requests/month): ~$0.03
+
+**Savings**: 90-99% cost reduction vs. subscriptions!
 
 ---
 
@@ -238,12 +251,14 @@ Golden tests are defined; use them to benchmark models:
 
 ### Benchmark Each Model
 
-Run golden tests on:
-- Claude Sonnet 4.5 (baseline)
-- Claude Haiku 3.5 (fast/cheap)
-- Claude Opus 4.5 (quality)
-- GPT-4o (alternative)
-- GPT-4o-mini (ultra-cheap)
+**April 2026 benchmark** — 12 golden tests (8 conversation + 4 agentic tool-use):
+- Claude Sonnet 4.6 (baseline)
+- Qwen 3.5 Flash (ultra-cheap, 1M context)
+- Gemini 2.5 Flash Lite (cheapest Gemini)
+- Nemotron 3 Super (MoE, fast inference)
+- Qwen 3.5 Plus (flagship Qwen MoE)
+- Qwen 3.5 122B (best Qwen quality under $0.30)
+- Gemini 2.5 Flash (current fast preset)
 
 ### Measure
 
@@ -460,4 +475,4 @@ Use data to refine routing algorithm.
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-04-07*
