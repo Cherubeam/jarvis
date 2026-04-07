@@ -500,7 +500,6 @@ def _run_with_display(stream_handler, agent, user_input, print_chunks=True, mess
         live = start_waiting_spinner()
 
     def _resume_spinner():
-        """Restart the spinner after a tool call so the user sees progress."""
         live.update(Spinner("dots", text=Text(" Thinking…", style="dim")))
         live.start()
 

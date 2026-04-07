@@ -196,27 +196,28 @@ class TestLiveStreamDisplay:
         assert buf == ["Hello"]
 
     @patch("apps.cli.display.Live")
-    def test_finish_live_stream_renders_markdown_when_detected(self, MockLive):
+    @patch("apps.cli.display.console")
+    def test_finish_live_stream_renders_markdown_when_detected(self, mock_console, MockLive):
         mock_live = MagicMock()
         md_text = "## Title\n\nSome **bold** text"
 
         finish_live_stream(mock_live, md_text)
 
-        mock_live.update.assert_called_once()
-        # The argument should be a Markdown renderable
-        from rich.markdown import Markdown
-        arg = mock_live.update.call_args[0][0]
-        assert isinstance(arg, Markdown)
         mock_live.stop.assert_called_once()
+        mock_console.print.assert_called_once()
+        from rich.markdown import Markdown
+        arg = mock_console.print.call_args[0][0]
+        assert isinstance(arg, Markdown)
 
+    @patch("apps.cli.display.console")
     @patch("apps.cli.display.Live")
-    def test_finish_live_stream_renders_plain_text_as_markdown(self, MockLive):
+    def test_finish_live_stream_renders_plain_text_as_markdown(self, MockLive2, mock_console):
         mock_live = MagicMock()
 
         finish_live_stream(mock_live, "Just a plain answer.")
 
-        mock_live.update.assert_called_once()
         mock_live.stop.assert_called_once()
+        mock_console.print.assert_called_once()
 
     @patch("apps.cli.display.Live")
     def test_finish_live_stream_handles_empty_text(self, MockLive):
@@ -224,7 +225,6 @@ class TestLiveStreamDisplay:
 
         finish_live_stream(mock_live, "")
 
-        mock_live.update.assert_not_called()
         mock_live.stop.assert_called_once()
 
     @patch("apps.cli.display.Live")
@@ -233,7 +233,6 @@ class TestLiveStreamDisplay:
 
         finish_live_stream(mock_live, "   \n  ")
 
-        mock_live.update.assert_not_called()
         mock_live.stop.assert_called_once()
 
 

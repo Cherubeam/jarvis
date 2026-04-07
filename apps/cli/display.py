@@ -99,9 +99,10 @@ def start_live_stream(thinking: bool = True) -> tuple[Live, list[str]]:
 
     Returns (live, buffer) where buffer is a list that accumulates chunks.
     When *thinking* is True, shows an animated spinner until the first chunk arrives.
+    ``transient=True`` ensures the spinner vanishes when stopped (no stale frames).
     """
     initial = Spinner("dots", text=Text(" Thinking…", style="dim")) if thinking else Text("")
-    live = Live(initial, console=console, refresh_per_second=8, vertical_overflow="crop")
+    live = Live(initial, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
     live.start()
     return live, []
 
@@ -117,25 +118,25 @@ def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]
 
 
 def finish_live_stream(live: Live, full_text: str) -> None:
-    """Finish the live display with a final Markdown render."""
-    if full_text.strip():
-        live.update(Markdown(full_text))
+    """Finish the live display and print the final response."""
     live.stop()
+    if full_text.strip():
+        console.print(Markdown(full_text))
 
 
 def start_waiting_spinner() -> Live:
     """Show a spinner while waiting for a non-streaming response."""
     spinner = Spinner("dots", text=Text(" Waiting…", style="dim"))
-    live = Live(spinner, console=console, refresh_per_second=8, vertical_overflow="crop")
+    live = Live(spinner, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
     live.start()
     return live
 
 
 def finish_waiting(live: Live, full_text: str) -> None:
-    """Stop the spinner and render the full response."""
-    if full_text.strip():
-        live.update(Markdown(full_text))
+    """Stop the spinner and print the final response."""
     live.stop()
+    if full_text.strip():
+        console.print(Markdown(full_text))
 
 
 # ---------------------------------------------------------------------------
