@@ -1,0 +1,63 @@
+name: "delegation_to_developer"
+description: "Model should delegate a coding task to the developer agent"
+category: "tool_use"
+context:
+  profile: |
+    I am building a personal AI assistant called Jarvis in Python.
+
+prompt: "Add error handling to the LLM client's retry logic"
+
+tools:
+  - name: "delegate_to_agent"
+    description: "Delegate a task to a specialized agent. Available agents: developer (coding/debugging), researcher (web research), writer (content creation), content_reviewer (editorial review). Use when the user's request is better handled by a domain expert. Delegate on the first turn — do not pre-fetch content."
+    parameters:
+      type: "object"
+      properties:
+        agent_name:
+          type: "string"
+          description: "Name of the agent to delegate to"
+          enum:
+            - "developer"
+            - "researcher"
+            - "writer"
+            - "content_reviewer"
+        task:
+          type: "string"
+          description: "The task for the agent, framed as a clear goal"
+        context:
+          type: "string"
+          description: "Relevant conversation context for the agent"
+      required:
+        - "agent_name"
+        - "task"
+    terminal: true
+
+  - name: "search_notes"
+    description: "Search personal notes by keyword"
+    parameters:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "Search query"
+      required:
+        - "query"
+
+mock_tool_results:
+  search_notes: "No notes found."
+
+assertions:
+  expected_tool_calls:
+    - tool_name: "delegate_to_agent"
+      expected_args:
+        agent_name: "developer"
+  expected_tool_call_count: 1
+
+evaluation:
+  expected_qualities:
+    delegates_immediately: true
+    correct_agent_selection: true
+    task_description_is_clear: true
+  forbidden_patterns:
+    - "I'll help you with that"
+    - "Let me search"

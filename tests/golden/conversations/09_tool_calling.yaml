@@ -1,0 +1,50 @@
+name: "tool_calling_search"
+description: "Model should call search_notes with appropriate query when asked about past notes"
+category: "tool_use"
+context:
+  profile: |
+    I use Obsidian for note-taking. My vault has notes on software architecture,
+    leadership patterns, and product strategy.
+
+prompt: "What notes do I have about software architecture?"
+
+tools:
+  - name: "search_notes"
+    description: "Search personal notes in Obsidian vault by keyword"
+    parameters:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "Search query to find relevant notes"
+      required:
+        - "query"
+
+  - name: "read_note"
+    description: "Read a specific note by title"
+    parameters:
+      type: "object"
+      properties:
+        title:
+          type: "string"
+          description: "Title of the note to read"
+      required:
+        - "title"
+
+mock_tool_results:
+  search_notes: "Found 2 notes matching query: 'Architecture Decision Records', 'Hexagonal Architecture Notes'"
+
+assertions:
+  expected_tool_calls:
+    - tool_name: "search_notes"
+      expected_args:
+        query: "architecture"
+  expects_final_text: true
+
+evaluation:
+  expected_qualities:
+    calls_correct_tool: true
+    reasonable_query_argument: true
+  forbidden_patterns:
+    - "I don't have access"
+    - "I cannot search"

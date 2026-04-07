@@ -5,6 +5,7 @@ This module provides infrastructure for running and evaluating golden test conve
 Use --evaluate flag to run actual LLM calls with judge evaluation.
 """
 
+import json
 import pytest
 import yaml
 import os
@@ -68,6 +69,10 @@ class TestGoldenConversationStructure:
             "06_current_focus_aware.yaml",
             "07_ambiguous_query.yaml",
             "08_preferences_adherence.yaml",
+            "09_tool_calling.yaml",
+            "10_delegation.yaml",
+            "11_multi_step_tool_use.yaml",
+            "12_tool_termination.yaml",
         ]
 
         for filename in expected_files:
@@ -77,31 +82,48 @@ class TestGoldenConversationStructure:
     def test_golden_file_structure_valid(self, golden_conversations_dir: Path):
         """Test that all golden test files have valid YAML structure."""
         yaml_files = list(golden_conversations_dir.glob("*.yaml"))
-        assert len(yaml_files) >= 8, "Expected at least 8 golden test files"
+        assert len(yaml_files) >= 12, "Expected at least 12 golden test files"
 
         for yaml_file in yaml_files:
             with open(yaml_file) as f:
                 data = yaml.safe_load(f)
 
-            # Required top-level fields
+            # Required top-level fields (both schemas)
             assert "name" in data, f"{yaml_file.name}: missing 'name' field"
             assert "description" in data, (
                 f"{yaml_file.name}: missing 'description' field"
             )
             assert "category" in data, f"{yaml_file.name}: missing 'category' field"
             assert "context" in data, f"{yaml_file.name}: missing 'context' field"
-            assert "conversation" in data, (
-                f"{yaml_file.name}: missing 'conversation' field"
-            )
 
-            # Validate conversation structure
-            conversation = data["conversation"]
-            assert isinstance(conversation, list), (
-                f"{yaml_file.name}: conversation must be a list"
-            )
-            assert len(conversation) >= 2, (
-                f"{yaml_file.name}: conversation must have at least user + assistant"
-            )
+            # Agentic tests have 'tools' + 'prompt'; conversation tests have 'conversation'
+            is_agentic = "tools" in data
+
+            if is_agentic:
+                assert "prompt" in data, (
+                    f"{yaml_file.name}: agentic test missing 'prompt' field"
+                )
+                assert isinstance(data["tools"], list), (
+                    f"{yaml_file.name}: 'tools' must be a list"
+                )
+                for tool in data["tools"]:
+                    assert "name" in tool, (
+                        f"{yaml_file.name}: tool missing 'name'"
+                    )
+                    assert "description" in tool, (
+                        f"{yaml_file.name}: tool missing 'description'"
+                    )
+            else:
+                assert "conversation" in data, (
+                    f"{yaml_file.name}: missing 'conversation' field"
+                )
+                conversation = data["conversation"]
+                assert isinstance(conversation, list), (
+                    f"{yaml_file.name}: conversation must be a list"
+                )
+                assert len(conversation) >= 2, (
+                    f"{yaml_file.name}: conversation must have at least user + assistant"
+                )
 
 
 @pytest.mark.golden
@@ -196,18 +218,34 @@ class TestGoldenConversations:
             if context_parts:
                 system_prompt += "\n\n" + "\n\n".join(context_parts)
 
-        # Execute conversation
+        # Branch: agentic tests (have 'tools' field) vs conversation tests
+        if "tools" in test_case:
+            self._run_agentic_test(
+                test_case, model_client, system_prompt, context,
+                evaluator, evaluation_config, result_storage,
+            )
+        else:
+            self._run_conversation_test(
+                test_case, model_client, system_prompt, context,
+                evaluator, evaluation_config, result_storage,
+            )
+
+    def _run_conversation_test(
+        self, test_case, model_client, system_prompt, context,
+        evaluator, evaluation_config, result_storage,
+    ):
+        """Execute a conversation-based golden test (tests 01-08)."""
+        from evaluator import EvaluationCriteria
+
         for turn in test_case["conversation"]:
             if turn["role"] == "user":
                 user_message = turn["content"]
 
-                # Build messages for LLM
                 messages = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
                 ]
 
-                # Call model
                 start_time = time.time()
                 stream = model_client.chat_stream(messages)
 
@@ -215,25 +253,20 @@ class TestGoldenConversations:
                 for chunk in stream:
                     response_text += chunk
 
-                response_latency = (time.time() - start_time) * 1000  # ms
+                response_latency = (time.time() - start_time) * 1000
 
-                # Get usage from stream
                 usage = stream.usage
                 raw_response = stream.raw_response
 
-                # Calculate cost
                 try:
                     from packages.core.pricing import calculate_cost_from_litellm
-
                     response_cost = calculate_cost_from_litellm(raw_response)
                 except Exception:
-                    # Fallback cost calculation
                     response_cost = (usage.prompt_tokens * 0.000003) + (
                         usage.completion_tokens * 0.000015
                     )
 
             elif turn["role"] == "assistant":
-                # Extract evaluation criteria
                 criteria = EvaluationCriteria(
                     qualities=turn.get("expected_qualities", {}),
                     forbidden_patterns=turn.get("forbidden_patterns", []),
@@ -243,7 +276,6 @@ class TestGoldenConversations:
                     max_length=turn.get("max_length"),
                 )
 
-                # Evaluate with judge
                 result = evaluator.evaluate_response(
                     test_name=test_case["name"],
                     test_category=test_case["category"],
@@ -263,17 +295,209 @@ class TestGoldenConversations:
                     },
                 )
 
-                # Store result
                 result_storage.save_result(self.run_id, result)
                 self.results.append(result)
 
-                # Assert on quality threshold
                 assert result.passed, (
                     f"Test {result.test_name} failed quality threshold "
                     f"(score: {result.evaluation.overall_score:.2f}, "
                     f"threshold: {evaluation_config['quality_threshold']})\n"
                     f"Reason: {result.evaluation.reasoning}"
                 )
+
+    def _run_agentic_test(
+        self, test_case, model_client, system_prompt, context,
+        evaluator, evaluation_config, result_storage,
+    ):
+        """Execute an agentic golden test with tool calls (tests 09-12)."""
+        from evaluator import EvaluationCriteria, evaluate_tool_calls
+        from judge_prompts import format_transcript, format_tools_description
+
+        tools_yaml = test_case["tools"]
+        mock_results = test_case.get("mock_tool_results", {})
+        assertions = test_case.get("assertions", {})
+        evaluation = test_case.get("evaluation", {})
+        user_message = test_case["prompt"]
+        max_rounds = assertions.get("max_tool_call_rounds", 5)
+
+        # Build terminal tool set
+        terminal_tools = {
+            t["name"] for t in tools_yaml if t.get("terminal", False)
+        }
+
+        # Convert tool defs to LiteLLM format
+        tools_litellm = []
+        for t in tools_yaml:
+            tools_litellm.append({
+                "type": "function",
+                "function": {
+                    "name": t["name"],
+                    "description": t["description"],
+                    "parameters": t.get("parameters", {"type": "object", "properties": {}}),
+                },
+            })
+
+        # Build initial messages
+        messages: list[dict] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+
+        # Track metrics across loop iterations
+        all_tool_calls: list[dict] = []
+        transcript_messages: list[dict] = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+        total_cost = 0.0
+        final_text: str | None = None
+        start_time = time.time()
+
+        # Agentic loop
+        for iteration in range(max_rounds):
+            response = model_client.complete(messages, tools=tools_litellm)
+            choice = response.choices[0]
+
+            # Accumulate token usage
+            usage = response.usage
+            total_prompt_tokens += getattr(usage, "prompt_tokens", 0)
+            total_completion_tokens += getattr(usage, "completion_tokens", 0)
+
+            try:
+                from packages.core.pricing import calculate_cost_from_litellm
+                total_cost += calculate_cost_from_litellm(response)
+            except Exception:
+                total_cost += (
+                    getattr(usage, "prompt_tokens", 0) * 0.000003
+                    + getattr(usage, "completion_tokens", 0) * 0.000015
+                )
+
+            msg = choice.message
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            content = getattr(msg, "content", None) or ""
+
+            if tool_calls:
+                # Record tool calls
+                tc_dicts = []
+                for tc in tool_calls:
+                    tc_dict = {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    # Mark terminal tools for later checks
+                    if tc.function.name in terminal_tools:
+                        tc_dict["_terminal"] = True
+                    tc_dicts.append(tc_dict)
+                    all_tool_calls.append(tc_dict)
+
+                # Build assistant message for transcript and conversation
+                assistant_msg = {"role": "assistant", "content": content, "tool_calls": tc_dicts}
+                messages.append(assistant_msg)
+                transcript_messages.append(assistant_msg)
+
+                # Check for terminal tool — break immediately
+                has_terminal = any(tc.function.name in terminal_tools for tc in tool_calls)
+                if has_terminal:
+                    break
+
+                # Append mock tool results
+                for tc in tool_calls:
+                    mock_content = mock_results.get(
+                        tc.function.name,
+                        f"Error: unknown tool '{tc.function.name}'"
+                    )
+                    tool_msg = {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "name": tc.function.name,
+                        "content": mock_content,
+                    }
+                    messages.append(tool_msg)
+                    transcript_messages.append(tool_msg)
+            else:
+                # Model produced text response — done
+                final_text = content
+                transcript_messages.append({"role": "assistant", "content": content})
+                break
+        else:
+            # Max iterations exhausted without final text
+            pytest.fail(
+                f"Test {test_case['name']}: model did not converge in "
+                f"{max_rounds} iterations"
+            )
+
+        response_latency = (time.time() - start_time) * 1000
+
+        # Run programmatic tool call checks
+        tool_check = evaluate_tool_calls(all_tool_calls, final_text, assertions)
+
+        # Format transcript for judge and actual_response storage
+        transcript_str = format_transcript(transcript_messages)
+        tools_desc = format_tools_description(tools_yaml)
+
+        # Build evaluation criteria from YAML evaluation section
+        criteria = EvaluationCriteria(
+            qualities=evaluation.get("expected_qualities", {}),
+            forbidden_patterns=evaluation.get("forbidden_patterns", []),
+            expected_content=evaluation.get("expected_content", []),
+            expected_themes=evaluation.get("expected_themes", []),
+            min_length=evaluation.get("min_length"),
+            max_length=evaluation.get("max_length"),
+        )
+
+        # Use transcript as actual_response for judge
+        actual_response_for_judge = transcript_str
+        if final_text:
+            actual_response_for_judge += f"\n\n[FINAL RESPONSE]\n{final_text}"
+
+        # Call judge with tool_use-specific params
+        result = evaluator.evaluate_response(
+            test_name=test_case["name"],
+            test_category=test_case["category"],
+            context=context,
+            user_message=user_message,
+            actual_response=actual_response_for_judge,
+            criteria=criteria,
+            model_tested=self.model_tested,
+            response_metrics={
+                "latency_ms": response_latency,
+                "tokens": {
+                    "prompt": total_prompt_tokens,
+                    "completion": total_completion_tokens,
+                    "total": total_prompt_tokens + total_completion_tokens,
+                },
+                "cost_usd": total_cost,
+            },
+            tools_description=tools_desc,
+            transcript=transcript_str,
+        )
+
+        # Apply programmatic score cap
+        if tool_check.score_cap < 1.0:
+            capped_score = min(result.evaluation.overall_score, tool_check.score_cap)
+            result.evaluation.overall_score = capped_score
+            result.evaluation.reasoning += (
+                f"\n\nTool call checks: {'; '.join(tool_check.details)}"
+                f"\nScore capped at {tool_check.score_cap}"
+            )
+            result.passed = (
+                capped_score >= evaluation_config["quality_threshold"]
+                and len(result.evaluation.forbidden_patterns_found) == 0
+            )
+
+        result_storage.save_result(self.run_id, result)
+        self.results.append(result)
+
+        assert result.passed, (
+            f"Test {result.test_name} failed "
+            f"(score: {result.evaluation.overall_score:.2f}, "
+            f"threshold: {evaluation_config['quality_threshold']})\n"
+            f"Tool checks: {tool_check.details}\n"
+            f"Reason: {result.evaluation.reasoning}"
+        )
 
     def test_01_basic_qa(self, evaluator, evaluation_config, result_storage):
         """Test basic factual question answering."""
@@ -330,6 +554,32 @@ class TestGoldenConversations:
             evaluator,
             evaluation_config,
             result_storage,
+        )
+
+    def test_09_tool_calling(self, evaluator, evaluation_config, result_storage):
+        """Test that model calls the correct tool with appropriate arguments."""
+        self._run_golden_test(
+            "09_tool_calling.yaml", evaluator, evaluation_config, result_storage
+        )
+
+    def test_10_delegation(self, evaluator, evaluation_config, result_storage):
+        """Test that model delegates coding tasks to the developer agent."""
+        self._run_golden_test(
+            "10_delegation.yaml", evaluator, evaluation_config, result_storage
+        )
+
+    def test_11_multi_step_tool_use(
+        self, evaluator, evaluation_config, result_storage
+    ):
+        """Test that model chains search then read to answer a question."""
+        self._run_golden_test(
+            "11_multi_step_tool_use.yaml", evaluator, evaluation_config, result_storage
+        )
+
+    def test_12_tool_termination(self, evaluator, evaluation_config, result_storage):
+        """Test that model answers directly without unnecessary tool calls."""
+        self._run_golden_test(
+            "12_tool_termination.yaml", evaluator, evaluation_config, result_storage
         )
 
 

@@ -112,6 +112,144 @@ class EvaluationResult:
         return result
 
 
+@dataclass
+class ToolCallCheckResult:
+    """Results from programmatic tool call validation."""
+
+    passed: bool
+    score_cap: float  # Maximum allowed score (1.0 if all checks pass)
+    details: list[str] = field(default_factory=list)
+    tool_calls_found: list[dict] = field(default_factory=list)
+
+
+def evaluate_tool_calls(
+    actual_tool_calls: list[dict],
+    final_text: str | None,
+    assertions: dict,
+) -> ToolCallCheckResult:
+    """
+    Programmatic validation of tool calls against YAML assertions.
+
+    Checks expected_tool_calls (name + args), expected_tool_call_count,
+    expects_final_text, and expects_no_tool_calls.
+
+    Scoring caps:
+    - Wrong tool name → 0.3
+    - Wrong enum arg → 0.3
+    - Wrong free-text arg → 0.5
+    - Wrong count → 0.5
+    - Missing final text → 0.4
+    """
+    score_cap = 1.0
+    details: list[str] = []
+
+    # Check expects_no_tool_calls
+    if assertions.get("expects_no_tool_calls", False):
+        if actual_tool_calls:
+            names = [tc.get("function", {}).get("name", "?") for tc in actual_tool_calls]
+            details.append(f"Expected no tool calls, but got: {names}")
+            score_cap = min(score_cap, 0.3)
+        else:
+            details.append("Correctly made no tool calls")
+
+    # Check expected_tool_call_count
+    expected_count = assertions.get("expected_tool_call_count")
+    if expected_count is not None:
+        if len(actual_tool_calls) != expected_count:
+            details.append(
+                f"Expected {expected_count} tool call(s), got {len(actual_tool_calls)}"
+            )
+            score_cap = min(score_cap, 0.5)
+        else:
+            details.append(f"Correct tool call count: {expected_count}")
+
+    # Check expected_tool_calls (ordered list)
+    expected_calls = assertions.get("expected_tool_calls", [])
+    for i, expected in enumerate(expected_calls):
+        expected_name = expected["tool_name"]
+
+        # Find matching tool call by name (search all, not by index)
+        matching = [
+            tc for tc in actual_tool_calls
+            if tc.get("function", {}).get("name") == expected_name
+        ]
+
+        if not matching:
+            details.append(f"Expected tool call '{expected_name}' not found")
+            score_cap = min(score_cap, 0.3)
+            continue
+
+        details.append(f"Found expected tool call: {expected_name}")
+        tc = matching[0]
+
+        # Check arguments
+        expected_args = expected.get("expected_args", {})
+        if expected_args:
+            try:
+                actual_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+            except (json.JSONDecodeError, TypeError):
+                actual_args = {}
+
+            for arg_name, expected_value in expected_args.items():
+                actual_value = actual_args.get(arg_name)
+                if actual_value is None:
+                    details.append(f"  Missing arg '{arg_name}' (expected: {expected_value})")
+                    score_cap = min(score_cap, 0.5)
+                elif isinstance(expected_value, str) and expected_value in (
+                    # Detect enum-like values (short, no spaces = exact match)
+                    v for v in [expected_value] if " " not in v and len(v) < 30
+                ):
+                    # Check if the tool parameter has an enum constraint
+                    # For simplicity: if expected value is short and has no spaces,
+                    # use exact match (covers agent_name enums)
+                    actual_str = str(actual_value)
+                    if actual_str.lower() == str(expected_value).lower():
+                        details.append(f"  Arg '{arg_name}' matches: {expected_value}")
+                    else:
+                        details.append(
+                            f"  Arg '{arg_name}' mismatch: expected '{expected_value}', "
+                            f"got '{actual_str}'"
+                        )
+                        score_cap = min(score_cap, 0.3)
+                else:
+                    # Substring match for free-text args
+                    actual_str = str(actual_value).lower()
+                    if str(expected_value).lower() in actual_str:
+                        details.append(f"  Arg '{arg_name}' contains '{expected_value}'")
+                    else:
+                        details.append(
+                            f"  Arg '{arg_name}' missing substring '{expected_value}' "
+                            f"in '{actual_str}'"
+                        )
+                        score_cap = min(score_cap, 0.5)
+
+    # Check expects_final_text
+    if assertions.get("expects_final_text", True):
+        if not final_text or not final_text.strip():
+            # Only penalize if we weren't expecting no tool calls (termination test
+            # with no tools still needs text, but terminal tool tests don't)
+            has_terminal = any(
+                tc.get("_terminal", False) for tc in actual_tool_calls
+            )
+            if not has_terminal:
+                details.append("Expected final text response, but none produced")
+                score_cap = min(score_cap, 0.4)
+
+    passed = score_cap >= 0.7
+    return ToolCallCheckResult(
+        passed=passed,
+        score_cap=score_cap,
+        details=details,
+        tool_calls_found=[
+            {
+                "name": tc.get("function", {}).get("name"),
+                "arguments": tc.get("function", {}).get("arguments"),
+            }
+            for tc in actual_tool_calls
+        ],
+    )
+
+
 class JudgeEvaluator:
     """
     Orchestrates LLM-as-judge evaluation of assistant responses.
@@ -146,6 +284,8 @@ class JudgeEvaluator:
         criteria: EvaluationCriteria,
         model_tested: str,
         response_metrics: dict,
+        tools_description: str | None = None,
+        transcript: str | None = None,
     ) -> EvaluationResult:
         """
         Evaluate a single response against criteria.
@@ -183,6 +323,8 @@ class JudgeEvaluator:
                 user_message=user_message,
                 actual_response=actual_response,
                 criteria=criteria,
+                tools_description=tools_description,
+                transcript=transcript,
             )
             judge_latency_ms = (time.time() - judge_start) * 1000
 
@@ -239,6 +381,8 @@ class JudgeEvaluator:
         user_message: str,
         actual_response: str,
         criteria: EvaluationCriteria,
+        tools_description: str | None = None,
+        transcript: str | None = None,
     ) -> dict:
         """
         Call judge model for evaluation.
@@ -254,6 +398,8 @@ class JudgeEvaluator:
             actual_response=actual_response,
             criteria_qualities=criteria.qualities,
             forbidden_patterns=criteria.forbidden_patterns,
+            tools_description=tools_description,
+            transcript=transcript,
         )
 
         # Call judge via streaming

@@ -1,0 +1,62 @@
+name: "multi_step_search_then_read"
+description: "Model should search for notes, then read a specific one based on results"
+category: "tool_use"
+context:
+  profile: |
+    I keep detailed notes on product strategy and goals in my Obsidian vault.
+
+prompt: "What are my current OKRs? Find and read them from my notes."
+
+tools:
+  - name: "search_notes"
+    description: "Search personal notes by keyword"
+    parameters:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "Search query to find relevant notes"
+      required:
+        - "query"
+
+  - name: "read_note"
+    description: "Read a specific note by its title"
+    parameters:
+      type: "object"
+      properties:
+        title:
+          type: "string"
+          description: "Exact title of the note to read"
+      required:
+        - "title"
+
+mock_tool_results:
+  search_notes: "Found 2 notes: 'OKR Framework Q1', 'Product Strategy 2026'"
+  read_note: |
+    # OKR Framework Q1
+
+    Objective: Ship v1.0 of Jarvis
+
+    KR1: Pass all golden tests with score > 0.85
+    KR2: Support 3 LLM providers
+    KR3: Sub-2s response latency
+
+assertions:
+  expected_tool_calls:
+    - tool_name: "search_notes"
+      expected_args:
+        query: "OKR"
+    - tool_name: "read_note"
+      expected_args:
+        title: "OKR"
+  expects_final_text: true
+  max_tool_call_rounds: 3
+
+evaluation:
+  expected_qualities:
+    uses_search_first: true
+    reads_relevant_note: true
+    synthesizes_results: true
+  expected_content:
+    - "Ship v1.0"
+    - "golden tests"

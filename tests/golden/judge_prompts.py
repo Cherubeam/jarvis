@@ -131,6 +131,38 @@ Return your evaluation as JSON:
     "passed_criteria": ["list"],
     "failed_criteria": ["list"]
 }}""",
+
+    "tool_use": """Evaluate this assistant's tool-calling behavior:
+
+AVAILABLE TOOLS:
+{tools_description}
+
+USER QUERY: {user_message}
+
+FULL INTERACTION TRANSCRIPT:
+{transcript}
+
+CRITERIA TO EVALUATE:
+{criteria_list}
+
+{forbidden_section}
+
+Key evaluation points:
+- Did the assistant call the right tool(s) for the task?
+- Were the arguments correct and well-formed?
+- Did it stop calling tools at the right time?
+- Is the final response (if any) accurate given the tool results?
+- Did it avoid calling tools unnecessarily?
+
+Return your evaluation as JSON:
+{{
+    "dimension_scores": {{"criterion_name": score, ...}},
+    "overall_score": score,
+    "reasoning": "Detailed explanation",
+    "tool_use_quality": "excellent|good|poor",
+    "passed_criteria": ["list"],
+    "failed_criteria": ["list"]
+}}""",
 }
 
 
@@ -167,6 +199,45 @@ def format_context(context: dict) -> str:
     return "\n".join(lines)
 
 
+def format_transcript(messages: list[dict]) -> str:
+    """Format an agentic interaction transcript for the judge.
+
+    Renders tool calls, tool results, and final text in a readable log format.
+    Skips system and initial user messages (those are shown separately).
+    """
+    lines: list[str] = []
+    for msg in messages:
+        role = msg.get("role", "")
+        if role == "assistant":
+            content = msg.get("content") or ""
+            tool_calls = msg.get("tool_calls", [])
+            for tc in tool_calls:
+                fn = tc.get("function", {})
+                name = fn.get("name", "unknown")
+                args = fn.get("arguments", "")
+                lines.append(f"[TOOL CALL] {name}({args})")
+            if content:
+                lines.append(f"[TEXT] {content}")
+        elif role == "tool":
+            name = msg.get("name", "unknown")
+            content = msg.get("content", "")
+            lines.append(f"[TOOL RESULT: {name}] {content}")
+    return "\n".join(lines) if lines else "(no interaction)"
+
+
+def format_tools_description(tools: list[dict]) -> str:
+    """Format tool definitions as a readable list for the judge."""
+    lines: list[str] = []
+    for tool in tools:
+        name = tool.get("name", "unknown")
+        desc = tool.get("description", "")
+        params = tool.get("parameters", {})
+        props = params.get("properties", {})
+        param_names = ", ".join(props.keys()) if props else "none"
+        lines.append(f"- {name}({param_names}): {desc}")
+    return "\n".join(lines) if lines else "(no tools)"
+
+
 def format_forbidden_patterns(patterns: list[str]) -> str:
     """Format forbidden patterns as bullet points."""
     if not patterns:
@@ -186,17 +257,21 @@ def build_judge_prompt(
     actual_response: str,
     criteria_qualities: dict,
     forbidden_patterns: list[str] | None = None,
+    tools_description: str | None = None,
+    transcript: str | None = None,
 ) -> list[dict]:
     """
     Build judge prompt messages for LLMClient.
 
     Args:
-        category: Test category (reasoning, context_recall, personalization, edge_cases)
+        category: Test category (reasoning, context_recall, personalization, edge_cases, tool_use)
         context: Personal context dict (profile, preferences, current_focus)
         user_message: The user's query
         actual_response: The assistant's response to evaluate
         criteria_qualities: Dict of quality criteria from YAML
         forbidden_patterns: Optional list of patterns that should not appear
+        tools_description: Optional formatted tool descriptions (for tool_use category)
+        transcript: Optional formatted interaction transcript (for tool_use category)
 
     Returns:
         List of message dicts for LLMClient.chat_stream()
@@ -212,14 +287,22 @@ def build_judge_prompt(
     # Get template for category (default to reasoning if unknown)
     template = CATEGORY_TEMPLATES.get(category, CATEGORY_TEMPLATES["reasoning"])
 
-    # Format template
-    user_content = template.format(
+    # Build format kwargs
+    format_kwargs = dict(
         context=format_context(context),
         user_message=user_message,
         actual_response=actual_response,
         criteria_list=criteria_list,
         forbidden_section=forbidden_section,
     )
+
+    # Add tool_use specific fields
+    if category == "tool_use":
+        format_kwargs["tools_description"] = tools_description or "(no tools)"
+        format_kwargs["transcript"] = transcript or "(no transcript)"
+
+    # Format template
+    user_content = template.format(**format_kwargs)
 
     return [
         {"role": "system", "content": JUDGE_SYSTEM_PROMPT},

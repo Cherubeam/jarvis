@@ -1,0 +1,49 @@
+name: "tool_termination_simple_question"
+description: "Model should answer directly without calling tools when the question doesn't need them"
+category: "tool_use"
+context:
+  profile: |
+    I am a software engineer building AI applications.
+
+prompt: "What is the difference between REST and GraphQL APIs?"
+
+tools:
+  - name: "search_notes"
+    description: "Search personal notes by keyword"
+    parameters:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "Search query"
+      required:
+        - "query"
+
+  - name: "read_note"
+    description: "Read a specific note by title"
+    parameters:
+      type: "object"
+      properties:
+        title:
+          type: "string"
+          description: "Title of the note to read"
+      required:
+        - "title"
+
+mock_tool_results:
+  search_notes: "No notes found."
+
+assertions:
+  expects_no_tool_calls: true
+  expected_tool_call_count: 0
+  expects_final_text: true
+
+evaluation:
+  expected_qualities:
+    answers_directly: true
+    does_not_use_tools_unnecessarily: true
+    technical_accuracy: true
+  expected_themes:
+    - "REST"
+    - "GraphQL"
+  min_length: 100
