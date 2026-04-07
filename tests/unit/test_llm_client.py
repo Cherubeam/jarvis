@@ -19,6 +19,16 @@ except ImportError:
 
 
 @pytest.mark.unit
+class TestLiteLLMConfig:
+    """Tests for module-level litellm configuration."""
+
+    def test_suppress_debug_info_enabled(self):
+        """Verify litellm debug output is suppressed at import time."""
+        import litellm
+        assert litellm.suppress_debug_info is True
+
+
+@pytest.mark.unit
 class TestTokenUsage:
     """Tests for TokenUsage dataclass."""
 

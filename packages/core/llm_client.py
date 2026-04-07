@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from typing import Generator
 import litellm
 
+litellm.suppress_debug_info = True
+
 from packages.core.model_resolver import infer_provider, get_api_key
 
 
