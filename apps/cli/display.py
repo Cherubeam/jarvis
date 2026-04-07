@@ -110,6 +110,8 @@ def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]
     """Return a closure that appends chunks to *buf* and updates the Live display."""
     def handler(chunk: str) -> None:
         buf.append(chunk)
+        if not live.is_started:
+            live.start()
         live.update(Markdown("".join(buf)))
     return handler
 

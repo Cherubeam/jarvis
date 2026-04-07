@@ -497,7 +497,6 @@ def _run_with_display(stream_handler, agent, user_input, print_chunks=True, mess
         live = start_waiting_spinner()
 
     stream_handler.on_before_tool_exec = lambda: live.stop()
-    stream_handler.on_after_tool_exec = lambda: live.start()
     result = agent.run(
         user_input, stream_handler,
         print_chunks=print_chunks,

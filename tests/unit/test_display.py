@@ -157,6 +157,7 @@ class TestLiveStreamDisplay:
     @patch("apps.cli.display.Live")
     def test_make_live_chunk_handler_accumulates_and_updates(self, MockLive):
         mock_live = MagicMock()
+        mock_live.is_started = True
         buf = []
         handler = make_live_chunk_handler(mock_live, buf)
 
@@ -167,6 +168,19 @@ class TestLiveStreamDisplay:
         handler(" world")
         assert buf == ["Hello", " world"]
         assert mock_live.update.call_count == 2
+
+    @patch("apps.cli.display.Live")
+    def test_chunk_handler_restarts_stopped_live(self, MockLive):
+        """Chunk handler should restart live display if it was stopped (e.g. after tool exec)."""
+        mock_live = MagicMock()
+        mock_live.is_started = False
+        buf = []
+        handler = make_live_chunk_handler(mock_live, buf)
+
+        handler("Hello")
+        mock_live.start.assert_called_once()
+        assert mock_live.update.call_count == 1
+        assert buf == ["Hello"]
 
     @patch("apps.cli.display.Live")
     def test_finish_live_stream_renders_markdown_when_detected(self, MockLive):
