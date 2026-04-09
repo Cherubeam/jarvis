@@ -420,7 +420,7 @@ def import_conversations(
     used_filenames: set[str] = set()
     # Track already-imported claude IDs → file path for incremental sync
     existing_claude_ids: dict[str, Path] = {}
-    if not dry_run:
+    if target_dir.exists():
         used_filenames = {f.name for f in target_dir.rglob("*.json")}
         for f in target_dir.rglob("*.json"):
             try:
