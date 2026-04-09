@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,6 +15,42 @@ logger = logging.getLogger(__name__)
 
 # Sender mapping: Claude export uses "human"/"assistant"
 _ROLE_MAP = {"human": "user", "assistant": "assistant"}
+
+# Bracket-prefix to status-tag mapping
+_STATUS_PREFIX_MAP = {
+    "X": "status:done",
+    " ": "status:open",
+    "!": "status:important",
+    "~": "status:in-progress",
+}
+
+_BRACKET_RE = re.compile(r"^\[([^\]]*)\]\s*")
+
+
+def parse_title_prefixes(name: str | None) -> tuple[str, list[str]]:
+    """Extract bracket prefixes from a conversation name and derive tags.
+
+    Returns (clean_title, derived_tags). Known status prefixes ([X], [ ], [!], [~])
+    map to status:* tags. Other brackets become topic:* tags.
+    """
+    if not name:
+        return ("", [])
+
+    tags: list[str] = []
+    remaining = name
+    while True:
+        m = _BRACKET_RE.match(remaining)
+        if not m:
+            break
+        content = m.group(1)
+        remaining = remaining[m.end():]
+        status_tag = _STATUS_PREFIX_MAP.get(content)
+        if status_tag:
+            tags.append(status_tag)
+        else:
+            tags.append(f"topic:{content.lower()}")
+
+    return (remaining.strip(), tags)
 
 
 def _parse_iso(ts: str | None) -> datetime | None:
@@ -157,7 +194,11 @@ def convert_conversation(claude_conv: dict) -> dict:
     dt_for_id = created_dt or updated_dt or datetime.now(tz=timezone.utc)
     conv_id = make_conv_id(claude_id, dt_for_id)
 
+    # Parse title prefixes into tags
+    clean_title, prefix_tags = parse_title_prefixes(name)
+
     tags = ["imported", "claude"]
+    tags.extend(prefix_tags)
 
     # Convert messages
     raw_messages = claude_conv.get("chat_messages", [])
@@ -191,10 +232,19 @@ def convert_conversation(claude_conv: dict) -> dict:
 
     now_iso = datetime.now(tz=timezone.utc).isoformat()
 
+    metadata = {
+        "import_source": "claude",
+        "claude_id": claude_id,
+        "claude_summary": claude_conv.get("summary"),
+        "import_timestamp": now_iso,
+    }
+    if name and name != clean_title:
+        metadata["original_title"] = name
+
     return {
         "schema_version": SCHEMA_VERSION,
         "id": conv_id,
-        "title": name,
+        "title": clean_title or name,
         "topic": None,
         "tags": tags,
         "session_start": created_at,
@@ -206,11 +256,7 @@ def convert_conversation(claude_conv: dict) -> dict:
         "environment": None,
         "messages": messages,
         "feedback": None,
-        "metadata": {
-            "import_source": "claude",
-            "claude_id": claude_id,
-            "import_timestamp": now_iso,
-        },
+        "metadata": metadata,
     }
 
 
@@ -265,10 +311,46 @@ def update_conversation(
     jarvis_data = json.loads(existing_path.read_text())
     changed = False
 
-    # Title sync — Claude is source of truth
+    # Title and prefix-tag sync — Claude is source of truth
     claude_title = claude_conv.get("name")
-    if claude_title and claude_title != jarvis_data.get("title"):
-        jarvis_data["title"] = claude_title
+    if claude_title:
+        clean_title, new_prefix_tags = parse_title_prefixes(claude_title)
+        if clean_title != jarvis_data.get("title"):
+            jarvis_data["title"] = clean_title
+            changed = True
+
+        # Replace status tags (mutually exclusive), merge topic tags (additive)
+        existing_tags = jarvis_data.get("tags", [])
+        new_status = {t for t in new_prefix_tags if t.startswith("status:")}
+        new_topics = {t for t in new_prefix_tags if t.startswith("topic:")}
+        # Rebuild: keep non-prefix tags, replace status, keep existing topics, add new ones
+        merged: list[str] = []
+        for t in existing_tags:
+            if t.startswith("status:"):
+                continue  # Will be replaced
+            merged.append(t)
+        merged.extend(sorted(new_status))
+        for topic in sorted(new_topics):
+            if topic not in merged:
+                merged.append(topic)
+        if set(merged) != set(existing_tags) or len(merged) != len(existing_tags):
+            jarvis_data["tags"] = merged
+            changed = True
+
+        # Sync original_title metadata
+        meta = jarvis_data.setdefault("metadata", {})
+        if claude_title != clean_title:
+            if meta.get("original_title") != claude_title:
+                meta["original_title"] = claude_title
+                changed = True
+        elif "original_title" in meta:
+            del meta["original_title"]
+            changed = True
+
+    # Summary sync
+    claude_summary = claude_conv.get("summary")
+    if claude_summary != jarvis_data.get("metadata", {}).get("claude_summary"):
+        jarvis_data.setdefault("metadata", {})["claude_summary"] = claude_summary
         changed = True
 
     # Session end — use newer timestamp

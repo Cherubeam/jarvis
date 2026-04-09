@@ -11,6 +11,7 @@ from packages.core.importers.claude import (
     convert_content_blocks,
     convert_conversation,
     import_conversations,
+    parse_title_prefixes,
     update_conversation,
 )
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
@@ -273,10 +274,11 @@ class TestConvertConversation:
 
     def test_metadata_import_fields(self, sample_conv):
         result = convert_conversation(sample_conv)
-        assert set(result["metadata"].keys()) == {"import_source", "claude_id", "import_timestamp"}
         assert result["metadata"]["import_source"] == "claude"
         assert result["metadata"]["claude_id"] == "aaaa1111-bbbb-cccc-dddd-eeeeeeee0001"
+        assert result["metadata"]["claude_summary"] == "A simple text conversation."
         assert isinstance(result["metadata"]["import_timestamp"], str)
+        assert "original_title" not in result["metadata"]  # No prefix, no original_title
 
     def test_conversation_top_level_keys(self, sample_conv):
         """Verify all required top-level keys are present."""
@@ -441,14 +443,14 @@ class TestImportConversations:
 
     def test_dry_run_counts(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path, dry_run=True)
-        assert summary.total == 3
-        assert summary.imported == 3
+        assert summary.total == 5
+        assert summary.imported == 5
 
     def test_import_creates_files(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path)
-        assert summary.imported == 3
+        assert summary.imported == 5
         json_files = list(tmp_path.rglob("*.json"))
-        assert len(json_files) == 3
+        assert len(json_files) == 5
 
     def test_imported_files_valid_schema(self, sample_source, tmp_path):
         import_conversations(sample_source, tmp_path)
@@ -461,25 +463,25 @@ class TestImportConversations:
     def test_filter_by_date_from(self, sample_source, tmp_path):
         # Old conv is from 2024-06, others from 2025-12
         summary = import_conversations(sample_source, tmp_path, date_from="2025-01-01")
-        assert summary.imported == 2
+        assert summary.imported == 4
         assert summary.skipped_filter == 1
 
     def test_filter_by_date_to(self, sample_source, tmp_path):
         summary = import_conversations(sample_source, tmp_path, date_to="2024-12-31")
         assert summary.imported == 1
-        assert summary.skipped_filter == 2
+        assert summary.skipped_filter == 4
 
     def test_filter_by_date_range(self, sample_source, tmp_path):
         summary = import_conversations(
             sample_source, tmp_path, date_from="2025-12-10", date_to="2025-12-10"
         )
         assert summary.imported == 1
-        assert summary.skipped_filter == 2
+        assert summary.skipped_filter == 4
 
     def test_idempotent_reimport(self, sample_source, tmp_path):
         summary1 = import_conversations(sample_source, tmp_path)
         summary2 = import_conversations(sample_source, tmp_path)
-        assert summary2.skipped_existing == 3
+        assert summary2.skipped_existing == 5
         assert summary2.imported == 0
 
     def test_filename_collision_handling(self, tmp_path):
@@ -640,7 +642,7 @@ class TestIncrementalSync:
         assert data["messages"][3]["content"][0]["text"] == "Here's the answer"
 
     def test_update_title_sync(self, tmp_path):
-        """Title change is synced."""
+        """Title change is synced; prefix is stripped, tag is added."""
         conv = _make_claude_conv(name="My Chat")
         path = _import_and_get_path(conv, tmp_path)
 
@@ -649,7 +651,9 @@ class TestIncrementalSync:
         assert changed is True
 
         data = json.loads(path.read_text())
-        assert data["title"] == "[X] My Chat"
+        assert data["title"] == "My Chat"  # Prefix stripped
+        assert "status:done" in data["tags"]
+        assert data["metadata"]["original_title"] == "[X] My Chat"
 
     def test_update_no_change_skips(self, tmp_path):
         """Identical re-import returns False (no changes)."""
@@ -725,7 +729,7 @@ class TestIncrementalSync:
         path = _import_and_get_path(conv, tmp_path)
         original_content = path.read_text()
 
-        conv["name"] = "[>] My Chat"
+        conv["name"] = "[X] My Chat"
         conv["chat_messages"].append({
             "sender": "human",
             "content": [{"type": "text", "text": "New msg"}],
@@ -772,3 +776,185 @@ class TestIncrementalSync:
         assert summary2.updated == 1
         assert summary2.skipped_existing == 0
         assert summary2.imported == 0
+
+
+# ==================== parse_title_prefixes ====================
+
+
+class TestParseTitlePrefixes:
+    def test_no_prefix(self):
+        title, tags = parse_title_prefixes("My Chat")
+        assert title == "My Chat"
+        assert tags == []
+
+    def test_none_input(self):
+        title, tags = parse_title_prefixes(None)
+        assert title == ""
+        assert tags == []
+
+    def test_empty_string(self):
+        title, tags = parse_title_prefixes("")
+        assert title == ""
+        assert tags == []
+
+    def test_done_prefix(self):
+        title, tags = parse_title_prefixes("[X] Completed Task")
+        assert title == "Completed Task"
+        assert tags == ["status:done"]
+
+    def test_open_prefix(self):
+        title, tags = parse_title_prefixes("[ ] Open Task")
+        assert title == "Open Task"
+        assert tags == ["status:open"]
+
+    def test_important_prefix(self):
+        title, tags = parse_title_prefixes("[!] Urgent Item")
+        assert title == "Urgent Item"
+        assert tags == ["status:important"]
+
+    def test_in_progress_prefix(self):
+        title, tags = parse_title_prefixes("[~] Working On It")
+        assert title == "Working On It"
+        assert tags == ["status:in-progress"]
+
+    def test_topic_prefix(self):
+        title, tags = parse_title_prefixes("[Teaser Note] My Post")
+        assert title == "My Post"
+        assert tags == ["topic:teaser note"]
+
+    def test_multiple_prefixes_status_and_topic(self):
+        title, tags = parse_title_prefixes("[X][Teaser Note] Technical literacy")
+        assert title == "Technical literacy"
+        assert tags == ["status:done", "topic:teaser note"]
+
+    def test_multiple_status_prefixes(self):
+        """Edge case: multiple status brackets. Both are added."""
+        title, tags = parse_title_prefixes("[X][!] Something")
+        assert title == "Something"
+        assert "status:done" in tags
+        assert "status:important" in tags
+
+    def test_no_trailing_space_after_bracket(self):
+        title, tags = parse_title_prefixes("[X]NoSpace")
+        assert title == "NoSpace"
+        assert tags == ["status:done"]
+
+    def test_empty_brackets(self):
+        """Empty brackets [] have no content match in status map, become topic:."""
+        title, tags = parse_title_prefixes("[] Title")
+        assert title == "Title"
+        assert tags == ["topic:"]
+
+    def test_bracket_in_middle_not_parsed(self):
+        """Only leading brackets are parsed."""
+        title, tags = parse_title_prefixes("Title [X] suffix")
+        assert title == "Title [X] suffix"
+        assert tags == []
+
+
+# ==================== Prefix integration in convert/update ====================
+
+
+class TestPrefixIntegration:
+    def test_convert_strips_prefix_from_title(self):
+        conv = _make_claude_conv(name="[X] Done Chat")
+        result = convert_conversation(conv)
+        assert result["title"] == "Done Chat"
+        assert "status:done" in result["tags"]
+        assert "imported" in result["tags"]
+        assert "claude" in result["tags"]
+
+    def test_convert_stores_original_title(self):
+        conv = _make_claude_conv(name="[X] Done Chat")
+        result = convert_conversation(conv)
+        assert result["metadata"]["original_title"] == "[X] Done Chat"
+
+    def test_convert_no_original_title_when_no_prefix(self):
+        conv = _make_claude_conv(name="Plain Chat")
+        result = convert_conversation(conv)
+        assert "original_title" not in result["metadata"]
+
+    def test_convert_stores_summary(self):
+        with open(FIXTURES_DIR / "claude_sample.json") as f:
+            conv = json.load(f)[0]
+        result = convert_conversation(conv)
+        assert result["metadata"]["claude_summary"] == "A simple text conversation."
+
+    def test_convert_prefixed_fixture(self):
+        with open(FIXTURES_DIR / "claude_sample.json") as f:
+            conv = json.load(f)[3]  # [X] Completed Task Chat
+        result = convert_conversation(conv)
+        assert result["title"] == "Completed Task Chat"
+        assert "status:done" in result["tags"]
+        assert result["metadata"]["original_title"] == "[X] Completed Task Chat"
+        assert result["metadata"]["claude_summary"] == "A completed task with a prefix."
+
+    def test_convert_multi_prefix_fixture(self):
+        with open(FIXTURES_DIR / "claude_sample.json") as f:
+            conv = json.load(f)[4]  # [~][Teaser Note] Draft Post
+        result = convert_conversation(conv)
+        assert result["title"] == "Draft Post"
+        assert "status:in-progress" in result["tags"]
+        assert "topic:teaser note" in result["tags"]
+
+    def test_update_syncs_prefix_tags(self, tmp_path):
+        """Status tag changes from [~] to [X] on re-import."""
+        conv = _make_claude_conv(name="[~] Working")
+        path = _import_and_get_path(conv, tmp_path)
+
+        data = json.loads(path.read_text())
+        assert "status:in-progress" in data["tags"]
+
+        conv["name"] = "[X] Working"
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert "status:done" in data["tags"]
+        assert "status:in-progress" not in data["tags"]
+
+    def test_update_clears_original_title_when_prefix_removed(self, tmp_path):
+        conv = _make_claude_conv(name="[X] My Chat")
+        path = _import_and_get_path(conv, tmp_path)
+
+        data = json.loads(path.read_text())
+        assert data["metadata"]["original_title"] == "[X] My Chat"
+
+        conv["name"] = "My Chat"
+        update_conversation(path, conv)
+
+        data = json.loads(path.read_text())
+        assert "original_title" not in data["metadata"]
+
+    def test_update_syncs_summary(self, tmp_path):
+        conv = _make_claude_conv()
+        conv["summary"] = "Old summary"
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["summary"] = "Updated summary"
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert data["metadata"]["claude_summary"] == "Updated summary"
+
+    def test_update_adds_topic_tags_additively(self, tmp_path):
+        conv = _make_claude_conv(name="[X][Blog] My Post")
+        path = _import_and_get_path(conv, tmp_path)
+
+        data = json.loads(path.read_text())
+        assert "topic:blog" in data["tags"]
+
+        conv["name"] = "[X][Blog][Series] My Post"
+        update_conversation(path, conv)
+
+        data = json.loads(path.read_text())
+        assert "topic:blog" in data["tags"]
+        assert "topic:series" in data["tags"]
+
+    def test_update_no_change_when_same_prefix(self, tmp_path):
+        conv = _make_claude_conv(name="[X] My Chat")
+        path = _import_and_get_path(conv, tmp_path)
+
+        changed = update_conversation(path, conv)
+        assert changed is False
