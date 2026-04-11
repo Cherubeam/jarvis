@@ -1,0 +1,54 @@
+name: Mutation Testing
+
+# Runs mutmut on Linux where os.fork() is safe. mutmut on macOS is currently
+# unusable (every mutant segfaults); this workflow is the only environment
+# where mutation testing actually executes for jarvis. See
+# docs/engineering/mutation-testing-report.md for background.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350  # just under GitHub's 360-min job ceiling
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: 'uv.lock'
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run mutmut
+        id: mutmut_run
+        continue-on-error: true
+        run: uv run mutmut run
+
+      - name: Collect text results
+        run: uv run mutmut results | tee mutmut-results.txt
+
+      - name: Generate HTML report
+        continue-on-error: true
+        run: uv run mutmut html
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-results-${{ github.run_id }}
+          path: |
+            mutmut-results.txt
+            html/
+          retention-days: 90
+
+      - name: Report run outcome
+        run: |
+          echo "mutmut run step outcome: ${{ steps.mutmut_run.outcome }}"
+          echo "Surviving mutants alone do not fail this job — download the artifact to review results."

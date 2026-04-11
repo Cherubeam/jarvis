@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Mutation testing report**: Documented the 2026-04-11 macOS regression — every mutant now segfaults (9,180/9,929) including modules that previously scored 76–86%. Local mutmut on macOS is effectively unusable; Linux CI is the path forward. Historical 2026-04-03 numbers preserved in the report as the last-known-good baseline.
 
+### Added
+- **Linux CI mutation testing workflow**: New GitHub Actions workflow at `.github/workflows/mutation.yml` runs mutmut on Ubuntu (where `os.fork()` is safe) via manual dispatch or a weekly Monday 06:00 UTC cron. Uploads per-run `mutmut-results.txt` and HTML report as artifacts (90-day retention). First workflow in the repo. Free on public repos; no secrets required. This is now the only working environment for mutation testing on jarvis.
+
 ---
 
 ## [0.12.0] - 2026-04-05

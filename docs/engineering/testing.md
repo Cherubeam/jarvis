@@ -145,6 +145,27 @@ uv run mutmut show <mutant_name>
 # See the full report: docs/engineering/mutation-testing-report.md
 ```
 
+### Running mutation tests in CI (required)
+
+As of 2026-04-11, **mutmut on macOS is unusable** — every mutant segfaults at fork time due to macOS fork-safety restrictions that upstream mutmut 3.5.0 cannot work around. The only working environment is the Linux CI workflow at [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml).
+
+Triggering a run:
+
+```bash
+# One-off manual run from any branch
+gh workflow run mutation.yml --ref <branch-name>
+
+# Watch the latest run
+gh run watch
+
+# Download the results artifact after the run finishes
+gh run download --name mutmut-results-<run-id>
+```
+
+The workflow also runs automatically every Monday 06:00 UTC against `main`. Each run produces a `mutmut-results.txt` artifact (plus an HTML report when mutmut's `html` subcommand is available), retained for 90 days. No secrets are required — mutmut runs the local test suite only.
+
+Local `uv run mutmut run` commands stay in the instructions above because they will start working again once mutmut upstream switches to `spawn` or Apple relaxes fork-safety — but for now, CI is the authoritative source for mutation results. Any per-module numbers in [mutation-testing-report.md](mutation-testing-report.md) older than 2026-04-11 should be treated as historical until the first Linux CI run replaces them.
+
 See [tests/README.md](../../tests/README.md) and [tests/golden/README.md](../../tests/golden/README.md) for complete guides.
 
 ---

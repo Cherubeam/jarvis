@@ -15,7 +15,7 @@ A rerun on 2026-04-11 produced **9,180 segfaults and 749 "no tests" across 9,929
 
 What changed since 2026-04-03 is not fully diagnosed, but the likely contributors are upstream Python/macOS fork-safety tightening plus mutmut 3.5.0's unconditional `os.fork()`. `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` did not help.
 
-**Decision**: abandon local mutmut runs on macOS. The only viable path forward is **Linux CI** (tracked as a follow-up feature branch), where `fork()` is safe and the full 44-module sweep can actually execute. Until that lands, the per-module numbers below are stale but preserved as the last-known-good baseline.
+**Decision**: abandon local mutmut runs on macOS. The path forward is **Linux CI** via [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml), where `fork()` is safe and the full 44-module sweep can actually execute. Trigger it with `gh workflow run mutation.yml --ref <branch>` and download the artifact afterwards. Until the first Linux run completes, the per-module numbers below are stale but preserved as the last-known-good baseline.
 
 ### Test-harness fix shipped alongside this update
 
@@ -102,6 +102,8 @@ The test calls the function but never checks the dictionary keys in the result.
 | `core/filesystem_access` | 57 | 9 | 86% |
 
 ### Segfaulted (10 modules — macOS fork safety)
+
+**Note (2026-04-11):** this list is now historical. As of the 2026-04-11 rerun, _every_ module segfaults on macOS — not just the 10 below. The fork-safety regression is total. Fresh numbers for all modules (including these) will come from the Linux CI workflow at [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml).
 
 These modules crash due to macOS `os.fork()` safety restrictions interacting with C extensions. mutmut uses `fork()` to run mutants, which is unsafe on macOS when modules load compiled extensions (yaml, httpx, litellm, weasyprint). Neither `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` nor running without it consistently fixes all modules — the crashes are non-deterministic.
 
