@@ -35,17 +35,11 @@ jobs:
       - name: Collect text results
         run: uv run mutmut results | tee mutmut-results.txt
 
-      - name: Generate HTML report
-        continue-on-error: true
-        run: uv run mutmut html
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mutmut-results-${{ github.run_id }}
-          path: |
-            mutmut-results.txt
-            html/
+          path: mutmut-results.txt
           retention-days: 90
 
       - name: Report run outcome
