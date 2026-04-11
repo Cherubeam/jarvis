@@ -111,7 +111,13 @@ class TestCollectApiKeys:
         assert "anthropic" not in keys
 
     def test_empty_when_no_keys_set(self):
-        with patch.dict(os.environ, {}, clear=True):
+        api_vars = [
+            "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY",
+            "OPENAI_API_KEY", "GOOGLE_API_KEY",
+        ]
+        with patch.dict(os.environ, {}, clear=False):
+            for var in api_vars:
+                os.environ.pop(var, None)
             keys = collect_api_keys()
         assert keys == {}
 

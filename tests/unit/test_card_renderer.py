@@ -624,7 +624,8 @@ class TestEnsureHomebrewLibPath:
     def test_noop_on_non_darwin(self):
         """Should not modify env on Linux."""
         with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=True):
+             patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "linux"
             _ensure_homebrew_lib_path()
             assert "DYLD_FALLBACK_LIBRARY_PATH" not in os.environ
@@ -633,8 +634,9 @@ class TestEnsureHomebrewLibPath:
         """Should add Homebrew lib dir when it exists on macOS."""
         fake_dir = Path("/opt/homebrew/lib")
         with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=True), \
+             patch.dict(os.environ, {}, clear=False), \
              patch.object(Path, "is_dir", side_effect=lambda self=None: str(fake_dir) in str(self)):
+            os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "darwin"
             # Patch is_dir to return True for /opt/homebrew/lib
             with patch("packages.core.card_renderer.Path") as MockPath:
@@ -671,7 +673,8 @@ class TestEnsureHomebrewLibPath:
     def test_skips_when_no_homebrew_dirs_exist(self):
         """Should not set env var when no Homebrew lib dirs exist."""
         with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=True):
+             patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "darwin"
             with patch("packages.core.card_renderer.Path") as MockPath:
                 opt_path = MagicMock()
