@@ -2,24 +2,45 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Last run**: 2026-04-11 (macOS — total fork-safety regression, see below)
-**Previous audit**: 2026-04-03 (kept as historical reference)
+**Authoritative baseline**: 2026-04-11 (Linux CI, workflow run `24285714342`)
+**Previous audit**: 2026-04-03 (macOS, kept as historical reference)
 **Tool**: mutmut 3.5.0
 **Python**: 3.13.5
+**Environment**: GitHub Actions `ubuntu-latest` — see [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml)
 
 ---
 
-## 2026-04-11 update: macOS mutmut is now unusable
+## 2026-04-11 Linux CI baseline (authoritative)
 
-A rerun on 2026-04-11 produced **9,180 segfaults and 749 "no tests" across 9,929 mutants — zero killed, zero survived**. Modules that previously scored well (`filesystem_access` at 86%, `pricing` at 76%) now segfault 100%. The issue is not per-module: every mutant crashes during the mutmut trampoline dispatch, regardless of whether the underlying module loads C extensions.
+First full mutation sweep on Linux CI. All 44 modules in `packages/core/` were exercised — no macOS segfault blackspots.
 
-What changed since 2026-04-03 is not fully diagnosed, but the likely contributors are upstream Python/macOS fork-safety tightening plus mutmut 3.5.0's unconditional `os.fork()`. `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` did not help.
+| Status | Count |
+|---|---:|
+| 🎉 Killed | **5,696** |
+| 🙁 Survived | 3,477 |
+| 🫥 No tests | 749 |
+| ⏰ Timeout | 7 |
+| 🤔 Suspicious | 0 |
+| **Total mutants** | **9,929** |
 
-**Decision**: abandon local mutmut runs on macOS. The path forward is **Linux CI** via [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml), where `fork()` is safe and the full 44-module sweep can actually execute. Trigger it with `gh workflow run mutation.yml --ref <branch>` and download the artifact afterwards. Until the first Linux run completes, the per-module numbers below are stale but preserved as the last-known-good baseline.
+**Kill rate**: `5,696 / (9,929 − 749) = 62.0%` on testable mutants. Modules with no tests are excluded from the denominator because "no tests" is a test-suite gap, not a test-suite weakness.
 
-### Test-harness fix shipped alongside this update
+This is a ~5-point improvement over the April macOS baseline (57.2%). Two factors likely contribute: the CI workflow exercises the ~10 macOS-segfaulted modules for the first time (so those survivors are real measurements, not missing data), and a few tests shipped between April and now strengthened assertions in tool factories.
 
-Two tests (`test_card_renderer.py::TestEnsureHomebrewLibPath`, `test_model_resolver.py::test_empty_when_no_keys_set`) used `patch.dict(os.environ, {}, clear=True)`, which wipes mutmut's `MUTANT_UNDER_TEST` env var and causes the trampoline to `KeyError` at baseline time — blocking every mutmut run before any mutation executes. Fixed by scoping the env clear to the specific variables each test cares about. This is a real fix even if mutmut runs locally stay broken: tests shouldn't wipe the whole environment anyway.
+**How to reproduce**: `gh workflow run mutation.yml --ref <branch>`, then `gh run download --name mutmut-results-<run-id>`. Artifacts retained 90 days. Raw per-mutant list in `mutmut-results.txt`; emoji summary in `mutmut-summary.txt`; full runner log in `mutmut-run.log`.
+
+### Why this replaces the macOS baseline
+
+A pre-Linux rerun on macOS on 2026-04-11 produced 9,180 segfaults / 749 no-tests — **zero killed, zero survived**. Even previously-healthy modules (`filesystem_access` 86%, `pricing` 76%) segfaulted 100% at fork time. Root cause: mutmut 3.5.0 hardcodes `os.fork()` at `mutmut/__main__.py:1152`, which is unsafe on modern macOS due to Objective-C runtime fork-safety restrictions. `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` no longer helps. Local mutmut on macOS is effectively dead until upstream switches to `spawn`, so the Linux workflow is now the only source of truth.
+
+### Test-harness fixes shipped to unblock Linux CI
+
+Four separate blockers surfaced during the first CI attempts; all fixed:
+
+1. **`MUTANT_UNDER_TEST` wipe**: `test_card_renderer.py::TestEnsureHomebrewLibPath` and `test_model_resolver.py::test_empty_when_no_keys_set` used `patch.dict(os.environ, {}, clear=True)`, which deletes the env var mutmut's trampoline requires. Scoped the env clear to just the variables each test cares about.
+2. **User-local skill files**: `test_base_skill.py::TestBaseSkillFromSkillMd` and `test_skill_registry.py::TestDiscoverSkills` read from `packages/skills/<name>/SKILL.md`, which are gitignored symlinks not available on CI. Split the real-skill tests into dedicated classes gated on the files being present.
+3. **`things-py` SQLite on import**: `test_things3_tools.py` mocks `sys.platform=darwin` to test the macOS tool factory, but that still triggers a real `import things` inside `make_things3_tools`, and `things-py` touches the Things 3 SQLite database on import. Fails on Linux where the database doesn't exist. Split out the one non-darwin test and skipped the rest via `@pytest.mark.skipif(sys.platform != "darwin", ...)`.
+4. **`mutmut html` subcommand**: workflow called it, but mutmut 3.5.0 has no `html` subcommand. Removed the step.
 
 ---
 

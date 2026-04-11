@@ -23,7 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mutation testing report**: Documented the 2026-04-11 macOS regression — every mutant now segfaults (9,180/9,929) including modules that previously scored 76–86%. Local mutmut on macOS is effectively unusable; Linux CI is the path forward. Historical 2026-04-03 numbers preserved in the report as the last-known-good baseline.
 
 ### Added
-- **Linux CI mutation testing workflow**: New GitHub Actions workflow at `.github/workflows/mutation.yml` runs mutmut on Ubuntu (where `os.fork()` is safe) via manual dispatch or a weekly Monday 06:00 UTC cron. Uploads per-run `mutmut-results.txt` and HTML report as artifacts (90-day retention). First workflow in the repo. Free on public repos; no secrets required. This is now the only working environment for mutation testing on jarvis.
+- **Linux CI mutation testing workflow**: New GitHub Actions workflow at `.github/workflows/mutation.yml` runs mutmut on Ubuntu (where `os.fork()` is safe) via manual dispatch or a weekly Monday 06:00 UTC cron. Uploads `mutmut-results.txt`, `mutmut-summary.txt`, and `mutmut-run.log` as artifacts (90-day retention). First workflow in the repo. Free on public repos; no secrets required. This is now the only working environment for mutation testing on jarvis.
+- **2026-04-11 Linux CI mutation baseline**: First full Linux sweep produced `5,696 killed / 3,477 survived / 749 no tests / 7 timeout` across 9,929 mutants — a 62.0% kill rate on testable mutants, ~5 points above the April macOS baseline. All 44 modules in `packages/core/` now covered, including the 10 previously-segfaulted on macOS. Results documented in `docs/engineering/mutation-testing-report.md`.
+
+### Fixed
+- **CI test-harness blockers**: Four separate issues prevented mutmut from running on Linux, all fixed:
+  - `test_base_skill.py::TestBaseSkillFromSkillMd` and `test_skill_registry.py::TestDiscoverSkills` read gitignored user-local skill files — split into dedicated classes gated on file presence.
+  - `test_things3_tools.py` triggered `import things` via mocked `sys.platform=darwin`, but `things-py` hits the Things 3 SQLite database on import. Skipped the affected classes on non-Darwin.
+  - `mutmut html` step in the CI workflow referenced a non-existent subcommand; removed.
 
 ---
 
