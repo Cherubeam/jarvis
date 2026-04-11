@@ -91,7 +91,18 @@ class TestBaseSkillRun:
         assert handler.stream.call_args[1]["tool_registry"] is None
 
 
+_SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
+_REAL_SKILLS_PRESENT = (
+    (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists()
+    and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
+)
+
+
 @pytest.mark.unit
+@pytest.mark.skipif(
+    not _REAL_SKILLS_PRESENT,
+    reason="Real skill files are user-local symlinks not tracked in git; skipped on CI",
+)
 class TestBaseSkillFromSkillMd:
     """Tests for BaseSkill.from_skill_md()."""
 
