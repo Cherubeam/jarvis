@@ -8,9 +8,20 @@ from pathlib import Path
 from packages.skills.registry import discover_skills, get_skill_by_command, SkillMeta
 
 
+_SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
+_REAL_SKILLS_PRESENT = (
+    (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists()
+    and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
+)
+_REAL_SKILLS_SKIP_REASON = (
+    "Real skill files are user-local symlinks not tracked in git; skipped on CI"
+)
+
+
 @pytest.mark.unit
-class TestDiscoverSkills:
-    """Tests for discover_skills()."""
+@pytest.mark.skipif(not _REAL_SKILLS_PRESENT, reason=_REAL_SKILLS_SKIP_REASON)
+class TestDiscoverRealSkills:
+    """Tests for discover_skills() that assume the user's local skills are present."""
 
     def test_discovers_technical_humanist_image_architect(self):
         skills = discover_skills()
@@ -45,6 +56,11 @@ class TestDiscoverSkills:
         skills = discover_skills()
         assert "header image" in skills["technical-humanist-image-architect"].description.lower()
         assert "evaluates" in skills["content-evaluator"].description.lower()
+
+
+@pytest.mark.unit
+class TestDiscoverSkills:
+    """Tests for discover_skills() using self-contained tmp_path fixtures."""
 
     def test_skips_directories_without_skill_md(self, tmp_path):
         (tmp_path / "no_skill").mkdir()
@@ -97,8 +113,9 @@ class TestDiscoverSkills:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _REAL_SKILLS_PRESENT, reason=_REAL_SKILLS_SKIP_REASON)
 class TestGetSkillByCommand:
-    """Tests for get_skill_by_command()."""
+    """Tests for get_skill_by_command() — all require the user's local skills."""
 
     def test_finds_technical_humanist_image_architect(self):
         skills = discover_skills()
