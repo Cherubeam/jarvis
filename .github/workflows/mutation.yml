@@ -30,16 +30,29 @@ jobs:
       - name: Run mutmut
         id: mutmut_run
         continue-on-error: true
-        run: uv run mutmut run
+        run: uv run mutmut run 2>&1 | tee mutmut-run.log
 
       - name: Collect text results
         run: uv run mutmut results | tee mutmut-results.txt
+
+      - name: Extract summary line
+        run: |
+          # mutmut's final progress line shows killed/survived/etc. as emoji counters.
+          # Grab the last such line so downstream reviewers don't have to parse 4k+ mutants.
+          grep -oE '[0-9]+/[0-9]+ +🎉 [0-9]+ 🫥 [0-9]+ +⏰ [0-9]+ +🤔 [0-9]+ +🙁 [0-9]+ +🔇 [0-9]+ +🧙 [0-9]+' mutmut-run.log \
+            | tail -1 \
+            | tee mutmut-summary.txt
+          echo ""
+          echo "Legend: 🎉 killed  🙁 survived  🫥 no tests  ⏰ timeout  🤔 suspicious  🔇 skipped  🧙 check"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mutmut-results-${{ github.run_id }}
-          path: mutmut-results.txt
+          path: |
+            mutmut-results.txt
+            mutmut-summary.txt
+            mutmut-run.log
           retention-days: 90
 
       - name: Report run outcome
