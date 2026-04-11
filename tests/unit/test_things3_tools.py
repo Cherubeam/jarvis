@@ -3,6 +3,7 @@ Unit tests for Things 3 write tools.
 Tests create_task, complete_task, and update_task tool factory.
 """
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,9 +11,16 @@ import pytest
 from packages.core.tools.base import ToolDefinition
 
 
+_NOT_DARWIN_REASON = (
+    "things-py requires macOS: importing it touches the Things 3 SQLite database, "
+    "which does not exist on Linux CI. Tests that mock sys.platform=darwin still "
+    "trigger the real `import things` inside make_things3_tools and fail."
+)
+
+
 @pytest.mark.unit
-class TestMakeThings3Tools:
-    """Tests for make_things3_tools factory."""
+class TestMakeThings3ToolsNonDarwin:
+    """Platform-independent guard tests. Safe on Linux CI."""
 
     @patch("packages.core.tools.things3_tools.sys")
     def test_returns_empty_on_non_darwin(self, mock_sys):
@@ -22,6 +30,12 @@ class TestMakeThings3Tools:
 
         result = make_things3_tools({})
         assert result == []
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(sys.platform != "darwin", reason=_NOT_DARWIN_REASON)
+class TestMakeThings3Tools:
+    """Tests for make_things3_tools factory."""
 
     @patch("packages.core.tools.things3_tools.sys")
     def test_returns_three_tools(self, mock_sys):
@@ -64,6 +78,7 @@ class TestMakeThings3Tools:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(sys.platform != "darwin", reason=_NOT_DARWIN_REASON)
 class TestCreateTask:
     """Tests for create_task tool."""
 
@@ -146,6 +161,7 @@ class TestCreateTask:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(sys.platform != "darwin", reason=_NOT_DARWIN_REASON)
 class TestCompleteTask:
     """Tests for complete_task tool."""
 
@@ -220,6 +236,7 @@ class TestCompleteTask:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(sys.platform != "darwin", reason=_NOT_DARWIN_REASON)
 class TestUpdateTask:
     """Tests for update_task tool."""
 
