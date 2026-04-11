@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Golden test cost tracking**: Cost was always reported as $0.00 because `calculate_cost_from_litellm()` silently returned 0 for streaming responses. Now uses `get_model_pricing()` + `pricing.calculate_cost()` — the same approach as the production `StreamHandler`.
+- **Mutmut-blocking env-clear tests**: `test_card_renderer.py::TestEnsureHomebrewLibPath` and `test_model_resolver.py::test_empty_when_no_keys_set` used `patch.dict(os.environ, {}, clear=True)`, which wiped mutmut's `MUTANT_UNDER_TEST` env var and caused the trampoline to `KeyError` at baseline time — blocking every mutation run before it started. Scoped the env clear to just the variables each test cares about.
+
+### Changed
+- **Mutation testing report**: Documented the 2026-04-11 macOS regression — every mutant now segfaults (9,180/9,929) including modules that previously scored 76–86%. Local mutmut on macOS is effectively unusable; Linux CI is the path forward. Historical 2026-04-03 numbers preserved in the report as the last-known-good baseline.
 
 ---
 

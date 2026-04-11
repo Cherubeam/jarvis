@@ -2,13 +2,32 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Date**: 2026-04-03
+**Last run**: 2026-04-11 (macOS — total fork-safety regression, see below)
+**Previous audit**: 2026-04-03 (kept as historical reference)
 **Tool**: mutmut 3.5.0
 **Python**: 3.13.5
 
 ---
 
-## Executive Summary
+## 2026-04-11 update: macOS mutmut is now unusable
+
+A rerun on 2026-04-11 produced **9,180 segfaults and 749 "no tests" across 9,929 mutants — zero killed, zero survived**. Modules that previously scored well (`filesystem_access` at 86%, `pricing` at 76%) now segfault 100%. The issue is not per-module: every mutant crashes during the mutmut trampoline dispatch, regardless of whether the underlying module loads C extensions.
+
+What changed since 2026-04-03 is not fully diagnosed, but the likely contributors are upstream Python/macOS fork-safety tightening plus mutmut 3.5.0's unconditional `os.fork()`. `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` did not help.
+
+**Decision**: abandon local mutmut runs on macOS. The only viable path forward is **Linux CI** (tracked as a follow-up feature branch), where `fork()` is safe and the full 44-module sweep can actually execute. Until that lands, the per-module numbers below are stale but preserved as the last-known-good baseline.
+
+### Test-harness fix shipped alongside this update
+
+Two tests (`test_card_renderer.py::TestEnsureHomebrewLibPath`, `test_model_resolver.py::test_empty_when_no_keys_set`) used `patch.dict(os.environ, {}, clear=True)`, which wipes mutmut's `MUTANT_UNDER_TEST` env var and causes the trampoline to `KeyError` at baseline time — blocking every mutmut run before any mutation executes. Fixed by scoping the env clear to the specific variables each test cares about. This is a real fix even if mutmut runs locally stay broken: tests shouldn't wipe the whole environment anyway.
+
+---
+
+## Historical audit: 2026-04-03
+
+Everything below this line reflects the 2026-04-03 run. It is the last set of numbers we trust until Linux CI produces new ones.
+
+## Executive Summary (2026-04-03)
 
 - **32 of 44 modules** produced testable results (10 segfaulted due to macOS fork safety, 2 had no mutable code)
 - **8,388 mutants** tested, **4,799 killed** (57.2%), **3,589 survived**
