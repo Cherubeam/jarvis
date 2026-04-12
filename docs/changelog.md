@@ -9,28 +9,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Default model switched to Qwen 3.5 Flash**: Benchmarked 7 models across 12 golden tests (8 conversation + 4 new agentic tool-use tests). Qwen 3.5 Flash scored 0.925 with 100% pass rate — higher than Claude Sonnet 4.6 (0.918, 92%) at 66x lower cost ($0.0001 vs $0.0066 per request). Quality preset remains Claude Opus 4.6 for complex tasks.
+*(Nothing yet — see v0.14.0 below for the latest release.)*
 
-### Added
-- **Agentic golden tests**: 4 new golden tests validating tool calling (09), agent delegation (10), multi-step tool chaining (11), and tool termination (12). Tests use mock tools with canned responses and a hybrid evaluation: programmatic checks for tool call correctness + LLM judge for response quality.
+---
 
-### Fixed
-- **Golden test cost tracking**: Cost was always reported as $0.00 because `calculate_cost_from_litellm()` silently returned 0 for streaming responses. Now uses `get_model_pricing()` + `pricing.calculate_cost()` — the same approach as the production `StreamHandler`.
-- **Mutmut-blocking env-clear tests**: `test_card_renderer.py::TestEnsureHomebrewLibPath` and `test_model_resolver.py::test_empty_when_no_keys_set` used `patch.dict(os.environ, {}, clear=True)`, which wiped mutmut's `MUTANT_UNDER_TEST` env var and caused the trampoline to `KeyError` at baseline time — blocking every mutation run before it started. Scoped the env clear to just the variables each test cares about.
-
-### Changed
-- **Mutation testing report**: Documented the 2026-04-11 macOS regression — every mutant now segfaults (9,180/9,929) including modules that previously scored 76–86%. Local mutmut on macOS is effectively unusable; Linux CI is the path forward. Historical 2026-04-03 numbers preserved in the report as the last-known-good baseline.
+## [0.14.0] - 2026-04-12
 
 ### Added
 - **Linux CI mutation testing workflow**: New GitHub Actions workflow at `.github/workflows/mutation.yml` runs mutmut on Ubuntu (where `os.fork()` is safe) via manual dispatch or a weekly Monday 06:00 UTC cron. Uploads `mutmut-results.txt`, `mutmut-summary.txt`, and `mutmut-run.log` as artifacts (90-day retention). First workflow in the repo. Free on public repos; no secrets required. This is now the only working environment for mutation testing on jarvis.
 - **2026-04-11 Linux CI mutation baseline**: First full Linux sweep produced `5,696 killed / 3,477 survived / 749 no tests / 7 timeout` across 9,929 mutants — a 62.0% kill rate on testable mutants, ~5 points above the April macOS baseline. All 44 modules in `packages/core/` now covered, including the 10 previously-segfaulted on macOS. Results documented in `docs/engineering/mutation-testing-report.md`.
 
+### Changed
+- **Mutation testing report**: Documented the 2026-04-11 macOS regression — every mutant now segfaults (9,180/9,929) including modules that previously scored 76–86%. Local mutmut on macOS is effectively unusable; Linux CI is the path forward. Historical 2026-04-03 numbers preserved in the report as the last-known-good baseline.
+
 ### Fixed
+- **Mutmut-blocking env-clear tests**: `test_card_renderer.py::TestEnsureHomebrewLibPath` and `test_model_resolver.py::test_empty_when_no_keys_set` used `patch.dict(os.environ, {}, clear=True)`, which wiped mutmut's `MUTANT_UNDER_TEST` env var and caused the trampoline to `KeyError` at baseline time — blocking every mutation run before it started. Scoped the env clear to just the variables each test cares about.
 - **CI test-harness blockers**: Four separate issues prevented mutmut from running on Linux, all fixed:
   - `test_base_skill.py::TestBaseSkillFromSkillMd` and `test_skill_registry.py::TestDiscoverSkills` read gitignored user-local skill files — split into dedicated classes gated on file presence.
   - `test_things3_tools.py` triggered `import things` via mocked `sys.platform=darwin`, but `things-py` hits the Things 3 SQLite database on import. Skipped the affected classes on non-Darwin.
   - `mutmut html` step in the CI workflow referenced a non-existent subcommand; removed.
+
+---
+
+## [0.13.0] - 2026-04-12
+
+### Added
+- **Agentic golden tests**: 4 new golden tests validating tool calling (09), agent delegation (10), multi-step tool chaining (11), and tool termination (12). Tests use mock tools with canned responses and a hybrid evaluation: programmatic checks for tool call correctness + LLM judge for response quality.
+- **Rich geometric monoline image prompts**: Per-pattern visual prompts with category-specific geometric patterns for the pattern card generator.
+- **Show routed model in usage stats**: When model routing changes the model (e.g. quality preset), the actual model used is now shown in the usage report alongside the requested model.
+- **Chat name prefix → tag parsing**: Chat importer now parses name prefixes (e.g. `[topic]`) into tags and stores Claude-generated conversation summaries.
+
+### Changed
+- **Default model switched to Qwen 3.5 Flash**: Benchmarked 7 models across 12 golden tests (8 conversation + 4 new agentic tool-use tests). Qwen 3.5 Flash scored 0.925 with 100% pass rate — higher than Claude Sonnet 4.6 (0.918, 92%) at 66x lower cost ($0.0001 vs $0.0066 per request). Quality preset remains Claude Opus 4.6 for complex tasks.
+
+### Fixed
+- **Golden test cost tracking**: Cost was always reported as $0.00 because `calculate_cost_from_litellm()` silently returned 0 for streaming responses. Now uses `get_model_pricing()` + `pricing.calculate_cost()` — the same approach as the production `StreamHandler`.
+- **WeasyPrint rendering pipeline**: Replaced removed `write_png()` with PDF→PyMuPDF pipeline; fixed Homebrew library discovery on macOS so WeasyPrint finds GLib/Pango/Cairo via `DYLD_FALLBACK_LIBRARY_PATH`.
+- **Card rendering polish**: Fixed card image paths, markdown rendering, text truncation limits, and footer centering in the pattern card generator.
+- **Spinner glitches**: Used transient `Live` displays to prevent stale spinner frames; restart Thinking spinner after tool calls complete; remove spinner between consecutive tool calls.
+- **Suppress LiteLLM debug output**: Prevented LiteLLM internal debug messages from leaking to stdout during normal operation.
+- **Enum argument handling**: Use explicit `exact_match_args` for enum args in delegation test assertions, preventing false positives from fuzzy matching.
+- **Dry-run importer fix**: Dry-run mode now correctly detects already-imported conversations instead of silently skipping them.
+
+### Docs
+- MCP server setup guide added to README.
+- Model comparison table updated with April 2026 pricing and benchmark candidates.
 
 ---
 
