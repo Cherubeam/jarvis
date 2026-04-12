@@ -56,6 +56,26 @@ class TestStreamHandler:
         expected_cost = 100 * 1e-6 + 50 * 2e-6
         assert result.cost_usd == pytest.approx(expected_cost)
 
+    def test_cache_tokens_propagated_to_pricing(self):
+        """Cache tokens from TokenUsage are forwarded to pricing.calculate_cost."""
+        client = Mock(spec=LLMClient)
+        usage = TokenUsage(
+            prompt_tokens=100, completion_tokens=50, total_tokens=150,
+            cache_read_tokens=80, cache_write_tokens=20,
+        )
+        client.chat_stream.return_value = _make_streaming_response(["ok"], usage)
+        pricing = Mock(spec=ModelPricing)
+        pricing.calculate_cost.return_value = 0.01
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        pricing.calculate_cost.assert_called_once_with(
+            100, 50, cache_read_tokens=80, cache_write_tokens=20,
+        )
+        assert result.cost_usd == 0.01
+
     def test_stream_uses_litellm_fallback_when_no_pricing(self):
         client = Mock(spec=LLMClient)
         client.chat_stream.return_value = _make_streaming_response(["ok"])
@@ -105,6 +125,38 @@ class TestStreamHandler:
         assert result.metrics.completion_tokens == 5
         assert result.metrics.model == "test-model"
         assert len(tracker.responses) == 1
+
+    def test_first_token_recorded_once_for_streaming(self):
+        """record_first_token is called exactly once even with multiple chunks."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["a", "b", "c"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = Mock(spec=MetricsTracker)
+        tracker.finish_request.return_value = Mock(spec=ResponseMetrics)
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        tracker.record_first_token.assert_called_once()
+
+    def test_default_instance_id_is_empty_string(self):
+        """Default instance_id is empty string, not None or other value."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hi"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        assert handler.instance_id == ""
+
+    def test_default_streaming_is_true(self):
+        """Default streaming flag is True."""
+        client = Mock(spec=LLMClient)
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        assert handler.streaming is True
 
     def test_stream_empty_response(self):
         client = Mock(spec=LLMClient)
@@ -325,6 +377,7 @@ class TestStreamHandlerAgenticLoop:
         # intermediate: 20+30=50 prompt, 10+15=25 completion; final: 40 prompt, 20 completion
         assert result.usage.prompt_tokens == 20 + 30 + 40
         assert result.usage.completion_tokens == 10 + 15 + 20
+        assert result.usage.total_tokens == (20 + 30 + 40) + (10 + 15 + 20)
 
     def test_on_tool_call_callback_invoked(self, capsys):
         """When on_tool_call is set, it is called instead of plain print()."""
@@ -957,8 +1010,48 @@ class TestStreamHandlerNonStreaming:
         assert isinstance(result, StreamResult)
         assert result.text == "Hello world"
         assert result.usage.prompt_tokens == 10
+        assert result.usage.completion_tokens == 5
+        assert result.usage.total_tokens == 15
+        assert result.tool_messages == []
         client.complete.assert_called_once()
         client.chat_stream.assert_not_called()
+
+    def test_nonstreaming_cache_tokens_propagated(self):
+        """Cache tokens are extracted and passed to pricing in non-streaming mode."""
+        usage = Mock(spec=[
+            "prompt_tokens", "completion_tokens", "total_tokens",
+            "cache_read_input_tokens", "cache_creation_input_tokens",
+            "prompt_tokens_details",
+        ])
+        usage.prompt_tokens = 100
+        usage.completion_tokens = 50
+        usage.total_tokens = 150
+        usage.cache_read_input_tokens = 60
+        usage.cache_creation_input_tokens = 15
+        usage.prompt_tokens_details = None
+
+        choice = Mock()
+        choice.message.content = "ok"
+        choice.message.tool_calls = None
+        response = Mock()
+        response.choices = [choice]
+        response.usage = usage
+
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = response
+        pricing = Mock(spec=ModelPricing)
+        pricing.calculate_cost.return_value = 0.02
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        pricing.calculate_cost.assert_called_once_with(
+            100, 50, cache_read_tokens=60, cache_write_tokens=15,
+        )
+        assert result.cost_usd == 0.02
+        assert result.usage.cache_read_tokens == 60
+        assert result.usage.cache_write_tokens == 15
 
     def test_tool_call_then_content(self):
         """Non-streaming agentic loop: tool call → final content."""
@@ -1012,6 +1105,7 @@ class TestStreamHandlerNonStreaming:
         # Each call has prompt_tokens=10, completion_tokens=5
         assert result.usage.prompt_tokens == 20  # 10 + 10, not 10 + 10 + 10
         assert result.usage.completion_tokens == 10  # 5 + 5, not 5 + 5 + 5
+        assert result.usage.total_tokens == 30  # 15 + 15
 
     def test_terminal_tool_returns_early(self):
         """Terminal tool fires in non-streaming agentic loop."""
@@ -1089,6 +1183,151 @@ class TestStreamHandlerNonStreaming:
 
         call_kwargs = client.complete.call_args
         assert call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
+
+    def test_nonstreaming_events_include_instance_id(self):
+        """Non-streaming TextChunk and UsageReport events carry instance_id."""
+        from packages.core.events import UsageReport, TextChunk
+
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("response")
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        events = []
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            streaming=False, on_event=events.append, instance_id="my-inst",
+        )
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        text_events = [e for e in events if isinstance(e, TextChunk)]
+        usage_events = [e for e in events if isinstance(e, UsageReport)]
+        assert len(text_events) == 1
+        assert text_events[0].instance_id == "my-inst"
+        assert text_events[0].text == "response"
+        assert len(usage_events) == 1
+        assert usage_events[0].instance_id == "my-inst"
+        assert usage_events[0].model == "test-model"
+
+    def test_nonstreaming_first_token_recorded(self):
+        """Non-streaming path calls record_first_token exactly once."""
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("ok")
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = Mock(spec=MetricsTracker)
+        tracker.finish_request.return_value = Mock(spec=ResponseMetrics)
+
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        tracker.record_first_token.assert_called_once()
+
+    def test_on_before_after_tool_exec_callbacks(self):
+        """on_before_tool_exec and on_after_tool_exec are called around tool execution."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = Mock()
+        call.id = "tc1"
+        call.function.name = "my_tool"
+        call.function.arguments = "{}"
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            StreamToolResult(tool_calls=[call], usage=TokenUsage()),
+            _make_streaming_response(["done"]),
+        ]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+
+        call_order = []
+        handler.on_before_tool_exec = lambda: call_order.append("before")
+        handler.on_after_tool_exec = lambda: call_order.append("after")
+
+        handler.stream([{"role": "user", "content": "hi"}], tool_registry=registry)
+
+        assert call_order == ["before", "after"]
+
+    def test_nonstreaming_on_before_after_tool_exec_callbacks(self):
+        """on_before/after_tool_exec callbacks work in non-streaming mode."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool_call = Mock()
+        tool_call.id = "tc1"
+        tool_call.function.name = "my_tool"
+        tool_call.function.arguments = "{}"
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [
+            _make_complete_response(tool_calls=[tool_call]),
+            _make_complete_response("done"),
+        ]
+
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(
+            name="my_tool", description="t",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda **kw: "ok",
+        ))
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+
+        call_order = []
+        handler.on_before_tool_exec = lambda: call_order.append("before")
+        handler.on_after_tool_exec = lambda: call_order.append("after")
+
+        handler.stream([{"role": "user", "content": "hi"}], tool_registry=registry)
+
+        assert call_order == ["before", "after"]
+
+    def test_nonstreaming_dedup_parallel_tool_calls(self):
+        """Non-streaming agentic loop deduplicates identical parallel tool calls."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        exec_count = 0
+
+        def _execute(**kw):
+            nonlocal exec_count
+            exec_count += 1
+            return "result"
+
+        tool = ToolDefinition(
+            name="list_items", description="list",
+            parameters={"type": "object", "properties": {}},
+            execute=_execute,
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        # Three identical tool calls
+        calls = []
+        for i in range(3):
+            tc = Mock()
+            tc.id = f"tc{i}"
+            tc.function.name = "list_items"
+            tc.function.arguments = "{}"
+            calls.append(tc)
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [
+            _make_complete_response(tool_calls=calls),
+            _make_complete_response("done"),
+        ]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        result = handler.stream([{"role": "user", "content": "hi"}], tool_registry=registry)
+
+        assert exec_count == 1
+        assert result.text == "done"
 
     def test_streaming_toggle_uses_different_methods(self):
         """Changing streaming flag mid-session switches client methods."""
