@@ -14,18 +14,23 @@
 
 First full mutation sweep on Linux CI. All 44 modules in `packages/core/` were exercised — no macOS segfault blackspots.
 
-| Status | Count |
-|---|---:|
-| 🎉 Killed | **5,696** |
-| 🙁 Survived | 3,477 |
-| 🫥 No tests | 749 |
-| ⏰ Timeout | 7 |
-| 🤔 Suspicious | 0 |
-| **Total mutants** | **9,929** |
+| Status | Count | Prev (2026-04-11) |
+|---|---:|---:|
+| 🎉 Killed | **5,911** | 5,696 |
+| 🙁 Survived | 3,584 | 3,477 |
+| 🫥 No tests | 427 | 749 |
+| ⏰ Timeout | 7 | 7 |
+| 🤔 Suspicious | 0 | 0 |
+| **Total mutants** | **9,929** | 9,929 |
 
-**Kill rate**: `5,696 / (9,929 − 749) = 62.0%` on testable mutants. Modules with no tests are excluded from the denominator because "no tests" is a test-suite gap, not a test-suite weakness.
+**Kill rate**: `5,911 / (9,929 − 427) = 62.2%` on testable mutants (+0.2pp from baseline). Modules with no tests are excluded from the denominator because "no tests" is a test-suite gap, not a test-suite weakness.
 
-This is a ~5-point improvement over the April macOS baseline (57.2%). Two factors likely contribute: the CI workflow exercises the ~10 macOS-segfaulted modules for the first time (so those survivors are real measurements, not missing data), and a few tests shipped between April and now strengthened assertions in tool factories.
+### 2026-04-12 sweep impact
+
+Two targeted sweeps reduced "no tests" by 322 and added 215 kills:
+
+- **`stream_handler`**: 10 new assertion tests targeting cache token propagation, total-token arithmetic, instance_id in non-streaming events, first-token recording, on_before/after callbacks, and non-streaming dedup. Survivors dropped from 368 → 324 (−44 kills).
+- **`card_generator_tools`**: new test file (28 tests) covering factory structure, per-tool schema validation, happy/error execution paths, closure bindings, and defaults. Went from 322 "no tests" / 0 survivors → 0 "no tests" / 151 survivors (171 killed, 53% kill rate from zero).
 
 **How to reproduce**: `gh workflow run mutation.yml --ref <branch>`, then `gh run download --name mutmut-results-<run-id>`. Artifacts retained 90 days. Raw per-mutant list in `mutmut-results.txt`; emoji summary in `mutmut-summary.txt`; full runner log in `mutmut-run.log`.
 
