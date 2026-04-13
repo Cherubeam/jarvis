@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mutation testing — history**: Added 25 tests covering `_approx_tokens` (exact calculations, division operator, multibyte), `_format_messages_for_summary` (all format branches, truncation, newline replacement), trim boundary (> vs >=), default constants, summarizer system prompt, and prior-summary re-summarization path.
 - **Mutation testing — memory**: Added 27 tests covering `add_message` agent tagging (assistant-only), latency dict boundaries, cache/thinking tokens; `add_tool_messages` agent tagging, field defaults, content normalization; `migrate_conversation` default values for usage/latency/metrics; `record_utilization` keyword variants and fallback logic.
 - **Mutation testing — chatgpt importer**: Added 27 tests covering all content_type branches (user_editable_context, app_pairing, browsing_display fallback), multimodal edge cases (non-image dict, empty content_type, non-string parts), convert_conversation null fields, message defaults, unmapped role fallback, and metadata structure.
+- **Mutation testing — claude importer**: Added 15 tests covering metadata exact-key assertions for all block types, tool_result string content handling, unknown type fallbacks, new message field completeness, and update_conversation tag replacement/summary sync/original_title removal.
 
 ---
 
