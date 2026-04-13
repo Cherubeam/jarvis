@@ -187,3 +187,130 @@ class TestToolFormat:
         fmt = run_tool.to_litellm_format()
         assert fmt["type"] == "function"
         assert fmt["function"]["name"] == "run_mutation_tests"
+
+
+class TestSchemaValidation:
+    def test_run_tool_schema(self, run_tool):
+        params = run_tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"module", "test_path"}
+        assert params["properties"]["module"]["type"] == "string"
+        assert params["properties"]["test_path"]["type"] == "string"
+        assert params["properties"]["test_path"]["default"] == ""
+        assert params["required"] == ["module"]
+
+    def test_show_tool_schema(self, show_tool):
+        params = show_tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"mutant_id", "status_filter"}
+        assert params["properties"]["mutant_id"]["type"] == "string"
+        assert params["properties"]["mutant_id"]["default"] == ""
+        assert params["properties"]["status_filter"]["type"] == "string"
+        assert params["properties"]["status_filter"]["default"] == ""
+        assert params["required"] == []
+
+
+class TestExactOutputs:
+    def test_run_timeout_exact(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired("uv", 300)
+            result = run_tool.execute(module="packages/core/foo.py")
+        assert result == "Error: Mutation testing timed out after 300s. Try a smaller module or narrower test scope."
+
+    def test_run_uv_not_found_exact(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()
+            result = run_tool.execute(module="packages/core/foo.py")
+        assert result == "Error: 'uv' not found on PATH."
+
+    def test_show_timeout_exact(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired("uv", 120)
+            result = show_tool.execute()
+        assert result == "Error: Command timed out after 120s."
+
+    def test_show_uv_not_found_exact(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()
+            result = show_tool.execute()
+        assert result == "Error: 'uv' not found on PATH."
+
+    def test_run_stderr_with_newline(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="OUT", stderr="ERR", returncode=1)
+            result = run_tool.execute(module="packages/core/foo.py")
+        assert result == "OUT\nERR"
+
+    def test_run_empty_stderr_not_appended(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="OUT", stderr="", returncode=0)
+            result = run_tool.execute(module="packages/core/foo.py")
+        assert result == "OUT"
+
+    def test_show_stderr_with_newline(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="OUT", stderr="ERR", returncode=1)
+            result = show_tool.execute()
+        assert result == "OUT\nERR"
+
+    def test_run_truncation_exact(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="x" * 15_000, stderr="", returncode=0)
+            result = run_tool.execute(module="packages/core/foo.py")
+        assert result.endswith("\n\n[Output truncated at 10 KB]")
+        assert len(result) == 10_000 + len("\n\n[Output truncated at 10 KB]")
+
+    def test_show_truncation_exact(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="y" * 15_000, stderr="", returncode=0)
+            result = show_tool.execute()
+        assert result.endswith("\n\n[Output truncated at 10 KB]")
+
+    def test_status_filter_no_match_exact(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="foo: killed\n", stderr="", returncode=0)
+            result = show_tool.execute(status_filter="survived")
+        assert result == "No mutants with status 'survived'."
+
+    def test_status_filter_case_insensitive(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="foo: SURVIVED\nbar: killed\n", stderr="", returncode=0)
+            result = show_tool.execute(status_filter="survived")
+        assert "SURVIVED" in result
+        assert "killed" not in result
+
+    def test_status_filter_ignored_with_mutant_id(self, show_tool):
+        """When mutant_id is provided, status_filter is ignored."""
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="diff output\n", stderr="", returncode=0)
+            result = show_tool.execute(mutant_id="42", status_filter="survived")
+        assert result == "diff output\n"  # No filtering applied
+
+    def test_pyproject_update_error(self, project_dir):
+        """Error updating pyproject.toml returns error message."""
+        pyproject = project_dir / "pyproject.toml"
+        pyproject.unlink()  # Remove so read_text fails
+        tools = {t.name: t for t in make_mutation_tools(project_dir)}
+        result = tools["run_mutation_tests"].execute(module="packages/core/foo.py")
+        assert result.startswith("Error updating pyproject.toml:")
+
+    def test_run_cmd_construction(self, run_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="ok", stderr="", returncode=0)
+            run_tool.execute(module="packages/core/foo.py")
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["uv", "run", "mutmut", "run"]
+
+    def test_show_cmd_results(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="ok", stderr="", returncode=0)
+            show_tool.execute()
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["uv", "run", "mutmut", "results"]
+
+    def test_show_cmd_with_id(self, show_tool):
+        with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="ok", stderr="", returncode=0)
+            show_tool.execute(mutant_id="99")
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["uv", "run", "mutmut", "show", "99"]

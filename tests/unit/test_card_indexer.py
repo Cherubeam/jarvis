@@ -375,11 +375,14 @@ class TestMakeCardSearchTool:
             from packages.core.tools.card_search import make_card_search_tool
             tool = make_card_search_tool("/tmp/fake", "test-model")
 
-        props = tool.parameters["properties"]
-        assert "query" in props
-        assert "deck" in props
-        assert "n_results" in props
-        assert tool.parameters["required"] == ["query"]
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"query", "deck", "n_results"}
+        assert params["properties"]["query"]["type"] == "string"
+        assert params["properties"]["deck"]["type"] == "string"
+        assert params["properties"]["n_results"]["type"] == "integer"
+        assert params["properties"]["n_results"]["default"] == 5
+        assert params["required"] == ["query"]
 
     def test_execute_returns_no_results_message(self):
         mock_chroma = MagicMock()
@@ -415,3 +418,70 @@ class TestMakeCardSearchTool:
                 result = tool.execute(query="test", n_results=100)
 
         assert "Card content" in result
+
+    def test_execute_output_format(self):
+        """Verify exact header format and separator for search results."""
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 2
+        mock_collection.query.return_value = {
+            "documents": [["Content A", "Content B"]],
+            "metadatas": [[
+                {"card_id": "a", "deck": "Storyteller", "deck_dir": "st",
+                 "name": "Hero Arc", "category": "Structure", "tags": "", "when": ""},
+                {"card_id": "b", "deck": "Workshop", "deck_dir": "ws",
+                 "name": "Warm Up", "category": "Opening", "tags": "", "when": ""},
+            ]],
+            "distances": [[0.1, 0.2]],
+        }
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
+                mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+                from packages.core.tools.card_search import make_card_search_tool
+                tool = make_card_search_tool("/tmp/fake", "test-model")
+                result = tool.execute(query="test")
+
+        # Verify header format
+        assert "--- Hero Arc (Storyteller) [category: Structure] ---" in result
+        assert "--- Warm Up (Workshop) [category: Opening] ---" in result
+        # Verify content follows header
+        assert "Content A" in result
+        assert "Content B" in result
+        # Verify double-newline separator between blocks
+        blocks = result.split("\n\n")
+        assert len(blocks) == 2
+
+    def test_execute_clamping_boundaries(self):
+        """n_results=0 clamps to 1, n_results=16 clamps to 15."""
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
+                mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+                from packages.core.tools.card_search import make_card_search_tool
+                tool = make_card_search_tool("/tmp/fake", "test-model")
+
+                # Find the searcher in the closure to check the clamped value
+                searcher = None
+                for cell in tool.execute.__closure__ or []:
+                    try:
+                        obj = cell.cell_contents
+                        if hasattr(obj, "search"):
+                            searcher = obj
+                            break
+                    except ValueError:
+                        pass
+
+                if searcher:
+                    with patch.object(searcher, "search", return_value=[]) as mock_search:
+                        tool.execute(query="test", n_results=0)
+                        assert mock_search.call_args[1]["n_results"] == 1
+
+                        tool.execute(query="test", n_results=16)
+                        assert mock_search.call_args[1]["n_results"] == 15
