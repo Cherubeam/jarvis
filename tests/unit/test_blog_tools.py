@@ -96,8 +96,7 @@ class TestMakeBlogTools:
         tool = _get_tool(tool_list, "list_blog_posts")
         params = tool.parameters
         assert params["type"] == "object"
-        assert "properties" in params
-        assert "subfolder" in params["properties"]
+        assert set(params["properties"].keys()) == {"subfolder"}
         assert params["properties"]["subfolder"]["type"] == "string"
         assert params["required"] == []
 
@@ -106,7 +105,7 @@ class TestMakeBlogTools:
         tool = _get_tool(tool_list, "read_blog_post")
         params = tool.parameters
         assert params["type"] == "object"
-        assert "path" in params["properties"]
+        assert set(params["properties"].keys()) == {"path"}
         assert params["properties"]["path"]["type"] == "string"
         assert params["required"] == ["path"]
 
@@ -189,6 +188,17 @@ class TestListBlogPosts:
 
         assert "deep.md" in result
 
+    def test_paths_are_vault_relative(self, tools):
+        """Listed paths include the blog_dir prefix (vault-relative, not blog-dir-relative)."""
+        tool_list, blog_dir, *_ = tools
+        (blog_dir / "post.md").write_text("# Post")
+
+        tool = _get_tool(tool_list, "list_blog_posts")
+        result = tool.execute()
+
+        # Path should be relative to vault root, including the blog dir
+        assert "03 – Areas/02 – Substack/post.md" in result
+
 
 # ==================== read_blog_post ====================
 
@@ -208,8 +218,7 @@ class TestReadBlogPost:
         tool_list, *_ = tools
         tool = _get_tool(tool_list, "read_blog_post")
         result = tool.execute(path="03 – Areas/02 – Substack/missing.md")
-        assert result.startswith("Error:")
-        assert "missing.md" in result
+        assert result == "Error: File not found: 03 – Areas/02 – Substack/missing.md"
 
     def test_reads_template(self, tools):
         tool_list, blog_dir, template, *_ = tools
@@ -291,9 +300,7 @@ class TestCreateBlogPost:
         tool = _get_tool(tool_list, "create_blog_post")
         result = tool.execute(filename="exists.md", content="new")
 
-        assert result.startswith("Error:")
-        assert "already exists" in result
-        assert "exists.md" in result
+        assert result == "Error: File already exists: exists.md. Use edit_blog_post to modify it."
 
     def test_rejected_by_user(self, blog_vault):
         config, blog_dir, template = blog_vault
@@ -382,9 +389,7 @@ class TestEditBlogPost:
             path="03 – Areas/02 – Substack/ghost.md",
             new_content="content",
         )
-        assert result.startswith("Error:")
-        assert "not found" in result.lower()
-        assert "ghost.md" in result
+        assert result == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
 
     def test_rejects_template_edit(self, tools):
         """Template dir has read-only access — edits are blocked by validate_write."""
