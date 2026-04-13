@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Readwise integration** — CLI-based access to Readwise Reader library and highlights via 6 new tools: `search_reading_list`, `search_highlights`, `get_document_details`, `save_to_reader`, `tag_readwise_document`, `move_readwise_document`. Uses the `@readwise/cli` npm package as a subprocess wrapper.
+- **Reading assistant agent** (`/reading`) — Readwise-powered agent for library search, inbox triage, reading recaps, highlight synthesis, and document management.
+- **Reader persona support** — Context builder now loads `data/context/reader_persona.md` (generated via Readwise's `build-persona` skill) into all agents' system prompts.
+- **`readwise:` config section** in `config/default.yaml` with `enabled` and `cache_ttl_seconds` settings.
+
 ### Changed
 - **Mutation testing — never-targeted tools**: Strengthened `test_test_tools.py` (9 new tests), `test_mutation_tools.py` (19 new tests), and `test_card_indexer.py` (3 new/strengthened tests) with schema validation, exact error messages, stderr handling, truncation boundaries, status filter edge cases, and command construction verification.
 
