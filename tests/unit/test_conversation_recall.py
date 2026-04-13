@@ -114,13 +114,15 @@ class TestRecallToolOutput:
             tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
 
         assert tool.name == "recall_conversations"
-        assert "query" in tool.parameters["properties"]
-        assert "date_from" in tool.parameters["properties"]
-        assert "date_to" in tool.parameters["properties"]
-        assert "n_results" in tool.parameters["properties"]
-        assert tool.parameters["properties"]["n_results"]["type"] == "integer"
-        assert tool.parameters["properties"]["n_results"]["default"] == 10
-        assert tool.parameters["required"] == ["query"]
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"query", "date_from", "date_to", "n_results"}
+        assert params["properties"]["query"]["type"] == "string"
+        assert params["properties"]["date_from"]["type"] == "string"
+        assert params["properties"]["date_to"]["type"] == "string"
+        assert params["properties"]["n_results"]["type"] == "integer"
+        assert params["properties"]["n_results"]["default"] == 10
+        assert params["required"] == ["query"]
         assert callable(tool.execute)
 
     def test_description_contains_todays_date(self, tmp_path):
@@ -175,6 +177,65 @@ class TestRecallToolOutput:
             "Assistant: ChromaDB is a vector database."
         )
         assert output == expected
+
+    def test_multiple_results_joined_with_double_newline(self, tmp_path):
+        """Multiple results are separated by \\n\\n."""
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 2
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            from packages.core.tools.conversation_recall import make_conversation_recall_tool
+            tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
+
+        results = [
+            _make_search_result(conv_id="conv_a", session_date="2026-01-01", user_text="Q1", assistant_text="A1"),
+            _make_search_result(conv_id="conv_b", session_date="2026-01-02", user_text="Q2", assistant_text="A2"),
+        ]
+        output = self._call_tool(tool, "test", mock_results=results)
+
+        blocks = output.split("\n\n")
+        # Each result has a header + "User: ...\n\nAssistant: ..." => multiple \n\n
+        # The two results are separated by \n\n
+        assert "--- 2026-01-01 (conv_a) ---" in output
+        assert "--- 2026-01-02 (conv_b) ---" in output
+
+    def test_n_results_clamping(self, tmp_path):
+        """n_results is clamped to [1, 20]."""
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            from packages.core.tools.conversation_recall import make_conversation_recall_tool
+            tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
+
+        searcher = None
+        for cell in tool.execute.__closure__ or []:
+            try:
+                obj = cell.cell_contents
+                if hasattr(obj, "search"):
+                    searcher = obj
+                    break
+            except ValueError:
+                pass
+
+        assert searcher is not None
+
+        with patch.object(searcher, "search", return_value=[]) as mock_search:
+            # n_results=50 should clamp to 20
+            tool.execute(query="test", n_results=50)
+            assert mock_search.call_args[1]["n_results"] == 20
+
+            # n_results=-5 should clamp to 1
+            tool.execute(query="test", n_results=-5)
+            assert mock_search.call_args[1]["n_results"] == 1
+
+            # n_results=0 should clamp to 1
+            tool.execute(query="test", n_results=0)
+            assert mock_search.call_args[1]["n_results"] == 1
 
     def test_output_capped_at_6000_chars(self, tmp_path):
         mock_chroma = MagicMock()

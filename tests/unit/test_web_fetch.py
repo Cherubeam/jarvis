@@ -13,8 +13,11 @@ from packages.core.tools.web_fetch import FETCH_URL_TOOL, _fetch_url, _MAX_BYTES
 class TestFetchUrlTool:
     def test_tool_definition_structure(self):
         assert FETCH_URL_TOOL.name == "fetch_url"
-        assert "url" in FETCH_URL_TOOL.parameters["properties"]
-        assert FETCH_URL_TOOL.parameters["required"] == ["url"]
+        params = FETCH_URL_TOOL.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"url"}
+        assert params["properties"]["url"]["type"] == "string"
+        assert params["required"] == ["url"]
         assert callable(FETCH_URL_TOOL.execute)
 
     def test_successful_fetch_with_trafilatura_extraction(self):
