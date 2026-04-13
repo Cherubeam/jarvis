@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.15.0] - 2026-04-13
+
 ### Added
-- **Readwise integration** — CLI-based access to Readwise Reader library and highlights via 6 new tools: `search_reading_list`, `search_highlights`, `get_document_details`, `save_to_reader`, `tag_readwise_document`, `move_readwise_document`. Uses the `@readwise/cli` npm package as a subprocess wrapper.
+- **Readwise integration** — CLI-based access to Readwise Reader library and highlights via 6 new tools: `search_reading_list`, `search_highlights`, `get_document_details`, `save_to_reader`, `tag_readwise_document`, `move_readwise_document`. Uses the `@readwise/cli` npm package as a subprocess wrapper with JSON parsing, rate limit handling, and graceful degradation when CLI is not installed.
 - **Reading assistant agent** (`/reading`) — Readwise-powered agent for library search, inbox triage, reading recaps, highlight synthesis, and document management.
-- **Reader persona support** — Context builder now loads `data/context/reader_persona.md` (generated via Readwise's `build-persona` skill) into all agents' system prompts.
+- **Reader persona support** — Context builder now loads `data/context/reader_persona.md` into all agents' system prompts, making every agent reading-aware. Generate via Readwise's `build-persona` skill or manually.
 - **`readwise:` config section** in `config/default.yaml` with `enabled` and `cache_ttl_seconds` settings.
 
 ### Changed
