@@ -2,7 +2,7 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Current**: 2026-04-13 (Linux CI, workflow run `24330889912`)
+**Current**: 2026-04-13 (Linux CI, workflow run `24336325780`)
 **Previous baselines**: 2026-04-11 (Linux CI), 2026-04-03 (macOS, historical)
 **Tool**: mutmut 3.5.0
 **Python**: 3.13.5
@@ -12,18 +12,18 @@
 
 ## 2026-04-13 Linux CI (current)
 
-After four phases of targeted test improvements (218 new tests across 14 branches):
+After five phases of targeted test improvements (229 new tests across 15 branches) plus a pragma sweep (64 annotations):
 
 | Status | Count | Prev (2026-04-11) |
 |---|---:|---:|
-| 🎉 Killed | **7,083** | 5,911 |
-| 🙁 Survived | 2,412 | 3,584 |
+| 🎉 Killed | **7,221** | 5,911 |
+| 🙁 Survived | 2,021 | 3,584 |
 | 🫥 No tests | 427 | 427 |
 | ⏰ Timeout | 7 | 7 |
 | 🤔 Suspicious | 0 | 0 |
-| **Total mutants** | **9,929** | 9,929 |
+| **Total mutants** | **9,676** | 9,929 |
 
-**Kill rate**: `7,083 / (9,929 − 427) = 74.5%` on testable mutants (+12.3pp from 62.2% baseline).
+**Kill rate**: `7,221 / (9,676 − 427) = 78.1%` on testable mutants (+15.8pp from 62.3% baseline). Total mutants reduced from 9,929 to 9,676 due to 253 `# pragma: no mutate` annotations on equivalent mutants (LLM-facing description strings, pure-literal logger calls).
 
 ### Progress by phase
 
@@ -33,25 +33,24 @@ After four phases of targeted test improvements (218 new tests across 14 branche
 | Phase 1: Tool factories + stream_handler | 6 | 57 | +415 | 66.6% |
 | Phase 2: History + memory | 2 | 52 | +170 | 68.4% |
 | Phase 3: Importers | 3 | 66 | +196 | 70.5% |
-| Phase 4: Tool factories batch 2 | 3 | 47 | +391 | **74.6%** |
+| Phase 4: Tool factories batch 2 | 3 | 47 | +391 | 74.6% |
+| Pragma sweep + never-targeted tools | 1 | 29 | +138 | **78.1%** |
 
-### Per-module kills (Phase 1-4 combined)
+### Per-module survivors (current)
 
-| Module | Before | After | Delta |
-|--------|--------|-------|-------|
-| things3_tools | 262 | 70 | -192 |
-| vault_write_tools | 96 | 13 | -154 (est.) |
-| chatgpt importer | 338 | 222 | -116 |
-| git_tools | 174 | 61 | -113 |
-| memory | 228 | 121 | -107 |
-| codebase_tools | 127 | 31 | -96 |
-| project_write_tools | 185 | 99 | -86 |
-| vault_read_tools | 80 | 9 | -71 (est.) |
-| cortex_search | 63 | 19 | -44 (est.) |
-| history | 111 | 48 | -63 |
-| claude importer | 257 | 213 | -44 |
-| stream_handler | 324 | 287 | -37 |
-| claude_context importer | 167 | 131 | -36 |
+| Module | Survived | No Tests | Total |
+|--------|----------|----------|-------|
+| stream_handler | 287 | 0 | 287 |
+| card_renderer | 196 | 70 | 266 |
+| llm_client | 65 | 163 | 228 |
+| importers/chatgpt | 222 | 0 | 222 |
+| importers/claude | 213 | 0 | 213 |
+| importers/claude_context | 131 | 0 | 131 |
+| memory | 121 | 0 | 121 |
+| card_indexer | 96 | 23 | 119 |
+| rag/indexer | 85 | 25 | 110 |
+| card_generator_tools | 106 | 0 | 106 |
+| app | 0 | 107 | 107 |
 
 ### 2026-04-12 sweep impact (included in baseline)
 
@@ -79,27 +78,23 @@ Four separate blockers surfaced during the first CI attempts; all fixed:
 
 ## Remaining survivors (2026-04-13)
 
-Top 15 modules by remaining survivors + no-tests:
+**2,021 survivors** across 38 modules. The top 11 account for 80% of survivors:
 
-| Module | Survived | No Tests | Total |
-|--------|----------|----------|-------|
-| stream_handler | 287 | 0 | 287 |
-| card_renderer | 196 | 70 | 266 |
-| llm_client | 65 | 163 | 228 |
-| importers/chatgpt | 222 | 0 | 222 |
-| importers/claude | 213 | 0 | 213 |
-| card_generator_tools | 151 | 0 | 151 |
-| mutation_tools | 146 | 0 | 146 |
-| importers/claude_context | 131 | 0 | 131 |
-| memory | 121 | 0 | 121 |
-| card_indexer | 96 | 23 | 119 |
-| rag/indexer | 85 | 25 | 110 |
-| app | 0 | 107 | 107 |
-| project_write_tools | 99 | 0 | 99 |
-| things3_tools | 70 | 10 | 80 |
-| card_search | 79 | 0 | 79 |
+| Module | Survived | No Tests | Total | Notes |
+|--------|----------|----------|-------|-------|
+| stream_handler | 287 | 0 | 287 | 4 near-identical methods with duplicated TokenUsage logic |
+| card_renderer | 196 | 70 | 266 | Jinja/HTML templates, WeasyPrint integration |
+| llm_client | 65 | 163 | 228 | Class methods with 163 "no tests" — needs new test coverage |
+| importers/chatgpt | 222 | 0 | 222 | Deeply nested content conversion logic |
+| importers/claude | 213 | 0 | 213 | Update sync + content block conversion |
+| importers/claude_context | 131 | 0 | 131 | import_context conditional branches |
+| memory | 121 | 0 | 121 | ConversationLogger methods (record_utilization, _print_session_summary) |
+| card_indexer | 96 | 23 | 119 | Search result formatting |
+| rag/indexer | 85 | 25 | 110 | Indexing logic |
+| card_generator_tools | 106 | 0 | 106 | Image existence checks, max_images_per_run limit |
+| app | 0 | 107 | 107 | Entry point — all "no tests" |
 
-**Remaining survivors are progressively harder to kill**: duplicated code paths (stream_handler has 4 near-identical methods), equivalent mutants (string mutations in logging/prompts), modules needing complex test infrastructure (card_renderer with WeasyPrint, llm_client class methods with 163 "no tests"), and deeply nested conditional logic in importers.
+**Further improvement has steep diminishing returns.** The remaining survivors are in: duplicated code paths, modules needing complex test infrastructure (WeasyPrint, ChromaDB, LiteLLM class mocking), deeply nested conditional logic already swept once, and untested entry points (app.py).
 
 ---
 
