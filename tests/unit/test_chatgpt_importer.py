@@ -255,6 +255,129 @@ class TestConvertContentParts:
         content = {"content_type": "future_type", "parts": ["some text"]}
         result = convert_content_parts(content)
         assert result[0]["metadata"]["original_content_type"] == "future_type"
+        assert result[0]["text"] == "some text"
+
+    # --- Mutation-targeted: missing content_type defaults and edge cases ---
+
+    def test_missing_content_type_defaults_to_text(self):
+        """Missing content_type should default to 'text'."""
+        content = {"parts": ["Hello"]}
+        result = convert_content_parts(content)
+        assert result == [{"type": "text", "text": "Hello"}]
+
+    def test_tether_browsing_display_result_empty_uses_summary(self):
+        """When result is empty, falls back to summary."""
+        content = {"content_type": "tether_browsing_display", "result": "", "summary": "Fallback summary"}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "Fallback summary"
+
+    def test_tether_browsing_display_both_empty(self):
+        content = {"content_type": "tether_browsing_display", "result": "", "summary": ""}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == ""
+        assert result[0]["metadata"] == {"browsing_display": True}
+
+    def test_tether_quote_missing_domain_and_url(self):
+        content = {"content_type": "tether_quote", "text": "quote"}
+        result = convert_content_parts(content)
+        assert result[0]["metadata"]["quote_source"] == ""
+        assert result[0]["metadata"]["quote_url"] == ""
+
+    def test_user_editable_context(self):
+        content = {"content_type": "user_editable_context", "user_profile": "My profile text"}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "My profile text"
+        assert result[0]["metadata"] == {"user_editable_context": True}
+
+    def test_user_editable_context_missing_profile(self):
+        content = {"content_type": "user_editable_context"}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == ""
+
+    def test_app_pairing_content(self):
+        content = {
+            "content_type": "app_pairing_content",
+            "context_parts": [
+                {"text": "Line 1"},
+                {"text": "Line 2"},
+                {"other": "no text field"},
+            ],
+        }
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "Line 1\nLine 2"
+        assert result[0]["metadata"] == {"app_pairing": True}
+
+    def test_app_pairing_content_empty(self):
+        content = {"content_type": "app_pairing_content", "context_parts": []}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == ""
+
+    def test_multimodal_non_image_dict(self):
+        """Dict parts with non-image content_type use fallback formatting."""
+        content = {
+            "content_type": "multimodal_text",
+            "parts": [{"content_type": "video", "url": "https://example.com"}],
+        }
+        result = convert_content_parts(content)
+        assert result[0]["metadata"]["original_type"] == "video"
+
+    def test_multimodal_dict_empty_content_type(self):
+        """Dict part with empty content_type defaults to 'unknown'."""
+        content = {
+            "content_type": "multimodal_text",
+            "parts": [{"content_type": "", "data": "raw"}],
+        }
+        result = convert_content_parts(content)
+        assert result[0]["metadata"]["original_type"] == "unknown"
+
+    def test_multimodal_non_string_non_dict(self):
+        """Non-string, non-dict parts are stringified."""
+        content = {"content_type": "multimodal_text", "parts": [42]}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "42"
+
+    def test_multimodal_empty_string_skipped(self):
+        """Empty strings in multimodal parts are skipped."""
+        content = {"content_type": "multimodal_text", "parts": ["", "actual text"]}
+        result = convert_content_parts(content)
+        assert len(result) == 1
+        assert result[0]["text"] == "actual text"
+
+    def test_text_non_string_parts(self):
+        """Non-string parts in text content are stringified."""
+        content = {"content_type": "text", "parts": [123, None]}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "123\nNone"
+
+    def test_thoughts_only_summary(self):
+        """Thought with no content key falls back to summary."""
+        content = {"content_type": "thoughts", "thoughts": [{"summary": "Just summary"}]}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "Just summary"
+
+    def test_fallback_text_from_parts(self):
+        """Unknown content_type with string parts joins them."""
+        content = {"content_type": "exotic", "parts": ["a", 42, "b"]}
+        result = convert_content_parts(content)
+        # _extract_fallback_text only joins str parts
+        assert result[0]["text"] == "a\nb"
+
+    def test_fallback_text_from_text_field(self):
+        """Unknown content_type with no parts uses text field."""
+        content = {"content_type": "exotic", "parts": [], "text": "fallback text"}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == "fallback text"
+
+    def test_execution_output_missing_text(self):
+        content = {"content_type": "execution_output"}
+        result = convert_content_parts(content)
+        assert result[0]["text"] == ""
+        assert result[0]["metadata"] == {"execution_output": True}
+
+    def test_system_error_missing_name(self):
+        content = {"content_type": "system_error", "text": "error"}
+        result = convert_content_parts(content)
+        assert result[0]["metadata"]["error_name"] == ""
 
 
 # ==================== convert_conversation ====================
@@ -358,6 +481,77 @@ class TestConvertConversation:
         }
         result = convert_conversation(conv)
         assert result["model"] is None
+
+    # --- Mutation-targeted: missing field assertions ---
+
+    def test_null_fields(self, sample_conv):
+        """Fields that should be None/empty are verified."""
+        result = convert_conversation(sample_conv)
+        assert result["topic"] is None
+        assert result["agent"] is None
+        assert result["context"] is None
+        assert result["environment"] is None
+        assert result["feedback"] is None
+
+    def test_message_default_fields(self, sample_conv):
+        """Every message has the required default fields."""
+        result = convert_conversation(sample_conv)
+        for msg in result["messages"]:
+            assert msg["parent_id"] is None
+            assert msg["stop_reason"] is None
+            assert msg["status"] == "completed"
+            assert msg["error"] is None
+            assert msg["metadata"] == {}
+
+    def test_unmapped_role_defaults_to_system(self):
+        """A role not in _ROLE_MAP should fall back to 'system'."""
+        conv = {
+            "create_time": 1711580000.0,
+            "update_time": 1711580100.0,
+            "conversation_id": "test-role",
+            "mapping": {
+                "root": {"id": "root", "message": None, "parent": None, "children": ["a"]},
+                "a": {
+                    "id": "a",
+                    "message": {
+                        "id": "a",
+                        "author": {"role": "unknown_future_role"},
+                        "content": {"content_type": "text", "parts": ["msg"]},
+                    },
+                    "parent": "root",
+                    "children": [],
+                },
+            },
+            "current_node": "a",
+        }
+        result = convert_conversation(conv)
+        assert result["messages"][0]["role"] == "system"
+
+    def test_metadata_import_source_exact(self, sample_conv):
+        """Metadata has exact expected keys."""
+        result = convert_conversation(sample_conv)
+        assert set(result["metadata"].keys()) == {"import_source", "chatgpt_id", "import_timestamp"}
+        assert result["metadata"]["import_source"] == "chatgpt"
+
+    def test_model_structure_when_present(self, sample_conv):
+        result = convert_conversation(sample_conv)
+        assert set(result["model"].keys()) == {"id", "provider"}
+        assert result["model"]["provider"] == "openai"
+
+    def test_tags_exact_for_non_archived(self, sample_conv):
+        result = convert_conversation(sample_conv)
+        assert result["tags"] == ["imported", "chatgpt"]
+
+    def test_empty_mapping_no_messages(self):
+        conv = {
+            "create_time": 1711580000.0,
+            "update_time": 1711580100.0,
+            "conversation_id": "test-empty",
+            "mapping": {},
+            "current_node": None,
+        }
+        result = convert_conversation(conv)
+        assert result["messages"] == []
 
 
 # ==================== Helper functions ====================
