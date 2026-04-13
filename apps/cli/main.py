@@ -810,6 +810,19 @@ def main(argv: list[str] | None = None):
         except Exception as e:
             print_system(f"[Tools] Things 3 tools failed: {e}")
 
+    # Readwise tools — search reading list, highlights, manage documents
+    readwise_cfg = config.get("readwise", {})
+    if readwise_cfg.get("enabled", False):
+        try:
+            from packages.core.tools.readwise_tools import make_readwise_tools
+
+            readwise_tools = make_readwise_tools(readwise_cfg)
+            if readwise_tools:
+                tool_groups["readwise_tools"] = readwise_tools
+                print_system(f"[Tools] {len(readwise_tools)} Readwise tools loaded.")
+        except Exception as e:
+            print_system(f"[Tools] Readwise tools failed: {e}")
+
     # Pattern card generator tools
     if vault_config is not None:
         obsidian_cfg = config.get("obsidian", {})
@@ -875,6 +888,7 @@ def main(argv: list[str] | None = None):
             list(shared_tools)
             + tool_groups.get("web_tools", [])
             + tool_groups.get("things3_tools", [])
+            + tool_groups.get("readwise_tools", [])
         )
         active_agent = JarvisAgent(
             llm_client=client,
