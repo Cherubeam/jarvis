@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-*(Nothing yet — see v0.14.0 below for the latest release.)*
+### Changed
+- **Mutation testing — vault tools**: Strengthened `test_vault_tools.py` and `test_vault_write_tools.py` with schema validation (property names, types, required fields, defaults, enums), tighter error assertions, path traversal coverage in no-target mode, default argument exercise, and output format verification. 13 new tests targeting surviving mutants in `vault_read_tools` and `vault_write_tools`.
 
 ---
 
