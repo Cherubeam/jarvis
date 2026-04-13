@@ -112,6 +112,11 @@ mcp:
   enabled: false              # Set to true in local.yaml
   servers: {}                 # Declare servers in local.yaml
 
+# Readwise integration — reading list, highlights, and persona
+readwise:
+  enabled: false              # Set to true in local.yaml
+  cache_ttl_seconds: 300      # Cache CLI results for 5 minutes
+
 # Pattern card generator
 pattern_cards:
   output_dir: "data/pattern-cards"

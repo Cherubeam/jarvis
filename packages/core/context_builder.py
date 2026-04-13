@@ -103,6 +103,7 @@ def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMe
         ("preferences", "preferences.md", "## Their preferences\n\n"),
         ("focus", "current_focus.md", "## Current focus\n\n"),
         ("tasks", "tasks.md", "## Their tasks\n\n"),
+        ("reading", "reader_persona.md", "## Reading profile\n\n"),
     ]
 
     for section_name, filename, header in context_files:
