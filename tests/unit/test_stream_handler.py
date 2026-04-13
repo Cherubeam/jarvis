@@ -1345,3 +1345,384 @@ class TestStreamHandlerNonStreaming:
         result2 = handler.stream([{"role": "user", "content": "hi"}])
         assert result2.text == "completed"
         client.complete.assert_called_once()
+
+
+# ==================== Mutation-targeted assertions ====================
+
+
+@pytest.mark.unit
+class TestStreamHandlerMutationTargets:
+    """Tests targeting specific surviving mutation patterns across all paths."""
+
+    # --- UsageReport cache token fields (gaps 1 & 4) ---
+
+    def test_streaming_usage_report_all_fields(self):
+        """UsageReport event from streaming path carries ALL fields including cache tokens."""
+        from packages.core.events import UsageReport
+
+        client = Mock(spec=LLMClient)
+        usage = TokenUsage(
+            prompt_tokens=100, completion_tokens=50, total_tokens=150,
+            cache_read_tokens=30, cache_write_tokens=10,
+        )
+        client.chat_stream.return_value = _make_streaming_response(["ok"], usage)
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
+        tracker = MetricsTracker()
+
+        events = []
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            on_event=events.append, instance_id="stream-inst",
+        )
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        usage_events = [e for e in events if isinstance(e, UsageReport)]
+        assert len(usage_events) == 1
+        ue = usage_events[0]
+        assert ue.prompt_tokens == 100
+        assert ue.completion_tokens == 50
+        assert ue.total_tokens == 150
+        assert ue.cache_read_tokens == 30
+        assert ue.cache_write_tokens == 10
+        assert ue.cost_usd == result.cost_usd
+        assert ue.model == "test-model"
+        assert ue.instance_id == "stream-inst"
+
+    def test_nonstreaming_usage_report_all_fields(self):
+        """UsageReport from non-streaming _complete_simple carries ALL fields."""
+        from packages.core.events import UsageReport
+
+        usage = Mock(spec=[
+            "prompt_tokens", "completion_tokens", "total_tokens",
+            "cache_read_input_tokens", "cache_creation_input_tokens",
+            "prompt_tokens_details",
+        ])
+        usage.prompt_tokens = 200
+        usage.completion_tokens = 80
+        usage.total_tokens = 280
+        usage.cache_read_input_tokens = 50
+        usage.cache_creation_input_tokens = 15
+        usage.prompt_tokens_details = None
+
+        choice = Mock()
+        choice.message.content = "response"
+        choice.message.tool_calls = None
+        response = Mock()
+        response.choices = [choice]
+        response.usage = usage
+
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = response
+        pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="my-model")
+        tracker = MetricsTracker()
+
+        events = []
+        handler = StreamHandler(
+            client, tracker, pricing, "my-model",
+            streaming=False, on_event=events.append, instance_id="ns-inst",
+        )
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        usage_events = [e for e in events if isinstance(e, UsageReport)]
+        assert len(usage_events) == 1
+        ue = usage_events[0]
+        assert ue.prompt_tokens == 200
+        assert ue.completion_tokens == 80
+        assert ue.total_tokens == 280
+        assert ue.cache_read_tokens == 50
+        assert ue.cache_write_tokens == 15
+        assert ue.cost_usd == result.cost_usd
+        assert ue.model == "my-model"
+        assert ue.instance_id == "ns-inst"
+
+    # --- TokenUsage accumulation arithmetic (gap 7) ---
+
+    def test_streaming_intermediate_usage_accumulated(self):
+        """Intermediate tool-call usage is ADDED to final streaming usage."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="my_tool", description="t", parameters={},
+            execute=lambda: "result",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = Mock()
+        call.id = "tc1"
+        call.function.name = "my_tool"
+        call.function.arguments = "{}"
+
+        # Tool call round: 100 prompt + 20 completion
+        tool_usage = TokenUsage(
+            prompt_tokens=100, completion_tokens=20, total_tokens=120,
+            cache_read_tokens=10, cache_write_tokens=5,
+        )
+        # Final streaming: 80 prompt + 30 completion
+        final_usage = TokenUsage(
+            prompt_tokens=80, completion_tokens=30, total_tokens=110,
+            cache_read_tokens=8, cache_write_tokens=3,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            StreamToolResult(tool_calls=[call], usage=tool_usage),
+            _make_streaming_response(["done"], final_usage),
+        ]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        # Verify accumulation: tool round + final streaming
+        assert result.usage.prompt_tokens == 100 + 80
+        assert result.usage.completion_tokens == 20 + 30
+        assert result.usage.total_tokens == 120 + 110
+        assert result.usage.cache_read_tokens == 10 + 8
+        assert result.usage.cache_write_tokens == 5 + 3
+
+    def test_nonstreaming_intermediate_usage_accumulated(self):
+        """Non-streaming: intermediate tool usage ADDED to final response usage."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="my_tool", description="t",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda **kw: "ok",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        tool_call = Mock()
+        tool_call.id = "tc1"
+        tool_call.function.name = "my_tool"
+        tool_call.function.arguments = "{}"
+
+        # Tool round usage
+        tool_usage = Mock(spec=[
+            "prompt_tokens", "completion_tokens", "total_tokens",
+            "cache_read_input_tokens", "cache_creation_input_tokens",
+            "prompt_tokens_details",
+        ])
+        tool_usage.prompt_tokens = 100
+        tool_usage.completion_tokens = 20
+        tool_usage.total_tokens = 120
+        tool_usage.cache_read_input_tokens = 10
+        tool_usage.cache_creation_input_tokens = 5
+        tool_usage.prompt_tokens_details = None
+
+        tool_choice = Mock()
+        tool_choice.message.content = ""
+        tool_choice.message.tool_calls = [tool_call]
+        tool_response = Mock()
+        tool_response.choices = [tool_choice]
+        tool_response.usage = tool_usage
+
+        # Final response usage
+        final_usage = Mock(spec=[
+            "prompt_tokens", "completion_tokens", "total_tokens",
+            "cache_read_input_tokens", "cache_creation_input_tokens",
+            "prompt_tokens_details",
+        ])
+        final_usage.prompt_tokens = 150
+        final_usage.completion_tokens = 40
+        final_usage.total_tokens = 190
+        final_usage.cache_read_input_tokens = 20
+        final_usage.cache_creation_input_tokens = 8
+        final_usage.prompt_tokens_details = None
+
+        final_choice = Mock()
+        final_choice.message.content = "done"
+        final_choice.message.tool_calls = None
+        final_response = Mock()
+        final_response.choices = [final_choice]
+        final_response.usage = final_usage
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [tool_response, final_response]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        # Tool round (100p, 20c) + final (150p, 40c) via _complete_from_text
+        assert result.usage.prompt_tokens == 100 + 150
+        assert result.usage.completion_tokens == 20 + 40
+        assert result.usage.cache_read_tokens == 10 + 20
+        assert result.usage.cache_write_tokens == 5 + 8
+
+    # --- Tool message dict key assertions (gaps 2, 3, 6) ---
+
+    def test_tool_message_structure_exact_keys(self):
+        """Tool call assistant messages have exact required dict keys."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="search", description="s", parameters={},
+            execute=lambda: "found it",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        call = Mock()
+        call.id = "tc_42"
+        call.function.name = "search"
+        call.function.arguments = "{}"
+
+        client = Mock(spec=LLMClient)
+        client.stream_with_tool_detection.side_effect = [
+            StreamToolResult(tool_calls=[call], usage=TokenUsage()),
+            _make_streaming_response(["ok"]),
+        ]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        # Assistant tool-call message
+        asst_msg = result.tool_messages[0]
+        assert set(asst_msg.keys()) == {"role", "content", "tool_calls"}
+        assert asst_msg["role"] == "assistant"
+        assert asst_msg["content"] is None
+
+        tc = asst_msg["tool_calls"][0]
+        assert set(tc.keys()) == {"id", "type", "function"}
+        assert tc["id"] == "tc_42"
+        assert tc["type"] == "function"
+        assert tc["function"]["name"] == "search"
+        assert tc["function"]["arguments"] == "{}"
+
+        # Tool result message
+        tool_msg = result.tool_messages[1]
+        assert tool_msg["role"] == "tool"
+        assert tool_msg["tool_call_id"] == "tc_42"
+        assert tool_msg["content"] == "found it"
+
+    def test_nonstreaming_tool_message_structure_exact_keys(self):
+        """Non-streaming tool call messages have exact required dict keys."""
+        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        tool = ToolDefinition(
+            name="lookup", description="l",
+            parameters={"type": "object", "properties": {}},
+            execute=lambda **kw: "data here",
+        )
+        registry = ToolRegistry()
+        registry.register(tool)
+
+        tool_call = Mock()
+        tool_call.id = "tc_99"
+        tool_call.function.name = "lookup"
+        tool_call.function.arguments = '{"key": "val"}'
+
+        tool_choice = Mock()
+        tool_choice.message.content = ""
+        tool_choice.message.tool_calls = [tool_call]
+        tool_response = Mock()
+        tool_response.choices = [tool_choice]
+        tool_response.usage = Mock(
+            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            cache_read_input_tokens=0, cache_creation_input_tokens=0,
+            prompt_tokens_details=None, spec=[
+                "prompt_tokens", "completion_tokens", "total_tokens",
+                "cache_read_input_tokens", "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ],
+        )
+
+        final_choice = Mock()
+        final_choice.message.content = "done"
+        final_choice.message.tool_calls = None
+        final_response = Mock()
+        final_response.choices = [final_choice]
+        final_response.usage = Mock(
+            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            cache_read_input_tokens=0, cache_creation_input_tokens=0,
+            prompt_tokens_details=None, spec=[
+                "prompt_tokens", "completion_tokens", "total_tokens",
+                "cache_read_input_tokens", "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ],
+        )
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [tool_response, final_response]
+
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+        handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
+        result = handler.stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=registry,
+        )
+
+        # Assistant tool-call message
+        asst_msg = result.tool_messages[0]
+        assert set(asst_msg.keys()) == {"role", "content", "tool_calls"}
+        assert asst_msg["role"] == "assistant"
+        assert asst_msg["content"] is None
+
+        tc = asst_msg["tool_calls"][0]
+        assert set(tc.keys()) == {"id", "type", "function"}
+        assert tc["id"] == "tc_99"
+        assert tc["type"] == "function"
+        assert set(tc["function"].keys()) == {"name", "arguments"}
+        assert tc["function"]["name"] == "lookup"
+        assert tc["function"]["arguments"] == '{"key": "val"}'
+
+        # Tool result message
+        tool_msg = result.tool_messages[1]
+        assert tool_msg["role"] == "tool"
+        assert tool_msg["tool_call_id"] == "tc_99"
+        assert tool_msg["content"] == "data here"
+
+    # --- TextChunk instance_id in streaming path (gap 5) ---
+
+    def test_streaming_text_chunk_instance_id(self):
+        """Streaming TextChunk events carry instance_id."""
+        from packages.core.events import TextChunk
+
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["hello"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        events = []
+        handler = StreamHandler(
+            client, tracker, pricing, "test-model",
+            on_event=events.append, instance_id="s-inst",
+        )
+        handler.stream([{"role": "user", "content": "hi"}])
+
+        text_events = [e for e in events if isinstance(e, TextChunk)]
+        assert len(text_events) == 1
+        assert text_events[0].text == "hello"
+        assert text_events[0].instance_id == "s-inst"
+
+    # --- StreamResult fields exact verification ---
+
+    def test_stream_result_delegate_fields_default_none(self):
+        """StreamResult delegate fields default to None when no delegation."""
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["ok"])
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
+        tracker = MetricsTracker()
+
+        handler = StreamHandler(client, tracker, pricing, "test-model")
+        result = handler.stream([{"role": "user", "content": "hi"}])
+
+        assert result.delegate_to is None
+        assert result.delegate_task is None
+        assert result.delegate_context is None
