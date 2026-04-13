@@ -673,6 +673,247 @@ class TestConversationLogger:
 
 
 @pytest.mark.unit
+class TestAddMessageMutationTargets:
+    """Tests targeting surviving mutations in add_message and add_tool_messages."""
+
+    def test_agent_name_tags_assistant_messages(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message(
+            "assistant", "Done.",
+            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            agent_name="writer",
+        )
+        msg = logger.current_conversation[0]
+        assert msg["agent"] == "writer"
+
+    def test_agent_name_not_on_user_messages(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "Hello", agent_name="writer")
+        msg = logger.current_conversation[0]
+        assert "agent" not in msg
+
+    def test_add_message_with_latency(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message(
+            "assistant", "response",
+            prompt_tokens=100, completion_tokens=50, total_tokens=150,
+            ttft_ms=250.5, total_latency_ms=1200.0,
+        )
+        msg = logger.current_conversation[0]
+        assert msg["latency"] == {"ttft_ms": 250.5, "total_ms": 1200.0}
+
+    def test_add_message_latency_none_when_both_zero(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message(
+            "assistant", "response",
+            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            ttft_ms=0.0, total_latency_ms=0.0,
+        )
+        msg = logger.current_conversation[0]
+        assert msg["latency"] is None
+
+    def test_add_message_latency_with_only_ttft(self, temp_conversations_dir: Path):
+        """Latency set when only ttft_ms > 0 (total_latency_ms = 0)."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message(
+            "assistant", "response",
+            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            ttft_ms=100.0, total_latency_ms=0.0,
+        )
+        msg = logger.current_conversation[0]
+        assert msg["latency"] is not None
+        assert msg["latency"]["ttft_ms"] == 100.0
+
+    def test_add_message_cache_and_thinking_tokens(self, temp_conversations_dir: Path):
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message(
+            "assistant", "response",
+            prompt_tokens=100, completion_tokens=50, total_tokens=150,
+            cache_read_tokens=80, cache_write_tokens=20, thinking_tokens=30,
+        )
+        usage = logger.current_conversation[0]["usage"]
+        assert usage["cache_read_tokens"] == 80
+        assert usage["cache_write_tokens"] == 20
+        assert usage["thinking_tokens"] == 30
+
+    def test_tool_messages_agent_tagging(self, temp_conversations_dir: Path):
+        """add_tool_messages tags assistant messages with agent_name."""
+        logger = ConversationLogger(temp_conversations_dir)
+        tool_msgs = [
+            {"role": "assistant", "content": None, "tool_calls": [{"id": "tc1"}]},
+            {"role": "tool", "tool_call_id": "tc1", "content": "result"},
+        ]
+        logger.add_tool_messages(tool_msgs, agent_name="researcher")
+
+        asst = logger.current_conversation[0]
+        tool = logger.current_conversation[1]
+        assert asst["agent"] == "researcher"
+        assert "agent" not in tool  # tool role NOT tagged
+
+    def test_tool_messages_no_agent_when_none(self, temp_conversations_dir: Path):
+        """add_tool_messages without agent_name doesn't add agent field."""
+        logger = ConversationLogger(temp_conversations_dir)
+        tool_msgs = [
+            {"role": "assistant", "content": None, "tool_calls": [{"id": "tc1"}]},
+        ]
+        logger.add_tool_messages(tool_msgs)
+        assert "agent" not in logger.current_conversation[0]
+
+    def test_tool_messages_field_defaults(self, temp_conversations_dir: Path):
+        """Stored tool messages have all required fields with correct defaults."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_tool_messages([
+            {"role": "tool", "tool_call_id": "tc1", "content": "data"},
+        ])
+        stored = logger.current_conversation[0]
+        assert stored["parent_id"] is None
+        assert stored["usage"] is None
+        assert stored["latency"] is None
+        assert stored["stop_reason"] is None
+        assert stored["status"] == "completed"
+        assert stored["error"] is None
+        assert stored["metadata"] == {}
+
+    def test_tool_messages_content_none_normalized(self, temp_conversations_dir: Path):
+        """Tool messages with content=None get normalized to empty content."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_tool_messages([
+            {"role": "assistant", "content": None},
+        ])
+        stored = logger.current_conversation[0]
+        # content should be normalized (not None, not "None")
+        assert stored["content"] == [{"type": "text", "text": ""}]
+
+    def test_tool_messages_preserves_tool_calls(self, temp_conversations_dir: Path):
+        """tool_calls field on assistant messages is preserved in storage."""
+        logger = ConversationLogger(temp_conversations_dir)
+        calls = [{"id": "tc1", "type": "function", "function": {"name": "search"}}]
+        logger.add_tool_messages([
+            {"role": "assistant", "content": None, "tool_calls": calls},
+        ])
+        stored = logger.current_conversation[0]
+        assert stored["tool_calls"] == calls
+
+    def test_tool_messages_preserves_tool_call_id(self, temp_conversations_dir: Path):
+        """tool_call_id field on tool result messages is preserved."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_tool_messages([
+            {"role": "tool", "tool_call_id": "tc_42", "content": "result"},
+        ])
+        stored = logger.current_conversation[0]
+        assert stored["tool_call_id"] == "tc_42"
+
+    def test_tool_messages_sequential_ids(self, temp_conversations_dir: Path):
+        """Tool message IDs continue the sequence from prior messages."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "question")  # msg_001
+        logger.add_tool_messages([
+            {"role": "assistant", "content": None},
+            {"role": "tool", "tool_call_id": "tc1", "content": "r"},
+        ])
+        assert logger.current_conversation[1]["id"] == "msg_002"
+        assert logger.current_conversation[2]["id"] == "msg_003"
+
+
+@pytest.mark.unit
+class TestMigrateConversationMutationTargets:
+    """Tests targeting specific surviving mutations in migrate_conversation."""
+
+    def test_migrate_message_without_usage(self):
+        """Messages without usage field get usage=None."""
+        old = {
+            "messages": [{"role": "user", "content": "Hi"}],
+        }
+        result = migrate_conversation(old)
+        assert result["messages"][0]["usage"] is None
+
+    def test_migrate_message_without_latency(self):
+        """Messages without latency field get latency=None."""
+        old = {
+            "messages": [{"role": "user", "content": "Hi"}],
+        }
+        result = migrate_conversation(old)
+        assert result["messages"][0]["latency"] is None
+
+    def test_migrate_message_usage_default_values(self):
+        """Usage migration uses correct defaults for missing fields."""
+        old = {
+            "messages": [{
+                "role": "assistant", "content": "Hi",
+                "usage": {"prompt_tokens": 1},  # minimal to be truthy; other fields missing
+            }],
+        }
+        result = migrate_conversation(old)
+        usage = result["messages"][0]["usage"]
+        assert usage["prompt_tokens"] == 1  # from input
+        assert usage["completion_tokens"] == 0  # default
+        assert usage["total_tokens"] == 0  # default
+        assert usage["cost_usd"] == 0.0  # default
+        assert usage["cache_read_tokens"] == 0
+        assert usage["cache_write_tokens"] == 0
+        assert usage["thinking_tokens"] == 0
+        assert usage["metadata"] == {}
+
+    def test_migrate_message_latency_default_values(self):
+        """Latency migration uses correct defaults for missing fields."""
+        old = {
+            "messages": [{
+                "role": "assistant", "content": "Hi",
+                "latency": {"ttft_ms": 0.0},  # minimal to be truthy; total_ms missing
+            }],
+        }
+        result = migrate_conversation(old)
+        latency = result["messages"][0]["latency"]
+        assert latency["ttft_ms"] == 0.0
+        assert latency["total_ms"] == 0.0
+
+    def test_migrate_metrics_default_values(self):
+        """Metrics migration uses correct defaults for missing fields."""
+        old = {
+            "metrics": {"request_count": 1},  # minimal to be truthy; other fields missing
+            "messages": [],
+        }
+        result = migrate_conversation(old)
+        metrics = result["metrics"]
+        assert metrics["total_prompt_tokens"] == 0  # default
+        assert metrics["total_completion_tokens"] == 0  # default
+        assert metrics["total_tokens"] == 0  # default
+        assert metrics["total_cost_usd"] == 0.0  # default
+        assert metrics["request_count"] == 1  # from input
+        assert metrics["average_ttft_ms"] == 0.0
+        assert metrics["average_latency_ms"] == 0.0
+        assert metrics["total_cache_read_tokens"] == 0
+        assert metrics["total_cache_write_tokens"] == 0
+        assert metrics["total_thinking_tokens"] == 0
+        assert metrics["metadata"] == {}
+
+    def test_migrate_message_default_role(self):
+        """Messages without a role default to 'user'."""
+        old = {"messages": [{"content": "Hi"}]}
+        result = migrate_conversation(old)
+        assert result["messages"][0]["role"] == "user"
+
+    def test_migrate_message_id_format(self):
+        """Message IDs start at 1 and use 3-digit zero-padded format."""
+        old = {"messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]}
+        result = migrate_conversation(old)
+        assert result["messages"][0]["id"] == "msg_001"
+        assert result["messages"][1]["id"] == "msg_002"
+
+    def test_migrate_no_metrics_empty_dict(self):
+        """When old data has no metrics, migrated metrics is empty dict."""
+        old = {"messages": []}
+        result = migrate_conversation(old)
+        assert result["metrics"] == {}
+
+    def test_migrate_falsy_metrics_empty_dict(self):
+        """When old data has metrics=None, migrated metrics stays empty."""
+        old = {"metrics": None, "messages": []}
+        result = migrate_conversation(old)
+        assert result["metrics"] == {}
+
+
+@pytest.mark.unit
 class TestConversationLoggerMethods:
     """Tests for set_topic, add_tag, set_title, set_feedback methods."""
 
@@ -996,6 +1237,54 @@ class TestConversationLoggerUtilization:
         data = json.loads(files[0].read_text())
         assert "utilization" in data["context"]
         assert len(data["context"]["utilization"]) == 1
+
+    def test_record_utilization_case_insensitive(self, temp_conversations_dir: Path):
+        """Keywords match case-insensitively against response text."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.record_utilization("JARVIS is my ASSISTANT", ["soul"])
+        assert "soul" in logger.utilization[0]["sections_utilized"]
+
+    def test_record_utilization_fallback_to_section_name(self, temp_conversations_dir: Path):
+        """Unknown section names use the name itself as a fallback keyword."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.record_utilization("custom_section is relevant", ["custom_section"])
+        assert "custom_section" in logger.utilization[0]["sections_utilized"]
+
+    def test_record_utilization_fallback_no_match(self, temp_conversations_dir: Path):
+        """Unknown section name used as keyword doesn't match unrelated text."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.record_utilization("nothing relevant here", ["exotic_section"])
+        assert logger.utilization[0]["sections_utilized"] == []
+
+    def test_record_utilization_each_section_keyword(self, temp_conversations_dir: Path):
+        """Each predefined section matches on its specific keywords."""
+        logger = ConversationLogger(temp_conversations_dir)
+        # "personal" section has keyword "marco"
+        logger.record_utilization("marco mentioned something", ["personal"])
+        assert "personal" in logger.utilization[0]["sections_utilized"]
+
+        # "professional" section has keyword "career"
+        logger.record_utilization("thinking about my career", ["professional"])
+        assert "professional" in logger.utilization[1]["sections_utilized"]
+
+        # "preferences" section has keyword "tone"
+        logger.record_utilization("adjusting the tone", ["preferences"])
+        assert "preferences" in logger.utilization[2]["sections_utilized"]
+
+        # "focus" section has keyword "priority"
+        logger.record_utilization("top priority", ["focus"])
+        assert "focus" in logger.utilization[3]["sections_utilized"]
+
+        # "projects" section has keyword "repo"
+        logger.record_utilization("checking the repo", ["projects"])
+        assert "projects" in logger.utilization[4]["sections_utilized"]
+
+    def test_record_utilization_turn_counter(self, temp_conversations_dir: Path):
+        """Turn counter reflects current request_count from metrics."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.metrics.request_count = 5
+        logger.record_utilization("tasks are done", ["tasks"])
+        assert logger.utilization[0]["turn"] == 5
 
     def test_context_metadata_saved_to_json(self, temp_conversations_dir: Path):
         from packages.core.context_builder import ContextMetadata, ContextSection
