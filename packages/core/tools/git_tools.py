@@ -54,7 +54,7 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
 
     tools.append(ToolDefinition(
         name="git_status",
-        description="Show git working tree status (short format).",
+        description="Show git working tree status (short format).",  # pragma: no mutate
         parameters={"type": "object", "properties": {}, "required": []},
         execute=_git_status,
     ))
@@ -68,13 +68,13 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
 
     tools.append(ToolDefinition(
         name="git_diff",
-        description="Show git diff. Set staged=true for staged changes.",
+        description="Show git diff. Set staged=true for staged changes.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "staged": {
                     "type": "boolean",
-                    "description": "Show staged changes only (default: false).",
+                    "description": "Show staged changes only (default: false).",  # pragma: no mutate
                     "default": False,
                 },
             },
@@ -93,15 +93,15 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
     tools.append(ToolDefinition(
         name="git_branch",
         description=(
-            "Create and switch to a new git branch. "
-            "Name must start with 'feat/jarvis-' or 'fix/jarvis-'."
+            "Create and switch to a new git branch. "  # pragma: no mutate
+            "Name must start with 'feat/jarvis-' or 'fix/jarvis-'."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string",
-                    "description": "Branch name (e.g. 'feat/jarvis-add-greeting-agent').",
+                    "description": "Branch name (e.g. 'feat/jarvis-add-greeting-agent').",  # pragma: no mutate
                 },
             },
             "required": ["name"],
@@ -122,14 +122,14 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
 
     tools.append(ToolDefinition(
         name="git_add",
-        description="Stage specific files for commit. Never stages all files — list paths explicitly.",
+        description="Stage specific files for commit. Never stages all files — list paths explicitly.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "paths": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of file paths to stage.",
+                    "description": "List of file paths to stage.",  # pragma: no mutate
                 },
             },
             "required": ["paths"],
@@ -148,15 +148,15 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
     tools.append(ToolDefinition(
         name="git_commit",
         description=(
-            "Create a git commit with the given message. "
-            "Automatically appends [JARVIS-auto] tag."
+            "Create a git commit with the given message. "  # pragma: no mutate
+            "Automatically appends [JARVIS-auto] tag."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "message": {
                     "type": "string",
-                    "description": "Commit message (without the [JARVIS-auto] tag).",
+                    "description": "Commit message (without the [JARVIS-auto] tag).",  # pragma: no mutate
                 },
             },
             "required": ["message"],
@@ -172,13 +172,13 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
 
     tools.append(ToolDefinition(
         name="git_log",
-        description="Show recent git commit history (oneline format).",
+        description="Show recent git commit history (oneline format).",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "n": {
                     "type": "integer",
-                    "description": "Number of commits to show (default: 10, max: 50).",
+                    "description": "Number of commits to show (default: 10, max: 50).",  # pragma: no mutate
                     "default": 10,
                 },
             },
