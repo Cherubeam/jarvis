@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mutation testing — small tools**: Strengthened `test_delegate_tool.py`, `test_suggest_improvements.py`, and `test_content_evaluator_tool.py` with schema validation, temperature override test, model passthrough, and system prompt verification. 7 new tests.
 - **Mutation testing — stream handler**: Added 8 targeted tests covering UsageReport event fields (cache tokens, model, instance_id), TokenUsage accumulation arithmetic, tool message dict key assertions, and TextChunk instance_id. Targets the 2nd largest survivor pool (324 mutants).
 - **Mutation testing — history**: Added 25 tests covering `_approx_tokens` (exact calculations, division operator, multibyte), `_format_messages_for_summary` (all format branches, truncation, newline replacement), trim boundary (> vs >=), default constants, summarizer system prompt, and prior-summary re-summarization path.
+- **Mutation testing — memory**: Added 27 tests covering `add_message` agent tagging (assistant-only), latency dict boundaries, cache/thinking tokens; `add_tool_messages` agent tagging, field defaults, content normalization; `migrate_conversation` default values for usage/latency/metrics; `record_utilization` keyword variants and fallback logic.
 
 ---
 
