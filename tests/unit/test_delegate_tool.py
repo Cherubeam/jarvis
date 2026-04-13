@@ -35,6 +35,16 @@ class TestDelegateTool:
         assert tool.parameters["properties"]["agent_name"]["enum"] == ["writer", "researcher"]
         assert tool.parameters["required"] == ["agent_name", "task"]
 
+    def test_schema_property_keys_and_types(self):
+        state = DelegationState()
+        tool = make_delegate_tool(AVAILABLE_AGENTS, state)
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"agent_name", "task", "context"}
+        assert params["properties"]["agent_name"]["type"] == "string"
+        assert params["properties"]["task"]["type"] == "string"
+        assert params["properties"]["context"]["type"] == "string"
+
     def test_execute_sets_state(self):
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)

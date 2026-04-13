@@ -59,9 +59,12 @@ class TestContentEvaluatorTool:
 
         assert isinstance(tool, ToolDefinition)
         assert tool.name == "evaluate_content"
-        assert "content" in tool.parameters["properties"]
-        assert "audience" in tool.parameters["properties"]
-        assert tool.parameters["required"] == ["content"]
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"content", "audience"}
+        assert params["properties"]["content"]["type"] == "string"
+        assert params["properties"]["audience"]["type"] == "string"
+        assert params["required"] == ["content"]
 
     def test_execute_calls_llm_complete(self, skill_dir, mock_client):
         tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
@@ -104,3 +107,32 @@ class TestContentEvaluatorTool:
 
         result = tool.execute(content="test")
         assert result == "No evaluation generated."
+
+    def test_skill_py_temperature_override(self, skill_dir_with_py, mock_client):
+        """skill.py SKILL_CONFIG temperature overrides the default 0.8."""
+        mock_module = MagicMock()
+        mock_module.SKILL_CONFIG = {"temperature": 0.9}
+        with patch("packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module):
+            tool = make_content_evaluator_tool(skill_dir_with_py, mock_client, "test-model")
+        tool.execute(content="test")
+
+        call_kwargs = mock_client.complete.call_args
+        assert call_kwargs[1]["temperature"] == 0.9
+
+    def test_model_passed_to_llm_client(self, skill_dir, mock_client):
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "gpt-4")
+        tool.execute(content="test")
+
+        call_kwargs = mock_client.complete.call_args
+        assert call_kwargs[1]["model"] == "gpt-4"
+
+    def test_system_prompt_from_skill_md(self, skill_dir, mock_client):
+        """System prompt is the body of SKILL.md (after frontmatter), stripped."""
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
+        tool.execute(content="test")
+
+        messages = mock_client.complete.call_args[0][0]
+        system_content = messages[0]["content"]
+        # Body after frontmatter, stripped
+        assert system_content.startswith("# Content Evaluator")
+        assert "Evaluate content through five lenses." in system_content

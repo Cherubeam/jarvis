@@ -62,9 +62,14 @@ class TestToolDefinition:
         tool, _, _ = tool_and_handler
         assert tool.parameters["required"] == ["path", "improved_content"]
 
-    def test_has_reasoning_param(self, tool_and_handler):
+    def test_schema_property_keys_and_types(self, tool_and_handler):
         tool, _, _ = tool_and_handler
-        assert "reasoning" in tool.parameters["properties"]
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path", "improved_content", "reasoning"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["properties"]["improved_content"]["type"] == "string"
+        assert params["properties"]["reasoning"]["type"] == "string"
 
 
 # ==================== Suggest Improvements ====================
