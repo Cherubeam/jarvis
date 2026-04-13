@@ -46,21 +46,22 @@ class TestReadwiseClientSearchDocuments:
         assert result == '[{"title": "Test Article"}]'
         cmd = mock_run.call_args[0][0]
         assert cmd[0] == "readwise"
-        assert "reader-search-documents" in cmd
-        assert "ai agents" in cmd
         assert "--json" in cmd
-        assert "--response-fields" in cmd
+        assert "reader-search-documents" in cmd
+        assert "--query" in cmd
+        idx = cmd.index("--query")
+        assert cmd[idx + 1] == "ai agents"
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_search_with_location_filter(self, mock_run):
+    def test_search_with_location_filter_maps_inbox_to_new(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="[]", stderr="")
         client = ReadwiseClient()
         client.search_documents("test", location="inbox")
 
         cmd = mock_run.call_args[0][0]
-        assert "--location" in cmd
-        idx = cmd.index("--location")
-        assert cmd[idx + 1] == "inbox"
+        assert "--location-in" in cmd
+        idx = cmd.index("--location-in")
+        assert cmd[idx + 1] == "new"
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_search_with_category_filter(self, mock_run):
@@ -69,8 +70,8 @@ class TestReadwiseClientSearchDocuments:
         client.search_documents("test", category="article")
 
         cmd = mock_run.call_args[0][0]
-        assert "--category" in cmd
-        idx = cmd.index("--category")
+        assert "--category-in" in cmd
+        idx = cmd.index("--category-in")
         assert cmd[idx + 1] == "article"
 
     @patch("packages.integrations.readwise.client.subprocess.run")
@@ -80,8 +81,8 @@ class TestReadwiseClientSearchDocuments:
         client.search_documents("test")
 
         cmd = mock_run.call_args[0][0]
-        assert "--location" not in cmd
-        assert "--category" not in cmd
+        assert "--location-in" not in cmd
+        assert "--category-in" not in cmd
 
 
 @pytest.mark.unit
@@ -135,7 +136,7 @@ class TestReadwiseClientOtherMethods:
     """Tests for search_highlights, get_document_details, and write methods."""
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_search_highlights(self, mock_run):
+    def test_search_highlights_uses_vector_search_term(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0, stdout='[{"text": "highlight"}]', stderr=""
         )
@@ -145,9 +146,12 @@ class TestReadwiseClientOtherMethods:
         assert result == '[{"text": "highlight"}]'
         cmd = mock_run.call_args[0][0]
         assert "readwise-search-highlights" in cmd
+        assert "--vector-search-term" in cmd
+        idx = cmd.index("--vector-search-term")
+        assert cmd[idx + 1] == "systems thinking"
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_get_document_details(self, mock_run):
+    def test_get_document_details_uses_named_flag(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0, stdout='{"title": "Doc"}', stderr=""
         )
@@ -157,10 +161,12 @@ class TestReadwiseClientOtherMethods:
         assert result == '{"title": "Doc"}'
         cmd = mock_run.call_args[0][0]
         assert "reader-get-document-details" in cmd
-        assert "doc123" in cmd
+        assert "--document-id" in cmd
+        idx = cmd.index("--document-id")
+        assert cmd[idx + 1] == "doc123"
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_create_document(self, mock_run):
+    def test_create_document_uses_url_flag(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0, stdout='{"id": "new123"}', stderr=""
         )
@@ -170,26 +176,41 @@ class TestReadwiseClientOtherMethods:
         assert "new123" in result
         cmd = mock_run.call_args[0][0]
         assert "reader-create-document" in cmd
+        assert "--url" in cmd
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_tag_document(self, mock_run):
+    def test_tag_document_uses_tag_names_flag(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout='{"ok": true}', stderr="")
         client = ReadwiseClient()
-        result = client.tag_document("doc123", "ai,research")
+        client.tag_document("doc123", "ai,research")
 
         cmd = mock_run.call_args[0][0]
         assert "reader-add-tags-to-document" in cmd
-        assert "--tags" in cmd
+        assert "--tag-names" in cmd
+        assert "--document-id" in cmd
 
     @patch("packages.integrations.readwise.client.subprocess.run")
-    def test_move_document(self, mock_run):
+    def test_move_document_uses_document_ids_flag(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout='{"ok": true}', stderr="")
         client = ReadwiseClient()
-        result = client.move_document("doc123", "archive")
+        client.move_document("doc123", "archive")
 
         cmd = mock_run.call_args[0][0]
         assert "reader-move-documents" in cmd
+        assert "--document-ids" in cmd
         assert "--location" in cmd
+        idx = cmd.index("--location")
+        assert cmd[idx + 1] == "archive"
+
+    @patch("packages.integrations.readwise.client.subprocess.run")
+    def test_move_document_maps_inbox_to_new(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"ok": true}', stderr="")
+        client = ReadwiseClient()
+        client.move_document("doc123", "inbox")
+
+        cmd = mock_run.call_args[0][0]
+        idx = cmd.index("--location")
+        assert cmd[idx + 1] == "new"
 
 
 @pytest.mark.unit

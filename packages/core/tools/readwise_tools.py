@@ -46,9 +46,10 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
             name="search_reading_list",
             description=(  # pragma: no mutate
                 "Search the user's Readwise Reader library by keyword or topic. "
-                "Returns titles, summaries, URLs, tags, and reading progress. "
-                "Use 'location' to filter: 'inbox', 'archive', 'shortlist'. "
-                "Use 'category' to filter: 'article', 'book', 'podcast', 'tweet', 'pdf'."
+                "Returns document titles, summaries, URLs, tags, and metadata. "
+                "Use 'location' to filter: 'inbox', 'later', 'shortlist', 'archive'. "
+                "Use 'category' to filter: 'article', 'email', 'rss', 'pdf', 'epub', "
+                "'tweet', 'video', 'podcast', 'audiobook'."
             ),
             parameters={
                 "type": "object",
@@ -59,11 +60,11 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
                     },
                     "location": {
                         "type": "string",
-                        "description": "Filter by location: 'inbox', 'archive', 'shortlist', or '' for all.",  # pragma: no mutate
+                        "description": "Filter by location: 'inbox', 'later', 'shortlist', 'archive', or '' for all.",  # pragma: no mutate
                     },
                     "category": {
                         "type": "string",
-                        "description": "Filter by category: 'article', 'book', 'podcast', 'tweet', 'pdf', or '' for all.",  # pragma: no mutate
+                        "description": "Filter by category: 'article', 'email', 'rss', 'pdf', 'epub', 'tweet', 'video', 'podcast', 'audiobook', or '' for all.",  # pragma: no mutate
                     },
                 },
                 "required": ["query"],
@@ -190,7 +191,7 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
             name="move_readwise_document",
             description=(  # pragma: no mutate
                 "Move a Readwise Reader document to a different location. "
-                "Locations: 'inbox', 'archive', 'shortlist'."
+                "Locations: 'inbox' (new), 'later', 'shortlist', 'archive'."
             ),
             parameters={
                 "type": "object",
@@ -201,7 +202,7 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
                     },
                     "location": {
                         "type": "string",
-                        "description": "Target location: 'inbox', 'archive', or 'shortlist'.",  # pragma: no mutate
+                        "description": "Target location: 'inbox', 'later', 'shortlist', or 'archive'.",  # pragma: no mutate
                     },
                 },
                 "required": ["document_id", "location"],

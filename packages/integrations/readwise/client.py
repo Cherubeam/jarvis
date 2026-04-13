@@ -12,6 +12,16 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
+# Map user-friendly location names to CLI values
+_LOCATION_MAP = {
+    "inbox": "new",
+    "new": "new",
+    "later": "later",
+    "shortlist": "shortlist",
+    "archive": "archive",
+    "feed": "feed",
+}
+
 
 def is_cli_available() -> bool:
     """Check whether the readwise CLI binary is on PATH."""
@@ -30,47 +40,50 @@ class ReadwiseClient:
         *,
         location: str = "",
         category: str = "",
-        response_fields: str = "title,summary,url,tags,category,reading_progress",
     ) -> str:
         """Search Reader documents. Returns JSON string."""
-        args = ["reader-search-documents", query, "--json"]
-        args.extend(["--response-fields", response_fields])
+        args = ["reader-search-documents", "--query", query]
         if location:
-            args.extend(["--location", location])
+            cli_loc = _LOCATION_MAP.get(location.lower(), location)
+            args.extend(["--location-in", cli_loc])
         if category:
-            args.extend(["--category", category])
+            args.extend(["--category-in", category])
         return self._run(args)
 
     def search_highlights(self, query: str) -> str:
         """Search across all Readwise highlights. Returns JSON string."""
-        return self._run(["readwise-search-highlights", query, "--json"])
+        return self._run(["readwise-search-highlights", "--vector-search-term", query])
 
     def get_document_details(self, document_id: str) -> str:
         """Get full details for a specific document. Returns JSON string."""
-        return self._run(["reader-get-document-details", document_id, "--json"])
+        return self._run(["reader-get-document-details", "--document-id", document_id])
 
     def create_document(self, url: str) -> str:
         """Save a URL to Reader. Returns JSON string."""
-        return self._run(["reader-create-document", url, "--json"])
+        return self._run(["reader-create-document", "--url", url])
 
     def tag_document(self, document_id: str, tags: str) -> str:
         """Add tags to a document. Tags are comma-separated."""
         return self._run(
-            ["reader-add-tags-to-document", document_id, "--tags", tags, "--json"]
+            ["reader-add-tags-to-document", "--document-id", document_id,
+             "--tag-names", tags]
         )
 
     def move_document(self, document_id: str, location: str) -> str:
-        """Move a document to a location (inbox, archive, shortlist)."""
+        """Move a document to a location (new, later, shortlist, archive)."""
+        cli_loc = _LOCATION_MAP.get(location.lower(), location)
         return self._run(
-            ["reader-move-documents", document_id, "--location", location, "--json"]
+            ["reader-move-documents", "--document-ids", document_id,
+             "--location", cli_loc]
         )
 
     def _run(self, args: list[str]) -> str:
         """Execute a readwise CLI command and return stdout.
 
         Returns the raw stdout on success, or an 'Error: ...' string on failure.
+        The global --json flag is appended automatically.
         """
-        cmd = ["readwise", *args]
+        cmd = ["readwise", "--json", *args]
         try:
             result = subprocess.run(  # noqa: S603, S607
                 cmd,
