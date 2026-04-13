@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mutation testing — claude importer**: Added 15 tests covering metadata exact-key assertions for all block types, tool_result string content handling, unknown type fallbacks, new message field completeness, and update_conversation tag replacement/summary sync/original_title removal.
 - **Mutation testing — claude context importer**: Added 24 tests covering `_is_starter_project` conditions, `_sanitize_filename` substitutions, `slugify_project_name` edge cases, and `import_context` memory format handling, doc filtering, and summary field verification.
 - **Mutation testing — things3 tools**: Added 16 cross-platform tests (mock things module to run on Linux CI) covering schema validation for all 3 tools, optional parameter forwarding/skipping, cache TTL config, UUID handling, and output format.
+- **Mutation testing — project write tools**: Added 14 tests covering schema validation for all 3 tools, exact error messages for all error paths, exact success/cancel format, and default extension verification.
+- **Mutation testing — git tools**: Added 17 tests covering schema validation for all 6 tools, exact error/success messages, log cap at 50, and whitespace-only commit rejection.
 
 ---
 
