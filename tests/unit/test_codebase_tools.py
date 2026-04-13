@@ -142,3 +142,120 @@ class TestToolFormat:
         assert len(tools) == 4
         names = {t.name for t in tools}
         assert names == {"read_source_file", "search_code", "list_directory", "read_architecture_map"}
+
+
+class TestSchemaValidation:
+    """Verify parameter schemas to kill dict key/value mutations."""
+
+    def test_read_source_file_schema(self, tools):
+        params = tools["read_source_file"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["required"] == ["path"]
+
+    def test_search_code_schema(self, tools):
+        params = tools["search_code"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"pattern", "glob", "max_results"}
+        assert params["properties"]["pattern"]["type"] == "string"
+        assert params["properties"]["glob"]["type"] == "string"
+        assert params["properties"]["glob"]["default"] == "**/*.py"
+        assert params["properties"]["max_results"]["type"] == "integer"
+        assert params["properties"]["max_results"]["default"] == 50
+        assert params["required"] == ["pattern"]
+
+    def test_list_directory_schema(self, tools):
+        params = tools["list_directory"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path", "pattern"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["properties"]["path"]["default"] == ""
+        assert params["properties"]["pattern"]["type"] == "string"
+        assert params["properties"]["pattern"]["default"] == "*"
+        assert params["required"] == []
+
+    def test_read_architecture_map_schema(self, tools):
+        params = tools["read_architecture_map"].parameters
+        assert params["type"] == "object"
+        assert params["properties"] == {}
+        assert params["required"] == []
+
+
+class TestAdditionalEdgeCases:
+    """Tests targeting specific surviving mutation patterns."""
+
+    def test_path_traversal_exact_error(self, tools):
+        result = tools["read_source_file"].execute(path="../../../etc/passwd")
+        assert result == "Error: Path '../../../etc/passwd' is outside the project directory."
+
+    def test_list_dir_path_traversal_exact_error(self, tools):
+        result = tools["list_directory"].execute(path="../../../")
+        assert result == "Error: Path '../../../' is outside the project directory."
+
+    def test_large_file_exact_error_format(self, tools, project_dir):
+        large_file = project_dir / "big.py"
+        large_file.write_text("x" * 60_000)
+        result = tools["read_source_file"].execute(path="big.py")
+        assert result == "Error: File too large (60000 bytes, max 50000)."
+
+    def test_binary_file_error(self, tools, project_dir):
+        binary_file = project_dir / "data.bin"
+        binary_file.write_bytes(b"\x00\x01\x80\xff" * 100)
+        result = tools["read_source_file"].execute(path="data.bin")
+        assert result == "Error: Cannot read binary file: data.bin"
+
+    def test_list_directory_dir_suffix(self, tools, project_dir):
+        """Directories get a / suffix in output."""
+        result = tools["list_directory"].execute()
+        # packages/ is a directory, should have trailing /
+        for line in result.split("\n"):
+            if "packages" in line:
+                assert line.endswith("/")
+                break
+
+    def test_list_directory_empty(self, tools, project_dir):
+        empty_dir = project_dir / "empty"
+        empty_dir.mkdir()
+        result = tools["list_directory"].execute(path="empty")
+        assert result == "Empty directory: empty"
+
+    def test_list_directory_pattern_filter(self, tools, project_dir):
+        result = tools["list_directory"].execute(path="packages/core", pattern="*.py")
+        assert "main.py" in result
+        # __init__.py should match too
+        assert "__init__.py" in result
+
+    def test_list_directory_hides_dotfiles(self, tools, project_dir):
+        (project_dir / ".hidden").write_text("secret")
+        result = tools["list_directory"].execute()
+        assert ".hidden" not in result
+
+    def test_list_directory_shows_gitignore(self, tools, project_dir):
+        (project_dir / ".gitignore").write_text("*.pyc")
+        result = tools["list_directory"].execute()
+        assert ".gitignore" in result
+
+    def test_search_skips_venv(self, tools, project_dir):
+        venv = project_dir / ".venv" / "lib"
+        venv.mkdir(parents=True)
+        (venv / "site.py").write_text("venv_marker_string")
+        result = tools["search_code"].execute(pattern="venv_marker_string", glob="**/*.py")
+        assert "No matches found" in result
+
+    def test_search_output_newline_joined(self, tools, project_dir):
+        """Multiple search results are newline-separated."""
+        (project_dir / "packages" / "core" / "other.py").write_text("line_one\nline_two\n")
+        result = tools["search_code"].execute(pattern="line_")
+        lines = [l for l in result.split("\n") if ":" in l]
+        assert len(lines) == 2
+
+    def test_search_no_match_includes_glob_in_message(self, tools):
+        result = tools["search_code"].execute(pattern="zzz_nope", glob="*.txt")
+        assert result == "No matches found for pattern 'zzz_nope' in '*.txt'."
+
+    def test_search_truncation_message_format(self, tools, project_dir):
+        lines = "\n".join(f"repeated_token_{i}" for i in range(100))
+        (project_dir / "repeat.py").write_text(lines)
+        result = tools["search_code"].execute(pattern="repeated_token", max_results=3)
+        assert result.endswith("[Truncated at 3 results]")
