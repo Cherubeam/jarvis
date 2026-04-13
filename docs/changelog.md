@@ -9,21 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+*(Nothing yet — see v0.14.1 below for the latest release.)*
+
+---
+
+## [0.14.1] - 2026-04-13
+
 ### Changed
-- **Mutation testing — vault tools**: Strengthened `test_vault_tools.py` and `test_vault_write_tools.py` with schema validation (property names, types, required fields, defaults, enums), tighter error assertions, path traversal coverage in no-target mode, default argument exercise, and output format verification. 13 new tests targeting surviving mutants in `vault_read_tools` and `vault_write_tools`.
-- **Mutation testing — search/fetch/recall tools**: Strengthened `test_cortex_search.py`, `test_conversation_recall.py`, and `test_web_fetch.py` with schema validation, n_results clamping tests, default field coverage, truncation marker assertions, and output separator checks. 7 new tests.
-- **Mutation testing — codebase tools**: Strengthened `test_codebase_tools.py` with schema validation for all 4 tools, exact error message assertions, directory listing edge cases (empty dir, dotfile hiding, pattern filter), search format verification, and binary file error path. 17 new tests.
-- **Mutation testing — blog tools**: Tightened `test_blog_tools.py` with exact-match error messages and explicit property-set schema assertions. 1 new test, 4 tightened.
-- **Mutation testing — small tools**: Strengthened `test_delegate_tool.py`, `test_suggest_improvements.py`, and `test_content_evaluator_tool.py` with schema validation, temperature override test, model passthrough, and system prompt verification. 7 new tests.
-- **Mutation testing — stream handler**: Added 8 targeted tests covering UsageReport event fields (cache tokens, model, instance_id), TokenUsage accumulation arithmetic, tool message dict key assertions, and TextChunk instance_id. Targets the 2nd largest survivor pool (324 mutants).
-- **Mutation testing — history**: Added 25 tests covering `_approx_tokens` (exact calculations, division operator, multibyte), `_format_messages_for_summary` (all format branches, truncation, newline replacement), trim boundary (> vs >=), default constants, summarizer system prompt, and prior-summary re-summarization path.
-- **Mutation testing — memory**: Added 27 tests covering `add_message` agent tagging (assistant-only), latency dict boundaries, cache/thinking tokens; `add_tool_messages` agent tagging, field defaults, content normalization; `migrate_conversation` default values for usage/latency/metrics; `record_utilization` keyword variants and fallback logic.
-- **Mutation testing — chatgpt importer**: Added 27 tests covering all content_type branches (user_editable_context, app_pairing, browsing_display fallback), multimodal edge cases (non-image dict, empty content_type, non-string parts), convert_conversation null fields, message defaults, unmapped role fallback, and metadata structure.
-- **Mutation testing — claude importer**: Added 15 tests covering metadata exact-key assertions for all block types, tool_result string content handling, unknown type fallbacks, new message field completeness, and update_conversation tag replacement/summary sync/original_title removal.
-- **Mutation testing — claude context importer**: Added 24 tests covering `_is_starter_project` conditions, `_sanitize_filename` substitutions, `slugify_project_name` edge cases, and `import_context` memory format handling, doc filtering, and summary field verification.
-- **Mutation testing — things3 tools**: Added 16 cross-platform tests (mock things module to run on Linux CI) covering schema validation for all 3 tools, optional parameter forwarding/skipping, cache TTL config, UUID handling, and output format.
-- **Mutation testing — project write tools**: Added 14 tests covering schema validation for all 3 tools, exact error messages for all error paths, exact success/cancel format, and default extension verification.
-- **Mutation testing — git tools**: Added 17 tests covering schema validation for all 6 tools, exact error/success messages, log cap at 50, and whitespace-only commit rejection.
+- **Mutation testing: kill rate 62.3% → 74.6%** — 218 new tests across 14 branches, +1,172 mutants killed. Four phases targeting tool factories, core modules (history, memory), importers (chatgpt, claude, claude_context), and remaining tool factories (things3, project_write, git). Test count: 1,519 → 1,719.
+- **Pragma sweep**: 64 `# pragma: no mutate` annotations added to LLM-facing description strings and pure-literal logger calls across 8 files. Suppresses equivalent mutants that don't affect code behavior.
+- **Mutation testing report updated** with per-phase progress table, per-module kill breakdown, and current remaining survivors.
+
+### Test improvements by module
+- **vault_read/write_tools** (13 tests): schema validation, path traversal, default args, output format
+- **cortex_search, conversation_recall, web_fetch** (7 tests): schema, clamping, truncation markers
+- **codebase_tools** (17 tests): schema for all 4 tools, exact errors, binary file, dotfile hiding
+- **blog_tools** (5 tests): exact error messages, property-set schemas
+- **delegate, suggest_improvements, content_evaluator** (7 tests): schema, temperature override, model passthrough
+- **stream_handler** (8 tests): UsageReport fields, TokenUsage accumulation, tool message keys
+- **history** (25 tests): `_approx_tokens`, `_format_messages_for_summary`, trim boundary, constants
+- **memory** (27 tests): agent tagging, latency boundaries, migration defaults, utilization keywords
+- **chatgpt importer** (27 tests): all content_type branches, multimodal edges, null fields
+- **claude importer** (15 tests): metadata keys, tool_result handling, update_conversation sync
+- **claude_context importer** (24 tests): starter detection, sanitize, slugify, memory formats
+- **things3_tools** (16 tests): cross-platform schema validation, parameter forwarding, cache TTL
+- **project_write_tools** (14 tests): schema, exact errors, default extensions
+- **git_tools** (17 tests): schema for all 6 tools, exact outputs, log cap
 
 ---
 
