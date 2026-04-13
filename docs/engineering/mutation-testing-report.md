@@ -2,35 +2,63 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Authoritative baseline**: 2026-04-11 (Linux CI, workflow run `24285714342`)
-**Previous audit**: 2026-04-03 (macOS, kept as historical reference)
+**Current**: 2026-04-13 (Linux CI, workflow run `24330889912`)
+**Previous baselines**: 2026-04-11 (Linux CI), 2026-04-03 (macOS, historical)
 **Tool**: mutmut 3.5.0
 **Python**: 3.13.5
 **Environment**: GitHub Actions `ubuntu-latest` — see [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml)
 
 ---
 
-## 2026-04-11 Linux CI baseline (authoritative)
+## 2026-04-13 Linux CI (current)
 
-First full mutation sweep on Linux CI. All 44 modules in `packages/core/` were exercised — no macOS segfault blackspots.
+After four phases of targeted test improvements (218 new tests across 14 branches):
 
 | Status | Count | Prev (2026-04-11) |
 |---|---:|---:|
-| 🎉 Killed | **5,911** | 5,696 |
-| 🙁 Survived | 3,584 | 3,477 |
-| 🫥 No tests | 427 | 749 |
+| 🎉 Killed | **7,083** | 5,911 |
+| 🙁 Survived | 2,412 | 3,584 |
+| 🫥 No tests | 427 | 427 |
 | ⏰ Timeout | 7 | 7 |
 | 🤔 Suspicious | 0 | 0 |
 | **Total mutants** | **9,929** | 9,929 |
 
-**Kill rate**: `5,911 / (9,929 − 427) = 62.2%` on testable mutants (+0.2pp from baseline). Modules with no tests are excluded from the denominator because "no tests" is a test-suite gap, not a test-suite weakness.
+**Kill rate**: `7,083 / (9,929 − 427) = 74.5%` on testable mutants (+12.3pp from 62.2% baseline).
 
-### 2026-04-12 sweep impact
+### Progress by phase
+
+| Phase | Branches | New Tests | Kills | Kill Rate |
+|-------|----------|-----------|-------|-----------|
+| Baseline (2026-04-11) | — | — | — | 62.3% |
+| Phase 1: Tool factories + stream_handler | 6 | 57 | +415 | 66.6% |
+| Phase 2: History + memory | 2 | 52 | +170 | 68.4% |
+| Phase 3: Importers | 3 | 66 | +196 | 70.5% |
+| Phase 4: Tool factories batch 2 | 3 | 47 | +391 | **74.6%** |
+
+### Per-module kills (Phase 1-4 combined)
+
+| Module | Before | After | Delta |
+|--------|--------|-------|-------|
+| things3_tools | 262 | 70 | -192 |
+| vault_write_tools | 96 | 13 | -154 (est.) |
+| chatgpt importer | 338 | 222 | -116 |
+| git_tools | 174 | 61 | -113 |
+| memory | 228 | 121 | -107 |
+| codebase_tools | 127 | 31 | -96 |
+| project_write_tools | 185 | 99 | -86 |
+| vault_read_tools | 80 | 9 | -71 (est.) |
+| cortex_search | 63 | 19 | -44 (est.) |
+| history | 111 | 48 | -63 |
+| claude importer | 257 | 213 | -44 |
+| stream_handler | 324 | 287 | -37 |
+| claude_context importer | 167 | 131 | -36 |
+
+### 2026-04-12 sweep impact (included in baseline)
 
 Two targeted sweeps reduced "no tests" by 322 and added 215 kills:
 
-- **`stream_handler`**: 10 new assertion tests targeting cache token propagation, total-token arithmetic, instance_id in non-streaming events, first-token recording, on_before/after callbacks, and non-streaming dedup. Survivors dropped from 368 → 324 (−44 kills).
-- **`card_generator_tools`**: new test file (28 tests) covering factory structure, per-tool schema validation, happy/error execution paths, closure bindings, and defaults. Went from 322 "no tests" / 0 survivors → 0 "no tests" / 151 survivors (171 killed, 53% kill rate from zero).
+- **`stream_handler`**: 10 new assertion tests. Survivors dropped from 368 → 324 (−44 kills).
+- **`card_generator_tools`**: new test file (28 tests). Went from 322 "no tests" / 0 survivors → 0 "no tests" / 151 survivors (171 killed).
 
 **How to reproduce**: `gh workflow run mutation.yml --ref <branch>`, then `gh run download --name mutmut-results-<run-id>`. Artifacts retained 90 days. Raw per-mutant list in `mutmut-results.txt`; emoji summary in `mutmut-summary.txt`; full runner log in `mutmut-run.log`.
 
@@ -49,9 +77,37 @@ Four separate blockers surfaced during the first CI attempts; all fixed:
 
 ---
 
+## Remaining survivors (2026-04-13)
+
+Top 15 modules by remaining survivors + no-tests:
+
+| Module | Survived | No Tests | Total |
+|--------|----------|----------|-------|
+| stream_handler | 287 | 0 | 287 |
+| card_renderer | 196 | 70 | 266 |
+| llm_client | 65 | 163 | 228 |
+| importers/chatgpt | 222 | 0 | 222 |
+| importers/claude | 213 | 0 | 213 |
+| card_generator_tools | 151 | 0 | 151 |
+| mutation_tools | 146 | 0 | 146 |
+| importers/claude_context | 131 | 0 | 131 |
+| memory | 121 | 0 | 121 |
+| card_indexer | 96 | 23 | 119 |
+| rag/indexer | 85 | 25 | 110 |
+| app | 0 | 107 | 107 |
+| project_write_tools | 99 | 0 | 99 |
+| things3_tools | 70 | 10 | 80 |
+| card_search | 79 | 0 | 79 |
+
+**Remaining survivors are progressively harder to kill**: duplicated code paths (stream_handler has 4 near-identical methods), equivalent mutants (string mutations in logging/prompts), modules needing complex test infrastructure (card_renderer with WeasyPrint, llm_client class methods with 163 "no tests"), and deeply nested conditional logic in importers.
+
+---
+
 ## Historical audit: 2026-04-03
 
-Everything below this line reflects the 2026-04-03 run. It is the last set of numbers we trust until Linux CI produces new ones.
+> **Note (2026-04-13):** The per-module tables below are superseded by the 2026-04-13 data above. Kept for reference only.
+
+Everything below this line reflects the 2026-04-03 run.
 
 ## Executive Summary (2026-04-03)
 
