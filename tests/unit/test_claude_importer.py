@@ -201,6 +201,71 @@ class TestConvertContentBlocks:
         assert result[2]["metadata"]["tool_result"] is True
         assert result[3]["text"] == "Here's what I found."
 
+    # --- Mutation-targeted: metadata dict key assertions ---
+
+    def test_tool_use_metadata_exact_keys(self):
+        blocks = [{"type": "tool_use", "name": "search", "input": {"q": "test"}}]
+        result = convert_content_blocks(blocks)
+        assert set(result[0]["metadata"].keys()) == {"tool_use", "tool_name", "tool_input"}
+
+    def test_tool_result_metadata_exact_keys(self):
+        blocks = [{"type": "tool_result", "name": "search", "content": [], "is_error": False}]
+        result = convert_content_blocks(blocks)
+        assert set(result[0]["metadata"].keys()) == {"tool_result", "tool_name", "is_error"}
+
+    def test_tool_result_missing_name_and_is_error(self):
+        """Defaults: name='unknown_tool', is_error=False when fields missing."""
+        blocks = [{"type": "tool_result", "content": []}]
+        result = convert_content_blocks(blocks)
+        assert result[0]["metadata"]["tool_name"] == "unknown_tool"
+        assert result[0]["metadata"]["is_error"] is False
+
+    def test_tool_result_string_nested_content(self):
+        """Nested content can be plain strings (not just dicts)."""
+        blocks = [{"type": "tool_result", "name": "t", "content": ["plain text"], "is_error": False}]
+        result = convert_content_blocks(blocks)
+        assert result[0]["text"] == "plain text"
+
+    def test_tool_result_multiple_nested_text_joined(self):
+        blocks = [{
+            "type": "tool_result", "name": "t", "is_error": False,
+            "content": [
+                {"type": "text", "text": "line1"},
+                {"type": "text", "text": "line2"},
+            ],
+        }]
+        result = convert_content_blocks(blocks)
+        assert result[0]["text"] == "line1\nline2"
+
+    def test_attachment_metadata_exact_keys(self):
+        blocks = []
+        attachments = [{"file_name": "doc.txt", "file_size": 100, "file_type": "txt", "extracted_content": "text"}]
+        result = convert_content_blocks(blocks, attachments=attachments)
+        assert set(result[0]["metadata"].keys()) == {"attachment", "file_name", "file_size", "file_type"}
+
+    def test_generated_file_metadata_exact_keys(self):
+        blocks = []
+        files = [{"file_name": "out.png"}]
+        result = convert_content_blocks(blocks, files=files)
+        assert set(result[0]["metadata"].keys()) == {"generated_file", "file_name"}
+
+    def test_thinking_metadata_exact_keys(self):
+        blocks = [{"type": "thinking", "thinking": "hmm"}]
+        result = convert_content_blocks(blocks)
+        assert set(result[0]["metadata"].keys()) == {"thought"}
+
+    def test_unknown_type_text_fallback_to_thinking(self):
+        """Unknown block type falls back to 'thinking' field if 'text' is missing."""
+        blocks = [{"type": "exotic", "thinking": "deep thought"}]
+        result = convert_content_blocks(blocks)
+        assert result[0]["text"] == "deep thought"
+
+    def test_unknown_type_empty_text_skipped(self):
+        """Unknown block type with only whitespace text is skipped."""
+        blocks = [{"type": "exotic", "text": "  \n  "}]
+        result = convert_content_blocks(blocks)
+        assert result == [{"type": "text", "text": ""}]
+
 
 # ==================== convert_conversation ====================
 
@@ -776,6 +841,75 @@ class TestIncrementalSync:
         assert summary2.updated == 1
         assert summary2.skipped_existing == 0
         assert summary2.imported == 0
+
+    def test_new_messages_have_complete_fields(self, tmp_path):
+        """Appended messages have all required Jarvis fields."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["chat_messages"].append({
+            "sender": "human",
+            "content": [{"type": "text", "text": "New"}],
+            "created_at": "2025-12-10T10:32:00.000000Z",
+            "updated_at": "2025-12-10T10:32:00.000000Z",
+        })
+        conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
+        update_conversation(path, conv)
+
+        data = json.loads(path.read_text())
+        new_msg = data["messages"][2]
+        assert new_msg["parent_id"] is None
+        assert new_msg["usage"] is None
+        assert new_msg["latency"] is None
+        assert new_msg["stop_reason"] is None
+        assert new_msg["status"] == "completed"
+        assert new_msg["error"] is None
+        assert new_msg["metadata"] == {}
+        assert new_msg["role"] == "user"
+
+    def test_update_replaces_status_tags(self, tmp_path):
+        """Status tags are replaced, not accumulated."""
+        conv = _make_claude_conv(name="[!] Important task")
+        path = _import_and_get_path(conv, tmp_path)
+
+        data1 = json.loads(path.read_text())
+        assert "status:important" in data1["tags"]
+
+        # Change status from [!] to [X]
+        conv["name"] = "[X] Important task"
+        update_conversation(path, conv)
+
+        data2 = json.loads(path.read_text())
+        assert "status:done" in data2["tags"]
+        assert "status:important" not in data2["tags"]
+
+    def test_update_summary_sync(self, tmp_path):
+        """Claude summary changes are synced to metadata."""
+        conv = _make_claude_conv()
+        conv["summary"] = "Initial summary"
+        path = _import_and_get_path(conv, tmp_path)
+
+        conv["summary"] = "Updated summary"
+        changed = update_conversation(path, conv)
+        assert changed is True
+
+        data = json.loads(path.read_text())
+        assert data["metadata"]["claude_summary"] == "Updated summary"
+
+    def test_update_removes_original_title_when_no_prefix(self, tmp_path):
+        """When title no longer has prefix, original_title is removed."""
+        conv = _make_claude_conv(name="[X] Task Done")
+        path = _import_and_get_path(conv, tmp_path)
+
+        data1 = json.loads(path.read_text())
+        assert data1["metadata"]["original_title"] == "[X] Task Done"
+
+        # Remove prefix
+        conv["name"] = "Task Done"
+        update_conversation(path, conv)
+
+        data2 = json.loads(path.read_text())
+        assert "original_title" not in data2["metadata"]
 
 
 # ==================== parse_title_prefixes ====================
