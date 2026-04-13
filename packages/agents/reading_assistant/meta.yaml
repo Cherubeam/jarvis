@@ -1,0 +1,6 @@
+name: reading_assistant
+description: Search, triage, and manage the user's Readwise reading list and highlights
+command: /reading
+tools:
+  - readwise_tools
+  - web_tools
