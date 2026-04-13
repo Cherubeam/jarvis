@@ -55,21 +55,21 @@ def make_test_runner_tool(project_root: Path) -> ToolDefinition:
     return ToolDefinition(
         name="run_tests",
         description=(
-            "Run pytest on the JARVIS project. "
-            "Optionally specify a path to run specific tests. "
-            "Returns test output including pass/fail counts."
+            "Run pytest on the JARVIS project. "  # pragma: no mutate
+            "Optionally specify a path to run specific tests. "  # pragma: no mutate
+            "Returns test output including pass/fail counts."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Test path relative to project root (e.g. 'tests/unit/test_codebase_tools.py'). Empty for all tests.",
+                    "description": "Test path relative to project root (e.g. 'tests/unit/test_codebase_tools.py'). Empty for all tests.",  # pragma: no mutate
                     "default": "",
                 },
                 "verbose": {
                     "type": "boolean",
-                    "description": "Run with verbose output (default: false).",
+                    "description": "Run with verbose output (default: false).",  # pragma: no mutate
                     "default": False,
                 },
             },

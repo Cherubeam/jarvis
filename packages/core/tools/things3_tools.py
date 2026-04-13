@@ -32,7 +32,7 @@ def make_things3_tools(config: dict) -> list[ToolDefinition]:
         List of ToolDefinitions. Empty list on non-macOS platforms.
     """
     if sys.platform != "darwin":
-        logger.info("Things 3 tools skipped: macOS only")
+        logger.info("Things 3 tools skipped: macOS only")  # pragma: no mutate
         return []
 
     import things

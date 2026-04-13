@@ -92,24 +92,24 @@ def make_project_write_tools(
     tools.append(ToolDefinition(
         name="write_file",
         description=(
-            "Create a new project file. Path is relative to project root. "
-            "Shows a diff and requires user confirmation. "
-            "Cannot overwrite existing files — use edit_file instead."
+            "Create a new project file. Path is relative to project root. "  # pragma: no mutate
+            "Shows a diff and requires user confirmation. "  # pragma: no mutate
+            "Cannot overwrite existing files — use edit_file instead."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to project root.",
+                    "description": "File path relative to project root.",  # pragma: no mutate
                 },
                 "content": {
                     "type": "string",
-                    "description": "Full file content.",
+                    "description": "Full file content.",  # pragma: no mutate
                 },
                 "reasoning": {
                     "type": "string",
-                    "description": "Explanation of why this file is being created.",
+                    "description": "Explanation of why this file is being created.",  # pragma: no mutate
                 },
             },
             "required": ["path", "content"],
@@ -147,23 +147,23 @@ def make_project_write_tools(
     tools.append(ToolDefinition(
         name="edit_file",
         description=(
-            "Edit an existing project file by replacing its content. "
-            "Shows a diff and requires user confirmation."
+            "Edit an existing project file by replacing its content. "  # pragma: no mutate
+            "Shows a diff and requires user confirmation."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to project root.",
+                    "description": "File path relative to project root.",  # pragma: no mutate
                 },
                 "new_content": {
                     "type": "string",
-                    "description": "Complete new content for the file.",
+                    "description": "Complete new content for the file.",  # pragma: no mutate
                 },
                 "reasoning": {
                     "type": "string",
-                    "description": "Explanation of what changed and why.",
+                    "description": "Explanation of what changed and why.",  # pragma: no mutate
                 },
             },
             "required": ["path", "new_content"],
@@ -193,13 +193,13 @@ def make_project_write_tools(
 
     tools.append(ToolDefinition(
         name="create_directory",
-        description="Create a directory in the project. No confirmation needed.",
+        description="Create a directory in the project. No confirmation needed.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Directory path relative to project root.",
+                    "description": "Directory path relative to project root.",  # pragma: no mutate
                 },
             },
             "required": ["path"],

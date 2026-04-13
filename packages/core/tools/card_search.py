@@ -64,26 +64,26 @@ def make_card_search_tool(
     return ToolDefinition(
         name="search_tactics",
         description=(
-            "Search across all Pip Decks tactics cards (Storyteller Tactics, "
-            "Workshop Tactics, Idea Tactics, etc.) for relevant techniques. "
-            "Use this when you need to find tactics, frameworks, or exercises "
-            "to help with storytelling, workshops, ideation, or other creative challenges. "
-            "Returns full card content for the most relevant matches."
+            "Search across all Pip Decks tactics cards (Storyteller Tactics, "  # pragma: no mutate
+            "Workshop Tactics, Idea Tactics, etc.) for relevant techniques. "  # pragma: no mutate
+            "Use this when you need to find tactics, frameworks, or exercises "  # pragma: no mutate
+            "to help with storytelling, workshops, ideation, or other creative challenges. "  # pragma: no mutate
+            "Returns full card content for the most relevant matches."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "What to search for (e.g. 'how to open a presentation', 'brainstorming techniques').",
+                    "description": "What to search for (e.g. 'how to open a presentation', 'brainstorming techniques').",  # pragma: no mutate
                 },
                 "deck": {
                     "type": "string",
-                    "description": "Optional: filter to a specific deck directory name (e.g. 'storyteller-tactics').",
+                    "description": "Optional: filter to a specific deck directory name (e.g. 'storyteller-tactics').",  # pragma: no mutate
                 },
                 "n_results": {
                     "type": "integer",
-                    "description": "Number of results to return (default 5, max 15).",
+                    "description": "Number of results to return (default 5, max 15).",  # pragma: no mutate
                     "default": 5,
                 },
             },

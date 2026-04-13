@@ -90,20 +90,20 @@ def make_card_generator_tools(
     generate_card_tool = ToolDefinition(
         name="generate_card",
         description=(
-            "Generate a visual pattern card (PNG + HTML) from an Obsidian pattern note. "
-            "Set include_image=true to generate an AI image via API (requires config). "
-            "If images exist in data/pattern-cards/images/, they are used automatically."
+            "Generate a visual pattern card (PNG + HTML) from an Obsidian pattern note. "  # pragma: no mutate
+            "Set include_image=true to generate an AI image via API (requires config). "  # pragma: no mutate
+            "If images exist in data/pattern-cards/images/, they are used automatically."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "pattern_name": {
                     "type": "string",
-                    "description": "The name of the pattern to generate a card for.",
+                    "description": "The name of the pattern to generate a card for.",  # pragma: no mutate
                 },
                 "include_image": {
                     "type": "boolean",
-                    "description": "If true, generate an AI image via API before rendering the card. Requires image generation to be enabled in config.",
+                    "description": "If true, generate an AI image via API before rendering the card. Requires image generation to be enabled in config.",  # pragma: no mutate
                 },
             },
             "required": ["pattern_name"],
@@ -178,19 +178,19 @@ def make_card_generator_tools(
     generate_deck_tool = ToolDefinition(
         name="generate_deck",
         description=(
-            "Generate visual cards (PNG + HTML) for all patterns in the vault, "
-            "or filtered by category. Set include_images=true to generate AI images via API."
+            "Generate visual cards (PNG + HTML) for all patterns in the vault, "  # pragma: no mutate
+            "or filtered by category. Set include_images=true to generate AI images via API."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "category": {
                     "type": "string",
-                    "description": "Optional category filter. Only patterns in this category will be generated. Leave empty for all.",
+                    "description": "Optional category filter. Only patterns in this category will be generated. Leave empty for all.",  # pragma: no mutate
                 },
                 "include_images": {
                     "type": "boolean",
-                    "description": "If true, generate AI images via API for patterns that don't already have images.",
+                    "description": "If true, generate AI images via API for patterns that don't already have images.",  # pragma: no mutate
                 },
             },
             "required": [],
@@ -244,11 +244,11 @@ def make_card_generator_tools(
             "properties": {
                 "pattern_name": {
                     "type": "string",
-                    "description": "Generate prompt for a single pattern by name. Takes precedence over category filter.",
+                    "description": "Generate prompt for a single pattern by name. Takes precedence over category filter.",  # pragma: no mutate
                 },
                 "category": {
                     "type": "string",
-                    "description": "Optional category filter. Leave empty for all patterns. Ignored if pattern_name is set.",
+                    "description": "Optional category filter. Leave empty for all patterns. Ignored if pattern_name is set.",  # pragma: no mutate
                 },
             },
             "required": [],

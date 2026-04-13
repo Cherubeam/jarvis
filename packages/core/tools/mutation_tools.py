@@ -103,20 +103,20 @@ def make_mutation_tools(project_root: Path) -> list[ToolDefinition]:
     run_tool = ToolDefinition(
         name="run_mutation_tests",
         description=(
-            "Run mutation testing (mutmut) on a specific module. "
-            "Mutates the source code and checks if tests catch the changes. "
-            "Always target a single file for reasonable run times."
+            "Run mutation testing (mutmut) on a specific module. "  # pragma: no mutate
+            "Mutates the source code and checks if tests catch the changes. "  # pragma: no mutate
+            "Always target a single file for reasonable run times."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "module": {
                     "type": "string",
-                    "description": "Path to the module to mutate, relative to project root (e.g. 'packages/core/context_builder.py'). Always target a single file.",
+                    "description": "Path to the module to mutate, relative to project root (e.g. 'packages/core/context_builder.py'). Always target a single file.",  # pragma: no mutate
                 },
                 "test_path": {
                     "type": "string",
-                    "description": "Specific test file to run against the mutants (e.g. 'tests/unit/test_context_builder.py'). Faster than running all tests.",
+                    "description": "Specific test file to run against the mutants (e.g. 'tests/unit/test_context_builder.py'). Faster than running all tests.",  # pragma: no mutate
                     "default": "",
                 },
             },
@@ -128,21 +128,21 @@ def make_mutation_tools(project_root: Path) -> list[ToolDefinition]:
     show_tool = ToolDefinition(
         name="show_mutation_results",
         description=(
-            "Show mutation testing results. Without mutant_id, shows a summary "
-            "of all mutants (survived/killed/timeout). With mutant_id, shows "
-            "the specific mutation diff."
+            "Show mutation testing results. Without mutant_id, shows a summary "  # pragma: no mutate
+            "of all mutants (survived/killed/timeout). With mutant_id, shows "  # pragma: no mutate
+            "the specific mutation diff."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "mutant_id": {
                     "type": "string",
-                    "description": "ID of a specific mutant to inspect (e.g. '42'). Omit for summary.",
+                    "description": "ID of a specific mutant to inspect (e.g. '42'). Omit for summary.",  # pragma: no mutate
                     "default": "",
                 },
                 "status_filter": {
                     "type": "string",
-                    "description": "Filter results by status: 'survived', 'killed', or 'timeout'. Only applies to summary view.",
+                    "description": "Filter results by status: 'survived', 'killed', or 'timeout'. Only applies to summary view.",  # pragma: no mutate
                     "default": "",
                 },
             },

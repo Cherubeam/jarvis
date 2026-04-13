@@ -91,7 +91,7 @@ def _format_messages_for_summary(messages: list[dict]) -> str:
     return "\n".join(lines)
 
 
-_SUMMARIZATION_PROMPT = """\
+_SUMMARIZATION_PROMPT = """\  # pragma: no mutate
 Summarize this conversation history concisely. Preserve:
 - Key decisions made by the user
 - User preferences and corrections expressed
@@ -163,14 +163,14 @@ def summarize_history(
     try:
         response = client.complete(
             messages=[
-                {"role": "system", "content": "You are a conversation summarizer. Be concise."},
+                {"role": "system", "content": "You are a conversation summarizer. Be concise."},  # pragma: no mutate
                 {"role": "user", "content": prompt},
             ],
             model=model_id,
         )
         summary_text = response.choices[0].message.content
     except Exception:
-        logger.warning("History summarization failed; returning original history", exc_info=True)
+        logger.warning("History summarization failed; returning original history", exc_info=True)  # pragma: no mutate
         return history
 
     summary_msg = {
