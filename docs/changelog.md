@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-*(Nothing yet — see v0.14.1 below for the latest release.)*
+### Changed
+- **Mutation testing — never-targeted tools**: Strengthened `test_test_tools.py` (9 new tests), `test_mutation_tools.py` (19 new tests), and `test_card_indexer.py` (3 new/strengthened tests) with schema validation, exact error messages, stderr handling, truncation boundaries, status filter edge cases, and command construction verification.
 
 ---
 
