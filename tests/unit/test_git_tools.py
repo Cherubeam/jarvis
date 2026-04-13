@@ -140,3 +140,103 @@ class TestToolFormat:
         assert len(tools) == 6
         names = {t.name for t in tools}
         assert names == {"git_status", "git_diff", "git_branch", "git_add", "git_commit", "git_log"}
+
+
+class TestSchemaValidation:
+    def test_git_status_schema(self, tools):
+        params = tools["git_status"].parameters
+        assert params["type"] == "object"
+        assert params["properties"] == {}
+        assert params["required"] == []
+
+    def test_git_diff_schema(self, tools):
+        params = tools["git_diff"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"staged"}
+        assert params["properties"]["staged"]["type"] == "boolean"
+        assert params["properties"]["staged"]["default"] is False
+        assert params["required"] == []
+
+    def test_git_branch_schema(self, tools):
+        params = tools["git_branch"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"name"}
+        assert params["properties"]["name"]["type"] == "string"
+        assert params["required"] == ["name"]
+
+    def test_git_add_schema(self, tools):
+        params = tools["git_add"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"paths"}
+        assert params["properties"]["paths"]["type"] == "array"
+        assert params["properties"]["paths"]["items"] == {"type": "string"}
+        assert params["required"] == ["paths"]
+
+    def test_git_commit_schema(self, tools):
+        params = tools["git_commit"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"message"}
+        assert params["properties"]["message"]["type"] == "string"
+        assert params["required"] == ["message"]
+
+    def test_git_log_schema(self, tools):
+        params = tools["git_log"].parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"n"}
+        assert params["properties"]["n"]["type"] == "integer"
+        assert params["properties"]["n"]["default"] == 10
+        assert params["required"] == []
+
+
+class TestExactOutputs:
+    def test_clean_status_exact(self, tools):
+        result = tools["git_status"].execute()
+        assert result == "Working tree clean."
+
+    def test_no_diff_exact(self, tools):
+        result = tools["git_diff"].execute()
+        assert result == "No differences."
+
+    def test_invalid_branch_exact(self, tools):
+        result = tools["git_branch"].execute(name="bad-name")
+        assert result == "Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: bad-name"
+
+    def test_empty_paths_exact(self, tools):
+        result = tools["git_add"].execute(paths=[])
+        assert result == "Error: No paths specified."
+
+    def test_reject_all_flag_exact(self, tools):
+        result = tools["git_add"].execute(paths=["--all"])
+        assert result == "Error: Cannot use '-A', '--all', or '.' — specify files explicitly."
+
+    def test_reject_dot_exact(self, tools):
+        result = tools["git_add"].execute(paths=["."])
+        assert result == "Error: Cannot use '-A', '--all', or '.' — specify files explicitly."
+
+    def test_empty_commit_exact(self, tools):
+        result = tools["git_commit"].execute(message="")
+        assert result == "Error: Commit message cannot be empty."
+
+    def test_whitespace_commit_exact(self, tools):
+        result = tools["git_commit"].execute(message="   ")
+        assert result == "Error: Commit message cannot be empty."
+
+    def test_timeout_error_exact(self, tmp_path):
+        with patch("packages.core.tools.git_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired("git", 30)
+            result = _run_git(["status"], tmp_path)
+        assert result == "Error: git status timed out after 30s."
+
+    def test_git_not_found_exact(self, tmp_path):
+        with patch("packages.core.tools.git_tools.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()
+            result = _run_git(["status"], tmp_path)
+        assert result == "Error: git not found on PATH."
+
+    def test_log_capped_at_50(self, tools):
+        """n > 50 is clamped to 50."""
+        with patch("packages.core.tools.git_tools._run_git") as mock_run:
+            mock_run.return_value = "log output"
+            tools["git_log"].execute(n=100)
+            args = mock_run.call_args[0][0]
+            assert "-50" in args
