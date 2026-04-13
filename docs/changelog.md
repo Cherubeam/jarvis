@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Mutation testing — vault tools**: Strengthened `test_vault_tools.py` and `test_vault_write_tools.py` with schema validation (property names, types, required fields, defaults, enums), tighter error assertions, path traversal coverage in no-target mode, default argument exercise, and output format verification. 13 new tests targeting surviving mutants in `vault_read_tools` and `vault_write_tools`.
 - **Mutation testing — search/fetch/recall tools**: Strengthened `test_cortex_search.py`, `test_conversation_recall.py`, and `test_web_fetch.py` with schema validation, n_results clamping tests, default field coverage, truncation marker assertions, and output separator checks. 7 new tests.
+- **Mutation testing — codebase tools**: Strengthened `test_codebase_tools.py` with schema validation for all 4 tools, exact error message assertions, directory listing edge cases (empty dir, dotfile hiding, pattern filter), search format verification, and binary file error path. 17 new tests.
 
 ---
 
