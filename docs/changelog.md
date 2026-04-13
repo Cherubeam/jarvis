@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mutation testing — search/fetch/recall tools**: Strengthened `test_cortex_search.py`, `test_conversation_recall.py`, and `test_web_fetch.py` with schema validation, n_results clamping tests, default field coverage, truncation marker assertions, and output separator checks. 7 new tests.
 - **Mutation testing — codebase tools**: Strengthened `test_codebase_tools.py` with schema validation for all 4 tools, exact error message assertions, directory listing edge cases (empty dir, dotfile hiding, pattern filter), search format verification, and binary file error path. 17 new tests.
 - **Mutation testing — blog tools**: Tightened `test_blog_tools.py` with exact-match error messages and explicit property-set schema assertions. 1 new test, 4 tightened.
+- **Mutation testing — small tools**: Strengthened `test_delegate_tool.py`, `test_suggest_improvements.py`, and `test_content_evaluator_tool.py` with schema validation, temperature override test, model passthrough, and system prompt verification. 7 new tests.
 
 ---
 
