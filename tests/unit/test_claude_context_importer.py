@@ -6,6 +6,8 @@ from pathlib import Path
 
 from packages.core.importers.claude_context import (
     ContextImportSummary,
+    _is_starter_project,
+    _sanitize_filename,
     build_current_focus,
     build_personal_context,
     build_professional_context,
@@ -486,3 +488,199 @@ class TestImportContext:
         assert "Claude context import" in updated
         assert "Old stuff" not in updated
         assert "Active projects" in updated
+
+    def test_summary_fields_exact(self, tmp_path, fixtures_dir):
+        """Verify exact summary field values for a known import."""
+        memories_path = fixtures_dir / "claude_memories_sample.json"
+        projects_path = fixtures_dir / "claude_projects_sample.json"
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+
+        summary = import_context(
+            memories_path=memories_path,
+            projects_path=projects_path,
+            target_dir=target_dir,
+        )
+
+        assert "personal_context.md" in summary.files_written
+        assert "professional_context.md" in summary.files_written
+        assert "current_focus.md" in summary.files_written
+        assert summary.projects_imported >= 2
+        assert summary.projects_skipped >= 1
+        assert summary.warnings == []
+
+    def test_memories_list_wrapping(self, tmp_path):
+        """Memories.json as a list wrapping a single object is handled."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+        memories_path = tmp_path / "mem.json"
+        memories_path.write_text(json.dumps([{
+            "conversations_memory": "**Personal context**\nTest memory data",
+        }]))
+
+        summary = import_context(
+            memories_path=memories_path,
+            projects_path=None,
+            target_dir=target_dir,
+        )
+        assert "personal_context.md" in summary.files_written
+
+    def test_memories_dict_format(self, tmp_path):
+        """Memories.json as a plain dict (not list) is handled."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+        memories_path = tmp_path / "mem.json"
+        memories_path.write_text(json.dumps({
+            "conversations_memory": "**Personal context**\nDirect dict memory",
+        }))
+
+        summary = import_context(
+            memories_path=memories_path,
+            projects_path=None,
+            target_dir=target_dir,
+        )
+        assert "personal_context.md" in summary.files_written
+
+    def test_project_memories_list_format(self, tmp_path):
+        """Project memories as a list of {project_uuid, memory} objects."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+        memories_path = tmp_path / "mem.json"
+        memories_path.write_text(json.dumps([{
+            "project_memories": [
+                {"project_uuid": "proj-1", "memory": "Project 1 memory"},
+            ],
+        }]))
+        projects_path = tmp_path / "proj.json"
+        projects_path.write_text(json.dumps([{
+            "uuid": "proj-1",
+            "name": "Test Project",
+        }]))
+
+        summary = import_context(
+            memories_path=memories_path,
+            projects_path=projects_path,
+            target_dir=target_dir,
+        )
+        assert summary.projects_imported == 1
+        content = (target_dir / "projects" / "test-project.md").read_text()
+        assert "Project 1 memory" in content
+
+    def test_doc_without_content_skipped(self, tmp_path):
+        """Project docs with empty content are not written."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+        projects_path = tmp_path / "proj.json"
+        projects_path.write_text(json.dumps([{
+            "uuid": "proj-1",
+            "name": "Doc Test",
+            "docs": [{"filename": "empty.md", "content": ""}],
+        }]))
+
+        summary = import_context(
+            memories_path=None,
+            projects_path=projects_path,
+            target_dir=target_dir,
+        )
+        assert summary.docs_saved == 0
+
+    def test_project_file_content_includes_slug_in_docs_path(self, tmp_path):
+        """Project file references docs using the slugified project name."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+        projects_path = tmp_path / "proj.json"
+        projects_path.write_text(json.dumps([{
+            "uuid": "proj-1",
+            "name": "My Great Project",
+            "docs": [{"filename": "notes.md", "content": "content"}],
+        }]))
+
+        import_context(
+            memories_path=None,
+            projects_path=projects_path,
+            target_dir=target_dir,
+        )
+        content = (target_dir / "projects" / "my-great-project.md").read_text()
+        assert "docs/my-great-project/" in content
+        assert "- notes.md" in content
+
+    def test_no_profile_sections_no_files_written(self, tmp_path):
+        """Without profile sections or memories, personal/professional files not written."""
+        target_dir = tmp_path / "context"
+        target_dir.mkdir()
+
+        summary = import_context(
+            memories_path=None,
+            projects_path=None,
+            target_dir=target_dir,
+        )
+        assert "personal_context.md" not in summary.files_written
+        assert "professional_context.md" not in summary.files_written
+
+
+@pytest.mark.unit
+class TestIsStarterProject:
+    """Tests for _is_starter_project — each condition tested individually."""
+
+    def test_is_starter_project_flag(self):
+        assert _is_starter_project({"is_starter_project": True}) is True
+
+    def test_is_starter_flag(self):
+        assert _is_starter_project({"is_starter": True}) is True
+
+    def test_type_starter(self):
+        assert _is_starter_project({"type": "starter"}) is True
+
+    def test_not_starter(self):
+        assert _is_starter_project({"name": "My Project"}) is False
+
+    def test_false_flags(self):
+        assert _is_starter_project({"is_starter_project": False, "is_starter": False}) is False
+
+
+@pytest.mark.unit
+class TestSanitizeFilename:
+    """Tests for _sanitize_filename — each substitution tested."""
+
+    def test_replaces_path_separators(self):
+        assert _sanitize_filename("path/to\\file") == "path-to-file.md"
+
+    def test_replaces_special_chars(self):
+        assert _sanitize_filename('file:*?"<>|&name') == "file-name.md"
+
+    def test_collapses_hyphens(self):
+        assert _sanitize_filename("a---b") == "a-b.md"
+
+    def test_strips_leading_trailing(self):
+        assert _sanitize_filename("- name -") == "name.md"
+
+    def test_adds_md_extension(self):
+        assert _sanitize_filename("file").endswith(".md")
+
+    def test_preserves_md_extension(self):
+        assert _sanitize_filename("file.md") == "file.md"
+
+    def test_clean_name_unchanged(self):
+        assert _sanitize_filename("good-name.md") == "good-name.md"
+
+
+@pytest.mark.unit
+class TestSlugifyMutationTargets:
+    """Additional slugify tests targeting specific mutations."""
+
+    def test_removes_leading_the(self):
+        assert slugify_project_name("The Project") == "project"
+
+    def test_removes_ampersand(self):
+        assert slugify_project_name("A & B") == "a-b"
+
+    def test_truncates_at_50_chars(self):
+        long_name = "a-" * 30  # 60 chars
+        result = slugify_project_name(long_name)
+        assert len(result) <= 50
+
+    def test_strips_leading_trailing_hyphens(self):
+        assert slugify_project_name("  -test-  ") == "test"
+
+    def test_collapses_multiple_hyphens(self):
+        assert slugify_project_name("a   b   c") == "a-b-c"
