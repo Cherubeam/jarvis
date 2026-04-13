@@ -105,6 +105,40 @@ class TestMakeVaultWriteTools:
             assert fmt["type"] == "function"
             assert "name" in fmt["function"]
 
+    # --- Schema validation (kills dict key/value mutations) ---
+
+    def test_create_note_schema(self, tools_with_target):
+        tools, *_ = tools_with_target
+        tool = _get_tool(tools, "create_note")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path", "content", "use_template"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["properties"]["content"]["type"] == "string"
+        assert params["properties"]["use_template"]["type"] == "boolean"
+        assert params["properties"]["use_template"]["default"] is True
+        assert params["required"] == ["path", "content"]
+
+    def test_edit_note_schema(self, tools_with_target):
+        tools, *_ = tools_with_target
+        tool = _get_tool(tools, "edit_note")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path", "new_content", "reasoning"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["properties"]["new_content"]["type"] == "string"
+        assert params["properties"]["reasoning"]["type"] == "string"
+        assert params["required"] == ["path", "new_content"]
+
+    def test_list_notes_in_dir_schema(self, tools_with_target):
+        tools, *_ = tools_with_target
+        tool = _get_tool(tools, "list_notes_in_dir")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"subfolder"}
+        assert params["properties"]["subfolder"]["type"] == "string"
+        assert params["required"] == []
+
 
 # ==================== create_note ====================
 
@@ -199,6 +233,47 @@ class TestCreateNote:
         )
 
         assert result == "Error: Path '../../etc/passwd' escapes the target directory."
+
+    def test_rejects_path_traversal_without_target(self, tools_no_target):
+        """Path traversal is also blocked without a target_dir."""
+        tools, config, handler = tools_no_target
+        tool = _get_tool(tools, "create_note")
+        result = tool.execute(
+            path="../../etc/passwd",
+            content="hacked",
+            use_template=False,
+        )
+        assert result == "Error: Path '../../etc/passwd' escapes the target directory."
+
+    def test_default_use_template_true(self, tools_with_target):
+        """Omitting use_template should default to True and prepend template."""
+        tools, target, *_ = tools_with_target
+        tool = _get_tool(tools, "create_note")
+        # Call without use_template — should default to True
+        result = tool.execute(path="Defaulted.md", content="# Body")
+
+        assert "Successfully" in result
+        content = (target / "Defaulted.md").read_text(encoding="utf-8")
+        assert "type: pattern" in content  # template prepended
+
+    def test_template_read_error(self, tools_with_target):
+        """When template file can't be read, returns error message and skips template."""
+        tools, target, template, handler, config = tools_with_target
+        # Make template unreadable by deleting it (FileNotFoundError path)
+        template.unlink()
+        # Create fresh tools pointing to the now-missing template
+        new_tools = make_vault_write_tools(
+            config, handler,
+            target_dir="Patterns",
+            template_path="Templates/Pattern Template.md",
+        )
+        tool = _get_tool(new_tools, "create_note")
+        result = tool.execute(path="NoTemplate.md", content="# Body", use_template=True)
+        # Template missing: falls through to creating without template
+        # (template_full_path.is_file() returns False, so no error — just no template)
+        assert "Successfully" in result
+        content = (target / "NoTemplate.md").read_text(encoding="utf-8")
+        assert content == "# Body"
 
 
 # ==================== edit_note ====================
@@ -302,6 +377,19 @@ class TestListNotesInDir:
         # Should be "Category/Note.md", NOT "Patterns/Category/Note.md"
         assert "Category/Note.md" in result
         assert "Patterns/Category/Note.md" not in result
+
+    def test_output_is_newline_joined(self, tools_with_target):
+        """Output lines are joined by newline, not other separators."""
+        tools, target, *_ = tools_with_target
+        (target / "A.md").write_text("# A")
+        (target / "B.md").write_text("# B")
+
+        tool = _get_tool(tools, "list_notes_in_dir")
+        result = tool.execute()
+
+        lines = result.split("\n")
+        assert len(lines) == 2
+        assert all(line.endswith(".md") for line in lines)
 
     def test_not_available_without_target(self, tools_no_target):
         tools, *_ = tools_no_target

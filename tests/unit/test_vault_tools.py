@@ -72,6 +72,39 @@ class TestMakeVaultTools:
             assert fmt["type"] == "function"
             assert "name" in fmt["function"]
 
+    # --- Schema validation (kills dict key/value/type mutations) ---
+
+    def test_read_note_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "read_note")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"path"}
+        assert params["properties"]["path"]["type"] == "string"
+        assert params["required"] == ["path"]
+
+    def test_search_notes_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "search_notes")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"directory", "pattern", "sort_by", "limit"}
+        assert params["properties"]["directory"]["type"] == "string"
+        assert params["properties"]["pattern"]["type"] == "string"
+        assert params["properties"]["sort_by"]["type"] == "string"
+        assert params["properties"]["sort_by"]["enum"] == ["name", "modified"]
+        assert params["properties"]["limit"]["type"] == "integer"
+        assert params["required"] == []
+
+    def test_read_daily_note_schema(self, tools):
+        tool_list, *_ = tools
+        tool = _get_tool(tool_list, "read_daily_note")
+        params = tool.parameters
+        assert params["type"] == "object"
+        assert set(params["properties"].keys()) == {"date"}
+        assert params["properties"]["date"]["type"] == "string"
+        assert params["required"] == []
+
 
 # ==================== read_note ====================
 
@@ -99,7 +132,8 @@ class TestReadNote:
 
         tool = _get_tool(tool_list, "read_note")
         result = tool.execute(path="Private/secret.md")
-        assert "Error" in result
+        assert result.startswith("Error:")
+        assert "Private" in result
 
     def test_truncates_large_content(self, tools):
         tool_list, vault_path, *_ = tools
@@ -163,7 +197,8 @@ class TestSearchNotes:
 
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Private")
-        assert "Error" in result
+        assert result.startswith("Error:")
+        assert "Private" in result
 
     def test_caps_at_max_results(self, tools):
         tool_list, vault_path, *_ = tools
@@ -280,6 +315,45 @@ class TestSearchNotes:
 
         lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
         assert len(lines) == 1  # clamped to 1
+
+    def test_output_is_newline_joined(self, tools):
+        """Results are joined by newline separator."""
+        tool_list, vault_path, *_ = tools
+        (vault_path / "Notes" / "a.md").write_text("# A")
+        (vault_path / "Notes" / "b.md").write_text("# B")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes")
+
+        lines = result.split("\n")
+        assert len(lines) == 2
+        assert all("Notes/" in line for line in lines)
+
+    def test_default_pattern_matches_markdown(self, tools):
+        """Default pattern (**/*.md) matches .md files and excludes others."""
+        tool_list, vault_path, *_ = tools
+        (vault_path / "Notes" / "note.md").write_text("# Note")
+        (vault_path / "Notes" / "data.json").write_text("{}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        # Call without pattern — should use default **/*.md
+        result = tool.execute(directory="Notes")
+
+        assert "note.md" in result
+        assert "data.json" not in result
+
+    def test_overflow_message_format(self, tools):
+        """Overflow message includes exact count format."""
+        tool_list, vault_path, *_ = tools
+        notes_dir = vault_path / "Notes"
+        for i in range(5):
+            (notes_dir / f"note-{i:02d}.md").write_text(f"# Note {i}")
+
+        tool = _get_tool(tool_list, "search_notes")
+        result = tool.execute(directory="Notes", limit=2)
+
+        assert "Showing 2 of 5 results" in result
+        assert result.index("[Showing") > result.index("note-")
 
 
 # ==================== read_daily_note ====================
