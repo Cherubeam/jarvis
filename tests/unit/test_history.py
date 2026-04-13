@@ -9,8 +9,13 @@ import pytest
 from packages.core.history import (
     trim_tool_results,
     summarize_history,
+    _approx_tokens,
+    _format_messages_for_summary,
     _TOOL_RESULT_SUMMARY_LEN,
     _SUMMARY_MARKER,
+    _DEFAULT_TOKEN_THRESHOLD,
+    _DEFAULT_KEEP_RECENT_FOR_SUMMARY,
+    _KEEP_RECENT_MESSAGES,
 )
 
 
@@ -284,3 +289,198 @@ class TestSummarizeHistory:
         )
         assert result is history
         client.complete.assert_not_called()
+
+    def test_prior_summary_resummarizes_when_new_content_exceeds_threshold(self):
+        """When prior summary exists but new content exceeds threshold, re-summarize."""
+        history = [
+            {"role": "assistant", "content": f"{_SUMMARY_MARKER} Previous summary."},
+            {"role": "user", "content": "x" * 8000},
+            {"role": "assistant", "content": "y" * 8000},
+        ] + [
+            {"role": "user", "content": f"q{i}: " + "z" * 4000}
+            for i in range(12)
+        ]
+        client = _mock_client("Re-summarized.")
+        result = summarize_history(
+            history, client, model_id="fast-model",
+            token_threshold=100,  # low to force trigger
+            keep_recent=3,
+        )
+        client.complete.assert_called_once()
+        assert result[0]["content"].startswith(_SUMMARY_MARKER)
+
+    def test_split_idx_at_end_returns_original(self):
+        """If split_idx walks past end of history, return original."""
+        # All non-user messages — split_idx can't find a user message
+        history = [
+            {"role": "assistant", "content": "x" * 8000},
+            {"role": "tool", "tool_call_id": "t1", "content": "y" * 8000},
+            {"role": "assistant", "content": "z" * 8000},
+        ]
+        client = _mock_client()
+        result = summarize_history(
+            history, client, model_id="fast-model",
+            token_threshold=100, keep_recent=1,
+        )
+        assert result is history
+
+    def test_summarizer_system_prompt_content(self):
+        """The system message to the summarizer has role 'system' and mentions summarizer."""
+        history = _make_long_history(10)
+        client = _mock_client("Summary.")
+        summarize_history(history, client, model_id="fast-model", token_threshold=100)
+
+        messages = client.complete.call_args[1].get("messages") or client.complete.call_args[0][0]
+        assert messages[0]["role"] == "system"
+        assert "summarizer" in messages[0]["content"].lower()
+        assert messages[1]["role"] == "user"
+
+    def test_summary_output_list_structure(self):
+        """Output is [summary_msg, *recent_messages] — summary has exact keys."""
+        history = _make_long_history(10)
+        client = _mock_client("Done.")
+        result = summarize_history(
+            history, client, model_id="fast-model", token_threshold=100,
+        )
+        summary = result[0]
+        assert set(summary.keys()) == {"role", "content"}
+        assert summary["role"] == "assistant"
+
+
+@pytest.mark.unit
+class TestApproxTokens:
+    """Tests for _approx_tokens() — kills operator and string mutations."""
+
+    def test_empty_messages(self):
+        assert _approx_tokens([]) == 0
+
+    def test_known_ascii_string(self):
+        # 400 ASCII bytes / 4 = 100 tokens
+        msgs = [{"content": "a" * 400}]
+        assert _approx_tokens(msgs) == 100
+
+    def test_division_not_multiplication(self):
+        """Verify // 4, not * 4 or // 2."""
+        msgs = [{"content": "a" * 100}]
+        result = _approx_tokens(msgs)
+        assert result == 25  # 100 / 4, not 400 or 50
+
+    def test_multibyte_uses_byte_length(self):
+        """Multibyte chars count by bytes, not characters."""
+        # "é" is 2 bytes in UTF-8
+        msgs = [{"content": "é" * 100}]
+        result = _approx_tokens(msgs)
+        assert result == 50  # 200 bytes / 4
+
+    def test_missing_content_treated_as_empty(self):
+        msgs = [{"role": "user"}, {"content": "x" * 40}]
+        assert _approx_tokens(msgs) == 10  # 0 + 40/4
+
+    def test_multiple_messages_summed(self):
+        msgs = [{"content": "a" * 80}, {"content": "b" * 120}]
+        assert _approx_tokens(msgs) == 50  # (80 + 120) / 4
+
+
+@pytest.mark.unit
+class TestFormatMessagesForSummary:
+    """Tests for _format_messages_for_summary() — kills string format mutations."""
+
+    def test_user_message_format(self):
+        msgs = [{"role": "user", "content": "What is AI?"}]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[user]: What is AI?"
+
+    def test_assistant_message_format(self):
+        msgs = [{"role": "assistant", "content": "AI is..."}]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[assistant]: AI is..."
+
+    def test_tool_result_format(self):
+        msgs = [{"role": "tool", "tool_call_id": "tc_42", "content": "Tool output here"}]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[tool result for tc_42]: Tool output here..."
+
+    def test_tool_result_truncates_at_100(self):
+        long_content = "x" * 200
+        msgs = [{"role": "tool", "tool_call_id": "tc_1", "content": long_content}]
+        result = _format_messages_for_summary(msgs)
+        assert result == f"[tool result for tc_1]: {'x' * 100}..."
+
+    def test_tool_result_replaces_newlines(self):
+        msgs = [{"role": "tool", "tool_call_id": "tc_1", "content": "line1\nline2\nline3"}]
+        result = _format_messages_for_summary(msgs)
+        assert "line1 line2 line3" in result
+        assert "\n" not in result.split(": ", 1)[1].rstrip(".")
+
+    def test_assistant_with_tool_calls_format(self):
+        msgs = [{
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"function": {"name": "search"}},
+                {"function": {"name": "read_note"}},
+            ],
+        }]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[assistant called tools: search, read_note]"
+
+    def test_missing_role_defaults_to_unknown(self):
+        msgs = [{"content": "orphan message"}]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[unknown]: orphan message"
+
+    def test_missing_tool_call_id_defaults_to_unknown(self):
+        msgs = [{"role": "tool", "content": "result"}]
+        result = _format_messages_for_summary(msgs)
+        assert "[tool result for unknown]" in result
+
+    def test_multiple_messages_newline_joined(self):
+        msgs = [
+            {"role": "user", "content": "Q"},
+            {"role": "assistant", "content": "A"},
+        ]
+        result = _format_messages_for_summary(msgs)
+        assert result == "[user]: Q\n[assistant]: A"
+
+
+@pytest.mark.unit
+class TestTrimBoundary:
+    """Boundary tests for truncation threshold — kills > vs >= mutations."""
+
+    def test_content_exactly_at_threshold_not_truncated(self):
+        """Content exactly at _TOOL_RESULT_SUMMARY_LEN chars should NOT be truncated."""
+        exact_content = "B" * _TOOL_RESULT_SUMMARY_LEN
+        history = [
+            {"role": "tool", "tool_call_id": "t1", "content": exact_content},
+            {"role": "user", "content": "recent"},
+        ]
+        result = trim_tool_results(history, keep_recent=1)
+        assert result[0]["content"] == exact_content
+
+    def test_content_one_over_threshold_truncated(self):
+        """Content at _TOOL_RESULT_SUMMARY_LEN + 1 should be truncated."""
+        over_content = "C" * (_TOOL_RESULT_SUMMARY_LEN + 1)
+        history = [
+            {"role": "tool", "tool_call_id": "t1", "content": over_content},
+            {"role": "user", "content": "recent"},
+        ]
+        result = trim_tool_results(history, keep_recent=1)
+        expected = "C" * _TOOL_RESULT_SUMMARY_LEN + "\n[... truncated]"
+        assert result[0]["content"] == expected
+
+
+@pytest.mark.unit
+class TestDefaultConstants:
+    """Verify default constant values are used correctly."""
+
+    def test_default_keep_recent_is_6(self):
+        assert _KEEP_RECENT_MESSAGES == 6
+
+    def test_default_token_threshold_is_40000(self):
+        assert _DEFAULT_TOKEN_THRESHOLD == 40_000
+
+    def test_default_keep_recent_for_summary_is_10(self):
+        assert _DEFAULT_KEEP_RECENT_FOR_SUMMARY == 10
+
+    def test_tool_result_summary_len_is_200(self):
+        assert _TOOL_RESULT_SUMMARY_LEN == 200
