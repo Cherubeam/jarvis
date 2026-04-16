@@ -121,33 +121,32 @@ Load a single markdown file, return empty string if missing.
 
 ---
 
-### `build_system_prompt(context_dir: Path, prefix: str) -> str`
+### `build_system_prompt(context_dir: Path) -> str`
 
-Assemble full system prompt from context files.
+Assemble full system prompt from context files. Identity is sourced from `soul.md` (if present) and placed first. Project knowledge is no longer loaded statically from `projects/*.md` — it now lives in the Obsidian vault and is reached via `search_vault_semantic` / vault read tools.
 
 **Parameters:**
 - `context_dir` - Directory containing context/*.md files
-- `prefix` - System prompt prefix from config
 
 **Returns:**
 - `str` - Complete system prompt
 
 **Context File Loading Order:**
-1. `personal_context.md` - Personal background
-2. `professional_context.md` - Professional background
-3. `preferences.md` - Behavior guidelines
-4. `current_focus.md` - Current priorities
-5. `tasks.md` - Things 3 tasks (auto-generated)
-6. `projects/*.md` - Project context (alphabetical)
+1. `soul.md` - Identity / values (placed first, ungated by header)
+2. `personal_context.md` - Personal background
+3. `professional_context.md` - Professional background
+4. `preferences.md` - Behavior guidelines
+5. `current_focus.md` - Current priorities
+6. `tasks.md` - Things 3 tasks (auto-generated via `things-py` SQLite)
+7. `reader_persona.md` - Reading profile (optional, loaded by Readwise flow)
+
+See `build_system_prompt_with_metadata()` for the same assembly plus per-section token counts.
 
 **Usage Example:**
 ```python
 from pathlib import Path
 
-prompt = build_system_prompt(
-    Path("data/context"),
-    "You are a helpful assistant."
-)
+prompt = build_system_prompt(Path("data/context"))
 ```
 
 ---
@@ -387,35 +386,37 @@ The `allowed_dirs: list[Path]` field has been replaced by `filesystem_guard: Fil
 
 ### `class DataDrivenAgent`
 
-Subclass of `BaseAgent` for agents defined entirely via `meta.yaml` + `prompts/system.md`. No per-agent Python code is required.
+Subclass of `BaseAgent` for agents defined entirely via `meta.yaml` + `prompts/system.md`. No per-agent Python code is required. Instantiation is handled by `agent_from_meta()`; you normally don't call the constructor directly.
 
-**Constructor:**
+**Constructor (inherited from `BaseAgent`):**
 
-#### `__init__(name, system_prompt, config, tools=None, extra_tools=None)`
+#### `__init__(config: AgentConfig, llm_client: LLMClient)`
 
 **Parameters:**
-- `name: str` — Agent name (from `meta.yaml`)
-- `system_prompt: str` — System prompt loaded from `prompts/system.md`
-- `config: AgentConfig` — Agent configuration (model, temperature, max_tokens, tools)
-- `tools: list[ToolDefinition] | None` — Agent-specific tools
-- `extra_tools: list[ToolDefinition] | None` — Shared tools (conversation recall, vault read)
+- `config: AgentConfig` — Agent configuration (name, model, temperature, max_tokens, max_iterations, tools)
+- `llm_client: LLMClient` — Shared LLM client for API calls
 
 **Methods:**
 
-#### `process_message(user_message, conversation_history, stream_handler) -> str`
+#### `process_message(message: str, context: dict | None = None) -> StreamingResponse`
 
-Process a user message using the standard agent flow: build messages, stream response, return assistant text.
+Append the user message to conversation history and return a streamed response from the LLM. Tool execution happens in the agentic loop driven by `StreamHandler` (see `run()`).
 
 ---
 
-### `agent_from_meta(meta_path, llm_client, extra_tools=None) -> BaseAgent`
+### `agent_from_meta(meta_path, llm_client, model, extra_tools=None, skill_registry=None, card_search_tool=None, skill_names_override=None, prompt_includes_override=None) -> DataDrivenAgent`
 
 Factory function that builds an agent instance from a `meta.yaml` file.
 
 **Parameters:**
 - `meta_path: Path` — Path to the agent's `meta.yaml` file
 - `llm_client: LLMClient` — Shared LLM client instance
-- `extra_tools: list[ToolDefinition] | None` — Additional tools to provide
+- `model: str` — Model ID to use for this agent
+- `extra_tools: list[ToolDefinition] | None` — Additional tools (e.g. shared vault read tools)
+- `skill_registry: dict | None` — Skill registry for resolving bound skills
+- `card_search_tool: ToolDefinition | None` — Card search tool for deck-skills
+- `skill_names_override: list[str] | None` — If set, replaces the `skills:` list from `meta.yaml`
+- `prompt_includes_override: dict[str, str] | None` — Per-placeholder overrides applied before normal expansion
 
 **Returns:**
 - `DataDrivenAgent` — A fully configured agent instance
