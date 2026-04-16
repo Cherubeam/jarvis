@@ -23,7 +23,6 @@ data/conversations/
 data/pattern-cards/
 data/rag/
 data/.cli_history
-imports/
 
 # Local config overrides (keep default.yaml, ignore local overrides)
 config/local.yaml
