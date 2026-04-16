@@ -50,7 +50,7 @@ docs/engineering/mutation-results-raw.txt
 tests/golden/results/
 
 # Personal voice profile
-packages/agents/writing/prompts/voice-profile.md
+packages/agents/writer/prompts/voice-profile.md
 
 # Heartbeat runtime data (journals, plans)
 data/heartbeat/
