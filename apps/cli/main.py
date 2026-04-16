@@ -7,6 +7,7 @@ import argparse
 import os
 import platform
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import yaml
@@ -52,7 +53,11 @@ from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutN
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.telemetry.metrics import MetricsTracker
 
-CLIENT_VERSION = "0.12.0"
+try:
+    CLIENT_VERSION = version("jarvis")
+except PackageNotFoundError:
+    # Running outside an editable/installed context (e.g. raw PYTHONPATH).
+    CLIENT_VERSION = "dev"
 
 
 def _assemble_agent_tools(
@@ -151,6 +156,30 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge override into base.
+
+    Semantics:
+    - Nested dicts are merged key-by-key.
+    - Lists are replaced wholesale (not concatenated). This matches user
+      expectation for keys like mcp.servers or developer.scope.
+    - Any non-dict value in override replaces the base value at that key.
+
+    Returns a new dict; inputs are not mutated.
+    """
+    result = dict(base)
+    for key, value in override.items():
+        if (
+            key in result
+            and isinstance(result[key], dict)
+            and isinstance(value, dict)
+        ):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 def load_config() -> dict:
     """Load configuration from YAML file and environment."""
     jarvis_dir = get_project_root()
@@ -167,20 +196,15 @@ def load_config() -> dict:
         with open(default_config_path) as f:
             config = yaml.safe_load(f) or {}
     else:
-        # Fallback to old config location during migration
-        old_config_path = jarvis_dir / "config.yaml"
-        if old_config_path.exists():
-            with open(old_config_path) as f:
-                config = yaml.safe_load(f) or {}
-        else:
-            config = {}
+        config = {}
 
-    # Override with local config if exists
+    # Override with local config if exists (deep-merged so partial overrides
+    # don't clobber sibling defaults, e.g. obsidian.vault_path wiping other
+    # obsidian.* keys).
     if local_config_path.exists():
         with open(local_config_path) as f:
             local_config = yaml.safe_load(f) or {}
-            # Deep merge would be better, but shallow works for now
-            config.update(local_config)
+        config = _deep_merge(config, local_config)
 
     # Store paths for later use
     config["_paths"] = {
