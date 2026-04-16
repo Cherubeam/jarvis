@@ -224,6 +224,17 @@ Visual card generator for workshop facilitation — turns Obsidian pattern notes
 - [x] `pattern_cards` config section in `default.yaml`
 - [x] 56 unit tests
 
+### 5J: Readwise / Reading Assistant
+
+**Status**: ✅ Complete (released in 0.15.0)
+
+CLI-first Readwise Reader integration: library search, highlight recall, inbox triage, and document tagging via the `@readwise/cli` npm subprocess. See changelog entry for 0.15.0.
+
+- [x] 6 Readwise tools: `search_reading_list`, `search_highlights`, `get_document_details`, `save_to_reader`, `tag_readwise_document`, `move_readwise_document`
+- [x] Reading assistant agent (`/reading`) — library search, recaps, highlight synthesis
+- [x] Reader persona support — `data/context/reader_persona.md` loaded into every agent's system prompt
+- [x] Graceful degradation when the Readwise CLI is not installed or not authenticated
+
 ### 5B: Agent Orchestration
 
 - [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)
@@ -384,5 +395,5 @@ Visual card generator for workshop facilitation — turns Obsidian pattern notes
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-04-16*
 
