@@ -1,0 +1,24 @@
+# Voice Profile (example / starter template)
+
+> Copy this file to ``voice-profile.md`` in the same directory and fill it
+> in with your own voice. The copied file is gitignored so personal
+> content never leaks into the repository.
+>
+> Until you copy it, the writer agent falls back to the generic shared
+> voice profile at ``packages/agents/_shared/prompts/voice-profile.md``.
+
+## Tone
+
+_e.g. "Conversational but technically precise. Avoids marketing speak."_
+
+## Vocabulary preferences
+
+_e.g. "Prefers 'use' over 'utilize', 'build' over 'leverage'."_
+
+## Structural habits
+
+_e.g. "Short paragraphs. Lists for enumeration. Avoids hedging phrases."_
+
+## Avoid
+
+_e.g. "Em dashes, exclamation marks, 'delve', 'utilize'."_

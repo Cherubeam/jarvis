@@ -193,7 +193,17 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 
 **Cortex semantic search** (`search_vault_semantic`): Shared tool that queries the Obsidian vault by meaning via the Cortex API. Opt-in — requires `cortex.enabled: true` in `config/local.yaml` and the Cortex service running (`cherubeam/cortex`, `uv run cortex`). Degrades gracefully when unreachable (agents fall back to `search_notes`). Config: `cortex.base_url` (default `http://127.0.0.1:8100`), `cortex.timeout_seconds` (default 10).
 
-**Shared prompt includes**: If a prompt include file isn't found in the agent's `prompts/` dir, the resolver falls back to `packages/agents/_shared/prompts/`. Voice profile and anti-patterns live there.
+**Shared prompt includes**: Each `prompt_include` filename is resolved in this order, and the first hit wins:
+
+1. `<agent_dir>/prompts/<filename>.md` — personal override, may be gitignored
+2. `packages/agents/_shared/prompts/<filename>.md` — framework default (`voice-profile.md`, `anti-patterns.md` live here)
+3. `<agent_dir>/prompts/<filename>.md.example` — committed starter template (triggers a startup warning when used)
+4. `packages/agents/_shared/prompts/<filename>.md.example` — shared starter template (also warns)
+5. Missing → startup warning, placeholder renders as empty string.
+
+The CLI runs a validation pass at startup (see `_warn_on_prompt_include_issues` in `apps/cli/main.py`) that prints a warning whenever an agent's `prompt_include` resolves via a `.md.example` fallback or can't be resolved at all. Canonical hits (levels 1 or 2) are silent.
+
+On a fresh clone the `voice-profile.md.example` under `packages/agents/writer/prompts/` serves as a starter template; copy it to `voice-profile.md` to personalize (the copy is gitignored).
 
 **Skill binding**: The `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
 
