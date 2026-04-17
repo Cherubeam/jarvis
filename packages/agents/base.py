@@ -12,6 +12,7 @@ from pathlib import Path
 
 import yaml
 
+from packages.agents.prompt_includes import resolve_include
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition, ToolRegistry
@@ -240,12 +241,17 @@ def agent_from_meta(
             else:
                 prompt_includes[placeholder] = value
 
-    shared_prompts_dir = Path(__file__).parent / "_shared" / "prompts"
+    # Resolve each include via the shared lookup order (agent-local .md →
+    # shared .md → agent-local .md.example → shared .md.example). Missing
+    # files render as empty rather than crashing mid-stream; startup
+    # validation (apps.cli.main) surfaces them as warnings.
     for placeholder, filename in prompt_includes.items():
-        include_path = agent_dir / "prompts" / f"{filename}.md"
-        if not include_path.is_file():
-            include_path = shared_prompts_dir / f"{filename}.md"
-        include_text = include_path.read_text(encoding="utf-8")
+        resolution = resolve_include(agent_dir, filename)
+        include_text = (
+            resolution.path.read_text(encoding="utf-8")
+            if resolution.path is not None
+            else ""
+        )
         system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
 
     tools = list(extra_tools) if extra_tools else []
