@@ -36,6 +36,7 @@ from apps.cli.display import (
 )
 from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
+from packages.agents.prompt_includes import format_issue, validate_agent_includes
 from packages.agents.registry import AgentMeta, discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, build_system_prompt_with_metadata, parse_frontmatter
 from packages.skills.registry import discover_skills
@@ -154,6 +155,24 @@ def get_project_root() -> Path:
     """Get the project root directory."""
     # Navigate from apps/cli/main.py to project root
     return Path(__file__).parent.parent.parent
+
+
+def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None:
+    """Print a startup warning block for any non-canonical prompt_includes.
+
+    Canonical = the agent's local ``prompts/<name>.md`` or the shared
+    ``_shared/prompts/<name>.md``. Anything else (``.md.example`` fallback
+    or nothing at all) is flagged so the user can fix it before it bites
+    them mid-conversation.
+    """
+    meta_paths = [m.meta_path for m in agent_registry.values() if m.meta_path is not None]
+    issues = validate_agent_includes(meta_paths)
+    if not issues:
+        return
+    print_system("\n[prompt_includes] Non-canonical include resolution:")
+    for issue in issues:
+        print_system(f"  - {format_issue(issue)}")
+    print_system("")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -649,6 +668,10 @@ def main(argv: list[str] | None = None):
     # Discover registered agents and skills for slash-command routing
     agent_registry = discover_agents()
     skill_registry = discover_skills()
+
+    # Validate prompt_includes at startup so missing files surface as
+    # actionable warnings rather than FileNotFoundError mid-stream later.
+    _warn_on_prompt_include_issues(agent_registry)
 
     # Initialize RAG if enabled
     # Shared tools — always available to JARVIS and all delegated agents
