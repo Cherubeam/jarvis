@@ -45,13 +45,9 @@ rag = [
 [project.scripts]
 jarvis = "jarvis_cli:main"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"
-asyncio_mode = "auto"
+# Pytest configuration lives in pytest.ini (single source of truth).
+# Don't add [tool.pytest.ini_options] here — pytest prefers pytest.ini when
+# both exist and warns "ignoring pytest config in pyproject.toml".
 
 [tool.coverage.run]
 source = ["packages", "apps"]
