@@ -20,6 +20,7 @@ imports/
 backup/
 data/context/
 data/conversations/
+data/outcomes/
 data/pattern-cards/
 data/rag/
 data/.cli_history
@@ -53,6 +54,9 @@ packages/agents/writer/prompts/voice-profile.md
 
 # Heartbeat runtime data (journals, plans)
 data/heartbeat/
+
+# Brainstorms and reflections (personal thinking, not code)
+data/brainstorms/
 
 # Individual skills (personal content, framework code is tracked)
 packages/skills/*

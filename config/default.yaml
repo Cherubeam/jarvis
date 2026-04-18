@@ -81,9 +81,12 @@ cli:
   history_file: "data/.cli_history"
 
 # Filesystem access control (used by Obsidian and future integrations)
-# Configure per-path permissions in local.yaml
+# User-facing paths are configured in local.yaml. Framework-level paths
+# that must work out-of-the-box (e.g., data/outcomes/) ship with defaults.
 filesystem:
-  access_rules: []                  # User sets in local.yaml
+  access_rules:
+    - path: data/outcomes
+      access: read-write
 
 # Obsidian vault integration
 obsidian:
@@ -116,6 +119,14 @@ mcp:
 readwise:
   enabled: false              # Set to true in local.yaml
   cache_ttl_seconds: 300      # Cache CLI results for 5 minutes
+
+# Outcome tracking — closed loop on advice JARVIS gives
+# When enabled, JARVIS auto-captures concrete recommendations via the
+# track_recommendation tool. Run /review to score items past their revisit
+# date. Scored outcomes feed back into RAG when rag.enabled is also true.
+outcomes:
+  enabled: true
+  dir: "data/outcomes"
 
 # Pattern card generator
 pattern_cards:
