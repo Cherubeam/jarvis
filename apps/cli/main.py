@@ -41,7 +41,7 @@ from packages.agents.registry import AgentMeta, discover_agents, get_by_command
 from packages.core.context_builder import build_system_prompt, build_system_prompt_with_metadata, parse_frontmatter
 from packages.skills.registry import discover_skills
 from packages.core.llm_client import LLMClient
-from packages.core.memory import ConversationLogger, hash_content
+from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
 from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
@@ -673,6 +673,10 @@ def main(argv: list[str] | None = None):
     # actionable warnings rather than FileNotFoundError mid-stream later.
     _warn_on_prompt_include_issues(agent_registry)
 
+    # Mint the conversation ID up-front so outcome tools can close over it
+    # at factory time (the same id is later passed to ConversationLogger).
+    conversation_id = generate_conversation_id()
+
     # Initialize RAG if enabled
     # Shared tools — always available to JARVIS and all delegated agents
     shared_tools: list = []
@@ -757,6 +761,38 @@ def main(argv: list[str] | None = None):
                 print_system("[Cortex] Service unreachable — tool registered but may fail.")
         except Exception as e:
             print_system(f"[Cortex] Startup failed — semantic search disabled. ({e})")
+
+    # Outcome tracking — shared tools for recording and recalling advice
+    outcomes_cfg = config.get("outcomes", {})
+    if outcomes_cfg.get("enabled", True):
+        try:
+            from packages.core.tools.outcome_tools import make_outcome_tools
+
+            outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
+            outcomes_dir.mkdir(parents=True, exist_ok=True)
+            outcome_tools = make_outcome_tools(outcomes_dir, fs_guard, conversation_id)
+            shared_tools.extend(outcome_tools)
+        except Exception as e:
+            print_system(f"[Outcomes] Startup failed — track_recommendation disabled. ({e})")
+
+        if rag_cfg.get("enabled", False):
+            try:
+                from packages.core.tools.outcome_recall import make_outcome_recall_tool
+
+                db_path_for_outcomes = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
+                embedding_model_for_outcomes = rag_cfg.get(
+                    "embedding_model", "openrouter/openai/text-embedding-3-small"
+                )
+                outcomes_api_key = get_api_key("openrouter", api_keys) or ""
+                shared_tools.append(
+                    make_outcome_recall_tool(
+                        db_path_for_outcomes,
+                        embedding_model_for_outcomes,
+                        outcomes_api_key,
+                    )
+                )
+            except Exception as e:
+                print_system(f"[Outcomes] Recall tool failed — disabled. ({e})")
 
     # Blog tools — tool group for writing agent
     if vault_config is not None:
@@ -1011,6 +1047,7 @@ def main(argv: list[str] | None = None):
         context_snapshot=context_snapshot,
         environment=environment,
         context_metadata=context_metadata,
+        conversation_id=conversation_id,
     )
     metrics_tracker = MetricsTracker()
 

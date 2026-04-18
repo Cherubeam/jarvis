@@ -234,13 +234,14 @@ class ConversationLogger:
         context_snapshot: dict | None = None,
         environment: dict | None = None,
         context_metadata: "ContextMetadata | None" = None,
+        conversation_id: str | None = None,
     ):
         self.conversations_dir = Path(conversations_dir)
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self.current_conversation: list[dict] = []
         self.session_start = datetime.now()
         self.metrics = SessionMetrics()
-        self.conversation_id = generate_conversation_id()
+        self.conversation_id = conversation_id or generate_conversation_id()
         self._message_counter = 0
 
         # New schema fields
