@@ -53,14 +53,12 @@ def load_context_file(filepath: Path) -> str:
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
-    """Extract YAML frontmatter from markdown. Returns (metadata, content)."""
-    if text.startswith("---\n"):
-        end = text.find("\n---\n", 4)
-        if end != -1:
-            frontmatter = yaml.safe_load(text[4:end]) or {}
-            content = text[end + 5:]  # skip past closing ---\n
-            return frontmatter, content
-    return {}, text
+    """Extract YAML frontmatter from markdown. Returns (metadata, content).
+
+    Backward-compat re-export of :func:`packages.core.frontmatter.parse`.
+    """
+    from packages.core import frontmatter as _fm
+    return _fm.parse(text)
 
 
 def build_system_prompt(context_dir: Path) -> str:
