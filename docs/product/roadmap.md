@@ -224,6 +224,24 @@ Visual card generator for workshop facilitation — turns Obsidian pattern notes
 - [x] `pattern_cards` config section in `default.yaml`
 - [x] 56 unit tests
 
+### 5K: Outcome Tracking
+
+**Status**: ✅ Complete (v1)
+
+Closed loop on advice JARVIS gives. JARVIS autonomously captures concrete recommendations via `track_recommendation`; the user scores items past their revisit date via `/outcomes`; scored outcomes feed back into RAG so future conversations retrieve relevant past lessons. See ADR for scope decisions.
+
+- [x] `track_recommendation` shared tool — writes pending outcome files to `data/outcomes/` with `conversation_id` linking back to source session
+- [x] `packages/core/frontmatter.py` — YAML frontmatter parse/dump + atomic write
+- [x] `packages/core/date_utils.py` — relative date parsing (`"1 month"`, `"next week"`, ISO, etc.)
+- [x] `/outcomes` interactive CLI command — per-item prompts (outcome/quality/note), atomic writes, Ctrl-C safe
+- [x] `OutcomeIndexer` + `OutcomeSearcher` — ChromaDB collection, indexes only reviewed items, deletes stale entries
+- [x] `recall_outcomes` shared tool — semantic search over past reviewed outcomes, gated on `rag.enabled`
+- [x] JARVIS orchestrator directive — teaches when to call `track_recommendation` (actionable + timeframe, not opinions/hypotheticals)
+- [x] `outcomes:` config section + default `filesystem.access_rules` for out-of-the-box operation
+- [x] 95 unit tests across 6 files
+
+**Deferred to v2**: heartbeat/cron auto-reminders, social graph, identity-diff snapshots, per-conversation auto-injection into system prompts, specialist agents (navigator, writer) calling `track_recommendation`. v1 does not backfill past transcripts — only from-now items are tracked.
+
 ### 5J: Readwise / Reading Assistant
 
 **Status**: ✅ Complete (released in 0.15.0)

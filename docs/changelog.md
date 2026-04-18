@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Outcome tracking (Phase 5K)** — closed loop on advice JARVIS gives. Adds `track_recommendation` shared tool that captures actionable recommendations as markdown files under `data/outcomes/` with YAML frontmatter (what, why, revisit_at, success_looks_like, conversation_id). Every captured item links back to the originating conversation.
+- **`/outcomes` CLI command** — interactive scoring of pending outcomes past their revisit date. Prompts for outcome (happened/didnt/partial), quality (1–5), and a retrospective note. Atomic writes so interrupted sessions don't corrupt files; Ctrl-C mid-flow preserves earlier files.
+- **`recall_outcomes` shared tool** — semantic search over reviewed outcomes via a new `OutcomeIndexer` and `OutcomeSearcher` (ChromaDB collection `outcomes`). Only reviewed items are indexed — pending advice has no feedback signal.
+- **`packages/core/frontmatter.py`** — YAML frontmatter utilities: `parse`, `dump` (preserves key order), and `write_atomic` (tmp-file + `os.replace`). `parse_frontmatter` in `context_builder.py` becomes a thin re-export for backward compatibility.
+- **`packages/core/date_utils.py`** — `parse_relative_date()` accepting `"N day(s)"`, `"N week(s)"`, `"N month(s)"` (30-day), `"N year(s)"` (365-day), `"tomorrow"`, `"next week"`, `"next month"`, and ISO dates.
+- **`outcomes:` config section** in `config/default.yaml` (`enabled: true` default, `dir: data/outcomes`). Ships a default `filesystem.access_rules` entry so the tool works out-of-the-box; breaks the empty-default convention deliberately for a framework-level feature.
+- **JARVIS orchestrator directive** — when `track_recommendation` is wired up, the system prompt gains an "Outcome Tracking" section teaching JARVIS to call the tool only for actionable advice with a timeframe (not opinions, hypotheticals, or lookups).
+
+### Test coverage
+- 95 new unit tests: `test_date_utils.py` (21), `test_frontmatter.py` (13), `test_outcome_tools.py` (18), `test_review_command.py` (18), `test_outcome_indexer.py` (19), `test_jarvis_agent.py` (+4).
+
 ---
 
 ## [0.15.0] - 2026-04-13

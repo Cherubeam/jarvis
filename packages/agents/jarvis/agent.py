@@ -29,7 +29,7 @@ def _build_outcome_tracking_directive() -> str:
 
 You have a `track_recommendation` tool. Call it ONCE in the same turn you
 give the user a concrete, actionable recommendation with a timeframe — so
-they can later review whether your advice worked out via `/review`.
+they can later review whether your advice worked out via `/outcomes`.
 
 Call it ONLY for:
 - Actionable suggestions the user could execute and evaluate later

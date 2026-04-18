@@ -158,6 +158,7 @@ During a chat session, you can use slash commands:
 /strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
 /develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary [date]   Generates an Obsidian daily note summary (default: today)
+/outcomes               Reviews pending tracked recommendations (score + retrospective)
 /stream                 Toggles between streaming and non-streaming response modes
 ```
 

@@ -14,9 +14,9 @@ class TestBuildOutcomeTrackingDirective:
         directive = _build_outcome_tracking_directive()
         assert "track_recommendation" in directive
 
-    def test_mentions_review_command(self):
+    def test_mentions_outcomes_command(self):
         directive = _build_outcome_tracking_directive()
-        assert "/review" in directive
+        assert "/outcomes" in directive
 
     def test_lists_do_not_use_cases(self):
         directive = _build_outcome_tracking_directive()
