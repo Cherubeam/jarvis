@@ -703,6 +703,19 @@ def main(argv: list[str] | None = None):
             recall_tool = make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
             shared_tools.append(recall_tool)
 
+            # Index reviewed outcomes so recall_outcomes has something to query
+            outcomes_cfg_for_index = config.get("outcomes", {})
+            if outcomes_cfg_for_index.get("enabled", True):
+                from packages.core.rag.outcome_indexer import OutcomeIndexer
+
+                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get(
+                    "dir", "data/outcomes"
+                )
+                outcome_indexer = OutcomeIndexer(db_path, embedding_model, rag_api_key)
+                n_outcomes = outcome_indexer.index_new(outcomes_dir_for_index)
+                if n_outcomes:
+                    print_system(f"[RAG] Indexed {n_outcomes} new outcome(s).")
+
             # Index deck-skill cards if any deck-skills have a deck.yaml
             if rag_cfg.get("index_cards", True):
                 deck_dirs = [
