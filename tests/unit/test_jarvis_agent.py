@@ -1,6 +1,32 @@
 """Tests for JARVIS agent — delegation directive builder."""
 
-from packages.agents.jarvis.agent import _build_delegation_directive, _SPECIAL_HINTS
+from packages.agents.jarvis.agent import (
+    _build_delegation_directive,
+    _build_outcome_tracking_directive,
+    _SPECIAL_HINTS,
+)
+
+
+class TestBuildOutcomeTrackingDirective:
+    """Tests for _build_outcome_tracking_directive()."""
+
+    def test_mentions_track_recommendation(self):
+        directive = _build_outcome_tracking_directive()
+        assert "track_recommendation" in directive
+
+    def test_mentions_review_command(self):
+        directive = _build_outcome_tracking_directive()
+        assert "/review" in directive
+
+    def test_lists_do_not_use_cases(self):
+        directive = _build_outcome_tracking_directive()
+        assert "Do NOT call it for" in directive
+        assert "Opinions" in directive
+        assert "Hypotheticals" in directive
+
+    def test_mentions_recall_outcomes_for_dedup(self):
+        directive = _build_outcome_tracking_directive()
+        assert "recall_outcomes" in directive
 
 
 class TestBuildDelegationDirective:

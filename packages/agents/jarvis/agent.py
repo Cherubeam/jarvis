@@ -19,6 +19,38 @@ _SPECIAL_HINTS: dict[str, str] = {
 }
 
 
+def _build_outcome_tracking_directive() -> str:
+    """Directive teaching JARVIS when to call track_recommendation.
+
+    Appended only when the tool is actually available at construction time.
+    """
+    return """
+## Outcome Tracking
+
+You have a `track_recommendation` tool. Call it ONCE in the same turn you
+give the user a concrete, actionable recommendation with a timeframe — so
+they can later review whether your advice worked out via `/review`.
+
+Call it ONLY for:
+- Actionable suggestions the user could execute and evaluate later
+  (e.g., "migrate auth off legacy middleware before Q3", "switch to
+  Postgres for this service", "talk to Sarah about the Thompson deal").
+- Advice with an implied or stated revisit horizon.
+
+Do NOT call it for:
+- Opinions, explanations, or how-something-works answers.
+- Hypotheticals ("you could consider X").
+- Information lookups or questions you're answering for them.
+- Clarifying questions back to the user.
+- Recommendations already clearly covered by an existing tracked item
+  (use `recall_outcomes` first if you're about to give similar advice).
+
+When you do call it, pick a revisit_in that matches the decision's
+feedback loop: short tactical moves (1-2 weeks), medium operational
+shifts (1 month), strategic bets (3-6 months).
+"""
+
+
 def _build_delegation_directive(available_agents: list[dict]) -> str:
     """Build the delegation directive dynamically from discovered agents.
 
@@ -110,6 +142,10 @@ class JarvisAgent(BaseAgent):
         tools = []
         if extra_tools:
             tools.extend(extra_tools)
+
+        # Teach JARVIS when to capture outcomes — only if the tool is wired up
+        if any(t.name == "track_recommendation" for t in tools):
+            system_prompt += _build_outcome_tracking_directive()
 
         # Set up delegation if agents are available
         self._delegation_state = DelegationState()
