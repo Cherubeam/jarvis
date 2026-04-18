@@ -126,15 +126,15 @@ def handle_review_command(
 
             outcome = _prompt_choice(
                 session,
-                "Outcome (happened/didnt/partial): ",
+                "Did it happen? (happened/didnt/partial): ",
                 VALID_OUTCOMES,
             )
             quality_str = _prompt_choice(
                 session,
-                "Quality (1-5): ",
+                "In hindsight, how good was this advice? (1=bad, 5=nailed it): ",
                 VALID_QUALITY,
             )
-            note = session.prompt("Retrospective note: ").strip()
+            note = session.prompt("Retrospective note (what actually happened, why): ").strip()
 
             _apply_review(item, outcome, int(quality_str), note, now)
             reviewed_count += 1

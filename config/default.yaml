@@ -53,7 +53,7 @@ evaluation:
 
 # RAG — Conversation recall via ChromaDB + LiteLLM embeddings
 rag:
-  enabled: false          # set to true in local.yaml to activate
+  enabled: true         # set to true in local.yaml to activate
   db_path: "data/rag/chroma"
   embedding_model: "openrouter/openai/text-embedding-3-small"
   index_cards: true       # index deck-skill cards (deck.yaml) when rag is enabled
@@ -122,7 +122,7 @@ readwise:
 
 # Outcome tracking — closed loop on advice JARVIS gives
 # When enabled, JARVIS auto-captures concrete recommendations via the
-# track_recommendation tool. Run /review to score items past their revisit
+# track_recommendation tool. Run /outcomes to score items past their revisit
 # date. Scored outcomes feed back into RAG when rag.enabled is also true.
 outcomes:
   enabled: true
