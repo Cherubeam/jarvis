@@ -1084,6 +1084,7 @@ def main(argv: list[str] | None = None):
     if agent_registry:
         cmds = [m.command for m in agent_registry.values()]
         cmds.append("/daily-summary")
+        cmds.append("/review")
         cmds.append("/model")
         cmds.append("/stream")
         commands = cmds
@@ -1136,6 +1137,19 @@ def main(argv: list[str] | None = None):
                     stream_handler.streaming = not stream_handler.streaming
                     state = "on" if stream_handler.streaming else "off (caching enabled)"
                     print_system(f"\nStreaming: {state}\n")
+                    continue
+
+                if command == "/review":
+                    outcomes_cfg = config.get("outcomes", {})
+                    if not outcomes_cfg.get("enabled", True):
+                        print_system(
+                            "Outcome tracking is disabled. "
+                            "Set outcomes.enabled: true in config to enable."
+                        )
+                    else:
+                        from apps.cli.review import handle_review_command
+                        outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
+                        handle_review_command(outcomes_dir, console, session)
                     continue
 
                 # Agent-routed commands
