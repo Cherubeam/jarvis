@@ -12,7 +12,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 ┌────────────────────────────────────────────────────────────────┐
 │                     User Interfaces                             │
 ├──────────────────────┬─────────────────────────────────────────┤
-│     CLI (apps/cli)   │         Web UI (apps/web) [Phase 3]     │
+│     CLI (apps/cli)   │         GUI (apps/gui) — Phase 1        │
 └──────────────────────┴─────────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────┐
@@ -475,8 +475,9 @@ rag:
 - **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` and `run()` using only `meta.yaml` + `prompts/system.md`. Supports `max_iterations` for extended agentic loops. No per-agent Python code needed.
 - **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, resolves `prompt_includes` placeholders, binds skills, and returns a configured `DataDrivenAgent`.
 - **`AgentMeta`** dataclass: Contains `meta_path`, `vault_writing`, `tool_groups` (named tool groups from CLI registry), and `skills` (skill names to bind).
-- **`_assemble_agent_tools()`** (in `apps/cli/main.py`): Builds tool list for an agent from shared tools + its declared `tool_groups`.
-- **`_instantiate_agent()`** (in `apps/cli/main.py`): Thin wrapper around `agent_from_meta()`.
+- **`assemble_agent_tools()`** (in `apps/cli/session_factory.py`): Builds tool list for an agent from shared tools + its declared `tool_groups`.
+- **`instantiate_agent()`** (in `apps/cli/session_factory.py`): Thin wrapper around `agent_from_meta()`.
+- **`build_session()`** (in `apps/cli/session_factory.py`): Shared factory that assembles the `SessionComponents` both the CLI and the GUI need (client, agent registry, tool groups, logger, stream handler, vault, MCP). Parameterized on a `ConfirmationHandler` injection — the CLI passes `CLIConfirmationHandler()`; the GUI passes a `WebConfirmationHandler` rebound per turn. See [gui.md](gui.md) for GUI architecture details.
 
 **Data-driven delegate agents** (13 total): content_reviewer, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, researcher, simplifier, strategyzer, substack_image_creator, substack_publisher, tactics_coach, writer.
 
