@@ -140,6 +140,23 @@ uv run jarvis --agent tactics_coach
 uv run jarvis --agent developer
 ```
 
+### GUI (Phase 1 — Chat shell)
+
+A graphical peer to the CLI, sharing the same agents, tools, conversation
+files, and approval flow:
+
+```bash
+uv sync --extra web
+uv run jarvis-gui              # opens http://127.0.0.1:8123 in your browser
+uv run jarvis-gui --no-browser # just serve
+```
+
+Phase 1 ships the Chat view (sidebar, streaming, tool cards, vault-write
+approval diffs, command palette, Tweaks panel, light/dark + accent swap).
+Dashboard, Agents, History, and Settings surfaces are stubbed and land in
+later phases. See [docs/engineering/gui.md](docs/engineering/gui.md) for
+architecture + rebuild instructions.
+
 During a chat session, you can use slash commands:
 
 ```
