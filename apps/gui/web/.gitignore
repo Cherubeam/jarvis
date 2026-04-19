@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+*.log
+# dist/ is intentionally NOT ignored — it's committed so `uv run jarvis-gui`
+# works on a fresh clone without Node.
