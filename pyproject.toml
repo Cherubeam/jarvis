@@ -35,8 +35,10 @@ test = [
 ]
 web = [
     "fastapi>=0.115.0",
-    "uvicorn>=0.34.0",
+    "uvicorn[standard]>=0.34.0",
     "sse-starlette>=2.0.0",
+    "websockets>=12.0",
+    "janus>=1.0.0",
 ]
 rag = [
     "chromadb>=0.6.0",
@@ -44,6 +46,7 @@ rag = [
 
 [project.scripts]
 jarvis = "jarvis_cli:main"
+jarvis-gui = "jarvis_gui:main"
 
 # Pytest configuration lives in pytest.ini (single source of truth).
 # Don't add [tool.pytest.ini_options] here — pytest prefers pytest.ini when
@@ -73,6 +76,16 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["packages", "apps"]
+exclude = [
+    "apps/gui/web/node_modules",
+    "apps/gui/web/src",
+    "apps/gui/web/index.html",
+    "apps/gui/web/package.json",
+    "apps/gui/web/package-lock.json",
+    "apps/gui/web/tsconfig.json",
+    "apps/gui/web/vite.config.ts",
+]
 
 [tool.hatch.build.targets.wheel.force-include]
 "jarvis_cli.py" = "jarvis_cli.py"
+"jarvis_gui.py" = "jarvis_gui.py"
