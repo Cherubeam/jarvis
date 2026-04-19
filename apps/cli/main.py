@@ -634,450 +634,60 @@ def main(argv: list[str] | None = None):
     args = parse_args(argv)
     config = load_config()
 
-    jarvis_dir = config["_paths"]["jarvis_dir"]
+    # All session-component wiring lives in apps/cli/session_factory.build_session.
+    # The CLI passes its own ConfirmationHandler + tool-feedback printer.
+    from apps.cli.session_factory import (
+        assemble_agent_tools as _assemble_agent_tools,
+        build_session,
+        instantiate_agent as _instantiate_agent,
+        make_agent_vault_tools,
+    )
 
-    # Collect API keys from environment
-    api_keys = collect_api_keys()
-
-    # Resolve model: CLI flag > config default
-    models_config = config.get("models", {})
-    model_source = args.model or models_config.get("default", "openrouter/anthropic/claude-sonnet-4.6")
-    resolved = resolve_model(model_source, config)
-    model_id = resolved.model_id
-
-    # Validate that we have an API key for the resolved provider
-    if not get_api_key(resolved.provider, api_keys):
-        print(f"Error: No API key for provider '{resolved.provider}'. "
-              f"Set {resolved.provider.upper()}_API_KEY in your .env file.")
+    confirmation_handler = CLIConfirmationHandler()
+    try:
+        components = build_session(
+            args, config, confirmation_handler,
+            on_tool_call=print_tool_feedback,
+            client_label="cli",
+            auto_confirm=getattr(args, "auto_confirm", False),
+        )
+    except RuntimeError as e:
+        print_error(f"Error: {e}")
         sys.exit(1)
 
-    # Initialize components - paths now relative to jarvis root
-    context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
-    conversations_dir = jarvis_dir / config.get("paths", {}).get("conversations_dir", "data/conversations")
+    jarvis_dir = components.jarvis_dir
+    context_dir = components.context_dir
+    conversations_dir = components.conversations_dir
+    model_id = components.model_id
+    api_keys = components.api_keys
+    client = components.client
+    pricing = components.pricing
+    metrics_tracker = components.metrics_tracker
+    stream_handler = components.stream_handler
+    logger = components.logger
+    conversation_id = components.conversation_id
+    system_prompt = components.system_prompt
+    context_metadata = components.context_metadata
+    agent_registry = components.agent_registry
+    skill_registry = components.skill_registry
+    shared_tools = components.shared_tools
+    tool_groups = components.tool_groups
+    card_search_tool = components.card_search_tool
+    vault_config = components.vault_config
+    fs_guard = components.fs_guard
+    active_agent = components.active_agent
+    agent_name = components.agent_name
+    mcp_manager = components.mcp_manager
 
-    # Sync tasks from Things 3 (if enabled)
-    sync_tasks_to_file(context_dir / "tasks.md", config)
+    # Helper: bind the CLI confirmation handler into delegate-agent vault tools.
+    def _make_agent_vault_tools(meta, _config, _vc):
+        return make_agent_vault_tools(meta, _config, _vc, confirmation_handler)
 
-    system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
-
-    client = LLMClient(
-        api_keys=api_keys,
-        default_model=model_id,
-    )
-
-    # Discover registered agents and skills for slash-command routing
-    agent_registry = discover_agents()
-    skill_registry = discover_skills()
-
-    # Validate prompt_includes at startup so missing files surface as
-    # actionable warnings rather than FileNotFoundError mid-stream later.
-    _warn_on_prompt_include_issues(agent_registry)
-
-    # Mint the conversation ID up-front so outcome tools can close over it
-    # at factory time (the same id is later passed to ConversationLogger).
-    conversation_id = generate_conversation_id()
-
-    # Initialize RAG if enabled
-    # Shared tools — always available to JARVIS and all delegated agents
-    shared_tools: list = []
-    # Named tool groups — assigned per-agent via meta.yaml `tools:` field
-    tool_groups: dict[str, list] = {}
-    card_search_tool = None  # Set by RAG card indexing if available
-    rag_cfg = config.get("rag", {})
-    if rag_cfg.get("enabled", False):
-        try:
-            from packages.core.rag.indexer import ConversationIndexer
-            from packages.core.tools.conversation_recall import make_conversation_recall_tool
-
-            db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-            embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
-
-            # Use the OpenRouter key for RAG embeddings (backward compatible)
-            rag_api_key = get_api_key("openrouter", api_keys) or ""
-
-            indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
-            n_new = indexer.index_new(conversations_dir)
-            if n_new:
-                print_system(f"[RAG] Indexed {n_new} new conversation(s).")
-
-            recall_tool = make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
-            shared_tools.append(recall_tool)
-
-            # Index reviewed outcomes so recall_outcomes has something to query
-            outcomes_cfg_for_index = config.get("outcomes", {})
-            if outcomes_cfg_for_index.get("enabled", True):
-                from packages.core.rag.outcome_indexer import OutcomeIndexer
-
-                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get(
-                    "dir", "data/outcomes"
-                )
-                outcome_indexer = OutcomeIndexer(db_path, embedding_model, rag_api_key)
-                n_outcomes = outcome_indexer.index_new(outcomes_dir_for_index)
-                if n_outcomes:
-                    print_system(f"[RAG] Indexed {n_outcomes} new outcome(s).")
-
-            # Index deck-skill cards if any deck-skills have a deck.yaml
-            if rag_cfg.get("index_cards", True):
-                deck_dirs = [
-                    meta.path for meta in skill_registry.values()
-                    if (meta.path / "deck.yaml").is_file()
-                ]
-                if deck_dirs:
-                    from packages.core.rag.card_indexer import CardIndexer
-                    from packages.core.tools.card_search import make_card_search_tool
-
-                    card_indexer = CardIndexer(db_path, embedding_model, rag_api_key)
-                    n_cards = card_indexer.index_new(deck_dirs)
-                    if n_cards:
-                        print_system(f"[RAG] Indexed {n_cards} new card(s).")
-
-                    card_search_tool = make_card_search_tool(db_path, embedding_model, rag_api_key)
-                    tool_groups["card_search"] = [card_search_tool]
-
-        except ImportError:
-            print_system("[RAG] chromadb not installed — recall disabled. Run: uv add chromadb")
-        except Exception as e:
-            print_system(f"[RAG] Startup failed — recall disabled. ({e})")
-
-    # Initialize vault tools
-    fs_guard = load_filesystem_guard(config)
-    vault_config = load_vault_config(config, filesystem_guard=fs_guard)
-
-    # Vault read tools — shared (available to JARVIS and all delegated agents)
-    if vault_config is not None:
-        try:
-            from packages.core.tools.vault_read_tools import make_vault_read_tools
-
-            vault_read_tools = make_vault_read_tools(vault_config)
-            shared_tools.extend(vault_read_tools)
-            print_system(f"[Vault] {len(vault_read_tools)} vault read tools loaded.")
-        except Exception as e:
-            print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
-
-    # Cortex semantic search — shared tool
-    cortex_cfg = config.get("cortex", {})
-    if cortex_cfg.get("enabled", False):
-        try:
-            from packages.integrations.cortex.client import CortexClient
-            from packages.core.tools.cortex_search import make_cortex_search_tool
-
-            cortex_client = CortexClient(
-                base_url=cortex_cfg.get("base_url", "http://127.0.0.1:8100"),
-                timeout=cortex_cfg.get("timeout_seconds", 10),
-            )
-            cortex_tool = make_cortex_search_tool(cortex_client)
-            shared_tools.append(cortex_tool)
-
-            if cortex_client.is_available():
-                print_system("[Cortex] Connected — vault semantic search enabled.")
-            else:
-                print_system("[Cortex] Service unreachable — tool registered but may fail.")
-        except Exception as e:
-            print_system(f"[Cortex] Startup failed — semantic search disabled. ({e})")
-
-    # Outcome tracking — shared tools for recording and recalling advice
-    outcomes_cfg = config.get("outcomes", {})
-    if outcomes_cfg.get("enabled", True):
-        try:
-            from packages.core.tools.outcome_tools import make_outcome_tools
-
-            outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
-            outcomes_dir.mkdir(parents=True, exist_ok=True)
-            outcome_tools = make_outcome_tools(outcomes_dir, fs_guard, conversation_id)
-            shared_tools.extend(outcome_tools)
-        except Exception as e:
-            print_system(f"[Outcomes] Startup failed — track_recommendation disabled. ({e})")
-
-        if rag_cfg.get("enabled", False):
-            try:
-                from packages.core.tools.outcome_recall import make_outcome_recall_tool
-
-                db_path_for_outcomes = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-                embedding_model_for_outcomes = rag_cfg.get(
-                    "embedding_model", "openrouter/openai/text-embedding-3-small"
-                )
-                outcomes_api_key = get_api_key("openrouter", api_keys) or ""
-                shared_tools.append(
-                    make_outcome_recall_tool(
-                        db_path_for_outcomes,
-                        embedding_model_for_outcomes,
-                        outcomes_api_key,
-                    )
-                )
-            except Exception as e:
-                print_system(f"[Outcomes] Recall tool failed — disabled. ({e})")
-
-    # Blog tools — tool group for writing agent
-    if vault_config is not None:
-        try:
-            from packages.core.tools.blog_tools import make_blog_tools
-
-            obsidian_cfg = config.get("obsidian", {})
-            writing_cfg = obsidian_cfg.get("writing", {})
-            blog_dir = writing_cfg.get("blog_dir", "")
-            template_path = writing_cfg.get("template_path", "")
-
-            if blog_dir:
-                blog_tools = make_blog_tools(
-                    vault_config, CLIConfirmationHandler(), blog_dir, template_path,
-                )
-                tool_groups["blog_tools"] = blog_tools
-                print_system(f"[Blog] {len(blog_tools)} blog tools loaded.")
-        except Exception as e:
-            print_system(f"[Blog] Startup failed — blog tools disabled. ({e})")
-
-    # Content-evaluator tool — tool group for writing agent
-    skill_dir = jarvis_dir / "packages" / "skills" / "content-evaluator"
-    if (skill_dir / "SKILL.md").is_file():
-        try:
-            from packages.core.tools.content_evaluator import make_content_evaluator_tool
-
-            evaluator_tool = make_content_evaluator_tool(skill_dir, client, model_id)
-            tool_groups["content_evaluator"] = [evaluator_tool]
-            print_system("[Tools] Content evaluator loaded.")
-        except Exception as e:
-            print_system(f"[Tools] Content evaluator failed: {e}")
-
-    # Developer tools — tool group for developer agent
-    dev_cfg = config.get("developer", {})
-    if dev_cfg.get("enabled", True):
-        try:
-            from packages.core.tools.codebase_tools import make_codebase_tools
-            from packages.core.tools.git_tools import make_git_tools
-            from packages.core.tools.project_write_tools import make_project_write_tools
-            from packages.core.tools.test_tools import make_test_runner_tool
-            from packages.core.tools.mutation_tools import make_mutation_tools
-
-            dev_scope = dev_cfg.get("scope", [
-                "packages/agents/", "packages/skills/",
-                "data/context/", "data/prompts/", "config/",
-            ])
-            dev_extensions = dev_cfg.get("allowed_extensions", [".md", ".yaml", ".yml"])
-
-            dev_tools: list = []
-            dev_tools.extend(make_codebase_tools(jarvis_dir))
-            dev_tools.extend(make_git_tools(jarvis_dir))
-            if args.auto_confirm:
-                from packages.agents.developer.confirmation import AutoConfirmationHandler
-                dev_confirmation = AutoConfirmationHandler(dev_scope, jarvis_dir)
-            else:
-                dev_confirmation = CLIConfirmationHandler()
-            dev_tools.extend(make_project_write_tools(
-                jarvis_dir, dev_confirmation,
-                allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
-            ))
-            dev_tools.append(make_test_runner_tool(jarvis_dir))
-            dev_tools.extend(make_mutation_tools(jarvis_dir))
-            tool_groups["dev_tools"] = dev_tools
-            print_system(f"[Developer] {len(dev_tools)} developer tools loaded.")
-        except Exception as e:
-            print_system(f"[Developer] Startup failed — developer tools disabled. ({e})")
-
-    # Suggest-improvements tool — tool group for writing agent
-    if vault_config is not None:
-        try:
-            from packages.core.tools.suggest_improvements import make_suggest_improvements_tool
-
-            suggest_tool = make_suggest_improvements_tool(
-                vault_config, CLIConfirmationHandler(),
-            )
-            tool_groups["suggest_improvements"] = [suggest_tool]
-            print_system("[Tools] Suggest improvements loaded.")
-        except Exception as e:
-            print_system(f"[Tools] Suggest improvements failed: {e}")
-
-    # Web tools — search and fetch for agents that need web access
-    from packages.core.tools.web_search import WEB_SEARCH_TOOL
-    from packages.core.tools.web_fetch import FETCH_URL_TOOL
-
-    tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
-    print_system("[Tools] Web search + fetch loaded.")
-
-    # Things 3 write tools — create, complete, update tasks
-    things3_cfg = config.get("things3", {})
-    if things3_cfg.get("enabled", False):
-        try:
-            from packages.core.tools.things3_tools import make_things3_tools
-
-            things3_tools = make_things3_tools(things3_cfg)
-            if things3_tools:
-                tool_groups["things3_tools"] = things3_tools
-                print_system(f"[Tools] {len(things3_tools)} Things 3 tools loaded.")
-        except Exception as e:
-            print_system(f"[Tools] Things 3 tools failed: {e}")
-
-    # Readwise tools — search reading list, highlights, manage documents
-    readwise_cfg = config.get("readwise", {})
-    if readwise_cfg.get("enabled", False):
-        try:
-            from packages.core.tools.readwise_tools import make_readwise_tools
-
-            readwise_tools = make_readwise_tools(readwise_cfg)
-            if readwise_tools:
-                tool_groups["readwise_tools"] = readwise_tools
-                print_system(f"[Tools] {len(readwise_tools)} Readwise tools loaded.")
-        except Exception as e:
-            print_system(f"[Tools] Readwise tools failed: {e}")
-
-    # Pattern card generator tools
-    if vault_config is not None:
-        obsidian_cfg = config.get("obsidian", {})
-        writing_cfg = obsidian_cfg.get("writing", {})
-        patterns_cfg = writing_cfg.get("patterns", {})
-        patterns_dir = patterns_cfg.get("target_dir", "")
-        if patterns_dir:
-            try:
-                from packages.core.tools.card_generator_tools import make_card_generator_tools
-                from packages.core.card_renderer import ImageGenerationConfig
-
-                card_cfg = config.get("pattern_cards", {})
-                card_output = jarvis_dir / card_cfg.get("output_dir", "data/pattern-cards")
-                img_config = ImageGenerationConfig.from_dict(card_cfg)
-                card_gen_tools = make_card_generator_tools(
-                    vault_config, patterns_dir, card_output,
-                    image_config=img_config,
-                )
-                tool_groups["card_generator"] = card_gen_tools
-                img_status = "enabled" if img_config.enabled else "prompts only"
-                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status}).")
-            except Exception as e:
-                print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
-
-    # MCP — connect to external MCP tool servers
-    mcp_manager = None
-    from packages.integrations.mcp.config import parse_mcp_config
-
-    try:
-        mcp_configs = parse_mcp_config(config)
-        if mcp_configs:
-            from packages.integrations.mcp import MCPManager
-
-            mcp_manager = MCPManager()
-            mcp_tool_groups = mcp_manager.start(mcp_configs)
-            tool_groups.update(mcp_tool_groups)
-            total = sum(len(v) for v in mcp_tool_groups.values())
-            print_system(f"[MCP] {total} tool(s) from {len(mcp_tool_groups)} server(s).")
-    except Exception as e:
-        print_system(f"[MCP] Startup failed: {e}")
-
-    # Build the active agent
-    if args.agent:
-        if args.agent not in agent_registry:
-            available = ", ".join(sorted(agent_registry)) or "(none)"
-            print_error(f"Error: unknown agent '{args.agent}'. Available: {available}")
-            sys.exit(1)
-        meta = agent_registry[args.agent]
-        all_agent_tools = _assemble_agent_tools(meta, shared_tools, tool_groups)
-        all_agent_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
-        active_agent = _instantiate_agent(
-            meta, client, model_id, all_agent_tools,
-            skill_registry=skill_registry,
-            card_search_tool=card_search_tool,
-        )
-        agent_name = meta.name
-    else:
-        available_agents = [
-            {"name": meta.name, "description": meta.description}
-            for meta in agent_registry.values()
-        ]
-        jarvis_tools = (
-            list(shared_tools)
-            + tool_groups.get("web_tools", [])
-            + tool_groups.get("things3_tools", [])
-            + tool_groups.get("readwise_tools", [])
-        )
-        active_agent = JarvisAgent(
-            llm_client=client,
-            context_dir=context_dir,
-            model=model_id,
-            extra_tools=jarvis_tools or None,
-            available_agents=available_agents or None,
-        )
-        agent_name = "JARVIS"
-
-    # Build schema config dicts for ConversationLogger
-    model_config = {
-        "id": model_id,
-        "provider": resolved.provider,
-        "parameters": {},
-    }
-
-    logger_agent_config = {
-        "name": agent_name,
-        "system_prompt_hash": f"sha256:{hash_content(active_agent.config.system_prompt)}",
-        "tools": [],
-        "metadata": {},
-    }
-
-    context_files = []
-    if context_dir.exists():
-        for f in sorted(context_dir.iterdir()):
-            if f.is_file() and f.suffix == ".md":
-                content = f.read_text(encoding="utf-8")
-                size_bytes = f.stat().st_size
-                context_files.append({
-                    "path": str(f.relative_to(jarvis_dir)),
-                    "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": size_bytes,
-                    "approx_tokens": size_bytes // 4,
-                })
-        # Include project context files with frontmatter metadata
-        projects_dir = context_dir / "projects"
-        if projects_dir.is_dir():
-            for f in sorted(projects_dir.glob("*.md")):
-                content = f.read_text(encoding="utf-8")
-                meta_fm, _ = parse_frontmatter(content)
-                is_active = meta_fm.get("active", True)
-                size_bytes = f.stat().st_size
-                entry = {
-                    "path": str(f.relative_to(jarvis_dir)),
-                    "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": size_bytes,
-                    "approx_tokens": size_bytes // 4,
-                    "active": is_active,
-                }
-                if meta_fm:
-                    entry["frontmatter"] = meta_fm
-                context_files.append(entry)
-
-    context_snapshot = {
-        "files_loaded": context_files,
-        "metadata": {},
-    }
-
-    environment = {
-        "client": "cli",
-        "client_version": CLIENT_VERSION,
-        "platform": sys.platform,
-        "python_version": platform.python_version(),
-        "metadata": {},
-    }
-
-    logger = ConversationLogger(
-        conversations_dir,
-        model_config=model_config,
-        agent_config=logger_agent_config,
-        context_snapshot=context_snapshot,
-        environment=environment,
-        context_metadata=context_metadata,
-        conversation_id=conversation_id,
-    )
-    metrics_tracker = MetricsTracker()
-
-    # Fetch pricing for the model
-    pricing = get_model_pricing(model_id)
+    # Pricing display string for the startup banner.
     if pricing:
         price_info = f"(${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens)"
     else:
         price_info = "(pricing unavailable)"
-
-    streaming_enabled = config.get("models", {}).get("streaming", True)
-    stream_handler = StreamHandler(
-        client, metrics_tracker, pricing, model_id,
-        on_tool_call=print_tool_feedback,
-        max_tokens=config.get("models", {}).get("default_max_tokens"),
-        streaming=streaming_enabled,
-    )
 
     # Print startup info
     commands = None
