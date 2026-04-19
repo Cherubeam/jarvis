@@ -122,12 +122,12 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     except Exception:
         logger.exception("logger.save() failed")
 
-    # Totals
+    # Totals — current_conversation is list[dict]; metrics lives on logger.metrics.
     queue.put({
         "type": "totals",
-        "messages": len(components.logger.current_conversation.get("messages", [])),
-        "tokens": _sum_tokens(components),
-        "cost": _sum_cost(components),
+        "messages": len(components.logger.current_conversation),
+        "tokens": int(components.logger.metrics.total_tokens or 0),
+        "cost": float(components.logger.metrics.total_cost_usd or 0.0),
     })
     queue.put({"type": "turn_finished", "id": turn_id})
 
@@ -246,9 +246,3 @@ def _find_deferred_handler(session: GuiSession):
     return getattr(session.components, "_deferred_handler", None)
 
 
-def _sum_tokens(c) -> int:
-    return int(c.logger.current_conversation.get("metrics", {}).get("total_tokens", 0) or 0)
-
-
-def _sum_cost(c) -> float:
-    return float(c.logger.current_conversation.get("metrics", {}).get("total_cost_usd", 0.0) or 0.0)
