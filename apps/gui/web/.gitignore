@@ -3,3 +3,4 @@ node_modules/
 *.log
 # dist/ is intentionally NOT ignored — it's committed so `uv run jarvis-gui`
 # works on a fresh clone without Node.
+tsconfig.tsbuildinfo
