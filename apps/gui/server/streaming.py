@@ -104,11 +104,10 @@ class WebStreamHandler:
                 })
             elif isinstance(event, UsageReport):
                 # Stash for the bridge to attach to the final TextEvent.
+                # TTFT/total come from StreamResult.metrics (the bridge fills them).
                 self._last_usage = {
                     "tokens": event.total_tokens or (event.prompt_tokens + event.completion_tokens),
                     "cost": event.cost_usd,
-                    "ttft": 0,  # Filled in by bridge from StreamResult.metrics
-                    "total": 0,
                 }
             elif isinstance(event, AgentFinished):
                 # Agent-finished is informational; no wire event in Phase 1.
