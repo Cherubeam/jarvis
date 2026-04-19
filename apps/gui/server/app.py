@@ -58,12 +58,12 @@ def create_app() -> FastAPI:
     app.include_router(ws_router)
 
     if WEB_DIST.is_dir():
-        # Serve the built bundle. Hashed assets cache forever; index.html is no-cache.
-        app.mount(
-            "/static",
-            StaticFiles(directory=WEB_DIST / "assets") if (WEB_DIST / "assets").is_dir() else StaticFiles(directory=WEB_DIST),
-            name="static",
-        )
+        # Vite emits <script src="/assets/index-<hash>.js"> with base="/", so the
+        # bundle must be served from /assets directly. Hashed filenames cache
+        # forever; only index.html is no-cache.
+        assets_dir = WEB_DIST / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
         @app.get("/")
         async def root() -> Response:
