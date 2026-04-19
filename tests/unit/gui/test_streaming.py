@@ -56,11 +56,11 @@ def test_usage_report_stored_for_bridge():
 
     h(UsageReport(prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.0042))
 
+    # ttft/total come from StreamResult.metrics (filled in by the bridge),
+    # not from WebStreamHandler. Only tokens/cost are stashed here.
     assert h.last_usage() == {
         "tokens": 150,
         "cost": 0.0042,
-        "ttft": 0,
-        "total": 0,
     }
 
 
