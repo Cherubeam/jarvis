@@ -106,6 +106,60 @@ uv run jarvis-gui --no-browser   # backend on :8123
 
 Open http://localhost:5173 for hot-reloading UI with a live backend.
 
+## Conversations browser (Phase 2)
+
+The History view is a two-pane browser over `data/conversations/YYYY/*.json`:
+400px filters + date-bucketed list + detail pane (5-stat strip, Tools chips,
+transcript preview). Matches design v4.
+
+### Endpoints
+
+- `GET /api/conversations?q=&agent=&tool=&date=&sort=&limit=&offset=` — paginated
+  summaries. `sort ∈ {recent, cost, messages}`, `date ∈ {all, today, 7d, 30d}`.
+- `GET /api/conversations/facets` — unique agents + tools (with counts) +
+  `total` file count, for the filter chips.
+- `GET /api/conversations/{id}` — full detail including all messages + preview
+  (first 4 non-tool messages, 240 chars each).
+
+### Data shape
+
+Summary items: `id` (filename stem, e.g. `2026-04-20_10-20-20`), `date` (from
+`session_start[:10]`), derived `title` (first user message, truncated),
+`agents[]`, `messages`, `tokens`, `cost`, `duration_ms`, `tool_calls`,
+`tools[]`, `handoffs`, `model`, `provider`.
+
+The **Handoffs** stat is counted from assistant messages whose
+`tool_calls[].function.name == "delegate_to_agent"` — there is no metadata
+flag for delegation, just the tool invocation. If
+`packages/core/tools/delegate.py` renames the tool, update
+`apps.gui.server.history.derive.HANDOFF_TOOL_NAME`.
+
+### Refresh cadence
+
+- Full refresh on lifespan startup (in `asyncio.to_thread`).
+- Lightweight stat-only refresh on every `/api/conversations` request — only
+  changed/new files are re-parsed.
+- WS `turn_finished` triggers `index.mark_dirty(file_id)` so the current
+  session's summary is re-parsed on the next refresh even if mtime is
+  unchanged (defends against tight save-then-read races).
+
+### Known limitations (Phase 2)
+
+- **Non-atomic writes** in `ConversationLogger.save()` mean the index may
+  occasionally try to read a half-written file. We swallow `JSONDecodeError`
+  and skip; the next refresh picks it up clean.
+- **Resume** and **Export** buttons are rendered but disabled — actual resume
+  requires rehydrating a `ConversationLogger` mid-process and is deferred.
+- **Transcript viewer** — "open full transcript →" is a stub (returns to Chat).
+- **Pagination UI** — backend supports `limit`/`offset`, but the History view
+  loads 200 at once and Sidebar caps at 20. Add an infinite scroll when users
+  routinely exceed that.
+- **Semantic search** — the Sidebar's "Search or ask recall…" input is not
+  wired yet. Title substring-filter only in the History view for now.
+- **Filename collisions** — two sessions started in the same second would
+  overwrite each other's JSON. Unlikely for single-user local; document and
+  revisit only if it bites.
+
 ## Known limitations (Phase 1)
 
 - **Cancel is dispatch-only.** The `{ "type": "cancel" }` message stops
