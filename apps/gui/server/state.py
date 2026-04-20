@@ -37,6 +37,10 @@ class GuiSession:
     last_agent_session: list[dict] | None = None
     in_flight: bool = False
     in_flight_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # Set by app.py lifespan after the index is built. Used by the bridge to
+    # invalidate the current session's summary on turn_finished so the sidebar
+    # refreshes without staleness.
+    conversation_index: Any = None
 
     def session_meta(self) -> dict[str, Any]:
         """Current-session metadata for the client.
