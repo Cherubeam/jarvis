@@ -47,6 +47,8 @@ export function ChatView({
   historyRefreshToken,
   onTurnFinished,
   onOpenHistory,
+  pendingSeed,
+  onSeedConsumed,
 }: {
   theme: Theme
   accent: string
@@ -58,6 +60,8 @@ export function ChatView({
   historyRefreshToken: number
   onTurnFinished: () => void
   onOpenHistory: (id: string) => void
+  pendingSeed: string | null
+  onSeedConsumed: () => void
 }) {
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [thinking, setThinking] = useState<string | null>(null)
@@ -66,6 +70,9 @@ export function ChatView({
   const [totals, setTotals] = useState({ messages: 0, tokens: 0, cost: 0 })
   const [inFlight, setInFlight] = useState(false)
   const [composerSeed, setComposerSeed] = useState('')
+  // True once the WS has emitted `session_start`; gates the pendingSeed
+  // submit so Quick Start clicks from Home don't race the WS open.
+  const [wsReady, setWsReady] = useState(false)
   const wsRef = useRef<ReturnType<typeof connect> | null>(null)
   const streamRef = useRef<HTMLDivElement | null>(null)
 
@@ -106,9 +113,22 @@ export function ChatView({
     return () => window.removeEventListener('keydown', kd)
   }, [])
 
+  // Pending seed from Home's Quick Start — fires when BOTH the WS is open
+  // AND a seed is queued. `null` means "just land in chat", no submit.
+  useEffect(() => {
+    if (pendingSeed === null) return
+    if (!wsReady) return
+    if (inFlight) return
+    const trimmed = pendingSeed.trim()
+    if (trimmed) submit(trimmed)
+    onSeedConsumed()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSeed, wsReady])
+
   function handleServerEvent(ev: ServerEvent) {
     if (ev.type === 'session_start') {
       setSession(ev.session)
+      setWsReady(true)
       return
     }
     if (ev.type === 'system') {

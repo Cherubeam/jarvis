@@ -106,3 +106,40 @@ export type HistoryFacets = {
 
 export type DatePreset = 'all' | 'today' | '7d' | '30d'
 export type SortMode = 'recent' | 'cost' | 'messages'
+
+// -- Home / Dashboard (Phase 3) ---------------------------------------------
+
+export type HomeTask = {
+  title: string
+  project: string | null
+  when_date: string | null
+  priority: 'high' | 'medium' | 'low'
+  list: 'today' | 'upcoming' | 'inbox'
+  linked_conversation_ids: string[]
+}
+
+export type CostWeekDay = {
+  date: string
+  cost: number
+  conversations: number
+}
+
+export type QuickStartEntry = {
+  label: string
+  cmd: string | null
+  agent: string
+}
+
+export type HomeData = {
+  greeting: string
+  today: { date: string; day_label: string }
+  tasks: HomeTask[]
+  cost_week: {
+    days: CostWeekDay[]
+    total: number
+    conversation_count: number
+  }
+  resume: ConversationSummary | null
+  recent: ConversationSummary[]
+  quick_start: QuickStartEntry[]
+}
