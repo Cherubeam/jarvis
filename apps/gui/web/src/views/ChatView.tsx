@@ -44,6 +44,9 @@ export function ChatView({
   agents,
   session,
   setSession,
+  historyRefreshToken,
+  onTurnFinished,
+  onOpenHistory,
 }: {
   theme: Theme
   accent: string
@@ -52,6 +55,9 @@ export function ChatView({
   agents: Agent[]
   session: SessionMeta | null
   setSession: (s: SessionMeta) => void
+  historyRefreshToken: number
+  onTurnFinished: () => void
+  onOpenHistory: (id: string) => void
 }) {
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [thinking, setThinking] = useState<string | null>(null)
@@ -220,6 +226,7 @@ export function ChatView({
     }
     if (ev.type === 'turn_finished') {
       setInFlight(false)
+      onTurnFinished()
       return
     }
   }
@@ -256,7 +263,14 @@ export function ChatView({
       }}
     >
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-        <Sidebar theme={theme} accent={accent} visible={tweaks.sidebar} session={session} />
+        <Sidebar
+          theme={theme}
+          accent={accent}
+          visible={tweaks.sidebar}
+          session={session}
+          refreshToken={historyRefreshToken}
+          onOpen={onOpenHistory}
+        />
 
         <main
           style={{

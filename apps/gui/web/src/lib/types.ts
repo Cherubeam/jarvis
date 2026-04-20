@@ -1,7 +1,8 @@
 // Wire types — mirror apps/gui/server/protocol.py.
 
 export type SessionMeta = {
-  id: string
+  id: string              // internal conversation_id (conv_YYYYMMDD_HHMMSS_hex)
+  file_id: string         // filename stem matching ConversationSummary.id
   model: string
   model_short: string
   provider: string
@@ -62,3 +63,46 @@ export type Agent = {
   description: string
   tools: string[]
 }
+
+// -- Conversations (Phase 2) ------------------------------------------------
+
+export type ConversationSummary = {
+  id: string              // filename stem e.g. "2026-04-19_15-02-17"
+  date: string            // "YYYY-MM-DD"
+  title: string
+  agents: string[]        // dominant first
+  messages: number
+  tokens: number
+  cost: number
+  duration_ms: number
+  tool_calls: number
+  tools: string[]
+  handoffs: number
+  model: string
+  provider: string
+}
+
+export type PreviewMessage = { role: string; text: string }
+
+export type ConversationDetail = ConversationSummary & {
+  messages: Record<string, unknown>[]
+  preview: PreviewMessage[]
+}
+
+export type ConversationListResponse = {
+  items: ConversationSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type FacetEntry = { id: string; count: number }
+
+export type HistoryFacets = {
+  agents: FacetEntry[]
+  tools: FacetEntry[]
+  total: number
+}
+
+export type DatePreset = 'all' | 'today' | '7d' | '30d'
+export type SortMode = 'recent' | 'cost' | 'messages'
