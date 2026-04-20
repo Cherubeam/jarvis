@@ -106,6 +106,71 @@ uv run jarvis-gui --no-browser   # backend on :8123
 
 Open http://localhost:5173 for hot-reloading UI with a live backend.
 
+## Dashboard / Home (Phase 3)
+
+The left-rail **Home** slot renders the Dashboard — greeting, Things 3
+"On your plate", cost-this-week sparkline, resume card, recent
+conversations grid, quick-start commands. Matches design v1 Home.
+
+### Endpoint
+
+`GET /api/home` — composite response:
+
+```json
+{
+  "greeting": "Good afternoon",
+  "today":    { "date": "2026-04-20", "day_label": "Monday, April 20" },
+  "tasks":    [ { "title": "...", "project": "...", "when_date": "...",
+                  "priority": "high|medium|low", "list": "today|upcoming|inbox",
+                  "linked_conversation_ids": [...] } ],
+  "cost_week": { "days": [ { "date": "YYYY-MM-DD", "cost": 0.0, "conversations": 0 } ],
+                 "total": 0.0, "conversation_count": 0 },
+  "resume":   ConversationSummary | null,
+  "recent":   [ ConversationSummary, ... ],       // up to 4
+  "quick_start": [ { "label": "/write", "cmd": "/write", "agent": "writer" }, ... ]
+}
+```
+
+### Implementation notes
+
+- **Priority** comes from the Things 3 **list key**, not a field on the
+  Task dataclass. `today` → high, `upcoming` → medium, `inbox` → low.
+- **Task-conversation linking** is a dumb substring match: longest
+  ≥ 4-char word of the task title against the lowercased titles of the
+  20 most-recent conversations. Max 2 links per task. Iterate on false
+  matches.
+- **Cost-week aggregation** walks `ConversationIndex._cache.values()`
+  directly — mirrors the pattern `ConversationIndex.facets()` uses
+  internally. Days outside the 7-day window are ignored; days inside
+  but with no conversations are zero-filled.
+- **Active-session exclusion** is **client-side**. The server returns
+  `resume` as the absolute most-recent summary; if `resume.id ===
+  session.file_id`, the frontend promotes `recent[0]` into the resume
+  slot. This keeps the server stateless about `file_id` and handles the
+  cold-landing-on-Home case (WS not yet connected, `session === null`)
+  without server coordination.
+- **Quick Start → Chat** uses a `pendingSeed` lifted into App state.
+  ChatView only submits the seed once `wsReady` (set by `session_start`)
+  is true — avoids the race where a freshly-mounted ChatView receives a
+  seed before the WS is open and silently drops the submit.
+- **Refresh cadence**: `HomeView` subscribes to the same
+  `historyRefreshToken` that Sidebar + HistoryView use. Chat's
+  `turn_finished` bumps it → Home invalidates → `/api/home` returns
+  fresh cost-week + resume + recent.
+
+### Known limitations (Phase 3)
+
+- **Resume** button routes to History detail (same as Phase 2); true
+  rehydration of a past `ConversationLogger` is deferred.
+- **Sparkline drill-down** — bars are static; clicking doesn't filter
+  History.
+- **Task ↔ conversation link editing** — read-only derivation; users
+  can't pin or exclude links manually.
+- **Things 3 cache TTL** — `fetch_tasks()` reuses `TaskSyncCache`
+  (default 300s); tasks can appear stale if the user added one via
+  Things 3 in the last five minutes. Cache invalidates by wall-clock,
+  not by a Home refresh button.
+
 ## Conversations browser (Phase 2)
 
 The History view is a two-pane browser over `data/conversations/YYYY/*.json`:
