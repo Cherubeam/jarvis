@@ -39,16 +39,28 @@ class GuiSession:
     in_flight_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def session_meta(self) -> dict[str, Any]:
+        """Current-session metadata for the client.
+
+        `file_id` is the filename stem the logger writes — matches
+        ConversationSummary.id in the /api/conversations response so the
+        Sidebar can highlight the active row. `conversation_id` (the
+        internal `conv_*_hex` string) is kept for traceability.
+        `conversation_path` is derived from logger.session_start, NOT from
+        conversation_id — Phase 1 had this wrong.
+        """
         c = self.components
         model_short = c.model_id.split("/")[-1] if c.model_id else c.model_id
-        # Conversation file path (data/conversations/<year>/<id>.json)
-        year = c.conversation_id.split("_")[1][:4] if "_" in c.conversation_id else "----"
-        conv_path = str(c.conversations_dir / year / f"{c.conversation_id}.json")
+
+        session_start = c.logger.session_start  # datetime set by ConversationLogger
+        file_id = session_start.strftime("%Y-%m-%d_%H-%M-%S")
+        conv_path = str(c.conversations_dir / str(session_start.year) / f"{file_id}.json")
+
         vault = None
         if c.vault_config is not None:
             vault = str(getattr(c.vault_config, "vault_path", "")) or None
         return {
-            "id": c.conversation_id,
+            "id": c.conversation_id,        # internal id (kept for traceability)
+            "file_id": file_id,              # filename stem — matches /api/conversations items
             "model": c.model_id,
             "model_short": model_short,
             "provider": c.provider,
