@@ -11,8 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from apps.gui.server.history import ConversationIndex
 from apps.gui.server.routes.api import router as api_router
 from apps.gui.server.routes.chat_ws import router as ws_router
+from apps.gui.server.routes.conversations import router as conversations_router
 from apps.gui.server.state import build_gui_session
 
 logger = logging.getLogger(__name__)
@@ -22,10 +24,20 @@ WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """One-time startup: build the GUI session (config, agents, tools, MCP)."""
+    """One-time startup: build the GUI session (config, agents, tools, MCP) +
+    the conversations index."""
     logger.info("Building GUI session…")
     app.state.gui_session = build_gui_session()
     logger.info("GUI session ready.")
+
+    # Conversations index — scan data/conversations/ once up front.
+    index = ConversationIndex(app.state.gui_session.components.conversations_dir)
+    await index.refresh()
+    app.state.conversation_index = index
+    # Let the bridge reach the index to invalidate the active file_id per turn.
+    app.state.gui_session.conversation_index = index
+    logger.info("Conversation index built (%d entries).", len(index._cache))
+
     try:
         yield
     finally:
@@ -55,6 +67,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router)
+    app.include_router(conversations_router)
     app.include_router(ws_router)
 
     if WEB_DIST.is_dir():

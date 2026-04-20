@@ -122,6 +122,10 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     except Exception:
         logger.exception("logger.save() failed")
 
+    # Invalidate the current session's summary in the History index so the
+    # sidebar + /api/conversations reflect this turn on the next fetch.
+    _mark_current_dirty(session)
+
     # Totals — current_conversation is list[dict]; metrics lives on logger.metrics.
     queue.put({
         "type": "totals",
@@ -235,6 +239,19 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
         total_latency_ms=getattr(delegate_result.metrics, "total_latency_ms", 0),
         agent_name=delegate_id,
     )
+
+
+def _mark_current_dirty(session: GuiSession) -> None:
+    """Flag the active conversation's summary as stale in the index so the
+    next /api/conversations request re-parses it."""
+    index = session.conversation_index
+    if index is None:
+        return
+    try:
+        file_id = session.components.logger.session_start.strftime("%Y-%m-%d_%H-%M-%S")
+        index.mark_dirty(file_id)
+    except Exception:
+        logger.debug("mark_dirty failed", exc_info=True)
 
 
 def _find_deferred_handler(session: GuiSession):
