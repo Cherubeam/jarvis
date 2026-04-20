@@ -10,6 +10,10 @@ from fastapi import APIRouter, Request
 
 from apps.gui.server.home.cost_week import cost_week_rollup
 from apps.gui.server.home.task_links import link_tasks_to_conversations
+# fetch_tasks is imported at module level so tests can patch this symbol.
+# task_sync.py imports the macOS-only `things` module lazily inside the
+# function body, so this import is safe on Linux CI.
+from packages.integrations.things3.task_sync import fetch_tasks
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -84,8 +88,6 @@ async def get_home(request: Request) -> dict[str, Any]:
     things3_cfg = config.get("things3", {}) or {}
     if things3_cfg.get("enabled", False):
         try:
-            from packages.integrations.things3.task_sync import fetch_tasks
-
             by_list = fetch_tasks(things3_cfg, use_cache=True)
             tasks = _flatten_tasks(by_list)
         except Exception as e:
