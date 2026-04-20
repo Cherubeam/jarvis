@@ -337,6 +337,16 @@ git switch main
 git merge --ff-only <feature-branch>
 ```
 
+For PRs merged via GitHub, see [Merging a PR on GitHub](#merging-a-pr-on-github) below.
+
+### Merging a PR on GitHub
+
+GitHub PRs must be merged with `--rebase` (or `--squash` for noisy branches), never as a merge commit. The repo disables `mergeCommitAllowed` server-side, so the "Create a merge commit" option is hidden in the PR UI and `gh pr merge` without a strategy flag will error out.
+
+```bash
+gh pr merge <N> --rebase --delete-branch
+```
+
 ### Committing During Development
 
 Always commit automatically after completing each development step — do not wait for user confirmation. Use a one-line commit message following the format below. Do not batch multiple steps into a single commit.
