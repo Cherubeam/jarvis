@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { LeftRail, type ViewKey } from './components/LeftRail'
 import { ChatView } from './views/ChatView'
+import { HistoryView } from './views/HistoryView'
 import { Stub } from './views/Stub'
 import { DEFAULT_TWEAKS, type Tweaks } from './components/TweaksPanel'
 import {
@@ -36,6 +37,14 @@ export default function App() {
   const [view, setView] = useState<ViewKey>(loadView)
   const [agents, setAgents] = useState<Agent[]>([])
   const [session, setSession] = useState<SessionMeta | null>(null)
+  // Lifted selection for History view; Sidebar writes it, HistoryView reads.
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
+  // Bumped when a turn finishes so Sidebar + HistoryView invalidate and re-fetch.
+  const [historyRefreshToken, setHistoryRefreshToken] = useState(0)
+  const bumpHistoryRefresh = useCallback(
+    () => setHistoryRefreshToken((n) => n + 1),
+    [],
+  )
 
   useEffect(() => {
     localStorage.setItem(TWEAKS_STORAGE_KEY, JSON.stringify(tweaks))
@@ -82,11 +91,26 @@ export default function App() {
           agents={agents}
           session={session}
           setSession={setSession}
+          historyRefreshToken={historyRefreshToken}
+          onTurnFinished={bumpHistoryRefresh}
+          onOpenHistory={(id) => {
+            setSelectedHistoryId(id)
+            setView('history')
+          }}
         />
       )}
       {view === 'home' && <Stub theme={theme} name="Home" />}
       {view === 'agents' && <Stub theme={theme} name="Agents" />}
-      {view === 'history' && <Stub theme={theme} name="History" />}
+      {view === 'history' && (
+        <HistoryView
+          theme={theme}
+          accent={accent}
+          refreshToken={historyRefreshToken}
+          selectedId={selectedHistoryId}
+          setSelectedId={setSelectedHistoryId}
+          goToChat={() => setView('chat')}
+        />
+      )}
       {view === 'settings' && <Stub theme={theme} name="Settings" />}
     </div>
   )

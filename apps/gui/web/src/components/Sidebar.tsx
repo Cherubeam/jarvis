@@ -1,29 +1,64 @@
-import { Icon } from './Icon'
+// Chat-view sidebar: lists the 20 most recent conversations.
+// Phase 2: replaces the FAKE_CONVERSATIONS placeholder with a live fetch
+// from /api/conversations.
+
+import { useEffect, useState } from 'react'
+
+import { hueFor } from '../lib/agentHues'
+import { speakerLabel } from '../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
-import type { SessionMeta } from '../lib/types'
+import type { ConversationListResponse, ConversationSummary, SessionMeta } from '../lib/types'
+import { Icon } from './Icon'
 
-// Phase 1: list mode only. Conversations are placeholder fixtures until the
-// History view (Phase 2) provides a real index.
-
-const FAKE_CONVERSATIONS = [
-  { date: '2026-04-19', title: 'current session', cost: 0, messages: 0, active: true },
-  { date: '2026-04-18', title: 'week-12 substack · draft opening', cost: 0.0205, messages: 8 },
-  { date: '2026-04-17', title: 'benchmark: qwen vs sonnet (goldens)', cost: 0.0411, messages: 14 },
-  { date: '2026-04-16', title: 'navigator · weekly review', cost: 0.0089, messages: 6 },
-]
+const LIMIT = 20
 
 export function Sidebar({
   theme,
   accent,
   visible,
   session,
+  refreshToken,
+  onOpen,
 }: {
   theme: Theme
   accent: string
   visible: boolean
   session: SessionMeta | null
+  /** Bumped by App on turn_finished so the list re-fetches without reload. */
+  refreshToken: number
+  /** Called when the user clicks a row — App routes to History view. */
+  onOpen: (id: string) => void
 }) {
+  const [items, setItems] = useState<ConversationSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!visible) return
+    setLoading(true)
+    setError(null)
+    const ac = new AbortController()
+    fetch(`/api/conversations?limit=${LIMIT}&sort=recent`, { signal: ac.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json() as Promise<ConversationListResponse>
+      })
+      .then((data) => {
+        setItems(data.items)
+        setLoading(false)
+      })
+      .catch((e) => {
+        if (e.name === 'AbortError') return
+        setError(String(e.message || e))
+        setLoading(false)
+      })
+    return () => ac.abort()
+  }, [visible, refreshToken])
+
   if (!visible) return null
+
+  const activeFileId = session?.file_id
+
   return (
     <aside
       style={{
@@ -85,56 +120,135 @@ export function Sidebar({
           </span>
         </div>
       </div>
+
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-        {FAKE_CONVERSATIONS.map((c, i) => (
+        {loading &&
+          [0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                padding: '8px 10px',
+                marginBottom: 2,
+                opacity: 0.5,
+              }}
+            >
+              <div
+                style={{
+                  height: 10,
+                  width: '35%',
+                  background: theme.surface2,
+                  borderRadius: 2,
+                  marginBottom: 6,
+                }}
+              />
+              <div
+                style={{
+                  height: 12,
+                  width: '85%',
+                  background: theme.surface2,
+                  borderRadius: 2,
+                }}
+              />
+            </div>
+          ))}
+        {error && !loading && (
           <div
-            key={i}
             style={{
-              padding: '8px 10px',
-              borderRadius: 6,
-              marginBottom: 2,
-              background: c.active ? theme.surface2 : 'transparent',
-              borderLeft: c.active ? `2px solid ${accent}` : '2px solid transparent',
-              cursor: 'pointer',
-              boxSizing: 'border-box',
+              padding: '12px 10px',
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 11,
+              color: theme.error,
             }}
           >
-            <div
-              style={{
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 10.5,
-                color: theme.textDisabled,
-                marginBottom: 2,
-              }}
-            >
-              {c.date}
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: theme.textPrimary,
-                lineHeight: 1.35,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {c.title}
-            </div>
-            <div
-              style={{
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 10.5,
-                color: theme.textSecondary,
-                marginTop: 3,
-              }}
-            >
-              {c.messages} msgs ·{' '}
-              <span style={{ color: theme.cost }}>${c.cost.toFixed(4)}</span>
-            </div>
+            load failed
           </div>
-        ))}
+        )}
+        {!loading &&
+          !error &&
+          items.length === 0 &&
+          (
+            <div
+              style={{
+                padding: '12px 10px',
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 11,
+                color: theme.textDisabled,
+              }}
+            >
+              no conversations yet
+            </div>
+          )}
+        {!loading &&
+          !error &&
+          items.map((c) => {
+            const active = c.id === activeFileId
+            const hue = hueFor(c.agents[0], accent)
+            return (
+              <button
+                key={c.id}
+                onClick={() => onOpen(c.id)}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  display: 'block',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  marginBottom: 2,
+                  background: active ? theme.surface2 : 'transparent',
+                  borderLeft: active ? `2px solid ${hue}` : '2px solid transparent',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: JARVIS_FONTS.mono,
+                    fontSize: 10.5,
+                    color: theme.textDisabled,
+                    marginBottom: 2,
+                  }}
+                >
+                  {c.date}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: theme.textPrimary,
+                    lineHeight: 1.35,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {c.title}
+                </div>
+                <div
+                  style={{
+                    fontFamily: JARVIS_FONTS.mono,
+                    fontSize: 10.5,
+                    color: theme.textSecondary,
+                    marginTop: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  {c.agents.length > 0 && (
+                    <span style={{ color: hue }}>{speakerLabel(c.agents[0])}</span>
+                  )}
+                  {c.agents.length > 0 && (
+                    <span style={{ color: theme.textDisabled }}>·</span>
+                  )}
+                  <span>{c.messages} msg</span>
+                  <span style={{ marginLeft: 'auto', color: theme.cost }}>
+                    ${c.cost.toFixed(4)}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
       </div>
+
       {session && (
         <div
           style={{
