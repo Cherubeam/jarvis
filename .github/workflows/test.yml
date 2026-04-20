@@ -24,7 +24,9 @@ jobs:
           cache-dependency-glob: 'uv.lock'
 
       - name: Install dependencies
-        run: uv sync --extra test
+        # `web` extra is needed by tests/unit/gui/test_conversations_route.py
+        # (FastAPI TestClient). `test` pulls in pytest + fixtures.
+        run: uv sync --extra test --extra web
 
       - name: Run pytest
         run: uv run pytest
