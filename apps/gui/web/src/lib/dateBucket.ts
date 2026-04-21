@@ -18,3 +18,10 @@ export function dateBucket(dateStr: string, today: Date = new Date()): DateBucke
   if (days <= 13) return 'Last week'
   return 'Earlier'
 }
+
+// Parse a "YYYY-MM-DD" string as a local-timezone Date. Avoids the `new Date(str)` trap,
+// which interprets ISO-date strings as UTC and can shift weekday labels for negative offsets.
+export function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
