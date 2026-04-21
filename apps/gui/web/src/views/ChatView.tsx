@@ -287,6 +287,7 @@ export function ChatView({
           theme={theme}
           accent={accent}
           visible={tweaks.sidebar}
+          mode={tweaks.sidebarMode}
           session={session}
           refreshToken={historyRefreshToken}
           onOpen={onOpenHistory}
