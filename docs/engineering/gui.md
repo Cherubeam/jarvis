@@ -106,6 +106,29 @@ uv run jarvis-gui --no-browser   # backend on :8123
 
 Open http://localhost:5173 for hot-reloading UI with a live backend.
 
+## Sidebar Timeline mode (Phase 4)
+
+The Chat-view sidebar has two render variants, toggled from the Tweaks panel:
+
+- `sidebar mode: list` — the default, unchanged from Phase 2: a flat list of the 20 most recent conversations with date / title / agent / msg count / cost.
+- `sidebar mode: timeline` — ported from design prototype v3: a vertical day-axis with token-sized conversation cards. The 40px axis column shows weekday + day-number + day-cost (sum across all convs on that day) only on the first row of each calendar day; subsequent same-day rows keep the axis column blank, and the card-rail's vertical `borderLeft` stays continuous so the rail reads as one line.
+
+Both variants share the same fetch (`/api/conversations?limit=20&sort=recent`), header, search box (still inert, will be wired in a later phase), loading / error / empty states, and session footer. Only the row rendering branches on `mode`.
+
+Card height in timeline mode is log-bucketed in `heightFor(tokens)`:
+
+```
+48 + round(log10(max(tokens, 100)) * 8), clamped to [48, 80]
+```
+
+Deterministic — doesn't depend on the current fetch's max token count, so heights don't reshuffle when a new conversation lands.
+
+Agent-hue sits on the card's `borderLeft`: 2px baseline, bumped to 3px with the full card border in the hue and `surface2` background when the card represents the active session. The dominant agent's hue comes from `hueFor()` in `lib/agentHues.ts` (shared with Phase 2 History view).
+
+Dates are parsed via `parseLocalDate()` in `lib/dateBucket.ts` to avoid the `new Date("YYYY-MM-DD")` UTC-midnight pitfall that can shift weekday labels in negative-offset timezones.
+
+The tweak is persisted in `localStorage` under `jarvis-gui-tweaks-v1` with the rest of the tweaks object. Pre-existing stores without the new key fall back to `list` via `DEFAULT_TWEAKS` spread in `App.tsx`.
+
 ## Dashboard / Home (Phase 3)
 
 The left-rail **Home** slot renders the Dashboard — greeting, Things 3
