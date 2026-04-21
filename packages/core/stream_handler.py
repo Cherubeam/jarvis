@@ -9,10 +9,20 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from packages.core.events import (
-    Event, TextChunk, ToolCallStarted, ToolResult as ToolResultEvent,
-    UsageReport, AgentFinished,
+    Event,
+    TextChunk,
+    ToolCallStarted,
+    ToolResult as ToolResultEvent,
+    UsageReport,
+    AgentFinished,
 )
-from packages.core.llm_client import LLMClient, StreamToolResult, StreamingResponse, TokenUsage, _extract_cache_tokens
+from packages.core.llm_client import (
+    LLMClient,
+    StreamToolResult,
+    StreamingResponse,
+    TokenUsage,
+    _extract_cache_tokens,
+)
 from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
@@ -23,6 +33,7 @@ _MIN_USEFUL_TOKENS = 256
 @dataclass
 class StreamResult:
     """Result of a streamed LLM response."""
+
     text: str
     usage: TokenUsage
     cost_usd: float
@@ -71,7 +82,8 @@ class StreamHandler:
         """Calculate cost using pricing, LiteLLM fallback, or zero."""
         if self.pricing:
             return self.pricing.calculate_cost(
-                usage.prompt_tokens, usage.completion_tokens,
+                usage.prompt_tokens,
+                usage.completion_tokens,
                 cache_read_tokens=usage.cache_read_tokens,
                 cache_write_tokens=usage.cache_write_tokens,
             )
@@ -137,13 +149,17 @@ class StreamHandler:
         if tool_registry is not None and not tool_registry.is_empty():
             if self.streaming:
                 messages, tools_format = self._run_agentic_loop(
-                    messages, tool_registry, execute_tool_calls,
+                    messages,
+                    tool_registry,
+                    execute_tool_calls,
                     max_iterations=max_iterations,
                 )
             else:
                 messages, tools_format, final_text, final_usage = (
                     self._run_agentic_loop_nonstreaming(
-                        messages, tool_registry, execute_tool_calls,
+                        messages,
+                        tool_registry,
+                        execute_tool_calls,
                         max_iterations=max_iterations,
                     )
                 )
@@ -164,16 +180,18 @@ class StreamHandler:
                 model=self.model_id,
             )
 
-            self._emit(UsageReport(
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-                total_tokens=usage.total_tokens,
-                cache_read_tokens=usage.cache_read_tokens,
-                cache_write_tokens=usage.cache_write_tokens,
-                cost_usd=cost_usd,
-                model=self.model_id,
-                instance_id=self.instance_id,
-            ))
+            self._emit(
+                UsageReport(
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    total_tokens=usage.total_tokens,
+                    cache_read_tokens=usage.cache_read_tokens,
+                    cache_write_tokens=usage.cache_write_tokens,
+                    cost_usd=cost_usd,
+                    model=self.model_id,
+                    instance_id=self.instance_id,
+                )
+            )
 
             return StreamResult(
                 text="",
@@ -197,7 +215,13 @@ class StreamHandler:
             return self._stream_simple(messages, print_chunks, tools=tools_format)
         return self._complete_simple(messages, tools=tools_format)
 
-    def _run_agentic_loop(self, messages: list[dict], tool_registry, execute_tool_calls, max_iterations: int | None = None) -> tuple[list[dict], list[dict]]:
+    def _run_agentic_loop(
+        self,
+        messages: list[dict],
+        tool_registry,
+        execute_tool_calls,
+        max_iterations: int | None = None,
+    ) -> tuple[list[dict], list[dict]]:
         """Run agentic tool-calling loop using streaming-first detection.
 
         Uses stream_with_tool_detection() instead of complete() to avoid
@@ -213,7 +237,9 @@ class StreamHandler:
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
             result = self._try_with_credit_fallback(
                 lambda: self.client.stream_with_tool_detection(
-                    messages, tools=tools_format, max_tokens=self.max_tokens,
+                    messages,
+                    tools=tools_format,
+                    max_tokens=self.max_tokens,
                 )
             )
 
@@ -242,22 +268,26 @@ class StreamHandler:
 
             accumulated_usage = TokenUsage(
                 prompt_tokens=accumulated_usage.prompt_tokens + tool_result.usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens + tool_result.usage.completion_tokens,
-                total_tokens=accumulated_usage.total_tokens + (
-                    tool_result.usage.prompt_tokens + tool_result.usage.completion_tokens
-                ),
-                cache_read_tokens=accumulated_usage.cache_read_tokens + tool_result.usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens + tool_result.usage.cache_write_tokens,
+                completion_tokens=accumulated_usage.completion_tokens
+                + tool_result.usage.completion_tokens,
+                total_tokens=accumulated_usage.total_tokens
+                + (tool_result.usage.prompt_tokens + tool_result.usage.completion_tokens),
+                cache_read_tokens=accumulated_usage.cache_read_tokens
+                + tool_result.usage.cache_read_tokens,
+                cache_write_tokens=accumulated_usage.cache_write_tokens
+                + tool_result.usage.cache_write_tokens,
             )
 
             # UX feedback for each tool call
             for call in tool_result.tool_calls:
-                self._emit(ToolCallStarted(
-                    tool_name=call.function.name,
-                    tool_call_id=call.id,
-                    arguments=call.function.arguments,
-                    instance_id=self.instance_id,
-                ))
+                self._emit(
+                    ToolCallStarted(
+                        tool_name=call.function.name,
+                        tool_call_id=call.id,
+                        arguments=call.function.arguments,
+                        instance_id=self.instance_id,
+                    )
+                )
                 if self.on_tool_call is not None:
                     self.on_tool_call(call.function.name)
                 else:
@@ -287,12 +317,14 @@ class StreamHandler:
 
             # Emit tool result events
             for tr in tool_results:
-                self._emit(ToolResultEvent(
-                    tool_name=tr.get("name", ""),
-                    result=tr.get("content", ""),
-                    tool_call_id=tr.get("tool_call_id", ""),
-                    instance_id=self.instance_id,
-                ))
+                self._emit(
+                    ToolResultEvent(
+                        tool_name=tr.get("name", ""),
+                        result=tr.get("content", ""),
+                        tool_call_id=tr.get("tool_call_id", ""),
+                        instance_id=self.instance_id,
+                    )
+                )
 
             messages = [*messages, assistant_msg, *tool_results]
 
@@ -317,7 +349,9 @@ class StreamHandler:
         self._tool_messages = tool_messages
         return messages, tools_format
 
-    def _stream_from_response(self, response: StreamingResponse, print_chunks: bool) -> StreamResult:
+    def _stream_from_response(
+        self, response: StreamingResponse, print_chunks: bool
+    ) -> StreamResult:
         """Stream from an already-started StreamingResponse (from tool detection)."""
         chunks: list[str] = []
         first_token = True
@@ -358,16 +392,18 @@ class StreamHandler:
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
 
-        self._emit(UsageReport(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-            cache_read_tokens=usage.cache_read_tokens,
-            cache_write_tokens=usage.cache_write_tokens,
-            cost_usd=cost_usd,
-            model=self.model_id,
-            instance_id=self.instance_id,
-        ))
+        self._emit(
+            UsageReport(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+                instance_id=self.instance_id,
+            )
+        )
 
         return StreamResult(
             text="".join(chunks),
@@ -377,7 +413,9 @@ class StreamHandler:
             tool_messages=tool_messages,
         )
 
-    def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
+    def _stream_simple(
+        self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None
+    ) -> StreamResult:
         """Stream the final response and return a StreamResult."""
         response = self._try_with_credit_fallback(
             lambda: self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
@@ -423,16 +461,18 @@ class StreamHandler:
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
 
-        self._emit(UsageReport(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-            cache_read_tokens=usage.cache_read_tokens,
-            cache_write_tokens=usage.cache_write_tokens,
-            cost_usd=cost_usd,
-            model=self.model_id,
-            instance_id=self.instance_id,
-        ))
+        self._emit(
+            UsageReport(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+                instance_id=self.instance_id,
+            )
+        )
 
         return StreamResult(
             text="".join(chunks),
@@ -447,7 +487,10 @@ class StreamHandler:
     # ------------------------------------------------------------------
 
     def _run_agentic_loop_nonstreaming(
-        self, messages: list[dict], tool_registry, execute_tool_calls,
+        self,
+        messages: list[dict],
+        tool_registry,
+        execute_tool_calls,
         max_iterations: int | None = None,
     ) -> tuple[list[dict], list[dict] | None, str | None, TokenUsage | None]:
         """Run agentic tool-calling loop using non-streaming complete().
@@ -464,7 +507,9 @@ class StreamHandler:
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
             response = self._try_with_credit_fallback(
                 lambda: self.client.complete(
-                    messages, tools=tools_format, max_tokens=self.max_tokens,
+                    messages,
+                    tools=tools_format,
+                    max_tokens=self.max_tokens,
                 )
             )
 
@@ -491,10 +536,13 @@ class StreamHandler:
             # Tool calls detected
             accumulated_usage = TokenUsage(
                 prompt_tokens=accumulated_usage.prompt_tokens + call_usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens + call_usage.completion_tokens,
+                completion_tokens=accumulated_usage.completion_tokens
+                + call_usage.completion_tokens,
                 total_tokens=accumulated_usage.total_tokens + call_usage.total_tokens,
-                cache_read_tokens=accumulated_usage.cache_read_tokens + call_usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens + call_usage.cache_write_tokens,
+                cache_read_tokens=accumulated_usage.cache_read_tokens
+                + call_usage.cache_read_tokens,
+                cache_write_tokens=accumulated_usage.cache_write_tokens
+                + call_usage.cache_write_tokens,
             )
 
             tool_calls = choice.message.tool_calls
@@ -511,12 +559,14 @@ class StreamHandler:
 
             # UX feedback for each tool call
             for call in tool_calls:
-                self._emit(ToolCallStarted(
-                    tool_name=call.function.name,
-                    tool_call_id=call.id,
-                    arguments=call.function.arguments,
-                    instance_id=self.instance_id,
-                ))
+                self._emit(
+                    ToolCallStarted(
+                        tool_name=call.function.name,
+                        tool_call_id=call.id,
+                        arguments=call.function.arguments,
+                        instance_id=self.instance_id,
+                    )
+                )
                 if self.on_tool_call is not None:
                     self.on_tool_call(call.function.name)
                 else:
@@ -546,12 +596,14 @@ class StreamHandler:
 
             # Emit tool result events
             for tr in tool_results:
-                self._emit(ToolResultEvent(
-                    tool_name=tr.get("name", ""),
-                    result=tr.get("content", ""),
-                    tool_call_id=tr.get("tool_call_id", ""),
-                    instance_id=self.instance_id,
-                ))
+                self._emit(
+                    ToolResultEvent(
+                        tool_name=tr.get("name", ""),
+                        result=tr.get("content", ""),
+                        tool_call_id=tr.get("tool_call_id", ""),
+                        instance_id=self.instance_id,
+                    )
+                )
 
             messages = [*messages, assistant_msg, *tool_results]
             tool_messages.append(assistant_msg)
@@ -559,8 +611,7 @@ class StreamHandler:
 
             # Check if any executed tool is terminal
             if any(
-                (t := tool_registry.get(call.function.name)) and t.terminal
-                for call in tool_calls
+                (t := tool_registry.get(call.function.name)) and t.terminal for call in tool_calls
             ):
                 self._terminal_tool_fired = True
                 break
@@ -573,7 +624,9 @@ class StreamHandler:
         self._tool_messages = tool_messages
         return messages, tools_format, final_text, final_usage
 
-    def _complete_simple(self, messages: list[dict], tools: list[dict] | None = None) -> StreamResult:
+    def _complete_simple(
+        self, messages: list[dict], tools: list[dict] | None = None
+    ) -> StreamResult:
         """Non-streaming final response — returns full text at once."""
         response = self._try_with_credit_fallback(
             lambda: self.client.complete(messages, tools=tools, max_tokens=self.max_tokens)
@@ -622,16 +675,18 @@ class StreamHandler:
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
 
-        self._emit(UsageReport(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-            cache_read_tokens=usage.cache_read_tokens,
-            cache_write_tokens=usage.cache_write_tokens,
-            cost_usd=cost_usd,
-            model=self.model_id,
-            instance_id=self.instance_id,
-        ))
+        self._emit(
+            UsageReport(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+                instance_id=self.instance_id,
+            )
+        )
 
         return StreamResult(
             text=text,
@@ -672,16 +727,18 @@ class StreamHandler:
         tool_messages = getattr(self, "_tool_messages", [])
         self._tool_messages = []
 
-        self._emit(UsageReport(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-            cache_read_tokens=usage.cache_read_tokens,
-            cache_write_tokens=usage.cache_write_tokens,
-            cost_usd=cost_usd,
-            model=self.model_id,
-            instance_id=self.instance_id,
-        ))
+        self._emit(
+            UsageReport(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
+                cost_usd=cost_usd,
+                model=self.model_id,
+                instance_id=self.instance_id,
+            )
+        )
 
         return StreamResult(
             text=text,

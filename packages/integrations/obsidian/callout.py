@@ -99,9 +99,7 @@ def format_callout_entry(text: str) -> str:
     return "\n".join(f"> {line}" if line.strip() else ">" for line in lines)
 
 
-def build_updated_content(
-    original: str, callout: CalloutBlock, new_entry: str
-) -> str:
+def build_updated_content(original: str, callout: CalloutBlock, new_entry: str) -> str:
     """Build the full file content with new_entry appended inside the callout.
 
     Inserts the new entry at the end of the existing callout block.

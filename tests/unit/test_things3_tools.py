@@ -22,10 +22,13 @@ def _make_tools_cross_platform(config=None):
     """Create Things 3 tools on any platform by mocking things + sys.platform."""
     mock_things = MagicMock()
     mock_things.url.return_value = "things:///add?title=test"
-    with patch.dict("sys.modules", {"things": mock_things}), \
-         patch("packages.core.tools.things3_tools.sys") as mock_sys:
+    with (
+        patch.dict("sys.modules", {"things": mock_things}),
+        patch("packages.core.tools.things3_tools.sys") as mock_sys,
+    ):
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
+
         return make_things3_tools(config or {}), mock_things
 
 
@@ -97,6 +100,7 @@ class TestCreateTask:
         with patch("packages.core.tools.things3_tools.sys") as mock_sys:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
+
             tools = make_things3_tools({})
         return tools[0]
 
@@ -180,6 +184,7 @@ class TestCompleteTask:
         with patch("packages.core.tools.things3_tools.sys") as mock_sys:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
+
             tools = make_things3_tools({})
         return tools[1]
 
@@ -255,6 +260,7 @@ class TestUpdateTask:
         with patch("packages.core.tools.things3_tools.sys") as mock_sys:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
+
             tools = make_things3_tools({})
         return tools[2]
 
@@ -339,7 +345,14 @@ class TestThings3ToolsSchemasCrossPlatform:
         tools, _ = _make_tools_cross_platform()
         params = tools[0].parameters
         assert params["type"] == "object"
-        assert set(params["properties"].keys()) == {"title", "notes", "when", "deadline", "tags", "list_name"}
+        assert set(params["properties"].keys()) == {
+            "title",
+            "notes",
+            "when",
+            "deadline",
+            "tags",
+            "list_name",
+        }
         assert params["properties"]["title"]["type"] == "string"
         assert params["properties"]["notes"]["type"] == "string"
         assert params["properties"]["when"]["type"] == "string"
@@ -360,7 +373,14 @@ class TestThings3ToolsSchemasCrossPlatform:
         tools, _ = _make_tools_cross_platform()
         params = tools[2].parameters
         assert params["type"] == "object"
-        assert set(params["properties"].keys()) == {"uuid", "title", "notes", "when", "deadline", "tags"}
+        assert set(params["properties"].keys()) == {
+            "uuid",
+            "title",
+            "notes",
+            "when",
+            "deadline",
+            "tags",
+        }
         assert params["properties"]["uuid"]["type"] == "string"
         assert params["properties"]["title"]["type"] == "string"
         assert params["properties"]["notes"]["type"] == "string"
@@ -371,35 +391,50 @@ class TestThings3ToolsSchemasCrossPlatform:
 
     def test_create_task_title_only(self):
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             result = tools[0].execute(title="Buy milk")
         assert "Buy milk" in result
         mock_things.url.assert_called_once()
         _, kwargs = mock_things.url.call_args
-        assert kwargs.get("title") == "Buy milk" or mock_things.url.call_args[1].get("title") == "Buy milk"
+        assert (
+            kwargs.get("title") == "Buy milk"
+            or mock_things.url.call_args[1].get("title") == "Buy milk"
+        )
 
     def test_create_task_with_list_name_in_output(self):
         tools, _ = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             result = tools[0].execute(title="Test", list_name="JARVIS")
         assert "in 'JARVIS'" in result
 
     def test_create_task_without_list_name_no_detail(self):
         tools, _ = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             result = tools[0].execute(title="Test")
         assert "in '" not in result
 
     def test_create_task_forwards_optional_params(self):
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             tools[0].execute(
-                title="T", notes="N", when="today", deadline="2026-04-10",
-                tags="a,b", list_name="P",
+                title="T",
+                notes="N",
+                when="today",
+                deadline="2026-04-10",
+                tags="a,b",
+                list_name="P",
             )
         kwargs = mock_things.url.call_args[1]
         assert kwargs["notes"] == "N"
@@ -411,8 +446,10 @@ class TestThings3ToolsSchemasCrossPlatform:
     def test_create_task_skips_empty_optional_params(self):
         """Empty string optional params are NOT forwarded."""
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             tools[0].execute(title="T", notes="", when="", tags="")
         kwargs = mock_things.url.call_args[1]
         assert "notes" not in kwargs
@@ -421,8 +458,10 @@ class TestThings3ToolsSchemasCrossPlatform:
 
     def test_complete_task_strips_uuid(self):
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             tools[1].execute(uuid="  ABC  ")
         kwargs = mock_things.url.call_args[1]
         assert kwargs["uuid"] == "ABC"
@@ -441,9 +480,13 @@ class TestThings3ToolsSchemasCrossPlatform:
 
     def test_update_task_forwards_params(self):
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
-            tools[2].execute(uuid="X", title="New", notes="N", when="tmrw", deadline="2026-05-01", tags="t")
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
+            tools[2].execute(
+                uuid="X", title="New", notes="N", when="tmrw", deadline="2026-05-01", tags="t"
+            )
         kwargs = mock_things.url.call_args[1]
         assert kwargs["id"] == "X"
         assert kwargs["title"] == "New"
@@ -451,8 +494,10 @@ class TestThings3ToolsSchemasCrossPlatform:
 
     def test_update_task_skips_empty_params(self):
         tools, mock_things = _make_tools_cross_platform()
-        with patch("packages.core.tools.things3_tools._open_things_url", return_value=True), \
-             patch("packages.core.tools.things3_tools.TaskSyncCache"):
+        with (
+            patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
+            patch("packages.core.tools.things3_tools.TaskSyncCache"),
+        ):
             tools[2].execute(uuid="X", title="", notes="")
         kwargs = mock_things.url.call_args[1]
         assert "title" not in kwargs
@@ -460,20 +505,26 @@ class TestThings3ToolsSchemasCrossPlatform:
 
     def test_cache_ttl_from_config(self):
         """Cache TTL is read from config dict."""
-        with patch.dict("sys.modules", {"things": MagicMock()}), \
-             patch("packages.core.tools.things3_tools.sys") as mock_sys, \
-             patch("packages.core.tools.things3_tools.TaskSyncCache") as mock_cache:
+        with (
+            patch.dict("sys.modules", {"things": MagicMock()}),
+            patch("packages.core.tools.things3_tools.sys") as mock_sys,
+            patch("packages.core.tools.things3_tools.TaskSyncCache") as mock_cache,
+        ):
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
+
             make_things3_tools({"cache_ttl_seconds": 600})
         mock_cache.assert_called_once_with(cache_ttl_seconds=600)
 
     def test_cache_ttl_default(self):
         """Cache TTL defaults to 300 when not in config."""
-        with patch.dict("sys.modules", {"things": MagicMock()}), \
-             patch("packages.core.tools.things3_tools.sys") as mock_sys, \
-             patch("packages.core.tools.things3_tools.TaskSyncCache") as mock_cache:
+        with (
+            patch.dict("sys.modules", {"things": MagicMock()}),
+            patch("packages.core.tools.things3_tools.sys") as mock_sys,
+            patch("packages.core.tools.things3_tools.TaskSyncCache") as mock_cache,
+        ):
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
+
             make_things3_tools({})
         mock_cache.assert_called_once_with(cache_ttl_seconds=300)

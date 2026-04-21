@@ -90,9 +90,7 @@ class TestGoldenConversationStructure:
 
             # Required top-level fields (both schemas)
             assert "name" in data, f"{yaml_file.name}: missing 'name' field"
-            assert "description" in data, (
-                f"{yaml_file.name}: missing 'description' field"
-            )
+            assert "description" in data, f"{yaml_file.name}: missing 'description' field"
             assert "category" in data, f"{yaml_file.name}: missing 'category' field"
             assert "context" in data, f"{yaml_file.name}: missing 'context' field"
 
@@ -100,23 +98,13 @@ class TestGoldenConversationStructure:
             is_agentic = "tools" in data
 
             if is_agentic:
-                assert "prompt" in data, (
-                    f"{yaml_file.name}: agentic test missing 'prompt' field"
-                )
-                assert isinstance(data["tools"], list), (
-                    f"{yaml_file.name}: 'tools' must be a list"
-                )
+                assert "prompt" in data, f"{yaml_file.name}: agentic test missing 'prompt' field"
+                assert isinstance(data["tools"], list), f"{yaml_file.name}: 'tools' must be a list"
                 for tool in data["tools"]:
-                    assert "name" in tool, (
-                        f"{yaml_file.name}: tool missing 'name'"
-                    )
-                    assert "description" in tool, (
-                        f"{yaml_file.name}: tool missing 'description'"
-                    )
+                    assert "name" in tool, f"{yaml_file.name}: tool missing 'name'"
+                    assert "description" in tool, f"{yaml_file.name}: tool missing 'description'"
             else:
-                assert "conversation" in data, (
-                    f"{yaml_file.name}: missing 'conversation' field"
-                )
+                assert "conversation" in data, f"{yaml_file.name}: missing 'conversation' field"
                 conversation = data["conversation"]
                 assert isinstance(conversation, list), (
                     f"{yaml_file.name}: conversation must be a list"
@@ -155,11 +143,7 @@ class TestGoldenConversations:
             request.cls.model_tested = model_tested
         yield
         # Finalize run after all tests
-        if (
-            evaluation_config["enabled"]
-            and hasattr(request.cls, "results")
-            and request.cls.results
-        ):
+        if evaluation_config["enabled"] and hasattr(request.cls, "results") and request.cls.results:
             result_storage.finalize_run(request.cls.run_id, request.cls.results)
 
     def _run_golden_test(
@@ -201,7 +185,11 @@ class TestGoldenConversations:
             from llm_client import LLMClient
         from evaluator import EvaluationCriteria
 
-        model_id = f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested
+        model_id = (
+            f"openrouter/{self.model_tested}"
+            if not self.model_tested.startswith("openrouter/")
+            else self.model_tested
+        )
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
             default_model=model_id,
@@ -209,6 +197,7 @@ class TestGoldenConversations:
 
         # Look up model pricing once (same approach as production StreamHandler)
         from packages.core.pricing import get_model_pricing
+
         pricing = get_model_pricing(model_id)
 
         # Extract context from test case
@@ -226,13 +215,25 @@ class TestGoldenConversations:
         # Branch: agentic tests (have 'tools' field) vs conversation tests
         if "tools" in test_case:
             self._run_agentic_test(
-                test_case, model_client, system_prompt, context,
-                evaluator, evaluation_config, result_storage, pricing,
+                test_case,
+                model_client,
+                system_prompt,
+                context,
+                evaluator,
+                evaluation_config,
+                result_storage,
+                pricing,
             )
         else:
             self._run_conversation_test(
-                test_case, model_client, system_prompt, context,
-                evaluator, evaluation_config, result_storage, pricing,
+                test_case,
+                model_client,
+                system_prompt,
+                context,
+                evaluator,
+                evaluation_config,
+                result_storage,
+                pricing,
             )
 
     @staticmethod
@@ -243,8 +244,15 @@ class TestGoldenConversations:
         return 0.0
 
     def _run_conversation_test(
-        self, test_case, model_client, system_prompt, context,
-        evaluator, evaluation_config, result_storage, pricing,
+        self,
+        test_case,
+        model_client,
+        system_prompt,
+        context,
+        evaluator,
+        evaluation_config,
+        result_storage,
+        pricing,
     ):
         """Execute a conversation-based golden test (tests 01-08)."""
         from evaluator import EvaluationCriteria
@@ -269,7 +277,9 @@ class TestGoldenConversations:
 
                 usage = stream.usage
                 response_cost = self._calculate_cost(
-                    pricing, usage.prompt_tokens, usage.completion_tokens,
+                    pricing,
+                    usage.prompt_tokens,
+                    usage.completion_tokens,
                 )
 
             elif turn["role"] == "assistant":
@@ -312,8 +322,15 @@ class TestGoldenConversations:
                 )
 
     def _run_agentic_test(
-        self, test_case, model_client, system_prompt, context,
-        evaluator, evaluation_config, result_storage, pricing,
+        self,
+        test_case,
+        model_client,
+        system_prompt,
+        context,
+        evaluator,
+        evaluation_config,
+        result_storage,
+        pricing,
     ):
         """Execute an agentic golden test with tool calls (tests 09-12)."""
         from evaluator import EvaluationCriteria, evaluate_tool_calls
@@ -327,21 +344,21 @@ class TestGoldenConversations:
         max_rounds = assertions.get("max_tool_call_rounds", 5)
 
         # Build terminal tool set
-        terminal_tools = {
-            t["name"] for t in tools_yaml if t.get("terminal", False)
-        }
+        terminal_tools = {t["name"] for t in tools_yaml if t.get("terminal", False)}
 
         # Convert tool defs to LiteLLM format
         tools_litellm = []
         for t in tools_yaml:
-            tools_litellm.append({
-                "type": "function",
-                "function": {
-                    "name": t["name"],
-                    "description": t["description"],
-                    "parameters": t.get("parameters", {"type": "object", "properties": {}}),
-                },
-            })
+            tools_litellm.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t["name"],
+                        "description": t["description"],
+                        "parameters": t.get("parameters", {"type": "object", "properties": {}}),
+                    },
+                }
+            )
 
         # Build initial messages
         messages: list[dict] = [
@@ -406,8 +423,7 @@ class TestGoldenConversations:
                 # Append mock tool results
                 for tc in tool_calls:
                     mock_content = mock_results.get(
-                        tc.function.name,
-                        f"Error: unknown tool '{tc.function.name}'"
+                        tc.function.name, f"Error: unknown tool '{tc.function.name}'"
                     )
                     tool_msg = {
                         "role": "tool",
@@ -425,8 +441,7 @@ class TestGoldenConversations:
         else:
             # Max iterations exhausted without final text
             pytest.fail(
-                f"Test {test_case['name']}: model did not converge in "
-                f"{max_rounds} iterations"
+                f"Test {test_case['name']}: model did not converge in {max_rounds} iterations"
             )
 
         response_latency = (time.time() - start_time) * 1000
@@ -501,9 +516,7 @@ class TestGoldenConversations:
 
     def test_01_basic_qa(self, evaluator, evaluation_config, result_storage):
         """Test basic factual question answering."""
-        self._run_golden_test(
-            "01_basic_qa.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("01_basic_qa.yaml", evaluator, evaluation_config, result_storage)
 
     def test_02_context_recall(self, evaluator, evaluation_config, result_storage):
         """Test that assistant recalls information from profile."""
@@ -511,17 +524,13 @@ class TestGoldenConversations:
             "02_context_recall.yaml", evaluator, evaluation_config, result_storage
         )
 
-    def test_03_multi_turn_reasoning(
-        self, evaluator, evaluation_config, result_storage
-    ):
+    def test_03_multi_turn_reasoning(self, evaluator, evaluation_config, result_storage):
         """Test multi-turn technical conversation with context retention."""
         self._run_golden_test(
             "03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage
         )
 
-    def test_04_personalization_tone(
-        self, evaluator, evaluation_config, result_storage
-    ):
+    def test_04_personalization_tone(self, evaluator, evaluation_config, result_storage):
         """Test that assistant follows tone preferences."""
         self._run_golden_test(
             "04_personalization_tone.yaml", evaluator, evaluation_config, result_storage
@@ -545,9 +554,7 @@ class TestGoldenConversations:
             "07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage
         )
 
-    def test_08_preferences_adherence(
-        self, evaluator, evaluation_config, result_storage
-    ):
+    def test_08_preferences_adherence(self, evaluator, evaluation_config, result_storage):
         """Test following multiple preference guidelines simultaneously."""
         self._run_golden_test(
             "08_preferences_adherence.yaml",
@@ -558,19 +565,13 @@ class TestGoldenConversations:
 
     def test_09_tool_calling(self, evaluator, evaluation_config, result_storage):
         """Test that model calls the correct tool with appropriate arguments."""
-        self._run_golden_test(
-            "09_tool_calling.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("09_tool_calling.yaml", evaluator, evaluation_config, result_storage)
 
     def test_10_delegation(self, evaluator, evaluation_config, result_storage):
         """Test that model delegates coding tasks to the developer agent."""
-        self._run_golden_test(
-            "10_delegation.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("10_delegation.yaml", evaluator, evaluation_config, result_storage)
 
-    def test_11_multi_step_tool_use(
-        self, evaluator, evaluation_config, result_storage
-    ):
+    def test_11_multi_step_tool_use(self, evaluator, evaluation_config, result_storage):
         """Test that model chains search then read to answer a question."""
         self._run_golden_test(
             "11_multi_step_tool_use.yaml", evaluator, evaluation_config, result_storage

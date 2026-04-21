@@ -269,8 +269,17 @@ class TestFetchTasks:
         }
 
         cache_data = {
-            "inbox": [{"title": "Cached Task", "notes": "", "due_date": "",
-                        "when_date": "", "tags": "", "project": "", "area": ""}],
+            "inbox": [
+                {
+                    "title": "Cached Task",
+                    "notes": "",
+                    "due_date": "",
+                    "when_date": "",
+                    "tags": "",
+                    "project": "",
+                    "area": "",
+                }
+            ],
             "today": [],
             "upcoming": [],
         }
@@ -295,13 +304,26 @@ class TestFetchTasks:
 
         mock_things = MagicMock()
         mock_things.inbox.return_value = [
-            {"title": "Inbox item", "notes": "", "deadline": None,
-             "start_date": None, "tags": [], "project_title": None, "area_title": None}
+            {
+                "title": "Inbox item",
+                "notes": "",
+                "deadline": None,
+                "start_date": None,
+                "tags": [],
+                "project_title": None,
+                "area_title": None,
+            }
         ]
         mock_things.today.return_value = [
-            {"title": "Today item", "notes": "note", "deadline": "2026-03-15",
-             "start_date": "2026-03-12", "tags": ["work"], "project_title": "Proj",
-             "area_title": "Work"}
+            {
+                "title": "Today item",
+                "notes": "note",
+                "deadline": "2026-03-15",
+                "start_date": "2026-03-12",
+                "tags": ["work"],
+                "project_title": "Proj",
+                "area_title": "Work",
+            }
         ]
 
         with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class:
@@ -413,15 +435,19 @@ class TestFormatTasksAsMarkdown:
 
     def test_format_task_with_metadata(self):
         """Test task line includes due date, tags, and UUID (UUID last)."""
-        today = [Task(
-            title="Review PR",
-            uuid="6Hf2qWBjWhq7B1xszwdo34",
-            due_date="2026-03-15",
-            tags="urgent, code-review",
-        )]
+        today = [
+            Task(
+                title="Review PR",
+                uuid="6Hf2qWBjWhq7B1xszwdo34",
+                due_date="2026-03-15",
+                tags="urgent, code-review",
+            )
+        ]
         markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
 
-        assert "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
+        assert (
+            "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
+        )
 
     def test_format_task_uuid_last_in_metadata(self):
         """Test UUID appears after due date and tags in metadata."""

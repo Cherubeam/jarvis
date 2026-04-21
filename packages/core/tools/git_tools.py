@@ -52,12 +52,14 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
     def _git_status() -> str:
         return _run_git(["status", "--short"], root) or "Working tree clean."
 
-    tools.append(ToolDefinition(
-        name="git_status",
-        description="Show git working tree status (short format).",  # pragma: no mutate
-        parameters={"type": "object", "properties": {}, "required": []},
-        execute=_git_status,
-    ))
+    tools.append(
+        ToolDefinition(
+            name="git_status",
+            description="Show git working tree status (short format).",  # pragma: no mutate
+            parameters={"type": "object", "properties": {}, "required": []},
+            execute=_git_status,
+        )
+    )
 
     # --- git_diff ---
 
@@ -66,48 +68,54 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
         output = _run_git(args, root)
         return output or "No differences."
 
-    tools.append(ToolDefinition(
-        name="git_diff",
-        description="Show git diff. Set staged=true for staged changes.",  # pragma: no mutate
-        parameters={
-            "type": "object",
-            "properties": {
-                "staged": {
-                    "type": "boolean",
-                    "description": "Show staged changes only (default: false).",  # pragma: no mutate
-                    "default": False,
+    tools.append(
+        ToolDefinition(
+            name="git_diff",
+            description="Show git diff. Set staged=true for staged changes.",  # pragma: no mutate
+            parameters={
+                "type": "object",
+                "properties": {
+                    "staged": {
+                        "type": "boolean",
+                        "description": "Show staged changes only (default: false).",  # pragma: no mutate
+                        "default": False,
+                    },
                 },
+                "required": [],
             },
-            "required": [],
-        },
-        execute=_git_diff,
-    ))
+            execute=_git_diff,
+        )
+    )
 
     # --- git_branch ---
 
     def _git_branch(name: str) -> str:
         if not _BRANCH_PREFIX_RE.match(name):
-            return f"Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: {name}"
+            return (
+                f"Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: {name}"
+            )
         return _run_git(["switch", "-c", name], root)
 
-    tools.append(ToolDefinition(
-        name="git_branch",
-        description=(
-            "Create and switch to a new git branch. "  # pragma: no mutate
-            "Name must start with 'feat/jarvis-' or 'fix/jarvis-'."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Branch name (e.g. 'feat/jarvis-add-greeting-agent').",  # pragma: no mutate
+    tools.append(
+        ToolDefinition(
+            name="git_branch",
+            description=(
+                "Create and switch to a new git branch. "  # pragma: no mutate
+                "Name must start with 'feat/jarvis-' or 'fix/jarvis-'."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Branch name (e.g. 'feat/jarvis-add-greeting-agent').",  # pragma: no mutate
+                    },
                 },
+                "required": ["name"],
             },
-            "required": ["name"],
-        },
-        execute=_git_branch,
-    ))
+            execute=_git_branch,
+        )
+    )
 
     # --- git_add ---
 
@@ -120,22 +128,24 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
                 return "Error: Cannot use '-A', '--all', or '.' — specify files explicitly."
         return _run_git(["add", *paths], root)
 
-    tools.append(ToolDefinition(
-        name="git_add",
-        description="Stage specific files for commit. Never stages all files — list paths explicitly.",  # pragma: no mutate
-        parameters={
-            "type": "object",
-            "properties": {
-                "paths": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of file paths to stage.",  # pragma: no mutate
+    tools.append(
+        ToolDefinition(
+            name="git_add",
+            description="Stage specific files for commit. Never stages all files — list paths explicitly.",  # pragma: no mutate
+            parameters={
+                "type": "object",
+                "properties": {
+                    "paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of file paths to stage.",  # pragma: no mutate
+                    },
                 },
+                "required": ["paths"],
             },
-            "required": ["paths"],
-        },
-        execute=_git_add,
-    ))
+            execute=_git_add,
+        )
+    )
 
     # --- git_commit ---
 
@@ -145,24 +155,26 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
         tagged_message = f"{message.strip()} {_COMMIT_TAG}"
         return _run_git(["commit", "-m", tagged_message], root)
 
-    tools.append(ToolDefinition(
-        name="git_commit",
-        description=(
-            "Create a git commit with the given message. "  # pragma: no mutate
-            "Automatically appends [JARVIS-auto] tag."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "description": "Commit message (without the [JARVIS-auto] tag).",  # pragma: no mutate
+    tools.append(
+        ToolDefinition(
+            name="git_commit",
+            description=(
+                "Create a git commit with the given message. "  # pragma: no mutate
+                "Automatically appends [JARVIS-auto] tag."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Commit message (without the [JARVIS-auto] tag).",  # pragma: no mutate
+                    },
                 },
+                "required": ["message"],
             },
-            "required": ["message"],
-        },
-        execute=_git_commit,
-    ))
+            execute=_git_commit,
+        )
+    )
 
     # --- git_log ---
 
@@ -170,21 +182,23 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
         n = min(n, 50)
         return _run_git(["log", "--oneline", f"-{n}"], root)
 
-    tools.append(ToolDefinition(
-        name="git_log",
-        description="Show recent git commit history (oneline format).",  # pragma: no mutate
-        parameters={
-            "type": "object",
-            "properties": {
-                "n": {
-                    "type": "integer",
-                    "description": "Number of commits to show (default: 10, max: 50).",  # pragma: no mutate
-                    "default": 10,
+    tools.append(
+        ToolDefinition(
+            name="git_log",
+            description="Show recent git commit history (oneline format).",  # pragma: no mutate
+            parameters={
+                "type": "object",
+                "properties": {
+                    "n": {
+                        "type": "integer",
+                        "description": "Number of commits to show (default: 10, max: 50).",  # pragma: no mutate
+                        "default": 10,
+                    },
                 },
+                "required": [],
             },
-            "required": [],
-        },
-        execute=_git_log,
-    ))
+            execute=_git_log,
+        )
+    )
 
     return tools

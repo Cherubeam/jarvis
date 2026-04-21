@@ -44,7 +44,8 @@ def _write_conversation(
             "total_latency_ms": 0,
             "request_count": 1,
         },
-        "messages": messages or [
+        "messages": messages
+        or [
             {"role": "user", "content": "Hello", "timestamp": session_start},
             {"role": "assistant", "agent": "JARVIS", "content": "hi", "timestamp": session_end},
         ],
@@ -75,11 +76,13 @@ def test_missing_directory_returns_empty(tmp_path):
 def test_basic_list_facets_and_get(tmp_conversations):
     _write_conversation(tmp_conversations, "2026-04-19_10-00-00")
     _write_conversation(
-        tmp_conversations, "2026-04-18_09-00-00",
+        tmp_conversations,
+        "2026-04-18_09-00-00",
         messages=[
             {"role": "user", "content": "draft an opening"},
             {
-                "role": "assistant", "agent": "writer",
+                "role": "assistant",
+                "agent": "writer",
                 "tool_calls": [{"function": {"name": "read_note"}}],
             },
             {"role": "tool", "content": "Read 42 chars."},
@@ -143,9 +146,11 @@ def test_incremental_refresh_reparses_only_changed(tmp_conversations):
     # Now touch the file with a new mtime + new content.
     import os
     import time
+
     time.sleep(0.01)
     _write_conversation(
-        tmp_conversations, "2026-04-19_10-00-00",
+        tmp_conversations,
+        "2026-04-19_10-00-00",
         messages=[{"role": "user", "content": "updated title"}],
     )
     os.utime(path, None)
@@ -164,11 +169,13 @@ def test_mark_dirty_forces_reparse(tmp_conversations):
     # Overwrite WITHOUT bumping mtime — simulates a quick-save race.
     original_mtime = path.stat().st_mtime
     _write_conversation(
-        tmp_conversations, "2026-04-19_10-00-00",
+        tmp_conversations,
+        "2026-04-19_10-00-00",
         messages=[{"role": "user", "content": "forced new title"}],
     )
     # Pin mtime so the normal changed-check wouldn't trigger a reparse.
     import os
+
     os.utime(path, (original_mtime, original_mtime))
 
     idx.mark_dirty("2026-04-19_10-00-00")
@@ -180,16 +187,20 @@ def test_mark_dirty_forces_reparse(tmp_conversations):
 
 def test_list_filters_sort_and_paginate(tmp_conversations):
     _write_conversation(
-        tmp_conversations, "2026-04-20_10-00-00",
-        total_tokens=1000, total_cost_usd=0.10,
+        tmp_conversations,
+        "2026-04-20_10-00-00",
+        total_tokens=1000,
+        total_cost_usd=0.10,
         messages=[
             {"role": "user", "content": "expensive session"},
             {"role": "assistant", "agent": "writer"},
         ],
     )
     _write_conversation(
-        tmp_conversations, "2026-04-19_10-00-00",
-        total_tokens=100, total_cost_usd=0.001,
+        tmp_conversations,
+        "2026-04-19_10-00-00",
+        total_tokens=100,
+        total_cost_usd=0.001,
         messages=[
             {"role": "user", "content": "cheap session"},
             {"role": "assistant", "agent": "JARVIS"},

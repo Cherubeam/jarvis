@@ -15,10 +15,11 @@ from packages.core.model_resolver import resolve_model, ResolvedModel
 @dataclass
 class RoutingDecision:
     """Result of routing a query to a model preset."""
-    preset: str          # "fast", "balanced", "quality"
+
+    preset: str  # "fast", "balanced", "quality"
     resolved: ResolvedModel
-    reason: str          # human-readable explanation
-    confidence: float    # 0.0-1.0
+    reason: str  # human-readable explanation
+    confidence: float  # 0.0-1.0
 
 
 # Agents that always get the quality model

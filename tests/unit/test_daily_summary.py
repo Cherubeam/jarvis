@@ -61,7 +61,9 @@ class TestDailySummaryMaxTokens:
         mock_daily_path.return_value = Mock(name="2026-03-16.md")
         mock_read_note.return_value = "# Daily Note\nSome content"
         mock_find_callout.return_value = CalloutBlock(
-            start_line=99, end_line=99, existing_content="",
+            start_line=99,
+            end_line=99,
+            existing_content="",
         )
         mock_jarvis_agent.get_daily_note_instructions.return_value = "Generate summary"
         mock_append.return_value = Mock(success=True, message="Written")
@@ -76,7 +78,8 @@ class TestDailySummaryMaxTokens:
         metrics_tracker = MetricsTracker()
         pricing = ModelPricing(
             model_id="test-model",
-            prompt_cost=0.000003, completion_cost=0.000015,
+            prompt_cost=0.000003,
+            completion_cost=0.000015,
         )
 
         handle_daily_summary(
@@ -156,7 +159,9 @@ class TestDailySummaryDateArgument:
         mock_daily_path.return_value = Mock(name="2026-03-18.md")
         mock_read_note.return_value = "# Daily Note\nSome content"
         mock_find_callout.return_value = CalloutBlock(
-            start_line=99, end_line=99, existing_content="",
+            start_line=99,
+            end_line=99,
+            existing_content="",
         )
         mock_jarvis_agent.get_daily_note_instructions.return_value = "Generate summary"
         mock_append.return_value = Mock(success=True, message="Written")
@@ -221,7 +226,9 @@ class TestDailySummaryDateArgument:
         mock_daily_path.return_value = Mock(name="2026-03-20.md")
         mock_read_note.return_value = "# Daily Note\nSome content"
         mock_find_callout.return_value = CalloutBlock(
-            start_line=99, end_line=99, existing_content="",
+            start_line=99,
+            end_line=99,
+            existing_content="",
         )
         mock_jarvis_agent.get_daily_note_instructions.return_value = "Generate summary"
         mock_append.return_value = Mock(success=True, message="Written")

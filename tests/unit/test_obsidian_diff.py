@@ -56,12 +56,8 @@ class TestComputeDiff:
         diff_small = compute_diff("f.md", original, proposed, context_lines=1)
         diff_large = compute_diff("f.md", original, proposed, context_lines=5)
         # More context = more unchanged lines in output
-        small_unchanged = len(
-            [dl for dl in diff_small.diff_lines if dl.type == "unchanged"]
-        )
-        large_unchanged = len(
-            [dl for dl in diff_large.diff_lines if dl.type == "unchanged"]
-        )
+        small_unchanged = len([dl for dl in diff_small.diff_lines if dl.type == "unchanged"])
+        large_unchanged = len([dl for dl in diff_large.diff_lines if dl.type == "unchanged"])
         assert large_unchanged >= small_unchanged
 
 

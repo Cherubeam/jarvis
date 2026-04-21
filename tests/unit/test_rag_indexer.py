@@ -7,14 +7,23 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 
-from packages.core.rag.indexer import _MAX_EMBED_CHARS, _CHUNK_OVERLAP_CHARS, _EMBED_BATCH_SIZE, _chunk_document, _date_str_to_int
+from packages.core.rag.indexer import (
+    _MAX_EMBED_CHARS,
+    _CHUNK_OVERLAP_CHARS,
+    _EMBED_BATCH_SIZE,
+    _chunk_document,
+    _date_str_to_int,
+)
 
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
-def _make_v1_conversation(conv_id: str, messages: list[dict], session_start: str = "2026-02-20T10:00:00") -> dict:
+
+def _make_v1_conversation(
+    conv_id: str, messages: list[dict], session_start: str = "2026-02-20T10:00:00"
+) -> dict:
     """Return a minimal schema-v1.0.0 conversation dict."""
     return {
         "schema_version": "1.0.0",
@@ -32,26 +41,31 @@ def _make_messages(pairs: list[tuple[str, str]]) -> list[dict]:
     """Build a flat message list from (user, assistant) pairs."""
     msgs = []
     for i, (user_text, asst_text) in enumerate(pairs, start=1):
-        msgs.append({
-            "id": f"msg_{i * 2 - 1:03d}",
-            "role": "user",
-            "content": [{"type": "text", "text": user_text}],
-            "timestamp": "2026-02-20T10:00:00",
-            "metadata": {},
-        })
-        msgs.append({
-            "id": f"msg_{i * 2:03d}",
-            "role": "assistant",
-            "content": [{"type": "text", "text": asst_text}],
-            "timestamp": "2026-02-20T10:00:01",
-            "metadata": {},
-        })
+        msgs.append(
+            {
+                "id": f"msg_{i * 2 - 1:03d}",
+                "role": "user",
+                "content": [{"type": "text", "text": user_text}],
+                "timestamp": "2026-02-20T10:00:00",
+                "metadata": {},
+            }
+        )
+        msgs.append(
+            {
+                "id": f"msg_{i * 2:03d}",
+                "role": "assistant",
+                "content": [{"type": "text", "text": asst_text}],
+                "timestamp": "2026-02-20T10:00:01",
+                "metadata": {},
+            }
+        )
     return msgs
 
 
 # ---------------------------------------------------------------------------
 # _chunk_document
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestChunkDocument:
@@ -97,6 +111,7 @@ class TestChunkDocument:
 # _extract_pairs
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestExtractPairs:
     def _make_indexer(self):
@@ -104,10 +119,13 @@ class TestExtractPairs:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.rag.indexer import ConversationIndexer
+
             indexer = ConversationIndexer.__new__(ConversationIndexer)
             indexer.db_path = Path("/tmp/fake_rag")
             indexer.embedding_model = "openrouter/openai/text-embedding-3-small"
@@ -129,18 +147,28 @@ class TestExtractPairs:
         assert pairs[0]["id"] == "conv_20260220_100000_abc123_pair_0"
         assert pairs[0]["document"] == "User: Hello\n\nAssistant: Hi there!"
         # Verify all expected metadata keys are present
-        expected_keys = {"conv_id", "session_date", "session_date_int", "pair_index", "user_snippet", "assistant_snippet", "title"}
+        expected_keys = {
+            "conv_id",
+            "session_date",
+            "session_date_int",
+            "pair_index",
+            "user_snippet",
+            "assistant_snippet",
+            "title",
+        }
         assert set(pairs[0]["metadata"].keys()) == expected_keys
 
     def test_multiple_pairs_in_order(self):
         indexer = self._make_indexer()
         conv = _make_v1_conversation(
             "conv_20260220_100000_abc123",
-            _make_messages([
-                ("First question", "First answer"),
-                ("Second question", "Second answer"),
-                ("Third question", "Third answer"),
-            ]),
+            _make_messages(
+                [
+                    ("First question", "First answer"),
+                    ("Second question", "Second answer"),
+                    ("Third question", "Third answer"),
+                ]
+            ),
         )
         pairs = indexer._extract_pairs(conv)
 
@@ -258,7 +286,17 @@ class TestExtractPairs:
         pairs = indexer._extract_pairs(conv)
 
         assert len(pairs) > 1
-        expected_keys = {"conv_id", "session_date", "session_date_int", "pair_index", "user_snippet", "assistant_snippet", "title", "chunk_index", "total_chunks"}
+        expected_keys = {
+            "conv_id",
+            "session_date",
+            "session_date_int",
+            "pair_index",
+            "user_snippet",
+            "assistant_snippet",
+            "title",
+            "chunk_index",
+            "total_chunks",
+        }
         for i, pair in enumerate(pairs):
             assert pair["id"] == f"conv_20260220_100000_abc123_pair_0_chunk_{i}"
             assert pair["metadata"]["chunk_index"] == i
@@ -284,6 +322,7 @@ class TestExtractPairs:
 # index_new
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestIndexNew:
     def _setup(self, tmp_path, already_indexed_ids=None):
@@ -294,12 +333,18 @@ class TestIndexNew:
 
         # Simulate _get_indexed_conv_ids and _migrate_date_metadata returning the pre-existing set
         existing_ids = [f"id_{i}" for i in range(len(already_indexed_ids or []))]
-        existing_metas = [{"conv_id": cid, "session_date": "2026-01-01", "session_date_int": 20260101} for cid in (already_indexed_ids or [])]
+        existing_metas = [
+            {"conv_id": cid, "session_date": "2026-01-01", "session_date_int": 20260101}
+            for cid in (already_indexed_ids or [])
+        ]
         mock_collection.get.return_value = {"ids": existing_ids, "metadatas": existing_metas}
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer
+
             indexer = ConversationIndexer.__new__(ConversationIndexer)
             indexer.db_path = tmp_path / "chroma"
             indexer.embedding_model = "test-model"
@@ -348,7 +393,9 @@ class TestIndexNew:
             n = len(kwargs["input"])
             return MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]} for _ in range(n)])
 
-        with patch("packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed) as mock_embed:
+        with patch(
+            "packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed
+        ) as mock_embed:
             n_new = indexer.index_new(tmp_path)
 
         assert n_new == 1
@@ -376,7 +423,9 @@ class TestIndexNew:
             n = len(kwargs["input"])
             return MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]} for _ in range(n)])
 
-        with patch("packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed) as mock_embed:
+        with patch(
+            "packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed
+        ) as mock_embed:
             n_new = indexer.index_new(tmp_path)
 
         assert n_new == 2
@@ -435,10 +484,13 @@ class TestIndexNew:
                 {"conv_id": "conv_b", "session_date": "2026-01-15"},
             ],
         }
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer
+
             indexer = ConversationIndexer.__new__(ConversationIndexer)
             indexer._collection = mock_collection
 
@@ -461,10 +513,13 @@ class TestIndexNew:
                 {"conv_id": "conv_a", "session_date": "2026-02-20", "session_date_int": 20260220},
             ],
         }
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer
+
             indexer = ConversationIndexer.__new__(ConversationIndexer)
             indexer._collection = mock_collection
 
@@ -500,6 +555,7 @@ class TestIndexNew:
 # _date_str_to_int boundary conditions
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestDateStrToInt:
     def test_valid_date(self):
@@ -518,6 +574,7 @@ class TestDateStrToInt:
 # ---------------------------------------------------------------------------
 # _chunk_document boundary: exact boundary at max_chars + 1
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestChunkDocumentBoundary:

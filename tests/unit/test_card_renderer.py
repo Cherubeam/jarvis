@@ -91,6 +91,7 @@ Some content.
 # parse_pattern
 # ---------------------------------------------------------------------------
 
+
 class TestParsePattern:
     def test_full_pattern(self):
         p = parse_pattern(FULL_PATTERN)
@@ -98,8 +99,14 @@ class TestParsePattern:
         assert p.category == "Reasoning & Planning"
         assert p.intent == "Make AI reasoning visible by forcing it to show its work."
         assert p.context == "A language model is asked a question requiring multiple steps."
-        assert p.problem == "Models jump to plausible-sounding answers, skipping intermediate reasoning."
-        assert p.solution == "Instruct the model to reason step by step before producing its final answer."
+        assert (
+            p.problem
+            == "Models jump to plausible-sounding answers, skipping intermediate reasoning."
+        )
+        assert (
+            p.solution
+            == "Instruct the model to reason step by step before producing its final answer."
+        )
         assert "auditable" in p.consequences
         assert p.related_patterns == ["ReAct", "Reflection"]
         assert p.status == "draft"
@@ -138,9 +145,10 @@ class TestParsePattern:
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 class TestExtractIntent:
     def test_standard_intent(self):
-        body = '> **Intent:** Do something useful.'
+        body = "> **Intent:** Do something useful."
         assert _extract_intent(body) == "Do something useful."
 
     def test_no_intent(self):
@@ -237,6 +245,7 @@ class TestCategoryColor:
 # list_vault_patterns
 # ---------------------------------------------------------------------------
 
+
 class TestListVaultPatterns:
     def test_finds_patterns(self, tmp_path):
         patterns_dir = tmp_path / "patterns"
@@ -287,6 +296,7 @@ class TestListVaultPatterns:
 # Rendering
 # ---------------------------------------------------------------------------
 
+
 class TestRenderCardHtml:
     def test_contains_pattern_name(self):
         p = parse_pattern(FULL_PATTERN)
@@ -296,8 +306,10 @@ class TestRenderCardHtml:
     def test_contains_category(self):
         p = parse_pattern(FULL_PATTERN)
         html = render_card_html(p)
-        assert '<div class="card-header">Reasoning &amp; Planning</div>' in html or \
-               '<div class="card-header">Reasoning & Planning</div>' in html
+        assert (
+            '<div class="card-header">Reasoning &amp; Planning</div>' in html
+            or '<div class="card-header">Reasoning & Planning</div>' in html
+        )
 
     def test_contains_intent(self):
         p = parse_pattern(FULL_PATTERN)
@@ -352,6 +364,7 @@ class TestRenderCardBack:
 # ---------------------------------------------------------------------------
 # Phase 2: Image prompt generation
 # ---------------------------------------------------------------------------
+
 
 class TestBuildImagePrompt:
     """Tests for two-layer prompt system: known patterns use _PATTERN_VISUALS,
@@ -476,6 +489,7 @@ class TestExportImagePrompts:
 # Phase 2: ImageGenerationConfig
 # ---------------------------------------------------------------------------
 
+
 class TestImageGenerationConfig:
     def test_defaults(self):
         cfg = ImageGenerationConfig()
@@ -492,7 +506,14 @@ class TestImageGenerationConfig:
         assert cfg.max_images_per_run == 10
 
     def test_from_dict_enabled(self):
-        d = {"image_generation": {"enabled": True, "model": "gemini/test-model", "size": "512x512", "max_images_per_run": 5}}
+        d = {
+            "image_generation": {
+                "enabled": True,
+                "model": "gemini/test-model",
+                "size": "512x512",
+                "max_images_per_run": 5,
+            }
+        }
         cfg = ImageGenerationConfig.from_dict(d)
         assert cfg.enabled is True
         assert cfg.model == "gemini/test-model"
@@ -503,6 +524,7 @@ class TestImageGenerationConfig:
 # ---------------------------------------------------------------------------
 # Phase 2: API image generation (mocked)
 # ---------------------------------------------------------------------------
+
 
 class TestGeneratePatternImage:
     def test_raises_when_disabled(self, tmp_path):
@@ -534,8 +556,10 @@ class TestGeneratePatternImage:
         mock_httpx_response = MagicMock()
         mock_httpx_response.content = b"new image data"
 
-        with patch("litellm.image_generation", return_value=mock_response), \
-             patch("httpx.get", return_value=mock_httpx_response):
+        with (
+            patch("litellm.image_generation", return_value=mock_response),
+            patch("httpx.get", return_value=mock_httpx_response),
+        ):
             result = generate_pattern_image(p, tmp_path, cfg, force=True)
 
         assert result == tmp_path / "chain-of-thought.png"
@@ -543,6 +567,7 @@ class TestGeneratePatternImage:
 
     def test_handles_b64_response(self, tmp_path):
         import base64
+
         p = parse_pattern(FULL_PATTERN)
         cfg = ImageGenerationConfig(enabled=True)
 
@@ -563,6 +588,7 @@ class TestGeneratePatternImage:
 # ---------------------------------------------------------------------------
 # WeasyPrint system library error handling
 # ---------------------------------------------------------------------------
+
 
 class TestRenderCardToPng:
     def test_missing_system_libs_raises_helpful_error(self):
@@ -590,10 +616,13 @@ class TestRenderCardToPng:
         mock_fitz.Matrix.return_value = "2x_matrix"
 
         out = tmp_path / "card.png"
-        with patch(
-            "packages.core.card_renderer._get_weasyprint_html",
-            return_value=mock_html_cls,
-        ), patch.dict("sys.modules", {"fitz": mock_fitz}):
+        with (
+            patch(
+                "packages.core.card_renderer._get_weasyprint_html",
+                return_value=mock_html_cls,
+            ),
+            patch.dict("sys.modules", {"fitz": mock_fitz}),
+        ):
             result = render_card_to_png("<html></html>", out)
 
         mock_html_cls.return_value.write_pdf.assert_called_once()
@@ -623,8 +652,10 @@ class TestRenderCardToPdf:
 class TestEnsureHomebrewLibPath:
     def test_noop_on_non_darwin(self):
         """Should not modify env on Linux."""
-        with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=False):
+        with (
+            patch("packages.core.card_renderer.sys") as mock_sys,
+            patch.dict(os.environ, {}, clear=False),
+        ):
             os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "linux"
             _ensure_homebrew_lib_path()
@@ -633,9 +664,11 @@ class TestEnsureHomebrewLibPath:
     def test_adds_existing_homebrew_path(self):
         """Should add Homebrew lib dir when it exists on macOS."""
         fake_dir = Path("/opt/homebrew/lib")
-        with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=False), \
-             patch.object(Path, "is_dir", side_effect=lambda self=None: str(fake_dir) in str(self)):
+        with (
+            patch("packages.core.card_renderer.sys") as mock_sys,
+            patch.dict(os.environ, {}, clear=False),
+            patch.object(Path, "is_dir", side_effect=lambda self=None: str(fake_dir) in str(self)),
+        ):
             os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "darwin"
             # Patch is_dir to return True for /opt/homebrew/lib
@@ -654,8 +687,10 @@ class TestEnsureHomebrewLibPath:
 
     def test_does_not_duplicate_existing_path(self):
         """Should not add a path that is already present."""
-        with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {"DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib"}):
+        with (
+            patch("packages.core.card_renderer.sys") as mock_sys,
+            patch.dict(os.environ, {"DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib"}),
+        ):
             mock_sys.platform = "darwin"
             with patch("packages.core.card_renderer.Path") as MockPath:
                 opt_path = MagicMock()
@@ -672,8 +707,10 @@ class TestEnsureHomebrewLibPath:
 
     def test_skips_when_no_homebrew_dirs_exist(self):
         """Should not set env var when no Homebrew lib dirs exist."""
-        with patch("packages.core.card_renderer.sys") as mock_sys, \
-             patch.dict(os.environ, {}, clear=False):
+        with (
+            patch("packages.core.card_renderer.sys") as mock_sys,
+            patch.dict(os.environ, {}, clear=False),
+        ):
             os.environ.pop("DYLD_FALLBACK_LIBRARY_PATH", None)
             mock_sys.platform = "darwin"
             with patch("packages.core.card_renderer.Path") as MockPath:

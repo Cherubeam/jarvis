@@ -11,7 +11,11 @@ from unittest.mock import patch
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import VaultConfig
-from packages.core.tools.vault_read_tools import make_vault_read_tools, MAX_CONTENT_SIZE, MAX_SEARCH_RESULTS
+from packages.core.tools.vault_read_tools import (
+    make_vault_read_tools,
+    MAX_CONTENT_SIZE,
+    MAX_SEARCH_RESULTS,
+)
 
 
 def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:

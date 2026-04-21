@@ -22,6 +22,7 @@ if _project_root not in sys.path:
 def main():
     """Entry point that imports and runs the GUI server."""
     from apps.gui.main import main as gui_main
+
     gui_main()
 
 

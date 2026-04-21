@@ -65,16 +65,14 @@ class ReadwiseClient:
     def tag_document(self, document_id: str, tags: str) -> str:
         """Add tags to a document. Tags are comma-separated."""
         return self._run(
-            ["reader-add-tags-to-document", "--document-id", document_id,
-             "--tag-names", tags]
+            ["reader-add-tags-to-document", "--document-id", document_id, "--tag-names", tags]
         )
 
     def move_document(self, document_id: str, location: str) -> str:
         """Move a document to a location (new, later, shortlist, archive)."""
         cli_loc = _LOCATION_MAP.get(location.lower(), location)
         return self._run(
-            ["reader-move-documents", "--document-ids", document_id,
-             "--location", cli_loc]
+            ["reader-move-documents", "--document-ids", document_id, "--location", cli_loc]
         )
 
     def _run(self, args: list[str]) -> str:

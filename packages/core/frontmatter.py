@@ -23,7 +23,7 @@ def parse(text: str) -> tuple[dict, str]:
         end = text.find("\n---\n", 4)
         if end != -1:
             meta = yaml.safe_load(text[4:end]) or {}
-            body = text[end + 5:]
+            body = text[end + 5 :]
             return meta, body
     return {}, text
 

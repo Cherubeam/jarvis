@@ -88,8 +88,11 @@ def create_app() -> FastAPI:
                     index_html,
                     headers={"Cache-Control": "no-cache, must-revalidate"},
                 )
-            return Response("GUI bundle not found. Run: cd apps/gui/web && npm run build", status_code=503)
+            return Response(
+                "GUI bundle not found. Run: cd apps/gui/web && npm run build", status_code=503
+            )
     else:
+
         @app.get("/")
         async def root_no_bundle() -> Response:
             return Response(

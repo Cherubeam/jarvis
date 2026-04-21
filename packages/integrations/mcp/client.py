@@ -76,9 +76,7 @@ class MCPConnection:
                 env=self.config.env,
                 cwd=self.config.cwd,
             )
-            return await self._exit_stack.enter_async_context(
-                stdio_client(params)
-            )
+            return await self._exit_stack.enter_async_context(stdio_client(params))
         elif self.config.transport == "sse":
             return await self._exit_stack.enter_async_context(
                 sse_client(
@@ -100,8 +98,7 @@ class MCPConnection:
         """Call a tool on this server."""
         if self.session is None or not self._connected:
             raise RuntimeError(
-                f"MCP server '{self.config.name}' is not connected. "
-                "Restart JARVIS to reconnect."
+                f"MCP server '{self.config.name}' is not connected. Restart JARVIS to reconnect."
             )
         return await self.session.call_tool(
             name,
@@ -148,14 +145,18 @@ class MCPManager:
                 # Bridge MCP tools → ToolDefinition
                 call_fn = self._make_call_fn(cfg.name)
                 definitions = mcp_tools_to_tool_definitions(
-                    cfg.name, conn.tools, call_fn,
+                    cfg.name,
+                    conn.tools,
+                    call_fn,
                 )
                 if definitions:
                     tool_groups[cfg.tool_group] = definitions
 
             except Exception as e:
                 logger.warning(
-                    "MCP server '%s' failed to connect: %s", cfg.name, e,
+                    "MCP server '%s' failed to connect: %s",
+                    cfg.name,
+                    e,
                 )
 
         return tool_groups
@@ -165,8 +166,7 @@ class MCPManager:
         conn = self._connections.get(server_name)
         if conn is None or not conn.connected:
             return (
-                f"Error: MCP server '{server_name}' is not connected. "
-                "Restart JARVIS to reconnect."
+                f"Error: MCP server '{server_name}' is not connected. Restart JARVIS to reconnect."
             )
         try:
             result = self._run_async(conn.call_tool(tool_name, arguments))

@@ -13,7 +13,9 @@ class TestParseMcpConfig:
         assert parse_mcp_config({}) == []
 
     def test_returns_empty_when_disabled(self):
-        config = {"mcp": {"enabled": False, "servers": {"s": {"transport": "stdio", "command": "echo"}}}}
+        config = {
+            "mcp": {"enabled": False, "servers": {"s": {"transport": "stdio", "command": "echo"}}}
+        }
         assert parse_mcp_config(config) == []
 
     def test_returns_empty_when_no_servers(self):

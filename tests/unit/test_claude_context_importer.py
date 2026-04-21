@@ -34,7 +34,12 @@ class TestParseMemorySections:
             "**Brief history**\nHumanities to AI."
         )
         result = parse_memory_sections(text)
-        assert set(result.keys()) == {"Work context", "Personal context", "Top of mind", "Brief history"}
+        assert set(result.keys()) == {
+            "Work context",
+            "Personal context",
+            "Top of mind",
+            "Brief history",
+        }
         assert result["Work context"] == "I work in tech."
         assert result["Personal context"] == "I live in Berlin."
         assert result["Top of mind"] == "Building Jarvis."
@@ -79,7 +84,11 @@ class TestParseExistingProfile:
             "## Skills & knowledge\n- Python"
         )
         result = parse_existing_profile(text)
-        assert set(result.keys()) == {"Personal Information", "Professional background", "Skills & knowledge"}
+        assert set(result.keys()) == {
+            "Personal Information",
+            "Professional background",
+            "Skills & knowledge",
+        }
         assert result["Personal Information"] == "- Name: Marco"
         assert result["Professional background"] == "- Consultant"
         assert result["Skills & knowledge"] == "- Python"
@@ -232,10 +241,7 @@ class TestBuildCurrentFocus:
         assert result == existing
 
     def test_preserves_other_sections(self):
-        existing = (
-            "## What's top of mind this week\n- Old\n\n"
-            "## Open questions\n- How to balance?"
-        )
+        existing = "## What's top of mind this week\n- Old\n\n## Open questions\n- How to balance?"
         memory = {"Top of mind": "- New priorities"}
         result = build_current_focus(existing, memory)
         assert "New priorities" in result
@@ -325,8 +331,7 @@ class TestImportContext:
         # Create profile.md
         profile_path = target_dir / "profile.md"
         profile_path.write_text(
-            "## Personal Information\n- Name: Marco\n\n"
-            "## Professional background\n- Consultant"
+            "## Personal Information\n- Name: Marco\n\n## Professional background\n- Consultant"
         )
 
         # Create current_focus.md
@@ -474,8 +479,7 @@ class TestImportContext:
 
         focus_path = target_dir / "current_focus.md"
         focus_path.write_text(
-            "## Active projects\n- Jarvis\n\n"
-            "## What's top of mind this week\n- Old stuff"
+            "## Active projects\n- Jarvis\n\n## What's top of mind this week\n- Old stuff"
         )
 
         import_context(
@@ -514,9 +518,15 @@ class TestImportContext:
         target_dir = tmp_path / "context"
         target_dir.mkdir()
         memories_path = tmp_path / "mem.json"
-        memories_path.write_text(json.dumps([{
-            "conversations_memory": "**Personal context**\nTest memory data",
-        }]))
+        memories_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "conversations_memory": "**Personal context**\nTest memory data",
+                    }
+                ]
+            )
+        )
 
         summary = import_context(
             memories_path=memories_path,
@@ -530,9 +540,13 @@ class TestImportContext:
         target_dir = tmp_path / "context"
         target_dir.mkdir()
         memories_path = tmp_path / "mem.json"
-        memories_path.write_text(json.dumps({
-            "conversations_memory": "**Personal context**\nDirect dict memory",
-        }))
+        memories_path.write_text(
+            json.dumps(
+                {
+                    "conversations_memory": "**Personal context**\nDirect dict memory",
+                }
+            )
+        )
 
         summary = import_context(
             memories_path=memories_path,
@@ -546,16 +560,28 @@ class TestImportContext:
         target_dir = tmp_path / "context"
         target_dir.mkdir()
         memories_path = tmp_path / "mem.json"
-        memories_path.write_text(json.dumps([{
-            "project_memories": [
-                {"project_uuid": "proj-1", "memory": "Project 1 memory"},
-            ],
-        }]))
+        memories_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "project_memories": [
+                            {"project_uuid": "proj-1", "memory": "Project 1 memory"},
+                        ],
+                    }
+                ]
+            )
+        )
         projects_path = tmp_path / "proj.json"
-        projects_path.write_text(json.dumps([{
-            "uuid": "proj-1",
-            "name": "Test Project",
-        }]))
+        projects_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "uuid": "proj-1",
+                        "name": "Test Project",
+                    }
+                ]
+            )
+        )
 
         summary = import_context(
             memories_path=memories_path,
@@ -571,11 +597,17 @@ class TestImportContext:
         target_dir = tmp_path / "context"
         target_dir.mkdir()
         projects_path = tmp_path / "proj.json"
-        projects_path.write_text(json.dumps([{
-            "uuid": "proj-1",
-            "name": "Doc Test",
-            "docs": [{"filename": "empty.md", "content": ""}],
-        }]))
+        projects_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "uuid": "proj-1",
+                        "name": "Doc Test",
+                        "docs": [{"filename": "empty.md", "content": ""}],
+                    }
+                ]
+            )
+        )
 
         summary = import_context(
             memories_path=None,
@@ -589,11 +621,17 @@ class TestImportContext:
         target_dir = tmp_path / "context"
         target_dir.mkdir()
         projects_path = tmp_path / "proj.json"
-        projects_path.write_text(json.dumps([{
-            "uuid": "proj-1",
-            "name": "My Great Project",
-            "docs": [{"filename": "notes.md", "content": "content"}],
-        }]))
+        projects_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "uuid": "proj-1",
+                        "name": "My Great Project",
+                        "docs": [{"filename": "notes.md", "content": "content"}],
+                    }
+                ]
+            )
+        )
 
         import_context(
             memories_path=None,

@@ -45,10 +45,11 @@ class TestSearch:
 
         assert result is None
 
-
     @respx.mock
     def test_search_http_500(self, client: CortexClient) -> None:
-        respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(500, text="Internal Server Error"))
+        respx.post(f"{BASE_URL}/search").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
 
         result = client.search("test query")
 
@@ -65,7 +66,9 @@ class TestSearch:
     @respx.mock
     def test_search_sends_path_prefix(self, client: CortexClient) -> None:
         payload = {"results": [], "count": 0}
-        route = respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, json=payload))
+        route = respx.post(f"{BASE_URL}/search").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
 
         client.search("test query", path_prefix="Projects/")
 
@@ -79,7 +82,9 @@ class TestSearch:
     @respx.mock
     def test_search_omits_path_prefix_when_none(self, client: CortexClient) -> None:
         payload = {"results": [], "count": 0}
-        route = respx.post(f"{BASE_URL}/search").mock(return_value=httpx.Response(200, json=payload))
+        route = respx.post(f"{BASE_URL}/search").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
 
         client.search("test query", n_results=5, path_prefix=None)
 
@@ -102,7 +107,9 @@ class TestSearch:
 class TestIsAvailable:
     @respx.mock
     def test_is_available_healthy(self, client: CortexClient) -> None:
-        respx.get(f"{BASE_URL}/status").mock(return_value=httpx.Response(200, json={"status": "ok"}))
+        respx.get(f"{BASE_URL}/status").mock(
+            return_value=httpx.Response(200, json={"status": "ok"})
+        )
 
         result = client.is_available()
         assert result is True

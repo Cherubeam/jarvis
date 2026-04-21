@@ -55,6 +55,7 @@ def _load_reviewed(outcomes_dir: Path) -> list[tuple[str, dict, str]]:
 @dataclass
 class OutcomeResult:
     """A single outcome search result."""
+
     outcome_id: str
     what: str
     why: str

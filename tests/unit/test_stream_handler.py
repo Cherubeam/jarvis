@@ -60,8 +60,11 @@ class TestStreamHandler:
         """Cache tokens from TokenUsage are forwarded to pricing.calculate_cost."""
         client = Mock(spec=LLMClient)
         usage = TokenUsage(
-            prompt_tokens=100, completion_tokens=50, total_tokens=150,
-            cache_read_tokens=80, cache_write_tokens=20,
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+            cache_read_tokens=80,
+            cache_write_tokens=20,
         )
         client.chat_stream.return_value = _make_streaming_response(["ok"], usage)
         pricing = Mock(spec=ModelPricing)
@@ -72,7 +75,10 @@ class TestStreamHandler:
         result = handler.stream([{"role": "user", "content": "hi"}])
 
         pricing.calculate_cost.assert_called_once_with(
-            100, 50, cache_read_tokens=80, cache_write_tokens=20,
+            100,
+            50,
+            cache_read_tokens=80,
+            cache_write_tokens=20,
         )
         assert result.cost_usd == 0.01
 
@@ -81,7 +87,9 @@ class TestStreamHandler:
         client.chat_stream.return_value = _make_streaming_response(["ok"])
         tracker = MetricsTracker()
 
-        with patch("packages.core.stream_handler.calculate_cost_from_litellm", return_value=0.005) as mock_calc:
+        with patch(
+            "packages.core.stream_handler.calculate_cost_from_litellm", return_value=0.005
+        ) as mock_calc:
             handler = StreamHandler(client, tracker, None, "test-model")
             result = handler.stream([{"role": "user", "content": "hi"}])
 
@@ -223,6 +231,7 @@ class TestStreamHandler:
 # Agentic loop tests
 # ---------------------------------------------------------------------------
 
+
 def _make_tool_call_obj(call_id: str, name: str, args: str = "{}"):
     """Build a mock tool call object matching LiteLLM's shape."""
     call = Mock()
@@ -278,6 +287,7 @@ class TestStreamHandlerAgenticLoop:
     def test_empty_registry_uses_simple_path(self):
         """When tool_registry has no tools, stream() skips the agentic loop."""
         from packages.core.tools.base import ToolRegistry
+
         client = Mock(spec=LLMClient)
         client.chat_stream.return_value = _make_streaming_response(["hi"])
 
@@ -305,8 +315,12 @@ class TestStreamHandlerAgenticLoop:
         registry.register(tool)
 
         # First call: tool call detected via streaming; second: content response
-        tool_call = _make_tool_call_obj("tc1", "fetch_url", json.dumps({"url": "https://example.com"}))
-        final_stream = _make_streaming_response(["The article says: content of https://example.com"])
+        tool_call = _make_tool_call_obj(
+            "tc1", "fetch_url", json.dumps({"url": "https://example.com"})
+        )
+        final_stream = _make_streaming_response(
+            ["The article says: content of https://example.com"]
+        )
 
         client = Mock(spec=LLMClient)
         client.stream_with_tool_detection.side_effect = [
@@ -338,8 +352,12 @@ class TestStreamHandlerAgenticLoop:
         import json
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
-        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "result_a")
-        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "result_b")
+        tool_a = ToolDefinition(
+            name="tool_a", description="a", parameters={}, execute=lambda: "result_a"
+        )
+        tool_b = ToolDefinition(
+            name="tool_b", description="b", parameters={}, execute=lambda: "result_b"
+        )
         registry = ToolRegistry()
         registry.register(tool_a)
         registry.register(tool_b)
@@ -385,7 +403,9 @@ class TestStreamHandlerAgenticLoop:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t", parameters={},
+            name="my_tool",
+            description="t",
+            parameters={},
             execute=lambda: "ok",
         )
         registry = ToolRegistry()
@@ -420,7 +440,9 @@ class TestStreamHandlerAgenticLoop:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t", parameters={},
+            name="my_tool",
+            description="t",
+            parameters={},
             execute=lambda: "ok",
         )
         registry = ToolRegistry()
@@ -450,7 +472,9 @@ class TestStreamHandlerAgenticLoop:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t", parameters={},
+            name="my_tool",
+            description="t",
+            parameters={},
             execute=lambda: "result_value",
         )
         registry = ToolRegistry()
@@ -526,7 +550,8 @@ class TestStreamHandlerAgenticLoop:
         registry.register(tool)
 
         call = _make_tool_call_obj(
-            "tc1", "delegate_to_agent",
+            "tc1",
+            "delegate_to_agent",
             json.dumps({"agent_name": "writer", "task": "review blog"}),
         )
 
@@ -572,7 +597,8 @@ class TestStreamHandlerAgenticLoop:
         registry.register(tool)
 
         call = _make_tool_call_obj(
-            "tc1", "delegate_to_agent",
+            "tc1",
+            "delegate_to_agent",
             json.dumps({"agent_name": "writer", "task": "review blog"}),
         )
         usage = TokenUsage(prompt_tokens=500, completion_tokens=100, total_tokens=600)
@@ -612,7 +638,8 @@ class TestStreamHandlerAgenticLoop:
         registry.register(tool)
 
         call = _make_tool_call_obj(
-            "tc1", "delegate_to_agent",
+            "tc1",
+            "delegate_to_agent",
             json.dumps({"agent_name": "writer", "task": "review blog"}),
         )
         usage = TokenUsage(prompt_tokens=200, completion_tokens=50, total_tokens=250)
@@ -626,8 +653,12 @@ class TestStreamHandlerAgenticLoop:
         pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
         tracker = MetricsTracker()
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
-            on_event=events.append, instance_id="jarvis-1",
+            client,
+            tracker,
+            pricing,
+            "test-model",
+            on_event=events.append,
+            instance_id="jarvis-1",
         )
         result = handler.stream(
             [{"role": "user", "content": "review my blog"}],
@@ -654,7 +685,9 @@ class TestStreamHandlerAgenticLoop:
             call_count += 1
             return "result"
 
-        tool = ToolDefinition(name="list_blog_posts", description="list", parameters={}, execute=_execute)
+        tool = ToolDefinition(
+            name="list_blog_posts", description="list", parameters={}, execute=_execute
+        )
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -686,8 +719,12 @@ class TestStreamHandlerAgenticLoop:
         """Two distinct tools in parallel; both execute."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
-        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "a_result")
-        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "b_result")
+        tool_a = ToolDefinition(
+            name="tool_a", description="a", parameters={}, execute=lambda: "a_result"
+        )
+        tool_b = ToolDefinition(
+            name="tool_b", description="b", parameters={}, execute=lambda: "b_result"
+        )
         registry = ToolRegistry()
         registry.register(tool_a)
         registry.register(tool_b)
@@ -726,7 +763,9 @@ class TestStreamHandlerAgenticLoop:
             results_seen.append(post_id)
             return f"content of {post_id}"
 
-        tool = ToolDefinition(name="read_blog_post", description="read", parameters={}, execute=_read)
+        tool = ToolDefinition(
+            name="read_blog_post", description="read", parameters={}, execute=_read
+        )
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -765,7 +804,9 @@ class TestStreamHandlerAgenticLoop:
 
         max_iter = 3
         client = Mock(spec=LLMClient)
-        client.stream_with_tool_detection.side_effect = [make_tool_iteration() for _ in range(max_iter)]
+        client.stream_with_tool_detection.side_effect = [
+            make_tool_iteration() for _ in range(max_iter)
+        ]
         client.chat_stream.return_value = _make_streaming_response(["forced text"])
 
         handler = self._make_handler(client)
@@ -820,7 +861,9 @@ class TestStreamHandlerAgenticLoop:
         handler.stream([{"role": "user", "content": "hi"}])
 
         client.chat_stream.assert_called_once_with(
-            [{"role": "user", "content": "hi"}], tools=None, max_tokens=16384,
+            [{"role": "user", "content": "hi"}],
+            tools=None,
+            max_tokens=16384,
         )
 
     def test_max_tokens_passed_to_stream_with_tool_detection(self):
@@ -849,7 +892,9 @@ class TestStreamHandlerAgenticLoop:
         """When model returns content (no tools), the streaming response is used directly."""
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
-        tool = ToolDefinition(name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok")
+        tool = ToolDefinition(
+            name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok"
+        )
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -873,6 +918,7 @@ class TestStreamHandlerAgenticLoop:
 # ---------------------------------------------------------------------------
 # Credit fallback tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestCreditFallback:
@@ -914,7 +960,9 @@ class TestCreditFallback:
         handler = self._make_handler(client, max_tokens=16384)
 
         client.chat_stream.side_effect = InsufficientCreditsError(
-            requested=16384, affordable=100, original_error=Exception(),
+            requested=16384,
+            affordable=100,
+            original_error=Exception(),
         )
 
         with pytest.raises(RuntimeError, match="Insufficient OpenRouter credits") as exc_info:
@@ -933,7 +981,9 @@ class TestCreditFallback:
         handler = self._make_handler(client, max_tokens=16384)
 
         client.chat_stream.side_effect = PromptTokenLimitError(
-            prompt_tokens=13391, limit=7985, original_error=Exception(),
+            prompt_tokens=13391,
+            limit=7985,
+            original_error=Exception(),
         )
 
         with pytest.raises(RuntimeError, match="Prompt too large") as exc_info:
@@ -966,16 +1016,23 @@ class TestCreditFallback:
 
         # The third chat_stream call should have been made with reduced tokens
         third_call = client.chat_stream.call_args_list[2]
-        assert third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612
+        assert (
+            third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612
+        )
 
 
 def _make_complete_response(content="", tool_calls=None, prompt_tokens=10, completion_tokens=5):
     """Create a mock LiteLLM ModelResponse for non-streaming complete()."""
-    usage = Mock(spec=[
-        "prompt_tokens", "completion_tokens", "total_tokens",
-        "cache_read_input_tokens", "cache_creation_input_tokens",
-        "prompt_tokens_details",
-    ])
+    usage = Mock(
+        spec=[
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "prompt_tokens_details",
+        ]
+    )
     usage.prompt_tokens = prompt_tokens
     usage.completion_tokens = completion_tokens
     usage.total_tokens = prompt_tokens + completion_tokens
@@ -1018,11 +1075,16 @@ class TestStreamHandlerNonStreaming:
 
     def test_nonstreaming_cache_tokens_propagated(self):
         """Cache tokens are extracted and passed to pricing in non-streaming mode."""
-        usage = Mock(spec=[
-            "prompt_tokens", "completion_tokens", "total_tokens",
-            "cache_read_input_tokens", "cache_creation_input_tokens",
-            "prompt_tokens_details",
-        ])
+        usage = Mock(
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ]
+        )
         usage.prompt_tokens = 100
         usage.completion_tokens = 50
         usage.total_tokens = 150
@@ -1047,7 +1109,10 @@ class TestStreamHandlerNonStreaming:
         result = handler.stream([{"role": "user", "content": "hi"}])
 
         pricing.calculate_cost.assert_called_once_with(
-            100, 50, cache_read_tokens=60, cache_write_tokens=15,
+            100,
+            50,
+            cache_read_tokens=60,
+            cache_write_tokens=15,
         )
         assert result.cost_usd == 0.02
         assert result.usage.cache_read_tokens == 60
@@ -1072,13 +1137,16 @@ class TestStreamHandlerNonStreaming:
 
         # Need a real tool registry
         from packages.core.tools.base import ToolRegistry, ToolDefinition
+
         registry = ToolRegistry()
-        registry.register(ToolDefinition(
-            name="read_note",
-            description="Read a note",
-            parameters={"type": "object", "properties": {}},
-            execute=lambda **kwargs: "note content",
-        ))
+        registry.register(
+            ToolDefinition(
+                name="read_note",
+                description="Read a note",
+                parameters={"type": "object", "properties": {}},
+                execute=lambda **kwargs: "note content",
+            )
+        )
 
         result = handler.stream(
             [{"role": "user", "content": "read test.md"}],
@@ -1122,14 +1190,17 @@ class TestStreamHandlerNonStreaming:
         handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
 
         from packages.core.tools.base import ToolRegistry, ToolDefinition
+
         registry = ToolRegistry()
-        registry.register(ToolDefinition(
-            name="delegate",
-            description="Delegate to agent",
-            parameters={"type": "object", "properties": {}},
-            execute=lambda **kwargs: "delegated",
-            terminal=True,
-        ))
+        registry.register(
+            ToolDefinition(
+                name="delegate",
+                description="Delegate to agent",
+                parameters={"type": "object", "properties": {}},
+                execute=lambda **kwargs: "delegated",
+                terminal=True,
+            )
+        )
 
         result = handler.stream(
             [{"role": "user", "content": "delegate"}],
@@ -1154,13 +1225,17 @@ class TestStreamHandlerNonStreaming:
 
         events = []
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
+            client,
+            tracker,
+            pricing,
+            "test-model",
             streaming=False,
             on_event=lambda e: events.append(e),
         )
         handler.stream([{"role": "user", "content": "hi"}])
 
         from packages.core.events import UsageReport, TextChunk
+
         usage_events = [e for e in events if isinstance(e, UsageReport)]
         text_events = [e for e in events if isinstance(e, TextChunk)]
         assert len(usage_events) == 1
@@ -1176,13 +1251,19 @@ class TestStreamHandlerNonStreaming:
         tracker = MetricsTracker()
 
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
-            streaming=False, max_tokens=4096,
+            client,
+            tracker,
+            pricing,
+            "test-model",
+            streaming=False,
+            max_tokens=4096,
         )
         handler.stream([{"role": "user", "content": "hi"}])
 
         call_kwargs = client.complete.call_args
-        assert call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
+        assert (
+            call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
+        )
 
     def test_nonstreaming_events_include_instance_id(self):
         """Non-streaming TextChunk and UsageReport events carry instance_id."""
@@ -1195,8 +1276,13 @@ class TestStreamHandlerNonStreaming:
 
         events = []
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
-            streaming=False, on_event=events.append, instance_id="my-inst",
+            client,
+            tracker,
+            pricing,
+            "test-model",
+            streaming=False,
+            on_event=events.append,
+            instance_id="my-inst",
         )
         handler.stream([{"role": "user", "content": "hi"}])
 
@@ -1269,11 +1355,14 @@ class TestStreamHandlerNonStreaming:
         ]
 
         registry = ToolRegistry()
-        registry.register(ToolDefinition(
-            name="my_tool", description="t",
-            parameters={"type": "object", "properties": {}},
-            execute=lambda **kw: "ok",
-        ))
+        registry.register(
+            ToolDefinition(
+                name="my_tool",
+                description="t",
+                parameters={"type": "object", "properties": {}},
+                execute=lambda **kw: "ok",
+            )
+        )
 
         pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
         tracker = MetricsTracker()
@@ -1299,7 +1388,8 @@ class TestStreamHandlerNonStreaming:
             return "result"
 
         tool = ToolDefinition(
-            name="list_items", description="list",
+            name="list_items",
+            description="list",
             parameters={"type": "object", "properties": {}},
             execute=_execute,
         )
@@ -1362,8 +1452,11 @@ class TestStreamHandlerMutationTargets:
 
         client = Mock(spec=LLMClient)
         usage = TokenUsage(
-            prompt_tokens=100, completion_tokens=50, total_tokens=150,
-            cache_read_tokens=30, cache_write_tokens=10,
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+            cache_read_tokens=30,
+            cache_write_tokens=10,
         )
         client.chat_stream.return_value = _make_streaming_response(["ok"], usage)
         pricing = ModelPricing(prompt_cost=1e-6, completion_cost=2e-6, model_id="test")
@@ -1371,8 +1464,12 @@ class TestStreamHandlerMutationTargets:
 
         events = []
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
-            on_event=events.append, instance_id="stream-inst",
+            client,
+            tracker,
+            pricing,
+            "test-model",
+            on_event=events.append,
+            instance_id="stream-inst",
         )
         result = handler.stream([{"role": "user", "content": "hi"}])
 
@@ -1392,11 +1489,16 @@ class TestStreamHandlerMutationTargets:
         """UsageReport from non-streaming _complete_simple carries ALL fields."""
         from packages.core.events import UsageReport
 
-        usage = Mock(spec=[
-            "prompt_tokens", "completion_tokens", "total_tokens",
-            "cache_read_input_tokens", "cache_creation_input_tokens",
-            "prompt_tokens_details",
-        ])
+        usage = Mock(
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ]
+        )
         usage.prompt_tokens = 200
         usage.completion_tokens = 80
         usage.total_tokens = 280
@@ -1418,8 +1520,13 @@ class TestStreamHandlerMutationTargets:
 
         events = []
         handler = StreamHandler(
-            client, tracker, pricing, "my-model",
-            streaming=False, on_event=events.append, instance_id="ns-inst",
+            client,
+            tracker,
+            pricing,
+            "my-model",
+            streaming=False,
+            on_event=events.append,
+            instance_id="ns-inst",
         )
         result = handler.stream([{"role": "user", "content": "hi"}])
 
@@ -1442,7 +1549,9 @@ class TestStreamHandlerMutationTargets:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t", parameters={},
+            name="my_tool",
+            description="t",
+            parameters={},
             execute=lambda: "result",
         )
         registry = ToolRegistry()
@@ -1455,13 +1564,19 @@ class TestStreamHandlerMutationTargets:
 
         # Tool call round: 100 prompt + 20 completion
         tool_usage = TokenUsage(
-            prompt_tokens=100, completion_tokens=20, total_tokens=120,
-            cache_read_tokens=10, cache_write_tokens=5,
+            prompt_tokens=100,
+            completion_tokens=20,
+            total_tokens=120,
+            cache_read_tokens=10,
+            cache_write_tokens=5,
         )
         # Final streaming: 80 prompt + 30 completion
         final_usage = TokenUsage(
-            prompt_tokens=80, completion_tokens=30, total_tokens=110,
-            cache_read_tokens=8, cache_write_tokens=3,
+            prompt_tokens=80,
+            completion_tokens=30,
+            total_tokens=110,
+            cache_read_tokens=8,
+            cache_write_tokens=3,
         )
 
         client = Mock(spec=LLMClient)
@@ -1490,7 +1605,8 @@ class TestStreamHandlerMutationTargets:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t",
+            name="my_tool",
+            description="t",
             parameters={"type": "object", "properties": {}},
             execute=lambda **kw: "ok",
         )
@@ -1503,11 +1619,16 @@ class TestStreamHandlerMutationTargets:
         tool_call.function.arguments = "{}"
 
         # Tool round usage
-        tool_usage = Mock(spec=[
-            "prompt_tokens", "completion_tokens", "total_tokens",
-            "cache_read_input_tokens", "cache_creation_input_tokens",
-            "prompt_tokens_details",
-        ])
+        tool_usage = Mock(
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ]
+        )
         tool_usage.prompt_tokens = 100
         tool_usage.completion_tokens = 20
         tool_usage.total_tokens = 120
@@ -1523,11 +1644,16 @@ class TestStreamHandlerMutationTargets:
         tool_response.usage = tool_usage
 
         # Final response usage
-        final_usage = Mock(spec=[
-            "prompt_tokens", "completion_tokens", "total_tokens",
-            "cache_read_input_tokens", "cache_creation_input_tokens",
-            "prompt_tokens_details",
-        ])
+        final_usage = Mock(
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+                "prompt_tokens_details",
+            ]
+        )
         final_usage.prompt_tokens = 150
         final_usage.completion_tokens = 40
         final_usage.total_tokens = 190
@@ -1566,7 +1692,9 @@ class TestStreamHandlerMutationTargets:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="search", description="s", parameters={},
+            name="search",
+            description="s",
+            parameters={},
             execute=lambda: "found it",
         )
         registry = ToolRegistry()
@@ -1615,7 +1743,8 @@ class TestStreamHandlerMutationTargets:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="lookup", description="l",
+            name="lookup",
+            description="l",
             parameters={"type": "object", "properties": {}},
             execute=lambda **kw: "data here",
         )
@@ -1633,11 +1762,18 @@ class TestStreamHandlerMutationTargets:
         tool_response = Mock()
         tool_response.choices = [tool_choice]
         tool_response.usage = Mock(
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
-            cache_read_input_tokens=0, cache_creation_input_tokens=0,
-            prompt_tokens_details=None, spec=[
-                "prompt_tokens", "completion_tokens", "total_tokens",
-                "cache_read_input_tokens", "cache_creation_input_tokens",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+            prompt_tokens_details=None,
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
                 "prompt_tokens_details",
             ],
         )
@@ -1648,11 +1784,18 @@ class TestStreamHandlerMutationTargets:
         final_response = Mock()
         final_response.choices = [final_choice]
         final_response.usage = Mock(
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
-            cache_read_input_tokens=0, cache_creation_input_tokens=0,
-            prompt_tokens_details=None, spec=[
-                "prompt_tokens", "completion_tokens", "total_tokens",
-                "cache_read_input_tokens", "cache_creation_input_tokens",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+            prompt_tokens_details=None,
+            spec=[
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
                 "prompt_tokens_details",
             ],
         )
@@ -1701,8 +1844,12 @@ class TestStreamHandlerMutationTargets:
 
         events = []
         handler = StreamHandler(
-            client, tracker, pricing, "test-model",
-            on_event=events.append, instance_id="s-inst",
+            client,
+            tracker,
+            pricing,
+            "test-model",
+            on_event=events.append,
+            instance_id="s-inst",
         )
         handler.stream([{"role": "user", "content": "hi"}])
 

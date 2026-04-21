@@ -137,6 +137,7 @@ class TestExecuteToolCalls:
     def test_logs_execution_latency(self, caplog):
         """Tool execution time is logged at INFO level."""
         import logging
+
         tool = ToolDefinition(
             name="slow",
             description="slow",
@@ -153,6 +154,7 @@ class TestExecuteToolCalls:
         assert "Tool slow executed in" in caplog.text
         # Verify log contains a reasonable elapsed_ms value (format: "X.Yms")
         import re
+
         match = re.search(r"executed in (\d+\.?\d*)ms", caplog.text)
         assert match is not None, "Log should contain timing in ms"
         elapsed = float(match.group(1))

@@ -14,6 +14,7 @@ from typing import Any
 @dataclass
 class ResponseMetrics:
     """Metrics for a single response."""
+
     ttft_ms: float = 0.0  # Time to first token
     total_latency_ms: float = 0.0  # Total response time
     prompt_tokens: int = 0
@@ -27,6 +28,7 @@ class ResponseMetrics:
 @dataclass
 class SessionMetricsSummary:
     """Aggregated metrics for a session."""
+
     request_count: int = 0
     total_tokens: int = 0
     total_prompt_tokens: int = 0

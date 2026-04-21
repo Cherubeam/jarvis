@@ -51,9 +51,7 @@ def _find_latest_run_dir(results_dir: Path) -> Path | None:
     if not runs_dir.exists():
         return None
 
-    run_dirs = [
-        path for path in runs_dir.iterdir() if path.is_dir() and _run_has_results(path)
-    ]
+    run_dirs = [path for path in runs_dir.iterdir() if path.is_dir() and _run_has_results(path)]
     if not run_dirs:
         return None
 
@@ -69,9 +67,7 @@ def get_run_dir(results_dir: Path | str, run_id: str | None = None) -> Path:
         run_dir = _find_latest_run_dir(results_path)
 
     if run_dir is None or not run_dir.exists():
-        raise ValueError(
-            "No golden test runs found. Run golden tests first to create a baseline."
-        )
+        raise ValueError("No golden test runs found. Run golden tests first to create a baseline.")
 
     return run_dir
 
@@ -82,9 +78,7 @@ def _load_run_token_totals(run_dir: Path) -> BenchmarkTokenBaseline:
     judge_prompt = 0
     judge_completion = 0
 
-    json_files = [
-        path for path in run_dir.glob("*.json") if path.name != "run_summary.json"
-    ]
+    json_files = [path for path in run_dir.glob("*.json") if path.name != "run_summary.json"]
     if not json_files:
         raise ValueError(f"No test result JSON files found in {run_dir}")
 

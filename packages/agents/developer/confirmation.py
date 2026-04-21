@@ -40,7 +40,8 @@ class AutoConfirmationHandler(ConfirmationHandler):
         action = "auto-approving" if in_scope else "rejecting (out of scope)"
         logger.info(
             "AutoConfirmationHandler: %s write to %s",
-            action, diff.file_path,
+            action,
+            diff.file_path,
         )
 
     def get_confirmation(self, prompt: str = "Apply this change?") -> bool:

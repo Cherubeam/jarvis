@@ -24,7 +24,9 @@ def _date_str_to_int(date_str: str) -> int:
         return 0
 
 
-def _chunk_document(text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS) -> list[str]:
+def _chunk_document(
+    text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS
+) -> list[str]:
     """Split *text* into overlapping windows of at most *max_chars* characters.
 
     Short documents (≤ max_chars) are returned as-is in a single-element list.
@@ -184,20 +186,22 @@ class ConversationIndexer:
                         chunk_id = f"{conv_id}_pair_{pair_index}_chunk_{chunk_idx}"
                         chunk_meta = {"chunk_index": chunk_idx, "total_chunks": len(chunks)}
 
-                    pairs.append({
-                        "id": chunk_id,
-                        "document": chunk,
-                        "metadata": {
-                            "conv_id": conv_id,
-                            "session_date": session_date,
-                            "session_date_int": _date_str_to_int(session_date),
-                            "pair_index": pair_index,
-                            "user_snippet": user_text[:200],
-                            "assistant_snippet": assistant_text[:200],
-                            "title": title,
-                            **chunk_meta,
-                        },
-                    })
+                    pairs.append(
+                        {
+                            "id": chunk_id,
+                            "document": chunk,
+                            "metadata": {
+                                "conv_id": conv_id,
+                                "session_date": session_date,
+                                "session_date_int": _date_str_to_int(session_date),
+                                "pair_index": pair_index,
+                                "user_snippet": user_text[:200],
+                                "assistant_snippet": assistant_text[:200],
+                                "title": title,
+                                **chunk_meta,
+                            },
+                        }
+                    )
                 pair_index += 1
             else:
                 i += 1

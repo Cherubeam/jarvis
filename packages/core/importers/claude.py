@@ -43,7 +43,7 @@ def parse_title_prefixes(name: str | None) -> tuple[str, list[str]]:
         if not m:
             break
         content = m.group(1)
-        remaining = remaining[m.end():]
+        remaining = remaining[m.end() :]
         status_tag = _STATUS_PREFIX_MAP.get(content)
         if status_tag:
             tags.append(status_tag)
@@ -87,24 +87,28 @@ def convert_content_blocks(
         elif block_type == "thinking":
             thinking_text = block.get("thinking", "")
             if thinking_text.strip():
-                result.append({
-                    "type": "text",
-                    "text": thinking_text,
-                    "metadata": {"thought": True},
-                })
+                result.append(
+                    {
+                        "type": "text",
+                        "text": thinking_text,
+                        "metadata": {"thought": True},
+                    }
+                )
 
         elif block_type == "tool_use":
             name = block.get("name", "unknown_tool")
             tool_input = block.get("input", {})
-            result.append({
-                "type": "text",
-                "text": f"[Tool: {name}]",
-                "metadata": {
-                    "tool_use": True,
-                    "tool_name": name,
-                    "tool_input": tool_input,
-                },
-            })
+            result.append(
+                {
+                    "type": "text",
+                    "text": f"[Tool: {name}]",
+                    "metadata": {
+                        "tool_use": True,
+                        "tool_name": name,
+                        "tool_input": tool_input,
+                    },
+                }
+            )
 
         elif block_type == "tool_result":
             name = block.get("name", "unknown_tool")
@@ -118,15 +122,17 @@ def convert_content_blocks(
                 elif isinstance(item, str):
                     text_parts.append(item)
             text = "\n".join(text_parts) if text_parts else ""
-            result.append({
-                "type": "text",
-                "text": text,
-                "metadata": {
-                    "tool_result": True,
-                    "tool_name": name,
-                    "is_error": is_error,
-                },
-            })
+            result.append(
+                {
+                    "type": "text",
+                    "text": text,
+                    "metadata": {
+                        "tool_result": True,
+                        "tool_name": name,
+                        "is_error": is_error,
+                    },
+                }
+            )
 
         elif block_type == "token_budget":
             # Skip entirely — this is a marker block with no content
@@ -136,11 +142,13 @@ def convert_content_blocks(
             # Unknown block type: best-effort fallback
             text = block.get("text", "") or block.get("thinking", "") or ""
             if text.strip():
-                result.append({
-                    "type": "text",
-                    "text": text,
-                    "metadata": {"original_content_type": block_type},
-                })
+                result.append(
+                    {
+                        "type": "text",
+                        "text": text,
+                        "metadata": {"original_content_type": block_type},
+                    }
+                )
 
     # Convert attachments (on human messages)
     if attachments:
@@ -148,30 +156,34 @@ def convert_content_blocks(
             file_name = att.get("file_name", "")
             extracted = att.get("extracted_content", "")
             if extracted:
-                result.append({
-                    "type": "text",
-                    "text": extracted,
-                    "metadata": {
-                        "attachment": True,
-                        "file_name": file_name,
-                        "file_size": att.get("file_size"),
-                        "file_type": att.get("file_type"),
-                    },
-                })
+                result.append(
+                    {
+                        "type": "text",
+                        "text": extracted,
+                        "metadata": {
+                            "attachment": True,
+                            "file_name": file_name,
+                            "file_size": att.get("file_size"),
+                            "file_type": att.get("file_type"),
+                        },
+                    }
+                )
 
     # Convert files (assistant-generated artifacts)
     if files:
         for f in files:
             file_name = f.get("file_name", "")
             if file_name:
-                result.append({
-                    "type": "text",
-                    "text": f"[Generated file: {file_name}]",
-                    "metadata": {
-                        "generated_file": True,
-                        "file_name": file_name,
-                    },
-                })
+                result.append(
+                    {
+                        "type": "text",
+                        "text": f"[Generated file: {file_name}]",
+                        "metadata": {
+                            "generated_file": True,
+                            "file_name": file_name,
+                        },
+                    }
+                )
 
     # Ensure at least one content block
     if not result:
@@ -216,19 +228,21 @@ def convert_conversation(claude_conv: dict) -> dict:
         msg_updated = raw_msg.get("updated_at")
         timestamp = msg_created or msg_updated
 
-        messages.append({
-            "id": f"msg_{i:03d}",
-            "parent_id": None,
-            "role": role,
-            "timestamp": timestamp,
-            "content": jarvis_content,
-            "usage": None,
-            "latency": None,
-            "stop_reason": None,
-            "status": "completed",
-            "error": None,
-            "metadata": {},
-        })
+        messages.append(
+            {
+                "id": f"msg_{i:03d}",
+                "parent_id": None,
+                "role": role,
+                "timestamp": timestamp,
+                "content": jarvis_content,
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            }
+        )
 
     now_iso = datetime.now(tz=timezone.utc).isoformat()
 
@@ -260,9 +274,7 @@ def convert_conversation(claude_conv: dict) -> dict:
     }
 
 
-def _convert_new_messages(
-    claude_conv: dict, start_index: int
-) -> list[dict]:
+def _convert_new_messages(claude_conv: dict, start_index: int) -> list[dict]:
     """Convert Claude messages starting from start_index to Jarvis format.
 
     Message IDs continue from start_index (1-based).
@@ -282,25 +294,25 @@ def _convert_new_messages(
         msg_updated = raw_msg.get("updated_at")
         timestamp = msg_created or msg_updated
 
-        messages.append({
-            "id": f"msg_{i:03d}",
-            "parent_id": None,
-            "role": role,
-            "timestamp": timestamp,
-            "content": jarvis_content,
-            "usage": None,
-            "latency": None,
-            "stop_reason": None,
-            "status": "completed",
-            "error": None,
-            "metadata": {},
-        })
+        messages.append(
+            {
+                "id": f"msg_{i:03d}",
+                "parent_id": None,
+                "role": role,
+                "timestamp": timestamp,
+                "content": jarvis_content,
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            }
+        )
     return messages
 
 
-def update_conversation(
-    existing_path: Path, claude_conv: dict, *, dry_run: bool = False
-) -> bool:
+def update_conversation(existing_path: Path, claude_conv: dict, *, dry_run: bool = False) -> bool:
     """Update an existing JARVIS conversation with new data from Claude.
 
     Syncs title, session_end, and appends new messages. Never removes
@@ -373,9 +385,7 @@ def update_conversation(
         now_iso = datetime.now(tz=timezone.utc).isoformat()
         jarvis_data.setdefault("metadata", {})["last_sync_timestamp"] = now_iso
         if not dry_run:
-            existing_path.write_text(
-                json.dumps(jarvis_data, indent=2, ensure_ascii=False)
-            )
+            existing_path.write_text(json.dumps(jarvis_data, indent=2, ensure_ascii=False))
 
     return changed
 
@@ -408,7 +418,9 @@ def import_conversations(
     summary.total = len(conversations)
 
     # Parse filter dates
-    dt_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+    dt_from = (
+        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+    )
     dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)

@@ -85,10 +85,12 @@ class TestMostSpecificWins:
         parent.mkdir()
         child = parent / "private"
         child.mkdir()
-        guard = FilesystemGuard([
-            AccessRule(path=parent, access=AccessLevel.READ),
-            AccessRule(path=child, access=AccessLevel.DENY),
-        ])
+        guard = FilesystemGuard(
+            [
+                AccessRule(path=parent, access=AccessLevel.READ),
+                AccessRule(path=child, access=AccessLevel.DENY),
+            ]
+        )
         assert guard.check_read(parent / "public.md") is True
         assert guard.check_read(child / "secret.md") is False
 
@@ -100,11 +102,13 @@ class TestMostSpecificWins:
         blog = areas / "blog"
         blog.mkdir()
 
-        guard = FilesystemGuard([
-            AccessRule(path=root, access=AccessLevel.READ),
-            AccessRule(path=areas, access=AccessLevel.DENY),
-            AccessRule(path=blog, access=AccessLevel.READ_WRITE),
-        ])
+        guard = FilesystemGuard(
+            [
+                AccessRule(path=root, access=AccessLevel.READ),
+                AccessRule(path=areas, access=AccessLevel.DENY),
+                AccessRule(path=blog, access=AccessLevel.READ_WRITE),
+            ]
+        )
         assert guard.check_read(root / "readme.md") is True
         assert guard.check_read(areas / "private.md") is False
         assert guard.check_read(blog / "post.md") is True
@@ -116,10 +120,12 @@ class TestMostSpecificWins:
         child = parent / "writable"
         child.mkdir()
         # Rules given in reverse depth order
-        guard = FilesystemGuard([
-            AccessRule(path=child, access=AccessLevel.READ_WRITE),
-            AccessRule(path=parent, access=AccessLevel.READ),
-        ])
+        guard = FilesystemGuard(
+            [
+                AccessRule(path=child, access=AccessLevel.READ_WRITE),
+                AccessRule(path=parent, access=AccessLevel.READ),
+            ]
+        )
         assert guard.check_write(child / "file.md") is True
         assert guard.check_write(parent / "other.md") is False
 

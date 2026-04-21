@@ -10,9 +10,8 @@ from packages.skills.registry import discover_skills, get_skill_by_command, Skil
 
 _SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
 _REAL_SKILLS_PRESENT = (
-    (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists()
-    and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
-)
+    _SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md"
+).exists() and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
 _REAL_SKILLS_SKIP_REASON = (
     "Real skill files are user-local symlinks not tracked in git; skipped on CI"
 )
@@ -49,7 +48,10 @@ class TestDiscoverRealSkills:
 
     def test_commands_derived_from_name(self):
         skills = discover_skills()
-        assert skills["technical-humanist-image-architect"].command == "/technical-humanist-image-architect"
+        assert (
+            skills["technical-humanist-image-architect"].command
+            == "/technical-humanist-image-architect"
+        )
         assert skills["content-evaluator"].command == "/content-evaluator"
 
     def test_descriptions_from_frontmatter(self):
@@ -96,9 +98,7 @@ class TestDiscoverSkills:
     def test_falls_back_to_dirname_when_no_name_in_frontmatter(self, tmp_path):
         skill_dir = tmp_path / "my_skill"
         skill_dir.mkdir()
-        (skill_dir / "SKILL.md").write_text(
-            "---\ndescription: No name field\n---\n# Stuff"
-        )
+        (skill_dir / "SKILL.md").write_text("---\ndescription: No name field\n---\n# Stuff")
         skills = discover_skills(tmp_path)
         assert "my_skill" in skills
 

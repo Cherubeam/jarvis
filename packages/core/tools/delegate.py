@@ -10,6 +10,7 @@ from packages.core.tools.base import ToolDefinition
 @dataclass
 class DelegationState:
     """Mutable state set by the delegate tool during the agentic loop."""
+
     agent_name: str | None = None
     task: str | None = None
     context: str | None = None

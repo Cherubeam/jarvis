@@ -69,8 +69,8 @@ def test_entries_outside_window_are_ignored():
 
 def test_missing_cost_or_none_tolerated():
     entries = [
-        {"date": "2026-04-20"},                     # no cost key
-        {"date": "2026-04-20", "cost": None},       # None cost
+        {"date": "2026-04-20"},  # no cost key
+        {"date": "2026-04-20", "cost": None},  # None cost
         {"date": "2026-04-20", "cost": 0.005},
     ]
     out = cost_week_rollup(_fake_index(entries), today=date(2026, 4, 20))

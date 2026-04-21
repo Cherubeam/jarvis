@@ -227,11 +227,11 @@ def build_project_file(
 def _sanitize_filename(name: str) -> str:
     """Sanitize a string for use as a filename."""
     # Replace path separators and problematic chars
-    sanitized = re.sub(r'[/\\:*?"<>|&]', '-', name)
-    sanitized = re.sub(r'-+', '-', sanitized)
-    sanitized = sanitized.strip('- ')
-    if not sanitized.endswith('.md'):
-        sanitized += '.md'
+    sanitized = re.sub(r'[/\\:*?"<>|&]', "-", name)
+    sanitized = re.sub(r"-+", "-", sanitized)
+    sanitized = sanitized.strip("- ")
+    if not sanitized.endswith(".md"):
+        sanitized += ".md"
     return sanitized
 
 
@@ -379,8 +379,7 @@ def import_context(
         # Collect doc filenames
         docs = project.get("docs", [])
         doc_filenames = [
-            _sanitize_filename(d.get("filename", d.get("title", "untitled")))
-            for d in docs if d
+            _sanitize_filename(d.get("filename", d.get("title", "untitled"))) for d in docs if d
         ]
 
         project_content = build_project_file(name, memory, prompt_template, doc_filenames)

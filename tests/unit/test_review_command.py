@@ -44,6 +44,7 @@ def _write_outcome(
 
 # --- _load_pending_due ---
 
+
 def test_load_pending_due_returns_empty_when_dir_missing(tmp_path: Path):
     result = _load_pending_due(tmp_path / "does-not-exist", today=TODAY)
     assert result == []
@@ -114,6 +115,7 @@ def test_load_pending_due_skips_invalid_revisit_at(tmp_path: Path):
 
 # --- _apply_review ---
 
+
 def test_apply_review_updates_frontmatter_keys(tmp_path: Path):
     path = _write_outcome(tmp_path, "x.md")
     meta, body = frontmatter.parse(path.read_text())
@@ -143,6 +145,7 @@ def test_apply_review_preserves_original_keys(tmp_path: Path):
 
 
 # --- handle_review_command ---
+
 
 def test_handle_review_empty_prints_message(tmp_path: Path):
     console = MagicMock()
@@ -175,8 +178,12 @@ def test_handle_review_multiple_items_in_revisit_order(tmp_path: Path):
     console = MagicMock()
     session = MagicMock()
     session.prompt.side_effect = [
-        "happened", "4", "first note",
-        "partial", "3", "second note",
+        "happened",
+        "4",
+        "first note",
+        "partial",
+        "3",
+        "second note",
     ]
 
     result = handle_review_command(tmp_path, console, session, today=TODAY, now=NOW)
@@ -224,7 +231,9 @@ def test_handle_review_keyboard_interrupt_preserves_earlier_files(tmp_path: Path
     session = MagicMock()
     # Complete first item, interrupt in middle of second
     session.prompt.side_effect = [
-        "happened", "4", "first done",
+        "happened",
+        "4",
+        "first done",
         KeyboardInterrupt(),
     ]
 

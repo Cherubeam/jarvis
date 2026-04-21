@@ -38,7 +38,11 @@ from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, validate_agent_includes
 from packages.agents.registry import AgentMeta, discover_agents, get_by_command
-from packages.core.context_builder import build_system_prompt, build_system_prompt_with_metadata, parse_frontmatter
+from packages.core.context_builder import (
+    build_system_prompt,
+    build_system_prompt_with_metadata,
+    parse_frontmatter,
+)
 from packages.skills.registry import discover_skills
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
@@ -95,7 +99,9 @@ def _instantiate_agent(
 ):
     """Create an agent from AgentMeta via agent_from_meta()."""
     return agent_from_meta(
-        meta.meta_path, client, model_id,
+        meta.meta_path,
+        client,
+        model_id,
         extra_tools=extra_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
@@ -126,8 +132,10 @@ def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config) -> list
         from packages.core.tools.vault_write_tools import make_vault_write_tools
 
         return make_vault_write_tools(
-            vault_config, CLIConfirmationHandler(),
-            target_dir=target_dir, template_path=template_path,
+            vault_config,
+            CLIConfirmationHandler(),
+            target_dir=target_dir,
+            template_path=template_path,
         )
     except Exception:
         return []
@@ -188,11 +196,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
     """
     result = dict(base)
     for key, value in override.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
@@ -233,10 +237,16 @@ def load_config() -> dict:
     return config
 
 
-def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLogger,
-                         system_prompt: str, metrics_tracker: MetricsTracker,
-                         pricing: ModelPricing | None, model_id: str,
-                         target_date: str | None = None) -> None:
+def handle_daily_summary(
+    config: dict,
+    client: LLMClient,
+    logger: ConversationLogger,
+    system_prompt: str,
+    metrics_tracker: MetricsTracker,
+    pricing: ModelPricing | None,
+    model_id: str,
+    target_date: str | None = None,
+) -> None:
     """Handle the /daily-summary command.
 
     Args:
@@ -245,6 +255,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     # Validate date format early
     if target_date is not None:
         from datetime import date
+
         try:
             date.fromisoformat(target_date)
         except ValueError:
@@ -280,7 +291,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
     # Strip existing JARVIS callout from note content to avoid duplication
     note_lines = note_content.split("\n")
     note_without_callout = "\n".join(
-        note_lines[:callout.start_line] + note_lines[callout.end_line + 1:]
+        note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]
     ).strip()
 
     # Load prompt and build LLM messages
@@ -339,8 +350,7 @@ def handle_daily_summary(config: dict, client: LLMClient, logger: ConversationLo
 
     # Write to vault with diff + confirmation
     handler = CLIConfirmationHandler()
-    write_result = append_to_daily_note(result.text, vault_config, handler,
-                                        date=target_date)
+    write_result = append_to_daily_note(result.text, vault_config, handler, date=target_date)
 
     if write_result.success:
         print(f"\n{write_result.message}\n")
@@ -469,7 +479,9 @@ def _run_agent_session(
     # Inject JARVIS's pre-delegation context as a context exchange
     if context:
         session_history.append({"role": "user", "content": f"[Context from JARVIS] {context}"})
-        session_history.append({"role": "assistant", "content": "Understood, I have this context. How can I help?"})
+        session_history.append(
+            {"role": "assistant", "content": "Understood, I have this context. How can I help?"}
+        )
 
     def _process_message(user_input: str) -> None:
         logger.add_message("user", user_input)
@@ -477,7 +489,9 @@ def _run_agent_session(
 
         print_agent_prefix(agent_name)
         result = _run_with_display(
-            stream_handler, agent, user_input,
+            stream_handler,
+            agent,
+            user_input,
             messages_override=trim_tool_results(session_history[:-1]),
         )
 
@@ -549,7 +563,8 @@ def _run_with_display(stream_handler, agent, user_input, print_chunks=True, mess
     stream_handler.on_before_tool_exec = lambda: live.stop()
     stream_handler.on_after_tool_exec = _resume_spinner
     result = agent.run(
-        user_input, stream_handler,
+        user_input,
+        stream_handler,
         print_chunks=print_chunks,
         messages_override=messages_override,
     )
@@ -597,7 +612,10 @@ def _handle_agent_command(
         all_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
 
     agent = _instantiate_agent(
-        meta, client, model_id, all_tools or None,
+        meta,
+        client,
+        model_id,
+        all_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
     )
@@ -646,7 +664,9 @@ def main(argv: list[str] | None = None):
     confirmation_handler = CLIConfirmationHandler()
     try:
         components = build_session(
-            args, config, confirmation_handler,
+            args,
+            config,
+            confirmation_handler,
             on_tool_call=print_tool_feedback,
             client_label="cli",
             auto_confirm=getattr(args, "auto_confirm", False),
@@ -732,14 +752,25 @@ def main(argv: list[str] | None = None):
                     break
 
                 if command == "/daily-summary":
-                    handle_daily_summary(config, client, logger, system_prompt,
-                                         metrics_tracker, pricing, model_id,
-                                         target_date=payload.strip() or None)
+                    handle_daily_summary(
+                        config,
+                        client,
+                        logger,
+                        system_prompt,
+                        metrics_tracker,
+                        pricing,
+                        model_id,
+                        target_date=payload.strip() or None,
+                    )
                     continue
 
                 if command == "/model":
                     model_id, pricing = handle_model_command(
-                        payload, config, client, model_id, stream_handler,
+                        payload,
+                        config,
+                        client,
+                        model_id,
+                        stream_handler,
                     )
                     continue
 
@@ -758,14 +789,20 @@ def main(argv: list[str] | None = None):
                         )
                     else:
                         from apps.cli.review import handle_review_command
+
                         outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
                         handle_review_command(outcomes_dir, console, session)
                     continue
 
                 # Agent-routed commands
                 if _handle_agent_command(
-                    command, payload, client, stream_handler, logger,
-                    model_id, agent_registry,
+                    command,
+                    payload,
+                    client,
+                    stream_handler,
+                    logger,
+                    model_id,
+                    agent_registry,
                     shared_tools=shared_tools,
                     tool_groups=tool_groups,
                     session=session,
@@ -784,9 +821,7 @@ def main(argv: list[str] | None = None):
             history = logger.get_messages_for_api()
 
             # Track history size for token economics instrumentation
-            history_bytes = sum(
-                len(str(m.get("content", "")).encode("utf-8")) for m in history
-            )
+            history_bytes = sum(len(str(m.get("content", "")).encode("utf-8")) for m in history)
             logger.metrics.record_history_tokens(history_bytes // 4)
 
             # History summarization (opt-in via config)
@@ -816,7 +851,9 @@ def main(argv: list[str] | None = None):
 
             print_assistant_prefix(agent_name)
             result = _run_with_display(
-                stream_handler, active_agent, user_input,
+                stream_handler,
+                active_agent,
+                user_input,
                 messages_override=trim_tool_results(history),
             )
 
@@ -855,17 +892,27 @@ def main(argv: list[str] | None = None):
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
                 all_delegate_tools = _assemble_agent_tools(
-                    delegate_meta, shared_tools, tool_groups,
+                    delegate_meta,
+                    shared_tools,
+                    tool_groups,
                 )
-                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
+                all_delegate_tools.extend(
+                    _make_agent_vault_tools(delegate_meta, config, vault_config)
+                )
                 delegate_agent = _instantiate_agent(
-                    delegate_meta, client, model_id, all_delegate_tools,
+                    delegate_meta,
+                    client,
+                    model_id,
+                    all_delegate_tools,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
                 )
                 agent_session = _run_agent_session(
-                    delegate_agent, delegate_meta.name, stream_handler,
-                    logger, session,
+                    delegate_agent,
+                    delegate_meta.name,
+                    stream_handler,
+                    logger,
+                    session,
                     initial_message=result.delegate_task,
                     context=result.delegate_context,
                     prior_session=last_agent_session,

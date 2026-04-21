@@ -10,9 +10,14 @@ from unittest.mock import Mock, patch, MagicMock
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.llm_client import (
-        TokenUsage, StreamingResponse, LLMClient,
-        InsufficientCreditsError, PromptTokenLimitError, _parse_credit_error,
-        _apply_cache_control, _extract_cache_tokens,
+        TokenUsage,
+        StreamingResponse,
+        LLMClient,
+        InsufficientCreditsError,
+        PromptTokenLimitError,
+        _parse_credit_error,
+        _apply_cache_control,
+        _extract_cache_tokens,
     )
 except ImportError:
     from llm_client import TokenUsage, StreamingResponse, LLMClient
@@ -25,6 +30,7 @@ class TestLiteLLMConfig:
     def test_suppress_debug_info_enabled(self):
         """Verify litellm debug output is suppressed at import time."""
         import litellm
+
         assert litellm.suppress_debug_info is True
 
 
@@ -42,11 +48,7 @@ class TestTokenUsage:
 
     def test_token_usage_with_values(self):
         """Test TokenUsage with specific values."""
-        usage = TokenUsage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150
-        )
+        usage = TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150)
 
         assert usage.prompt_tokens == 100
         assert usage.completion_tokens == 50
@@ -109,7 +111,7 @@ class TestLLMClient:
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             # Create a mock streaming response
             mock_chunk = Mock()
             mock_chunk.choices = [Mock()]
@@ -119,11 +121,7 @@ class TestLLMClient:
             mock_stream = [mock_chunk]
             mock_stream_obj = Mock()
             mock_stream_obj.__iter__ = Mock(return_value=iter(mock_stream))
-            mock_stream_obj.usage = Mock(
-                prompt_tokens=10,
-                completion_tokens=5,
-                total_tokens=15
-            )
+            mock_stream_obj.usage = Mock(prompt_tokens=10, completion_tokens=5, total_tokens=15)
 
             mock_completion.return_value = mock_stream_obj
 
@@ -140,7 +138,7 @@ class TestLLMClient:
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             # Create multiple mock chunks
             chunks_data = ["Hello", " ", "world", "!"]
             mock_chunks = []
@@ -155,11 +153,7 @@ class TestLLMClient:
             # Create mock stream object
             mock_stream_obj = Mock()
             mock_stream_obj.__iter__ = Mock(return_value=iter(mock_chunks))
-            mock_stream_obj.usage = Mock(
-                prompt_tokens=10,
-                completion_tokens=5,
-                total_tokens=15
-            )
+            mock_stream_obj.usage = Mock(prompt_tokens=10, completion_tokens=5, total_tokens=15)
 
             mock_completion.return_value = mock_stream_obj
 
@@ -177,7 +171,7 @@ class TestLLMClient:
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             # Create content chunk
             mock_content_chunk = Mock()
             mock_content_chunk.choices = [Mock()]
@@ -190,14 +184,12 @@ class TestLLMClient:
             mock_usage_chunk.choices = [Mock()]
             mock_usage_chunk.choices[0].delta = Mock()
             mock_usage_chunk.choices[0].delta.content = None  # Final chunk has no content
-            mock_usage_chunk.usage = Mock(
-                prompt_tokens=100,
-                completion_tokens=50,
-                total_tokens=150
-            )
+            mock_usage_chunk.usage = Mock(prompt_tokens=100, completion_tokens=50, total_tokens=150)
 
             mock_stream_obj = Mock()
-            mock_stream_obj.__iter__ = Mock(return_value=iter([mock_content_chunk, mock_usage_chunk]))
+            mock_stream_obj.__iter__ = Mock(
+                return_value=iter([mock_content_chunk, mock_usage_chunk])
+            )
 
             mock_completion.return_value = mock_stream_obj
 
@@ -221,7 +213,7 @@ class TestLLMClient:
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             mock_chunk = Mock()
             mock_chunk.choices = [Mock()]
             mock_chunk.choices[0].delta = Mock()
@@ -229,11 +221,7 @@ class TestLLMClient:
 
             mock_stream_obj = Mock()
             mock_stream_obj.__iter__ = Mock(return_value=iter([mock_chunk]))
-            mock_stream_obj.usage = Mock(
-                prompt_tokens=10,
-                completion_tokens=5,
-                total_tokens=15
-            )
+            mock_stream_obj.usage = Mock(prompt_tokens=10, completion_tokens=5, total_tokens=15)
 
             mock_completion.return_value = mock_stream_obj
 
@@ -253,7 +241,7 @@ class TestLLMClient:
             default_model="openrouter/anthropic/claude-sonnet-4.6",
         )
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             mock_chunk = Mock()
             mock_chunk.choices = [Mock()]
             mock_chunk.choices[0].delta = Mock()
@@ -277,7 +265,7 @@ class TestLLMClient:
             default_model="test/test-model",
         )
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             mock_completion.return_value = Mock()
             client.complete(
                 [{"role": "user", "content": "hello"}],
@@ -294,7 +282,7 @@ class TestLLMClient:
             default_model="test/test-model",
         )
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             mock_completion.return_value = Mock()
             client.complete([{"role": "user", "content": "hello"}])
 
@@ -308,6 +296,7 @@ class TestStreamingResponse:
 
     def test_streaming_response_iteration(self):
         """Test that StreamingResponse properly iterates through chunks."""
+
         def mock_generator():
             yield "chunk1"
             yield "chunk2"
@@ -321,6 +310,7 @@ class TestStreamingResponse:
 
     def test_streaming_response_usage_after_iteration(self):
         """Test that usage is available after iteration completes."""
+
         def mock_generator():
             yield "text"
             return (TokenUsage(100, 50, 150), Mock())
@@ -357,7 +347,8 @@ class TestCreditErrorParsing:
         with patch("litellm.completion", side_effect=error):
             with pytest.raises(InsufficientCreditsError) as exc_info:
                 stream = client.chat_stream(
-                    [{"role": "user", "content": "hi"}], max_tokens=16384,
+                    [{"role": "user", "content": "hi"}],
+                    max_tokens=16384,
                 )
                 list(stream)  # Consume to trigger the generator
 
@@ -383,7 +374,8 @@ class TestCreditErrorParsing:
         with patch("litellm.completion", side_effect=error):
             with pytest.raises(PromptTokenLimitError) as exc_info:
                 stream = client.chat_stream(
-                    [{"role": "user", "content": "hi"}], max_tokens=16384,
+                    [{"role": "user", "content": "hi"}],
+                    max_tokens=16384,
                 )
                 list(stream)
 

@@ -65,13 +65,56 @@ def extract_keywords(text: str, min_length: int = 4) -> set[str]:
     short/common words.
     """
     stop_words = {
-        "this", "that", "with", "from", "have", "been", "will", "your",
-        "they", "them", "their", "what", "when", "where", "which", "while",
-        "about", "after", "before", "between", "each", "some", "such",
-        "than", "then", "these", "those", "into", "also", "just", "like",
-        "more", "most", "only", "other", "over", "very", "well", "would",
-        "could", "should", "does", "don't", "doesn", "true", "false",
-        "none", "null", "type", "text",
+        "this",
+        "that",
+        "with",
+        "from",
+        "have",
+        "been",
+        "will",
+        "your",
+        "they",
+        "them",
+        "their",
+        "what",
+        "when",
+        "where",
+        "which",
+        "while",
+        "about",
+        "after",
+        "before",
+        "between",
+        "each",
+        "some",
+        "such",
+        "than",
+        "then",
+        "these",
+        "those",
+        "into",
+        "also",
+        "just",
+        "like",
+        "more",
+        "most",
+        "only",
+        "other",
+        "over",
+        "very",
+        "well",
+        "would",
+        "could",
+        "should",
+        "does",
+        "don't",
+        "doesn",
+        "true",
+        "false",
+        "none",
+        "null",
+        "type",
+        "text",
     }
     words = re.findall(r"[a-zA-Z]+", text.lower())
     return {w for w in words if len(w) >= min_length and w not in stop_words}
@@ -173,9 +216,7 @@ def analyze_context_utilization(
             stats.times_loaded += 1
             stats.total_size_bytes += size_bytes
             stats.total_conversations_loaded += 1
-            result.total_context_tokens_estimate += _estimate_context_tokens(
-                size_bytes
-            )
+            result.total_context_tokens_estimate += _estimate_context_tokens(size_bytes)
 
             # Try to check if this context file was referenced in responses
             if context_dir and assistant_text:

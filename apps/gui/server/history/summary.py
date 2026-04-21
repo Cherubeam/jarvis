@@ -10,16 +10,16 @@ from typing import Any
 class ConversationSummary:
     """One row in the History list / Sidebar."""
 
-    id: str                              # filename stem (e.g. "2026-04-20_10-20-20")
-    date: str                            # "YYYY-MM-DD"
-    title: str                           # derived from first user message
-    agents: list[str]                    # dominant agent first, others after
+    id: str  # filename stem (e.g. "2026-04-20_10-20-20")
+    date: str  # "YYYY-MM-DD"
+    title: str  # derived from first user message
+    agents: list[str]  # dominant agent first, others after
     messages: int
     tokens: int
     cost: float
     duration_ms: int
     tool_calls: int
-    tools: list[str]                     # unique tool names (excl. handoff)
+    tools: list[str]  # unique tool names (excl. handoff)
     handoffs: int
     model: str
     provider: str

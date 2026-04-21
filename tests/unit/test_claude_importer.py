@@ -64,11 +64,13 @@ class TestConvertContentBlocks:
         assert result == [{"type": "text", "text": ""}]
 
     def test_tool_use_block(self):
-        blocks = [{
-            "type": "tool_use",
-            "name": "web_search",
-            "input": {"query": "test"},
-        }]
+        blocks = [
+            {
+                "type": "tool_use",
+                "name": "web_search",
+                "input": {"query": "test"},
+            }
+        ]
         result = convert_content_blocks(blocks)
         assert len(result) == 1
         assert result[0]["text"] == "[Tool: web_search]"
@@ -84,12 +86,14 @@ class TestConvertContentBlocks:
         assert result[0]["metadata"]["tool_input"] == {}
 
     def test_tool_result_block(self):
-        blocks = [{
-            "type": "tool_result",
-            "name": "web_search",
-            "content": [{"type": "text", "text": "Search results here."}],
-            "is_error": False,
-        }]
+        blocks = [
+            {
+                "type": "tool_result",
+                "name": "web_search",
+                "content": [{"type": "text", "text": "Search results here."}],
+                "is_error": False,
+            }
+        ]
         result = convert_content_blocks(blocks)
         assert len(result) == 1
         assert result[0]["text"] == "Search results here."
@@ -98,22 +102,26 @@ class TestConvertContentBlocks:
         assert result[0]["metadata"]["is_error"] is False
 
     def test_tool_result_error(self):
-        blocks = [{
-            "type": "tool_result",
-            "name": "code_exec",
-            "content": [{"type": "text", "text": "Error: timeout"}],
-            "is_error": True,
-        }]
+        blocks = [
+            {
+                "type": "tool_result",
+                "name": "code_exec",
+                "content": [{"type": "text", "text": "Error: timeout"}],
+                "is_error": True,
+            }
+        ]
         result = convert_content_blocks(blocks)
         assert result[0]["metadata"]["is_error"] is True
 
     def test_tool_result_empty_content(self):
-        blocks = [{
-            "type": "tool_result",
-            "name": "tool",
-            "content": [],
-            "is_error": False,
-        }]
+        blocks = [
+            {
+                "type": "tool_result",
+                "name": "tool",
+                "content": [],
+                "is_error": False,
+            }
+        ]
         result = convert_content_blocks(blocks)
         assert result[0]["text"] == ""
         assert result[0]["metadata"]["tool_result"] is True
@@ -143,12 +151,14 @@ class TestConvertContentBlocks:
 
     def test_attachments(self):
         blocks = [{"type": "text", "text": "Analyze this."}]
-        attachments = [{
-            "file_name": "doc.txt",
-            "file_size": 500,
-            "file_type": "txt",
-            "extracted_content": "File content here.",
-        }]
+        attachments = [
+            {
+                "file_name": "doc.txt",
+                "file_size": 500,
+                "file_type": "txt",
+                "extracted_content": "File content here.",
+            }
+        ]
         result = convert_content_blocks(blocks, attachments=attachments)
         assert len(result) == 2
         assert result[1]["text"] == "File content here."
@@ -158,12 +168,14 @@ class TestConvertContentBlocks:
 
     def test_attachment_empty_content_skipped(self):
         blocks = [{"type": "text", "text": "Hi"}]
-        attachments = [{
-            "file_name": "",
-            "file_size": 0,
-            "file_type": "txt",
-            "extracted_content": "",
-        }]
+        attachments = [
+            {
+                "file_name": "",
+                "file_size": 0,
+                "file_type": "txt",
+                "extracted_content": "",
+            }
+        ]
         result = convert_content_blocks(blocks, attachments=attachments)
         assert len(result) == 1  # Only the text block
 
@@ -190,7 +202,12 @@ class TestConvertContentBlocks:
         blocks = [
             {"type": "thinking", "thinking": "Let me think..."},
             {"type": "tool_use", "name": "search", "input": {"q": "test"}},
-            {"type": "tool_result", "name": "search", "content": [{"type": "text", "text": "Results"}], "is_error": False},
+            {
+                "type": "tool_result",
+                "name": "search",
+                "content": [{"type": "text", "text": "Results"}],
+                "is_error": False,
+            },
             {"type": "token_budget"},
             {"type": "text", "text": "Here's what I found."},
         ]
@@ -222,26 +239,44 @@ class TestConvertContentBlocks:
 
     def test_tool_result_string_nested_content(self):
         """Nested content can be plain strings (not just dicts)."""
-        blocks = [{"type": "tool_result", "name": "t", "content": ["plain text"], "is_error": False}]
+        blocks = [
+            {"type": "tool_result", "name": "t", "content": ["plain text"], "is_error": False}
+        ]
         result = convert_content_blocks(blocks)
         assert result[0]["text"] == "plain text"
 
     def test_tool_result_multiple_nested_text_joined(self):
-        blocks = [{
-            "type": "tool_result", "name": "t", "is_error": False,
-            "content": [
-                {"type": "text", "text": "line1"},
-                {"type": "text", "text": "line2"},
-            ],
-        }]
+        blocks = [
+            {
+                "type": "tool_result",
+                "name": "t",
+                "is_error": False,
+                "content": [
+                    {"type": "text", "text": "line1"},
+                    {"type": "text", "text": "line2"},
+                ],
+            }
+        ]
         result = convert_content_blocks(blocks)
         assert result[0]["text"] == "line1\nline2"
 
     def test_attachment_metadata_exact_keys(self):
         blocks = []
-        attachments = [{"file_name": "doc.txt", "file_size": 100, "file_type": "txt", "extracted_content": "text"}]
+        attachments = [
+            {
+                "file_name": "doc.txt",
+                "file_size": 100,
+                "file_type": "txt",
+                "extracted_content": "text",
+            }
+        ]
         result = convert_content_blocks(blocks, attachments=attachments)
-        assert set(result[0]["metadata"].keys()) == {"attachment", "file_name", "file_size", "file_type"}
+        assert set(result[0]["metadata"].keys()) == {
+            "attachment",
+            "file_name",
+            "file_size",
+            "file_type",
+        }
 
     def test_generated_file_metadata_exact_keys(self):
         blocks = []
@@ -349,10 +384,21 @@ class TestConvertConversation:
         """Verify all required top-level keys are present."""
         result = convert_conversation(sample_conv)
         expected_keys = {
-            "schema_version", "id", "title", "topic", "tags",
-            "session_start", "session_end", "model", "agent",
-            "context", "metrics", "environment", "messages",
-            "feedback", "metadata",
+            "schema_version",
+            "id",
+            "title",
+            "topic",
+            "tags",
+            "session_start",
+            "session_end",
+            "model",
+            "agent",
+            "context",
+            "metrics",
+            "environment",
+            "messages",
+            "feedback",
+            "metadata",
         }
         assert set(result.keys()) == expected_keys
         assert result["topic"] is None
@@ -378,8 +424,19 @@ class TestConvertConversation:
     def test_message_structure_complete(self, sample_conv):
         """Every message has all required keys with correct types."""
         result = convert_conversation(sample_conv)
-        expected_keys = {"id", "parent_id", "role", "timestamp", "content",
-                         "usage", "latency", "stop_reason", "status", "error", "metadata"}
+        expected_keys = {
+            "id",
+            "parent_id",
+            "role",
+            "timestamp",
+            "content",
+            "usage",
+            "latency",
+            "stop_reason",
+            "status",
+            "error",
+            "metadata",
+        }
         for msg in result["messages"]:
             assert set(msg.keys()) == expected_keys
             assert msg["usage"] is None
@@ -408,7 +465,9 @@ class TestConvertConversation:
         assistant_msg = result["messages"][1]
         assert any((b.get("metadata") or {}).get("thought") for b in assistant_msg["content"])
         # Should have generated file
-        assert any((b.get("metadata") or {}).get("generated_file") for b in assistant_msg["content"])
+        assert any(
+            (b.get("metadata") or {}).get("generated_file") for b in assistant_msg["content"]
+        )
 
     def test_missing_timestamps(self):
         conv = {
@@ -682,20 +741,22 @@ class TestIncrementalSync:
         path = _import_and_get_path(conv, tmp_path)
 
         # Add 2 more messages to the Claude conv
-        conv["chat_messages"].extend([
-            {
-                "sender": "human",
-                "content": [{"type": "text", "text": "Follow-up question"}],
-                "created_at": "2025-12-10T10:32:00.000000Z",
-                "updated_at": "2025-12-10T10:32:00.000000Z",
-            },
-            {
-                "sender": "assistant",
-                "content": [{"type": "text", "text": "Here's the answer"}],
-                "created_at": "2025-12-10T10:33:00.000000Z",
-                "updated_at": "2025-12-10T10:33:00.000000Z",
-            },
-        ])
+        conv["chat_messages"].extend(
+            [
+                {
+                    "sender": "human",
+                    "content": [{"type": "text", "text": "Follow-up question"}],
+                    "created_at": "2025-12-10T10:32:00.000000Z",
+                    "updated_at": "2025-12-10T10:32:00.000000Z",
+                },
+                {
+                    "sender": "assistant",
+                    "content": [{"type": "text", "text": "Here's the answer"}],
+                    "created_at": "2025-12-10T10:33:00.000000Z",
+                    "updated_at": "2025-12-10T10:33:00.000000Z",
+                },
+            ]
+        )
         conv["updated_at"] = "2025-12-10T10:33:00.000000Z"
 
         changed = update_conversation(path, conv)
@@ -743,20 +804,22 @@ class TestIncrementalSync:
     def test_update_no_message_removal(self, tmp_path):
         """If Claude has fewer messages, JARVIS keeps all its messages."""
         conv = _make_claude_conv()
-        conv["chat_messages"].extend([
-            {
-                "sender": "human",
-                "content": [{"type": "text", "text": "Extra msg 1"}],
-                "created_at": "2025-12-10T10:32:00.000000Z",
-                "updated_at": "2025-12-10T10:32:00.000000Z",
-            },
-            {
-                "sender": "assistant",
-                "content": [{"type": "text", "text": "Extra msg 2"}],
-                "created_at": "2025-12-10T10:33:00.000000Z",
-                "updated_at": "2025-12-10T10:33:00.000000Z",
-            },
-        ])
+        conv["chat_messages"].extend(
+            [
+                {
+                    "sender": "human",
+                    "content": [{"type": "text", "text": "Extra msg 1"}],
+                    "created_at": "2025-12-10T10:32:00.000000Z",
+                    "updated_at": "2025-12-10T10:32:00.000000Z",
+                },
+                {
+                    "sender": "assistant",
+                    "content": [{"type": "text", "text": "Extra msg 2"}],
+                    "created_at": "2025-12-10T10:33:00.000000Z",
+                    "updated_at": "2025-12-10T10:33:00.000000Z",
+                },
+            ]
+        )
         path = _import_and_get_path(conv, tmp_path)
         data_before = json.loads(path.read_text())
         assert len(data_before["messages"]) == 4
@@ -774,12 +837,14 @@ class TestIncrementalSync:
         conv = _make_claude_conv()
         path = _import_and_get_path(conv, tmp_path)
 
-        conv["chat_messages"].append({
-            "sender": "human",
-            "content": [{"type": "text", "text": "Another question"}],
-            "created_at": "2025-12-10T10:32:00.000000Z",
-            "updated_at": "2025-12-10T10:32:00.000000Z",
-        })
+        conv["chat_messages"].append(
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "Another question"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            }
+        )
         conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
 
         update_conversation(path, conv)
@@ -795,12 +860,14 @@ class TestIncrementalSync:
         original_content = path.read_text()
 
         conv["name"] = "[X] My Chat"
-        conv["chat_messages"].append({
-            "sender": "human",
-            "content": [{"type": "text", "text": "New msg"}],
-            "created_at": "2025-12-10T10:32:00.000000Z",
-            "updated_at": "2025-12-10T10:32:00.000000Z",
-        })
+        conv["chat_messages"].append(
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "New msg"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            }
+        )
 
         changed = update_conversation(path, conv, dry_run=True)
         assert changed is True
@@ -828,12 +895,14 @@ class TestIncrementalSync:
         assert summary1.imported == 1
 
         # Add messages and re-import
-        conv["chat_messages"].append({
-            "sender": "human",
-            "content": [{"type": "text", "text": "New question"}],
-            "created_at": "2025-12-10T10:32:00.000000Z",
-            "updated_at": "2025-12-10T10:32:00.000000Z",
-        })
+        conv["chat_messages"].append(
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "New question"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            }
+        )
         conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
         source.write_text(json.dumps([conv]))
 
@@ -847,12 +916,14 @@ class TestIncrementalSync:
         conv = _make_claude_conv()
         path = _import_and_get_path(conv, tmp_path)
 
-        conv["chat_messages"].append({
-            "sender": "human",
-            "content": [{"type": "text", "text": "New"}],
-            "created_at": "2025-12-10T10:32:00.000000Z",
-            "updated_at": "2025-12-10T10:32:00.000000Z",
-        })
+        conv["chat_messages"].append(
+            {
+                "sender": "human",
+                "content": [{"type": "text", "text": "New"}],
+                "created_at": "2025-12-10T10:32:00.000000Z",
+                "updated_at": "2025-12-10T10:32:00.000000Z",
+            }
+        )
         conv["updated_at"] = "2025-12-10T10:32:00.000000Z"
         update_conversation(path, conv)
 

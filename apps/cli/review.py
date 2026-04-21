@@ -140,7 +140,9 @@ def handle_review_command(
             reviewed_count += 1
             console.print(f"  ✓ saved\n")
         except KeyboardInterrupt:
-            console.print(f"\nAborted. {reviewed_count} reviewed, {len(pending) - reviewed_count} remaining.")
+            console.print(
+                f"\nAborted. {reviewed_count} reviewed, {len(pending) - reviewed_count} remaining."
+            )
             return reviewed_count
 
     console.print(f"Done. {reviewed_count} item(s) reviewed.")

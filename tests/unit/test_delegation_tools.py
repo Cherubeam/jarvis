@@ -28,8 +28,10 @@ def _make_stream_result(text="done", delegate_to=None, delegate_task=None):
         usage=TokenUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
         cost_usd=0.001,
         metrics=ResponseMetrics(
-            ttft_ms=50, total_latency_ms=200,
-            prompt_tokens=10, completion_tokens=5,
+            ttft_ms=50,
+            total_latency_ms=200,
+            prompt_tokens=10,
+            completion_tokens=5,
         ),
         delegate_to=delegate_to,
         delegate_task=delegate_task,
@@ -81,12 +83,15 @@ class TestDelegationToolIsolation:
 
         # Reproduce the delegation path from main.py
         import inspect
+
         sig = inspect.signature(FakeDelegateAgent.__init__)
         all_delegate_tools = agent_only_tools  # The fix
 
         if "extra_tools" in sig.parameters and all_delegate_tools:
             FakeDelegateAgent(
-                llm_client=Mock(), model="test", extra_tools=all_delegate_tools,
+                llm_client=Mock(),
+                model="test",
+                extra_tools=all_delegate_tools,
             )
 
         assert created_with["extra_tools"] == [blog_tool]

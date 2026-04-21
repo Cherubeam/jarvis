@@ -13,16 +13,19 @@ from packages.agents.registry import discover_agents, get_by_command, AgentMeta
 class TestDiscoverAgents:
     """Tests for discover_agents()."""
 
-    @pytest.mark.parametrize("name,command", [
-        ("writer", "/write"),
-        ("researcher", "/research"),
-        ("simplifier", "/simplify"),
-        ("tactics_coach", "/tactics"),
-        ("developer", "/develop"),
-        ("content_reviewer", "/review"),
-        ("substack_publisher", "/publish"),
-        ("substack_image_creator", "/substack-image"),
-    ])
+    @pytest.mark.parametrize(
+        "name,command",
+        [
+            ("writer", "/write"),
+            ("researcher", "/research"),
+            ("simplifier", "/simplify"),
+            ("tactics_coach", "/tactics"),
+            ("developer", "/develop"),
+            ("content_reviewer", "/review"),
+            ("substack_publisher", "/publish"),
+            ("substack_image_creator", "/substack-image"),
+        ],
+    )
     def test_discovers_agent(self, name, command):
         agents = discover_agents()
         assert name in agents
@@ -63,7 +66,11 @@ class TestDiscoverAgents:
     def test_tool_groups_extracted_from_meta_yaml(self):
         agents = discover_agents()
         assert agents["writer"].tool_groups == ("blog_tools",)
-        assert agents["content_reviewer"].tool_groups == ("blog_tools", "content_evaluator", "suggest_improvements")
+        assert agents["content_reviewer"].tool_groups == (
+            "blog_tools",
+            "content_evaluator",
+            "suggest_improvements",
+        )
         assert agents["developer"].tool_groups == ("dev_tools",)
         assert agents["tactics_coach"].tool_groups == ("card_search",)
 
@@ -86,13 +93,16 @@ class TestDiscoverAgents:
 class TestGetByCommand:
     """Tests for get_by_command()."""
 
-    @pytest.mark.parametrize("command,expected_name", [
-        ("/write", "writer"),
-        ("/research", "researcher"),
-        ("/simplify", "simplifier"),
-        ("/review", "content_reviewer"),
-        ("/publish", "substack_publisher"),
-    ])
+    @pytest.mark.parametrize(
+        "command,expected_name",
+        [
+            ("/write", "writer"),
+            ("/research", "researcher"),
+            ("/simplify", "simplifier"),
+            ("/review", "content_reviewer"),
+            ("/publish", "substack_publisher"),
+        ],
+    )
     def test_finds_command(self, command, expected_name):
         agents = discover_agents()
         meta = get_by_command(command, agents)

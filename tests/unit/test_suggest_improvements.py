@@ -31,9 +31,11 @@ def vault(tmp_path):
     sample = content_dir / "post.md"
     sample.write_text("# Hello\n\nThis is the original content.\n", encoding="utf-8")
 
-    guard = FilesystemGuard([
-        AccessRule(path=content_dir.resolve(), access=AccessLevel.READ),
-    ])
+    guard = FilesystemGuard(
+        [
+            AccessRule(path=content_dir.resolve(), access=AccessLevel.READ),
+        ]
+    )
     config = VaultConfig(
         vault_path=tmp_path,
         filesystem_guard=guard,
@@ -133,7 +135,11 @@ class TestSuggestImprovements:
             improved_content="new content",
         )
         assert result.startswith("Error: ")
-        assert "secret/file.md" in result or "not in allowed" in result.lower() or "permission" in result.lower()
+        assert (
+            "secret/file.md" in result
+            or "not in allowed" in result.lower()
+            or "permission" in result.lower()
+        )
         assert handler.presented_diff is None
 
     def test_reasoning_displayed(self, tool_and_handler, capsys):

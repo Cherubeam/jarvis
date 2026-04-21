@@ -38,7 +38,9 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
         category: str = "",
     ) -> str:
         return client.search_documents(
-            query, location=location, category=category,
+            query,
+            location=location,
+            category=category,
         )
 
     tools.append(

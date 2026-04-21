@@ -94,9 +94,7 @@ paths:
 
         assert config["models"]["default"] == "openrouter/anthropic/claude-sonnet-4.6"
 
-    def test_load_config_local_override_preserves_sibling_keys(
-        self, tmp_path: Path, monkeypatch
-    ):
+    def test_load_config_local_override_preserves_sibling_keys(self, tmp_path: Path, monkeypatch):
         """local.yaml partial override must not clobber sibling defaults (deep merge)."""
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -123,10 +121,7 @@ obsidian:
         # Sibling keys from default survive
         assert config["obsidian"]["enabled"] is True
         assert config["obsidian"]["writing"]["slip_box"]["target_dir"] == "inbox"
-        assert (
-            config["obsidian"]["writing"]["slip_box"]["template_path"]
-            == "templates/slip.md"
-        )
+        assert config["obsidian"]["writing"]["slip_box"]["template_path"] == "templates/slip.md"
 
 
 @pytest.mark.unit
@@ -151,9 +146,7 @@ class TestDeepMerge:
 
     def test_dict_replaces_non_dict(self):
         # If base has a scalar and override has a dict, override wins.
-        assert _deep_merge({"k": 1}, {"k": {"nested": True}}) == {
-            "k": {"nested": True}
-        }
+        assert _deep_merge({"k": 1}, {"k": {"nested": True}}) == {"k": {"nested": True}}
 
     def test_non_dict_replaces_dict(self):
         # If base has a dict and override has a scalar, override wins.
@@ -162,9 +155,7 @@ class TestDeepMerge:
     def test_deeply_nested_merge(self):
         base = {"a": {"b": {"c": {"d": 1, "e": 2}}}}
         override = {"a": {"b": {"c": {"e": 99}}}}
-        assert _deep_merge(base, override) == {
-            "a": {"b": {"c": {"d": 1, "e": 99}}}
-        }
+        assert _deep_merge(base, override) == {"a": {"b": {"c": {"d": 1, "e": 99}}}}
 
     def test_inputs_not_mutated(self):
         base = {"a": {"x": 1}}
@@ -178,5 +169,3 @@ class TestDeepMerge:
         result = _deep_merge(base, {})
         assert result == base
         assert result is not base  # new dict
-
-

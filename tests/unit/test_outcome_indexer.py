@@ -44,6 +44,7 @@ def _write_outcome(
 
 # --- _build_document ---
 
+
 def test_build_document_includes_core_fields():
     meta = {
         "what": "Migrate auth",
@@ -84,6 +85,7 @@ def test_build_document_omits_empty_retrospective():
 
 # --- _load_reviewed ---
 
+
 def test_load_reviewed_returns_empty_when_dir_missing(tmp_path: Path):
     assert _load_reviewed(tmp_path / "nope") == []
 
@@ -121,6 +123,7 @@ def test_load_reviewed_returns_id_meta_body(tmp_path: Path):
 
 # --- OutcomeIndexer (mocked chromadb) ---
 
+
 def _mocked_indexer(already_indexed_ids=None):
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
@@ -129,10 +132,13 @@ def _mocked_indexer(already_indexed_ids=None):
         "ids": list(already_indexed_ids or []),
         "metadatas": [{"outcome_id": oid} for oid in (already_indexed_ids or [])],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeIndexer
+
         indexer = OutcomeIndexer.__new__(OutcomeIndexer)
         indexer.db_path = Path("/tmp/fake-rag")
         indexer.embedding_model = "openrouter/openai/text-embedding-3-small"
@@ -219,14 +225,18 @@ def test_index_new_writes_quality_as_int(tmp_path: Path):
 
 # --- OutcomeSearcher ---
 
+
 def test_searcher_returns_empty_when_collection_empty():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeSearcher
+
         searcher = OutcomeSearcher("/tmp", "model")
         results = searcher.search("anything")
 
@@ -238,24 +248,29 @@ def test_searcher_builds_results_from_raw():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 1
     mock_collection.query.return_value = {
-        "metadatas": [[
-            {
-                "outcome_id": "o1",
-                "what": "Do X",
-                "why": "Because",
-                "outcome": "happened",
-                "quality": 4,
-                "retrospective": "worked out",
-                "revisit_at": "2026-05-18",
-                "conversation_id": "c1",
-            },
-        ]],
+        "metadatas": [
+            [
+                {
+                    "outcome_id": "o1",
+                    "what": "Do X",
+                    "why": "Because",
+                    "outcome": "happened",
+                    "quality": 4,
+                    "retrospective": "worked out",
+                    "revisit_at": "2026-05-18",
+                    "conversation_id": "c1",
+                },
+            ]
+        ],
         "distances": [[0.25]],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeSearcher
+
         searcher = OutcomeSearcher("/tmp", "model")
         fake_response = MagicMock()
         fake_response.data = [{"embedding": [0.1]}]
@@ -278,12 +293,14 @@ def test_searcher_builds_results_from_raw():
 
 # --- make_outcome_recall_tool ---
 
+
 def test_recall_tool_schema():
     mock_chroma = MagicMock()
     mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value.count.return_value = 0
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.tools.outcome_recall import make_outcome_recall_tool
+
         tool = make_outcome_recall_tool("/tmp", "model")
 
     assert tool.name == "recall_outcomes"
@@ -295,10 +312,13 @@ def test_recall_tool_returns_message_when_no_results():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.tools.outcome_recall import make_outcome_recall_tool
+
         tool = make_outcome_recall_tool("/tmp", "model")
         result = tool.execute(query="anything")
 
@@ -310,27 +330,32 @@ def test_recall_tool_formats_results_with_header_and_fields():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 1
     mock_collection.query.return_value = {
-        "metadatas": [[
-            {
-                "outcome_id": "2026-04-18-migrate",
-                "what": "Migrate auth",
-                "why": "Compliance",
-                "outcome": "happened",
-                "quality": 4,
-                "retrospective": "smooth",
-                "revisit_at": "2026-05-18",
-                "conversation_id": "c1",
-            },
-        ]],
+        "metadatas": [
+            [
+                {
+                    "outcome_id": "2026-04-18-migrate",
+                    "what": "Migrate auth",
+                    "why": "Compliance",
+                    "outcome": "happened",
+                    "quality": 4,
+                    "retrospective": "smooth",
+                    "revisit_at": "2026-05-18",
+                    "conversation_id": "c1",
+                },
+            ]
+        ],
         "distances": [[0.3]],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     fake_response = MagicMock()
     fake_response.data = [{"embedding": [0.1]}]
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.tools.outcome_recall import make_outcome_recall_tool
+
         tool = make_outcome_recall_tool("/tmp", "model")
         with patch("litellm.embedding", return_value=fake_response):
             result = tool.execute(query="auth migration")
@@ -346,13 +371,16 @@ def test_recall_tool_clamps_n_results():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 1
     mock_collection.query.return_value = {"metadatas": [[]], "distances": [[]]}
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     fake_response = MagicMock()
     fake_response.data = [{"embedding": [0.1]}]
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.tools.outcome_recall import make_outcome_recall_tool
+
         tool = make_outcome_recall_tool("/tmp", "model")
         with patch("litellm.embedding", return_value=fake_response):
             tool.execute(query="x", n_results=999)

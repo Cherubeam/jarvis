@@ -89,7 +89,10 @@ def make_vault_write_tools(
             full_content = content
 
         result: WriteResult = write_note(
-            full_path, full_content, vault_config, confirmation_handler,
+            full_path,
+            full_content,
+            vault_config,
+            confirmation_handler,
         )
         return result.message
 
@@ -141,7 +144,10 @@ def make_vault_write_tools(
             return f"Error: File not found: {path}. Use create_note for new files."
 
         result: WriteResult = write_note(
-            full_path, new_content, vault_config, confirmation_handler,
+            full_path,
+            new_content,
+            vault_config,
+            confirmation_handler,
             reasoning=reasoning,
         )
         return result.message
@@ -179,6 +185,7 @@ def make_vault_write_tools(
     # --- list_notes_in_dir (only when target_dir is set) ---
 
     if target_dir:
+
         def _list_notes_in_dir(subfolder: str = "") -> str:
             target = target_path / subfolder if subfolder else target_path
             try:

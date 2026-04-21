@@ -65,18 +65,14 @@ def _parse_server(name: str, server: dict) -> MCPServerConfig:
     if transport == "stdio":
         command = server.get("command")
         if not command:
-            raise ValueError(
-                f"MCP server '{name}': stdio transport requires 'command'."
-            )
+            raise ValueError(f"MCP server '{name}': stdio transport requires 'command'.")
     else:
         command = None
 
     if transport in ("sse", "streamable_http"):
         url = server.get("url")
         if not url:
-            raise ValueError(
-                f"MCP server '{name}': {transport} transport requires 'url'."
-            )
+            raise ValueError(f"MCP server '{name}': {transport} transport requires 'url'.")
     else:
         url = None
 

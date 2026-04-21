@@ -22,7 +22,8 @@ def _write(path, messages=None, cost=0.01, tokens=100):
         "session_start": "2026-04-19T10:00:00",
         "session_end": "2026-04-19T10:00:10",
         "model": {"id": "openrouter/qwen", "provider": "openrouter"},
-        "messages": messages or [
+        "messages": messages
+        or [
             {"role": "user", "content": "week-12 substack draft"},
             {"role": "assistant", "agent": "JARVIS"},
         ],
@@ -74,7 +75,13 @@ def test_shape_and_status(client_with_tasks):
     assert r.status_code == 200
     j = r.json()
     assert set(j.keys()) == {
-        "greeting", "today", "tasks", "cost_week", "resume", "recent", "quick_start",
+        "greeting",
+        "today",
+        "tasks",
+        "cost_week",
+        "resume",
+        "recent",
+        "quick_start",
     }
     assert j["greeting"] in ("Good morning", "Good afternoon", "Good evening")
     assert len(j["today"]["date"]) == 10  # YYYY-MM-DD

@@ -35,7 +35,7 @@ def blog_vault(tmp_path):
     template_dir = tmp_path / "99 – Meta" / "00 – Templates"
     template_dir.mkdir(parents=True)
     template = template_dir / "(TEMPLATE) Blog Post.md"
-    template.write_text("---\ntitle: \"\"\ntags: []\n---\n\n", encoding="utf-8")
+    template.write_text('---\ntitle: ""\ntags: []\n---\n\n', encoding="utf-8")
 
     guard = _guard(
         (blog_dir.resolve(), AccessLevel.READ_WRITE),
@@ -52,11 +52,17 @@ def blog_vault(tmp_path):
 def tools(blog_vault):
     config, blog_dir, template = blog_vault
     handler = MockConfirmationHandler(confirm=True)
-    return make_blog_tools(
-        config, handler,
-        blog_dir="03 – Areas/02 – Substack",
-        template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
-    ), blog_dir, template, handler
+    return (
+        make_blog_tools(
+            config,
+            handler,
+            blog_dir="03 – Areas/02 – Substack",
+            template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
+        ),
+        blog_dir,
+        template,
+        handler,
+    )
 
 
 def _get_tool(tools_list, name):
@@ -235,7 +241,9 @@ class TestCreateBlogPost:
     def test_creates_new_file(self, tools):
         tool_list, blog_dir, *_ = tools
         tool = _get_tool(tool_list, "create_blog_post")
-        result = tool.execute(filename="new-post.md", content="# My Post\n\nGreat content.", use_template=False)
+        result = tool.execute(
+            filename="new-post.md", content="# My Post\n\nGreat content.", use_template=False
+        )
 
         assert "Successfully" in result
         assert (blog_dir / "new-post.md").exists()
@@ -269,10 +277,11 @@ class TestCreateBlogPost:
         """rstrip must strip only newlines, not all whitespace; must strip trailing not leading."""
         config, blog_dir, template = blog_vault
         # Template with trailing spaces+newlines — rstrip("\n") preserves spaces
-        template.write_text("---\ntitle: \"\"\n---\n  \n", encoding="utf-8")
+        template.write_text('---\ntitle: ""\n---\n  \n', encoding="utf-8")
         handler = MockConfirmationHandler(confirm=True)
         tool_list = make_blog_tools(
-            config, handler,
+            config,
+            handler,
             blog_dir="03 – Areas/02 – Substack",
             template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
         )
@@ -306,7 +315,8 @@ class TestCreateBlogPost:
         config, blog_dir, template = blog_vault
         handler = MockConfirmationHandler(confirm=False)
         tool_list = make_blog_tools(
-            config, handler,
+            config,
+            handler,
             blog_dir="03 – Areas/02 – Substack",
             template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
         )
@@ -342,7 +352,8 @@ class TestEditBlogPost:
         config, blog_dir, template = blog_vault
         handler = MockConfirmationHandler(confirm=True)
         tool_list = make_blog_tools(
-            config, handler,
+            config,
+            handler,
             blog_dir="03 – Areas/02 – Substack",
             template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
         )
@@ -350,22 +361,30 @@ class TestEditBlogPost:
         post.write_text("old content")
 
         tool = _get_tool(tool_list, "edit_blog_post")
-        with patch("packages.core.tools.blog_tools.write_note", wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note) as mock_write:
+        with patch(
+            "packages.core.tools.blog_tools.write_note",
+            wraps=__import__(
+                "packages.integrations.obsidian.writer", fromlist=["write_note"]
+            ).write_note,
+        ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/reason-test.md",
                 new_content="new content",
                 reasoning="Improved clarity",
             )
             mock_write.assert_called_once()
-            assert mock_write.call_args.kwargs.get("reasoning") == "Improved clarity" or \
-                   (len(mock_write.call_args.args) > 4 and mock_write.call_args.args[4] == "Improved clarity")
+            assert mock_write.call_args.kwargs.get("reasoning") == "Improved clarity" or (
+                len(mock_write.call_args.args) > 4
+                and mock_write.call_args.args[4] == "Improved clarity"
+            )
 
     def test_reasoning_default_is_empty(self, blog_vault):
         """Default reasoning should be empty string, not some other value."""
         config, blog_dir, template = blog_vault
         handler = MockConfirmationHandler(confirm=True)
         tool_list = make_blog_tools(
-            config, handler,
+            config,
+            handler,
             blog_dir="03 – Areas/02 – Substack",
             template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
         )
@@ -373,7 +392,12 @@ class TestEditBlogPost:
         post.write_text("old content")
 
         tool = _get_tool(tool_list, "edit_blog_post")
-        with patch("packages.core.tools.blog_tools.write_note", wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note) as mock_write:
+        with patch(
+            "packages.core.tools.blog_tools.write_note",
+            wraps=__import__(
+                "packages.integrations.obsidian.writer", fromlist=["write_note"]
+            ).write_note,
+        ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/no-reason.md",
                 new_content="new content",
@@ -389,7 +413,10 @@ class TestEditBlogPost:
             path="03 – Areas/02 – Substack/ghost.md",
             new_content="content",
         )
-        assert result == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
+        assert (
+            result
+            == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
+        )
 
     def test_rejects_template_edit(self, tools):
         """Template dir has read-only access — edits are blocked by validate_write."""
@@ -407,7 +434,8 @@ class TestEditBlogPost:
         post.write_text("original content")
         handler = MockConfirmationHandler(confirm=False)
         tool_list = make_blog_tools(
-            config, handler,
+            config,
+            handler,
             blog_dir="03 – Areas/02 – Substack",
             template_path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
         )

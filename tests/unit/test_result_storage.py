@@ -99,25 +99,19 @@ class TestResultStorage:
         """Test that start_run creates a timestamped directory."""
         storage = ResultStorage(tmp_path / "results")
 
-        run_id = storage.start_run(
-            model_tested="test-model", judge_model="judge-model"
-        )
+        run_id = storage.start_run(model_tested="test-model", judge_model="judge-model")
 
         assert run_id is not None
         assert (tmp_path / "results" / "runs" / run_id).exists()
 
-    def test_save_result_creates_json_file(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_save_result_creates_json_file(self, tmp_path, sample_evaluation_result):
         """Test that save_result creates a JSON file."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
 
         storage.save_result(run_id, sample_evaluation_result)
 
-        result_file = (
-            tmp_path / "results" / "runs" / run_id / "test_basic_qa.json"
-        )
+        result_file = tmp_path / "results" / "runs" / run_id / "test_basic_qa.json"
         assert result_file.exists()
 
         # Verify JSON is valid
@@ -126,9 +120,7 @@ class TestResultStorage:
             assert data["test_name"] == "test_basic_qa"
             assert data["evaluation"]["overall_score"] == 0.95
 
-    def test_calculate_summary_single_result(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_calculate_summary_single_result(self, tmp_path, sample_evaluation_result):
         """Test summary calculation with single result."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -156,9 +148,7 @@ class TestResultStorage:
         assert summary.passed_tests == 1
         assert summary.failed_tests == 1
         assert summary.pass_rate == 0.5
-        assert summary.average_overall_score == pytest.approx(
-            (0.95 + 0.62) / 2, 0.01
-        )
+        assert summary.average_overall_score == pytest.approx((0.95 + 0.62) / 2, 0.01)
         assert summary.total_cost_usd == pytest.approx(0.038, 0.001)
 
     def test_calculate_summary_by_category(
@@ -190,9 +180,7 @@ class TestResultStorage:
         assert "concise" in summary.average_dimension_scores
         assert summary.average_dimension_scores["accurate"] == 1.0
 
-    def test_finalize_run_saves_summary(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_finalize_run_saves_summary(self, tmp_path, sample_evaluation_result):
         """Test that finalize_run saves run_summary.json."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -208,9 +196,7 @@ class TestResultStorage:
             assert data["run_id"] == run_id
             assert data["total_tests"] == 1
 
-    def test_finalize_run_generates_markdown_report(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_finalize_run_generates_markdown_report(self, tmp_path, sample_evaluation_result):
         """Test that finalize_run generates markdown report."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -245,9 +231,7 @@ class TestResultStorage:
             assert "test_ambiguous_query" in content
             assert "asks_clarification" in content
 
-    def test_markdown_report_cost_analysis(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_markdown_report_cost_analysis(self, tmp_path, sample_evaluation_result):
         """Test that markdown report includes cost analysis."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -263,9 +247,7 @@ class TestResultStorage:
             assert "$0.007" in content  # Response cost
             assert "$0.011" in content  # Judge cost
 
-    def test_update_history_creates_file(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_update_history_creates_file(self, tmp_path, sample_evaluation_result):
         """Test that update_history creates history.json."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -281,9 +263,7 @@ class TestResultStorage:
             assert len(data["runs"]) == 1
             assert data["runs"][0]["run_id"] == run_id
 
-    def test_update_history_appends_runs(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_update_history_appends_runs(self, tmp_path, sample_evaluation_result):
         """Test that update_history appends to existing history."""
         storage = ResultStorage(tmp_path / "results")
 
@@ -313,9 +293,7 @@ class TestResultStorage:
         assert trends["runs"] == []
         assert trends["trends"] == {}
 
-    def test_get_historical_trends_with_data(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_get_historical_trends_with_data(self, tmp_path, sample_evaluation_result):
         """Test getting trends with historical data."""
         storage = ResultStorage(tmp_path / "results")
 
@@ -333,9 +311,7 @@ class TestResultStorage:
         assert "pass_rate_over_time" in trends["trends"]
         assert len(trends["trends"]["quality_over_time"]) == 3
 
-    def test_get_historical_trends_filtered_by_model(
-        self, tmp_path, sample_evaluation_result
-    ):
+    def test_get_historical_trends_filtered_by_model(self, tmp_path, sample_evaluation_result):
         """Test filtering trends by model."""
         storage = ResultStorage(tmp_path / "results")
 

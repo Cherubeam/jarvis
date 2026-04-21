@@ -91,9 +91,7 @@ class TestReadwiseClientErrorHandling:
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_nonzero_exit_returns_error(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=1, stdout="", stderr="auth failed"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="auth failed")
         client = ReadwiseClient()
         result = client.search_documents("test")
 
@@ -123,6 +121,7 @@ class TestReadwiseClientErrorHandling:
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_timeout_returns_error(self, mock_run):
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="readwise", timeout=30)
         client = ReadwiseClient()
         result = client.search_documents("test")
@@ -137,9 +136,7 @@ class TestReadwiseClientOtherMethods:
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_search_highlights_uses_vector_search_term(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout='[{"text": "highlight"}]', stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='[{"text": "highlight"}]', stderr="")
         client = ReadwiseClient()
         result = client.search_highlights("systems thinking")
 
@@ -152,9 +149,7 @@ class TestReadwiseClientOtherMethods:
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_get_document_details_uses_named_flag(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout='{"title": "Doc"}', stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"title": "Doc"}', stderr="")
         client = ReadwiseClient()
         result = client.get_document_details("doc123")
 
@@ -167,9 +162,7 @@ class TestReadwiseClientOtherMethods:
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_create_document_uses_url_flag(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout='{"id": "new123"}', stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"id": "new123"}', stderr="")
         client = ReadwiseClient()
         result = client.create_document("https://example.com/article")
 

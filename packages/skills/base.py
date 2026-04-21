@@ -99,9 +99,7 @@ class BaseSkill:
         messages.append({"role": "user", "content": message})
 
         registry = self.tool_registry if not self.tool_registry.is_empty() else None
-        return stream_handler.stream(
-            messages, print_chunks=print_chunks, tool_registry=registry
-        )
+        return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry)
 
     @classmethod
     def from_skill_md(
@@ -155,9 +153,7 @@ class BaseSkill:
                 if "temperature" in skill_config_dict:
                     temperature = skill_config_dict["temperature"]
             except Exception:
-                logger.warning(
-                    "Failed to load skill.py for %s", name, exc_info=True
-                )
+                logger.warning("Failed to load skill.py for %s", name, exc_info=True)
 
         config = SkillConfig(
             name=name,

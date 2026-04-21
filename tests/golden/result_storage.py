@@ -159,9 +159,7 @@ class ResultStorage:
 
         return summary
 
-    def _calculate_summary(
-        self, run_id: str, results: list[EvaluationResult]
-    ) -> RunSummary:
+    def _calculate_summary(self, run_id: str, results: list[EvaluationResult]) -> RunSummary:
         """Calculate aggregated metrics from results."""
         total_tests = len(results)
         passed_tests = sum(1 for r in results if r.passed)
@@ -169,9 +167,7 @@ class ResultStorage:
         pass_rate = passed_tests / total_tests if total_tests > 0 else 0.0
 
         # Average scores
-        average_overall = (
-            sum(r.evaluation.overall_score for r in results) / total_tests
-        )
+        average_overall = sum(r.evaluation.overall_score for r in results) / total_tests
 
         # Scores by category
         category_scores = {}
@@ -199,8 +195,7 @@ class ResultStorage:
                 dimension_counts[dim] += 1
 
         average_dimension_scores = {
-            dim: all_dimensions[dim] / dimension_counts[dim]
-            for dim in all_dimensions
+            dim: all_dimensions[dim] / dimension_counts[dim] for dim in all_dimensions
         }
 
         # Costs
@@ -209,15 +204,11 @@ class ResultStorage:
         total_judge_cost = sum(r.judge_cost_usd for r in results)
 
         # Latency
-        avg_response_latency = (
-            sum(r.response_latency_ms for r in results) / total_tests
-        )
+        avg_response_latency = sum(r.response_latency_ms for r in results) / total_tests
         avg_judge_latency = sum(r.judge_latency_ms for r in results) / total_tests
 
         # Tokens
-        total_response_tokens = sum(
-            r.response_tokens.get("total", 0) for r in results
-        )
+        total_response_tokens = sum(r.response_tokens.get("total", 0) for r in results)
         total_judge_tokens = sum(r.judge_tokens.get("total", 0) for r in results)
 
         # Filenames
@@ -277,11 +268,9 @@ class ResultStorage:
             f.write("## Executive Summary\n\n")
             f.write(
                 f"**Overall Pass Rate**: {summary.passed_tests}/{summary.total_tests} "
-                f"({summary.pass_rate*100:.1f}%)\n"
+                f"({summary.pass_rate * 100:.1f}%)\n"
             )
-            f.write(
-                f"**Average Quality Score**: {summary.average_overall_score:.2f} / 1.0\n"
-            )
+            f.write(f"**Average Quality Score**: {summary.average_overall_score:.2f} / 1.0\n")
             f.write(
                 f"**Total Cost**: ${summary.total_cost_usd:.3f} "
                 f"(${summary.total_response_cost_usd:.3f} model + "
@@ -295,9 +284,7 @@ class ResultStorage:
                 cat_passed = sum(1 for r in cat_results if r.passed)
                 cat_total = len(cat_results)
                 status = "" if cat_passed == cat_total else " ⚠️"
-                f.write(
-                    f"- {cat}: {score:.2f} ({cat_passed}/{cat_total} passed){status}\n"
-                )
+                f.write(f"- {cat}: {score:.2f} ({cat_passed}/{cat_total} passed){status}\n")
             f.write("\n---\n\n")
 
             # Test Results Table
@@ -330,7 +317,7 @@ class ResultStorage:
                     if r.evaluation.forbidden_patterns_found:
                         f.write("\n**Forbidden Patterns Found**:\n")
                         for pattern in r.evaluation.forbidden_patterns_found:
-                            f.write(f"- 🚫 \"{pattern}\"\n")
+                            f.write(f'- 🚫 "{pattern}"\n')
 
                     f.write(f"\n**Judge Reasoning**:\n")
                     f.write(f"> {r.evaluation.reasoning}\n\n")
@@ -339,30 +326,37 @@ class ResultStorage:
 
             # Cost Analysis
             f.write("## Cost Analysis\n\n")
-            response_pct = (summary.total_response_cost_usd / summary.total_cost_usd * 100) if summary.total_cost_usd > 0 else 0
+            response_pct = (
+                (summary.total_response_cost_usd / summary.total_cost_usd * 100)
+                if summary.total_cost_usd > 0
+                else 0
+            )
             f.write(
                 f"**Response Generation**: ${summary.total_response_cost_usd:.3f} "
                 f"({response_pct:.0f}%)\n"
             )
             f.write(
-                f"- Average per test: ${summary.total_response_cost_usd/summary.total_tests:.3f}\n"
+                f"- Average per test: ${summary.total_response_cost_usd / summary.total_tests:.3f}\n"
             )
             f.write(
                 f"- Token usage: {summary.total_response_tokens:,} total "
-                f"({summary.total_response_tokens//summary.total_tests:,} avg per test)\n\n"
+                f"({summary.total_response_tokens // summary.total_tests:,} avg per test)\n\n"
             )
 
-            judge_pct = (summary.total_judge_cost_usd / summary.total_cost_usd * 100) if summary.total_cost_usd > 0 else 0
-            f.write(
-                f"**Judge Evaluation**: ${summary.total_judge_cost_usd:.3f} "
-                f"({judge_pct:.0f}%)\n"
+            judge_pct = (
+                (summary.total_judge_cost_usd / summary.total_cost_usd * 100)
+                if summary.total_cost_usd > 0
+                else 0
             )
             f.write(
-                f"- Average per test: ${summary.total_judge_cost_usd/summary.total_tests:.3f}\n"
+                f"**Judge Evaluation**: ${summary.total_judge_cost_usd:.3f} ({judge_pct:.0f}%)\n"
+            )
+            f.write(
+                f"- Average per test: ${summary.total_judge_cost_usd / summary.total_tests:.3f}\n"
             )
             f.write(
                 f"- Token usage: {summary.total_judge_tokens:,} total "
-                f"({summary.total_judge_tokens//summary.total_tests:,} avg per test)\n\n"
+                f"({summary.total_judge_tokens // summary.total_tests:,} avg per test)\n\n"
             )
 
             # Performance Metrics
@@ -394,7 +388,8 @@ class ResultStorage:
 
             judge_cost_ratio = (
                 summary.total_judge_cost_usd / summary.total_response_cost_usd
-                if summary.total_response_cost_usd > 0 else 0
+                if summary.total_response_cost_usd > 0
+                else 0
             )
             if judge_cost_ratio > 1.5:
                 savings = (

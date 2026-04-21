@@ -19,7 +19,8 @@ def _write(path, messages=None, cost=0.01, tokens=100):
         "session_start": "2026-04-19T10:00:00",
         "session_end": "2026-04-19T10:00:10",
         "model": {"id": "openrouter/qwen", "provider": "openrouter"},
-        "messages": messages or [
+        "messages": messages
+        or [
             {"role": "user", "content": "hello"},
             {"role": "assistant", "agent": "JARVIS"},
         ],
@@ -34,11 +35,13 @@ def client(tmp_path):
     _write(convs / "2026" / "2026-04-20_10-00-00.json", cost=0.10, tokens=1000)
     _write(
         convs / "2026" / "2026-04-19_09-00-00.json",
-        cost=0.001, tokens=50,
+        cost=0.001,
+        tokens=50,
         messages=[
             {"role": "user", "content": "draft"},
             {
-                "role": "assistant", "agent": "writer",
+                "role": "assistant",
+                "agent": "writer",
                 "tool_calls": [{"function": {"name": "read_note"}}],
             },
             {"role": "tool", "content": "Read 42 chars."},

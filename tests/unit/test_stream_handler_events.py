@@ -4,7 +4,12 @@ import json
 import pytest
 from unittest.mock import Mock, MagicMock
 
-from packages.core.events import TextChunk, ToolCallStarted, ToolResult as ToolResultEvent, UsageReport
+from packages.core.events import (
+    TextChunk,
+    ToolCallStarted,
+    ToolResult as ToolResultEvent,
+    UsageReport,
+)
 from packages.core.llm_client import LLMClient, StreamToolResult, TokenUsage, StreamingResponse
 from packages.core.pricing import ModelPricing
 from packages.core.stream_handler import StreamHandler
@@ -25,8 +30,12 @@ def _make_handler(client, on_event=None, instance_id=""):
     pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="test")
     tracker = MetricsTracker()
     return StreamHandler(
-        client, tracker, pricing, "test-model",
-        on_event=on_event, instance_id=instance_id,
+        client,
+        tracker,
+        pricing,
+        "test-model",
+        on_event=on_event,
+        instance_id=instance_id,
     )
 
 
@@ -40,7 +49,6 @@ def _make_tool_call_obj(call_id, name, args="{}"):
 
 @pytest.mark.unit
 class TestStreamHandlerEvents:
-
     def test_text_chunk_events_emitted(self):
         client = Mock(spec=LLMClient)
         client.chat_stream.return_value = _make_streaming_response(["Hello", " world"])
@@ -76,7 +84,9 @@ class TestStreamHandlerEvents:
         from packages.core.tools.base import ToolRegistry, ToolDefinition
 
         tool = ToolDefinition(
-            name="my_tool", description="t", parameters={},
+            name="my_tool",
+            description="t",
+            parameters={},
             execute=lambda: "result",
         )
         registry = ToolRegistry()

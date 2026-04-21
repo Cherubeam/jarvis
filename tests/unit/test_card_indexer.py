@@ -14,13 +14,17 @@ from packages.core.rag import card_indexer as _card_indexer_mod  # noqa: F401
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_deck_dir(tmp_path: Path, deck_name: str, cards: list[dict], card_contents: dict[str, str]) -> Path:
+
+def _make_deck_dir(
+    tmp_path: Path, deck_name: str, cards: list[dict], card_contents: dict[str, str]
+) -> Path:
     """Create a deck directory with deck.yaml and card markdown files."""
     deck_dir = tmp_path / deck_name
     deck_dir.mkdir()
 
     # Write deck.yaml
     import yaml
+
     deck_yaml = {
         "name": deck_name.replace("-", " ").title(),
         "description": f"Test deck: {deck_name}",
@@ -43,10 +47,13 @@ def _make_card_indexer():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
     mock_collection.get.return_value = {"ids": []}
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.card_indexer import CardIndexer
+
         indexer = CardIndexer.__new__(CardIndexer)
         indexer.db_path = Path("/tmp/fake_rag")
         indexer.embedding_model = "test-model"
@@ -63,10 +70,13 @@ def _make_card_searcher():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.card_indexer import CardSearcher
+
         searcher = CardSearcher.__new__(CardSearcher)
         searcher.db_path = Path("/tmp/fake_rag")
         searcher.embedding_model = "test-model"
@@ -82,17 +92,22 @@ def _make_card_searcher():
 # CardIndexer.index_new
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestCardIndexerIndexNew:
-
     def test_indexes_new_cards(self, tmp_path):
         indexer, mock_collection = _make_card_indexer()
         deck_dir = _make_deck_dir(
             tmp_path,
             "storyteller-tactics",
             cards=[
-                {"id": "the-hero", "name": "The Hero", "category": "Story Shapes",
-                 "tags": ["protagonist", "journey"], "when": "When you need a hero"},
+                {
+                    "id": "the-hero",
+                    "name": "The Hero",
+                    "category": "Story Shapes",
+                    "tags": ["protagonist", "journey"],
+                    "when": "When you need a hero",
+                },
             ],
             card_contents={"the-hero": "# The Hero\n\nA tactic about heroes."},
         )
@@ -110,7 +125,15 @@ class TestCardIndexerIndexNew:
         assert call_kwargs["ids"] == ["storyteller-tactics_the-hero"]
         assert call_kwargs["documents"] == ["# The Hero\n\nA tactic about heroes."]
         meta = call_kwargs["metadatas"][0]
-        assert set(meta.keys()) == {"deck", "deck_dir", "card_id", "name", "category", "tags", "when"}
+        assert set(meta.keys()) == {
+            "deck",
+            "deck_dir",
+            "card_id",
+            "name",
+            "category",
+            "tags",
+            "when",
+        }
         assert meta == {
             "deck": "Storyteller Tactics",
             "deck_dir": "storyteller-tactics",
@@ -128,7 +151,12 @@ class TestCardIndexerIndexNew:
             "storyteller-tactics",
             cards=[
                 {"id": "the-hero", "name": "The Hero", "category": "Story Shapes", "tags": []},
-                {"id": "whats-at-stake", "name": "What's at Stake", "category": "Tension", "tags": []},
+                {
+                    "id": "whats-at-stake",
+                    "name": "What's at Stake",
+                    "category": "Tension",
+                    "tags": [],
+                },
             ],
             card_contents={
                 "the-hero": "# The Hero\n\nHero content.",
@@ -148,12 +176,14 @@ class TestCardIndexerIndexNew:
     def test_indexes_across_multiple_decks(self, tmp_path):
         indexer, mock_collection = _make_card_indexer()
         deck1 = _make_deck_dir(
-            tmp_path, "storyteller-tactics",
+            tmp_path,
+            "storyteller-tactics",
             cards=[{"id": "the-hero", "name": "The Hero", "category": "Story Shapes", "tags": []}],
             card_contents={"the-hero": "Hero content."},
         )
         deck2 = _make_deck_dir(
-            tmp_path, "workshop-tactics",
+            tmp_path,
+            "workshop-tactics",
             cards=[{"id": "check-in", "name": "Check-In", "category": "Openers", "tags": []}],
             card_contents={"check-in": "Check-in content."},
         )
@@ -174,7 +204,8 @@ class TestCardIndexerIndexNew:
         mock_collection.get.return_value = {"ids": ["storyteller-tactics_the-hero"]}
 
         deck_dir = _make_deck_dir(
-            tmp_path, "storyteller-tactics",
+            tmp_path,
+            "storyteller-tactics",
             cards=[{"id": "the-hero", "name": "The Hero", "category": "Story Shapes", "tags": []}],
             card_contents={"the-hero": "Hero content."},
         )
@@ -188,7 +219,8 @@ class TestCardIndexerIndexNew:
     def test_skips_empty_card_files(self, tmp_path):
         indexer, mock_collection = _make_card_indexer()
         deck_dir = _make_deck_dir(
-            tmp_path, "storyteller-tactics",
+            tmp_path,
+            "storyteller-tactics",
             cards=[{"id": "empty-card", "name": "Empty", "category": "Test", "tags": []}],
             card_contents={"empty-card": ""},
         )
@@ -223,7 +255,8 @@ class TestCardIndexerIndexNew:
         with default metadata values."""
         indexer, mock_collection = _make_card_indexer()
         deck_dir = _make_deck_dir(
-            tmp_path, "storyteller-tactics",
+            tmp_path,
+            "storyteller-tactics",
             cards=[],  # no cards listed in deck.yaml
             card_contents={"unlisted-card": "Unlisted card content."},
         )
@@ -252,9 +285,9 @@ class TestCardIndexerIndexNew:
 # CardIndexer._load_deck_yaml
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestLoadDeckYaml:
-
     def test_loads_valid_yaml(self, tmp_path):
         indexer, _ = _make_card_indexer()
         path = tmp_path / "deck.yaml"
@@ -279,9 +312,9 @@ class TestLoadDeckYaml:
 # CardSearcher.search
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestCardSearcher:
-
     def test_returns_empty_when_no_cards_indexed(self):
         searcher, mock_collection = _make_card_searcher()
         mock_collection.count.return_value = 0
@@ -293,15 +326,19 @@ class TestCardSearcher:
         mock_collection.count.return_value = 1
         mock_collection.query.return_value = {
             "documents": [["# The Hero\n\nHero content."]],
-            "metadatas": [[{
-                "card_id": "the-hero",
-                "deck": "Storyteller Tactics",
-                "deck_dir": "storyteller-tactics",
-                "name": "The Hero",
-                "category": "Story Shapes",
-                "tags": "protagonist,journey",
-                "when": "When you need a hero",
-            }]],
+            "metadatas": [
+                [
+                    {
+                        "card_id": "the-hero",
+                        "deck": "Storyteller Tactics",
+                        "deck_dir": "storyteller-tactics",
+                        "name": "The Hero",
+                        "category": "Story Shapes",
+                        "tags": "protagonist,journey",
+                        "when": "When you need a hero",
+                    }
+                ]
+            ],
             "distances": [[0.15]],
         }
 
@@ -311,8 +348,15 @@ class TestCardSearcher:
 
         assert len(results) == 1
         assert set(results[0].keys()) == {
-            "card_id", "deck", "deck_dir", "name", "category",
-            "tags", "when", "content", "distance",
+            "card_id",
+            "deck",
+            "deck_dir",
+            "name",
+            "category",
+            "tags",
+            "when",
+            "content",
+            "distance",
         }
         assert results[0] == {
             "card_id": "the-hero",
@@ -330,7 +374,9 @@ class TestCardSearcher:
         searcher, mock_collection = _make_card_searcher()
         mock_collection.count.return_value = 1
         mock_collection.query.return_value = {
-            "documents": [[]], "metadatas": [[]], "distances": [[]],
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
         }
 
         with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
@@ -344,7 +390,9 @@ class TestCardSearcher:
         searcher, mock_collection = _make_card_searcher()
         mock_collection.count.return_value = 1
         mock_collection.query.return_value = {
-            "documents": [[]], "metadatas": [[]], "distances": [[]],
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
         }
 
         with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
@@ -359,12 +407,13 @@ class TestCardSearcher:
 # make_card_search_tool
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestMakeCardSearchTool:
-
     def test_tool_name_and_description(self):
         with patch.dict("sys.modules", {"chromadb": MagicMock()}):
             from packages.core.tools.card_search import make_card_search_tool
+
             tool = make_card_search_tool("/tmp/fake", "test-model")
 
         assert tool.name == "search_tactics"
@@ -373,6 +422,7 @@ class TestMakeCardSearchTool:
     def test_tool_parameters_schema(self):
         with patch.dict("sys.modules", {"chromadb": MagicMock()}):
             from packages.core.tools.card_search import make_card_search_tool
+
             tool = make_card_search_tool("/tmp/fake", "test-model")
 
         params = tool.parameters
@@ -388,10 +438,13 @@ class TestMakeCardSearchTool:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.card_search import make_card_search_tool
+
             tool = make_card_search_tool("/tmp/fake", "test-model")
             result = tool.execute(query="test")
 
@@ -403,16 +456,30 @@ class TestMakeCardSearchTool:
         mock_collection.count.return_value = 1
         mock_collection.query.return_value = {
             "documents": [["Card content"]],
-            "metadatas": [[{"card_id": "c", "deck": "D", "deck_dir": "d",
-                           "name": "C", "category": "Cat", "tags": "", "when": ""}]],
+            "metadatas": [
+                [
+                    {
+                        "card_id": "c",
+                        "deck": "D",
+                        "deck_dir": "d",
+                        "name": "C",
+                        "category": "Cat",
+                        "tags": "",
+                        "when": "",
+                    }
+                ]
+            ],
             "distances": [[0.1]],
         }
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
                 mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
                 from packages.core.tools.card_search import make_card_search_tool
+
                 tool = make_card_search_tool("/tmp/fake", "test-model")
                 # Request 100, should be clamped to 15
                 result = tool.execute(query="test", n_results=100)
@@ -426,20 +493,39 @@ class TestMakeCardSearchTool:
         mock_collection.count.return_value = 2
         mock_collection.query.return_value = {
             "documents": [["Content A", "Content B"]],
-            "metadatas": [[
-                {"card_id": "a", "deck": "Storyteller", "deck_dir": "st",
-                 "name": "Hero Arc", "category": "Structure", "tags": "", "when": ""},
-                {"card_id": "b", "deck": "Workshop", "deck_dir": "ws",
-                 "name": "Warm Up", "category": "Opening", "tags": "", "when": ""},
-            ]],
+            "metadatas": [
+                [
+                    {
+                        "card_id": "a",
+                        "deck": "Storyteller",
+                        "deck_dir": "st",
+                        "name": "Hero Arc",
+                        "category": "Structure",
+                        "tags": "",
+                        "when": "",
+                    },
+                    {
+                        "card_id": "b",
+                        "deck": "Workshop",
+                        "deck_dir": "ws",
+                        "name": "Warm Up",
+                        "category": "Opening",
+                        "tags": "",
+                        "when": "",
+                    },
+                ]
+            ],
             "distances": [[0.1, 0.2]],
         }
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
                 mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
                 from packages.core.tools.card_search import make_card_search_tool
+
                 tool = make_card_search_tool("/tmp/fake", "test-model")
                 result = tool.execute(query="test")
 
@@ -458,13 +544,20 @@ class TestMakeCardSearchTool:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+        mock_collection.query.return_value = {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
+            mock_collection
+        )
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
                 mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
                 from packages.core.tools.card_search import make_card_search_tool
+
                 tool = make_card_search_tool("/tmp/fake", "test-model")
 
                 # Find the searcher in the closure to check the clamped value

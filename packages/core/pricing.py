@@ -16,11 +16,16 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic.main")
 @dataclass
 class ModelPricing:
     """Pricing information for a model (costs in USD per token)."""
+
     prompt_cost: float  # Cost per input token
     completion_cost: float  # Cost per output token
     model_id: str
-    cache_read_cost: float | None = None  # Cost per cache-read token (None = derive from prompt_cost)
-    cache_write_cost: float | None = None  # Cost per cache-write token (None = derive from prompt_cost)
+    cache_read_cost: float | None = (
+        None  # Cost per cache-read token (None = derive from prompt_cost)
+    )
+    cache_write_cost: float | None = (
+        None  # Cost per cache-write token (None = derive from prompt_cost)
+    )
 
     def calculate_cost(
         self,
@@ -38,8 +43,12 @@ class ModelPricing:
         otherwise defaults to Anthropic rates.
         """
         regular_prompt = max(0, prompt_tokens - cache_read_tokens - cache_write_tokens)
-        read_cost = self.cache_read_cost if self.cache_read_cost is not None else self.prompt_cost * 0.1
-        write_cost = self.cache_write_cost if self.cache_write_cost is not None else self.prompt_cost * 1.25
+        read_cost = (
+            self.cache_read_cost if self.cache_read_cost is not None else self.prompt_cost * 0.1
+        )
+        write_cost = (
+            self.cache_write_cost if self.cache_write_cost is not None else self.prompt_cost * 1.25
+        )
         return (
             regular_prompt * self.prompt_cost
             + cache_read_tokens * read_cost
@@ -104,6 +113,7 @@ def calculate_cost_from_litellm(response) -> float:
     """
     try:
         import warnings
+
         # Suppress Pydantic serialization warnings from incomplete streaming responses
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)

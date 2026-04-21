@@ -156,9 +156,7 @@ def evaluate_tool_calls(
     expected_count = assertions.get("expected_tool_call_count")
     if expected_count is not None:
         if len(actual_tool_calls) != expected_count:
-            details.append(
-                f"Expected {expected_count} tool call(s), got {len(actual_tool_calls)}"
-            )
+            details.append(f"Expected {expected_count} tool call(s), got {len(actual_tool_calls)}")
             score_cap = min(score_cap, 0.5)
         else:
             details.append(f"Correct tool call count: {expected_count}")
@@ -170,8 +168,7 @@ def evaluate_tool_calls(
 
         # Find matching tool call by name (search all, not by index)
         matching = [
-            tc for tc in actual_tool_calls
-            if tc.get("function", {}).get("name") == expected_name
+            tc for tc in actual_tool_calls if tc.get("function", {}).get("name") == expected_name
         ]
 
         if not matching:
@@ -224,9 +221,7 @@ def evaluate_tool_calls(
         if not final_text or not final_text.strip():
             # Only penalize if we weren't expecting no tool calls (termination test
             # with no tools still needs text, but terminal tool tests don't)
-            has_terminal = any(
-                tc.get("_terminal", False) for tc in actual_tool_calls
-            )
+            has_terminal = any(tc.get("_terminal", False) for tc in actual_tool_calls)
             if not has_terminal:
                 details.append("Expected final text response, but none produced")
                 score_cap = min(score_cap, 0.4)
@@ -414,7 +409,8 @@ class JudgeEvaluator:
         # Calculate cost using model pricing (same approach as production)
         if self.judge_pricing:
             cost_usd = self.judge_pricing.calculate_cost(
-                usage.prompt_tokens, usage.completion_tokens,
+                usage.prompt_tokens,
+                usage.completion_tokens,
             )
         else:
             cost_usd = 0.0
@@ -518,9 +514,7 @@ class JudgeEvaluator:
             "cost_usd": 0.0,
         }
 
-    def _perform_basic_checks(
-        self, actual_response: str, criteria: EvaluationCriteria
-    ) -> dict:
+    def _perform_basic_checks(self, actual_response: str, criteria: EvaluationCriteria) -> dict:
         """
         Perform basic checks: length, forbidden patterns, expected content.
 
@@ -583,7 +577,9 @@ class JudgeEvaluator:
             reasoning += f"\n\nExpected content missing: {basic_checks.get('content_found', [])}"
 
         if not basic_checks["length_ok"]:
-            reasoning += f"\n\nLength constraint violated (length: {basic_checks['response_length']})"
+            reasoning += (
+                f"\n\nLength constraint violated (length: {basic_checks['response_length']})"
+            )
 
         return EvaluationScore(
             overall_score=overall_score,

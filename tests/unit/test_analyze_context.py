@@ -135,9 +135,7 @@ class TestContextFileStats:
 
 class TestAnalysisResult:
     def test_context_overhead_pct(self):
-        result = AnalysisResult(
-            total_context_tokens_estimate=100, total_prompt_tokens=1000
-        )
+        result = AnalysisResult(total_context_tokens_estimate=100, total_prompt_tokens=1000)
         assert result.context_overhead_pct == 10.0
 
     def test_context_overhead_pct_zero_tokens(self):
@@ -247,9 +245,7 @@ class TestAnalyzeContextUtilization:
 
         convs = [
             self._make_conversation(
-                files_loaded=[
-                    {"path": str(ctx_file), "hash": "x", "size_bytes": 100}
-                ],
+                files_loaded=[{"path": str(ctx_file), "hash": "x", "size_bytes": 100}],
                 assistant_text="I work extensively with Python and Django for backend engineering projects.",
             )
         ]
@@ -261,11 +257,7 @@ class TestAnalyzeContextUtilization:
         """Messages with string content (old format) are handled."""
         conv = {
             "schema_version": "1.0.0",
-            "context": {
-                "files_loaded": [
-                    {"path": "p.md", "hash": "x", "size_bytes": 100}
-                ]
-            },
+            "context": {"files_loaded": [{"path": "p.md", "hash": "x", "size_bytes": 100}]},
             "messages": [
                 {"role": "assistant", "content": "Some response text"},
             ],

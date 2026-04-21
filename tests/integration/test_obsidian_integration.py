@@ -22,7 +22,11 @@ from packages.integrations.obsidian.callout import (
     find_jarvis_callout,
     build_updated_content,
 )
-from packages.integrations.obsidian.diff import compute_diff, format_diff_for_cli, format_diff_for_api
+from packages.integrations.obsidian.diff import (
+    compute_diff,
+    format_diff_for_cli,
+    format_diff_for_api,
+)
 from packages.integrations.obsidian.writer import (
     ConfirmationHandler,
     WriteResult,
@@ -115,9 +119,11 @@ class TestConfigToVaultFlow:
         note = daily_dir / "2026-01-15.md"
         note.write_text("# Test\n\n> [!JARVIS]\n> entry\n")
 
-        guard = FilesystemGuard([
-            AccessRule(path=daily_dir.resolve(), access=AccessLevel.READ_WRITE),
-        ])
+        guard = FilesystemGuard(
+            [
+                AccessRule(path=daily_dir.resolve(), access=AccessLevel.READ_WRITE),
+            ]
+        )
         config_dict = {
             "obsidian": {
                 "enabled": True,

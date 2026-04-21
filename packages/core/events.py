@@ -12,6 +12,7 @@ from datetime import datetime
 @dataclass(frozen=True)
 class TextChunk:
     """A chunk of streaming text from an LLM response."""
+
     text: str
     instance_id: str = ""
 
@@ -19,6 +20,7 @@ class TextChunk:
 @dataclass(frozen=True)
 class ToolCallStarted:
     """An agent is invoking a tool."""
+
     tool_name: str
     tool_call_id: str = ""
     arguments: str = ""
@@ -28,6 +30,7 @@ class ToolCallStarted:
 @dataclass(frozen=True)
 class ToolResult:
     """Result from a tool execution."""
+
     tool_name: str
     result: str
     tool_call_id: str = ""
@@ -37,6 +40,7 @@ class ToolResult:
 @dataclass(frozen=True)
 class UsageReport:
     """Token usage and cost for a completed LLM call."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
@@ -50,6 +54,7 @@ class UsageReport:
 @dataclass(frozen=True)
 class DelegationRequested:
     """An agent requested delegation to another agent."""
+
     target_agent: str
     task: str
     context: str = ""
@@ -59,6 +64,7 @@ class DelegationRequested:
 @dataclass(frozen=True)
 class AgentStarted:
     """An agent instance has started processing."""
+
     instance_id: str
     role: str
     task: str = ""
@@ -67,6 +73,7 @@ class AgentStarted:
 @dataclass(frozen=True)
 class AgentFinished:
     """An agent instance has completed processing."""
+
     instance_id: str
     role: str
     status: str = "completed"  # "completed", "failed", "cancelled"

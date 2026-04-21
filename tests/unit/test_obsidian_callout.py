@@ -139,9 +139,7 @@ class TestBuildUpdatedContent:
 
     def test_append_to_existing_callout(self):
         original = "# Note\n\n> [!JARVIS]\n> Existing line\n\nOther"
-        callout = CalloutBlock(
-            start_line=2, end_line=3, existing_content="Existing line"
-        )
+        callout = CalloutBlock(start_line=2, end_line=3, existing_content="Existing line")
         result = build_updated_content(original, callout, "New entry")
         # With existing content: separator ">" between old and new
         assert result == "# Note\n\n> [!JARVIS]\n> Existing line\n>\n> New entry\n\nOther"

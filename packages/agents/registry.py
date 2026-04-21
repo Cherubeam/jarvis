@@ -27,6 +27,7 @@ _SKIP_DIRS = {"__pycache__", "jarvis"}
 @dataclass(frozen=True)
 class AgentMeta:
     """Metadata for a discovered agent."""
+
     name: str
     description: str
     command: str
@@ -62,7 +63,6 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
         tool_groups=tuple(meta_dict.get("tools", [])),
         skills=tuple(meta_dict.get("skills", [])),
     )
-
 
 
 def discover_agents() -> dict[str, AgentMeta]:

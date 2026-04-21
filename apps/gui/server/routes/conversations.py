@@ -39,7 +39,13 @@ async def list_conversations(
 
     idx = await _refresh(request)
     items, total = idx.list(
-        q=q, agent=agent, tool=tool, date=date, sort=sort, limit=limit, offset=offset,
+        q=q,
+        agent=agent,
+        tool=tool,
+        date=date,
+        sort=sort,
+        limit=limit,
+        offset=offset,
     )
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 

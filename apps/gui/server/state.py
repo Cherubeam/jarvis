@@ -63,8 +63,8 @@ class GuiSession:
         if c.vault_config is not None:
             vault = str(getattr(c.vault_config, "vault_path", "")) or None
         return {
-            "id": c.conversation_id,        # internal id (kept for traceability)
-            "file_id": file_id,              # filename stem — matches /api/conversations items
+            "id": c.conversation_id,  # internal id (kept for traceability)
+            "file_id": file_id,  # filename stem — matches /api/conversations items
             "model": c.model_id,
             "model_short": model_short,
             "provider": c.provider,
@@ -90,7 +90,9 @@ def build_gui_session() -> GuiSession:
 
     args = Namespace(model=None, agent=None, auto_confirm=False)
     components = build_session(
-        args, config, deferred,
+        args,
+        config,
+        deferred,
         on_tool_call=None,
         client_label="gui",
         auto_confirm=False,

@@ -107,7 +107,10 @@ class TestDataDrivenAgentsInstantiation:
             execute=lambda: "ok",
         )
         agent = agent_from_meta(
-            meta_path, client, "test-model", extra_tools=[dummy_tool],
+            meta_path,
+            client,
+            "test-model",
+            extra_tools=[dummy_tool],
         )
         assert len(agent.config.tools) >= 1
         tool_names = [t.name for t in agent.config.tools]
@@ -127,7 +130,9 @@ class TestDataDrivenAgentsSkillBinding:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         (agent_dir / "meta.yaml").write_text(
-            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["my-skill"]})
+            yaml.dump(
+                {"name": "test", "description": "test", "command": "/test", "skills": ["my-skill"]}
+            )
         )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
@@ -136,18 +141,25 @@ class TestDataDrivenAgentsSkillBinding:
         # Create skill
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()
-        (skill_dir / "SKILL.md").write_text("---\nname: my-skill\n---\n\n# My Skill\n\nExpertise content here.")
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\n---\n\n# My Skill\n\nExpertise content here."
+        )
 
         skill_registry = {
             "my-skill": SkillMeta(
-                name="my-skill", description="test", command="/my-skill",
-                path=skill_dir, has_skill_py=False,
+                name="my-skill",
+                description="test",
+                command="/my-skill",
+                path=skill_dir,
+                has_skill_py=False,
             ),
         }
 
         client = Mock(spec=LLMClient)
         agent = agent_from_meta(
-            agent_dir / "meta.yaml", client, "test-model",
+            agent_dir / "meta.yaml",
+            client,
+            "test-model",
             skill_registry=skill_registry,
         )
 
@@ -176,7 +188,9 @@ class TestDataDrivenAgentsSkillBinding:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         (agent_dir / "meta.yaml").write_text(
-            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["missing"]})
+            yaml.dump(
+                {"name": "test", "description": "test", "command": "/test", "skills": ["missing"]}
+            )
         )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
@@ -197,10 +211,16 @@ class TestPromptIncludes:
         """prompt_includes: field replaces {placeholder} in system prompt."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-            "prompt_includes": {"voice": "my-voice", "rules": "my-rules"},
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                    "prompt_includes": {"voice": "my-voice", "rules": "my-rules"},
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("Voice: {voice}\n\nRules: {rules}")
@@ -218,10 +238,16 @@ class TestPromptIncludes:
         """prompt_includes_override={\"x\": \"\"} blanks {x} before normal file expansion."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-            "prompt_includes": {"greeting": "hello", "farewell": "bye"},
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                    "prompt_includes": {"greeting": "hello", "farewell": "bye"},
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("A: {greeting}\n\nB: {farewell}")
@@ -229,7 +255,9 @@ class TestPromptIncludes:
         (prompts_dir / "bye.md").write_text("Goodbye world")
 
         agent = agent_from_meta(
-            agent_dir / "meta.yaml", Mock(spec=LLMClient), "m",
+            agent_dir / "meta.yaml",
+            Mock(spec=LLMClient),
+            "m",
             prompt_includes_override={"greeting": ""},
         )
 
@@ -243,10 +271,16 @@ class TestPromptIncludes:
         """prompt_includes_override={\"x\": \"alt\"} replaces the file for {x}."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-            "prompt_includes": {"greeting": "hello"},
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                    "prompt_includes": {"greeting": "hello"},
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("Say: {greeting}")
@@ -254,7 +288,9 @@ class TestPromptIncludes:
         (prompts_dir / "alt-hello.md").write_text("Alternative greeting")
 
         agent = agent_from_meta(
-            agent_dir / "meta.yaml", Mock(spec=LLMClient), "m",
+            agent_dir / "meta.yaml",
+            Mock(spec=LLMClient),
+            "m",
             prompt_includes_override={"greeting": "alt-hello"},
         )
 
@@ -281,10 +317,16 @@ class TestMaxIterations:
         """max_iterations in meta.yaml is set on AgentConfig."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-            "max_iterations": 20,
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                    "max_iterations": 20,
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
@@ -296,9 +338,15 @@ class TestMaxIterations:
         """Agents without max_iterations have None."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
@@ -316,10 +364,16 @@ class TestMaxIterations:
         """DataDrivenAgent.run() passes max_iterations to stream_handler.stream()."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-            "max_iterations": 15,
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                    "max_iterations": 15,
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
@@ -333,7 +387,9 @@ class TestMaxIterations:
             text="ok",
             usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
             cost_usd=0.0,
-            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
+            metrics=ResponseMetrics(
+                ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1
+            ),
         )
 
         agent.run("hello", handler)
@@ -346,9 +402,15 @@ class TestMaxIterations:
         """Agents without max_iterations don't pass the kwarg."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(yaml.dump({
-            "name": "test", "description": "test", "command": "/test",
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "test",
+                    "description": "test",
+                    "command": "/test",
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
@@ -362,7 +424,9 @@ class TestMaxIterations:
             text="ok",
             usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
             cost_usd=0.0,
-            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
+            metrics=ResponseMetrics(
+                ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1
+            ),
         )
 
         agent.run("hello", handler)

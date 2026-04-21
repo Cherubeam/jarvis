@@ -76,7 +76,9 @@ def make_content_evaluator_tool(
 
         try:
             response = llm_client.complete(
-                messages, model=model, temperature=temperature,
+                messages,
+                model=model,
+                temperature=temperature,
             )
             return response.choices[0].message.content or "No evaluation generated."
         except Exception as e:
