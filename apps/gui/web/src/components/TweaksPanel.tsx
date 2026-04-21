@@ -4,6 +4,7 @@ import { ACCENT_HUES, type AccentKey, JARVIS_FONTS, type Theme } from '../lib/to
 export type Tweaks = {
   mode: 'dark' | 'light'
   sidebar: boolean
+  sidebarMode: 'list' | 'timeline'
   density: 'comfortable' | 'compact'
   toolStyle: 'card' | 'inline' | 'dim'
   showStats: boolean
@@ -14,6 +15,7 @@ export type Tweaks = {
 export const DEFAULT_TWEAKS: Tweaks = {
   mode: 'dark',
   sidebar: true,
+  sidebarMode: 'list',
   density: 'comfortable',
   toolStyle: 'card',
   showStats: true,
@@ -122,6 +124,13 @@ export function TweaksPanel({
       <div style={{ padding: '8px 14px 14px' }}>
         {row('mode', seg('mode', [{ v: 'dark', l: 'dark' }, { v: 'light', l: 'light' }]))}
         {row('sidebar', seg('sidebar', [{ v: true, l: 'on' }, { v: false, l: 'off' }]))}
+        {row(
+          'sidebar mode',
+          seg('sidebarMode', [
+            { v: 'list', l: 'list' },
+            { v: 'timeline', l: 'timeline' },
+          ]),
+        )}
         {row(
           'density',
           seg('density', [
