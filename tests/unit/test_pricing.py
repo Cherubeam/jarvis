@@ -15,6 +15,7 @@ try:
         format_cost,
         _get_litellm_cost_map,
     )
+
     PRICING_MODULE = "packages.core.pricing"
 except ImportError:
     from pricing import (
@@ -24,6 +25,7 @@ except ImportError:
         format_cost,
         _get_litellm_cost_map,
     )
+
     PRICING_MODULE = "pricing"
 
 
@@ -36,7 +38,7 @@ class TestModelPricing:
         pricing = ModelPricing(
             prompt_cost=0.000003,  # $3 per 1M tokens
             completion_cost=0.000015,  # $15 per 1M tokens
-            model_id="test-model"
+            model_id="test-model",
         )
 
         cost = pricing.calculate_cost(1000, 200)
@@ -47,9 +49,7 @@ class TestModelPricing:
     def test_model_pricing_zero_tokens(self):
         """Test that zero tokens returns zero cost."""
         pricing = ModelPricing(
-            prompt_cost=0.000003,
-            completion_cost=0.000015,
-            model_id="test-model"
+            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
         )
 
         cost = pricing.calculate_cost(0, 0)
@@ -58,9 +58,7 @@ class TestModelPricing:
     def test_model_pricing_large_numbers(self):
         """Test handling of large token counts."""
         pricing = ModelPricing(
-            prompt_cost=0.000003,
-            completion_cost=0.000015,
-            model_id="test-model"
+            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
         )
 
         # 1 million prompt tokens, 500k completion tokens
@@ -82,7 +80,7 @@ class TestGetModelPricing:
                 "output_cost_per_token": 0.000015,
             }
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             result = get_model_pricing("anthropic/claude-sonnet-4.6")
 
         assert result is not None
@@ -94,7 +92,7 @@ class TestGetModelPricing:
 
     def test_get_model_pricing_not_found(self):
         """Test that None is returned for unknown models."""
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value={}):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value={}):
             result = get_model_pricing("unknown-model")
         assert result is None
 
@@ -106,7 +104,7 @@ class TestGetModelPricing:
                 "output_cost_per_token": 0.000015,
             }
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             # Pass with openrouter/ prefix — should strip and find
             result = get_model_pricing("openrouter/anthropic/claude-sonnet-4.6")
 
@@ -125,7 +123,7 @@ class TestGetModelPricing:
                 "output_cost_per_token": 0.000015,
             },
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             result = get_model_pricing("openrouter/anthropic/claude-sonnet-4.6")
 
         # Should use the full ID match
@@ -141,7 +139,7 @@ class TestCalculateCostFromLiteLLM:
         """Test successful cost calculation via LiteLLM."""
         mock_response = Mock()
 
-        with patch('litellm.completion_cost') as mock_cost:
+        with patch("litellm.completion_cost") as mock_cost:
             mock_cost.return_value = 0.0042
 
             result = calculate_cost_from_litellm(mock_response)
@@ -153,7 +151,7 @@ class TestCalculateCostFromLiteLLM:
         """Test graceful handling of errors."""
         mock_response = Mock()
 
-        with patch('litellm.completion_cost') as mock_cost:
+        with patch("litellm.completion_cost") as mock_cost:
             mock_cost.side_effect = Exception("Cost calculation failed")
 
             result = calculate_cost_from_litellm(mock_response)
@@ -256,7 +254,7 @@ class TestCacheAwarePricing:
                 "cache_creation_input_token_cost": 0.00000375,
             }
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             result = get_model_pricing("anthropic/claude-sonnet-4.6")
 
         assert result is not None
@@ -271,7 +269,7 @@ class TestCacheAwarePricing:
                 "output_cost_per_token": 0.000015,
             }
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             result = get_model_pricing("openai/gpt-4o")
 
         assert result is not None
@@ -315,7 +313,7 @@ class TestPricingEdgeCases:
                 "output_cost_per_token": 0.000015,
             }
         }
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value=mock_cost_map):
             result = get_model_pricing("openrouter/anthropic/claude-sonnet-4.6")
 
         assert result is not None
@@ -325,14 +323,14 @@ class TestPricingEdgeCases:
 
     def test_get_model_pricing_no_slash_not_found(self):
         """Model without slashes: only tries the exact ID."""
-        with patch(f'{PRICING_MODULE}._get_litellm_cost_map', return_value={}):
+        with patch(f"{PRICING_MODULE}._get_litellm_cost_map", return_value={}):
             result = get_model_pricing("nonexistent-model")
         assert result is None
 
     def test_calculate_cost_from_litellm_returns_exact_value(self):
         """calculate_cost_from_litellm returns exactly what litellm returns."""
         mock_response = Mock()
-        with patch('litellm.completion_cost') as mock_cost:
+        with patch("litellm.completion_cost") as mock_cost:
             mock_cost.return_value = 0.0
             result = calculate_cost_from_litellm(mock_response)
         assert result == 0.0

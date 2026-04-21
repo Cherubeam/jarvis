@@ -23,9 +23,7 @@ class TestThings3Integration:
 
         (context_dir / "personal_context.md").write_text("# Test User\nSoftware engineer")
         (context_dir / "preferences.md").write_text("# Preferences\nConcise responses")
-        (context_dir / "current_focus.md").write_text(
-            "# Current Focus\nBuilding Jarvis"
-        )
+        (context_dir / "current_focus.md").write_text("# Current Focus\nBuilding Jarvis")
 
         (context_dir / "tasks.md").write_text(
             """# Tasks from Things 3

@@ -22,6 +22,7 @@ if src_dir.exists():
 
 # ==================== Path Fixtures ====================
 
+
 @pytest.fixture
 def project_root() -> Path:
     """Path to the project root directory."""
@@ -48,6 +49,7 @@ def context_fixtures_dir(fixtures_dir: Path) -> Path:
 
 # ==================== Temp Directory Fixtures ====================
 
+
 @pytest.fixture
 def temp_context_dir(tmp_path: Path) -> Path:
     """Temporary directory for context files."""
@@ -65,6 +67,7 @@ def temp_conversations_dir(tmp_path: Path) -> Path:
 
 
 # ==================== Context File Fixtures ====================
+
 
 @pytest.fixture
 def sample_personal_context(temp_context_dir: Path) -> Path:
@@ -119,7 +122,7 @@ def sample_context_all_files(
     sample_professional_context: Path,
     sample_preferences: Path,
     sample_current_focus: Path,
-    temp_context_dir: Path
+    temp_context_dir: Path,
 ) -> Path:
     """Create all context files and return the context directory."""
     return temp_context_dir
@@ -127,36 +130,40 @@ def sample_context_all_files(
 
 # ==================== Config Fixtures ====================
 
+
 @pytest.fixture
 def sample_config(tmp_path: Path) -> dict:
     """Sample configuration dictionary."""
     return {
         "openrouter": {
             "api_key": "test-api-key-12345",
-            "default_model": "anthropic/claude-sonnet-4.5"
+            "default_model": "anthropic/claude-sonnet-4.5",
         },
         "paths": {
             "context_dir": "data/context",
             "conversations_dir": "data/conversations",
-            "learned_facts": "data/learned_facts.md"
+            "learned_facts": "data/learned_facts.md",
         },
         "_paths": {
             "jarvis_dir": tmp_path,
-        }
+        },
     }
 
 
 # ==================== Mock LiteLLM Fixtures ====================
 
+
 @pytest.fixture
 def mock_litellm_chunk():
     """Create a mock LiteLLM streaming chunk."""
+
     def create_chunk(content: str):
         chunk = Mock()
         chunk.choices = [Mock()]
         chunk.choices[0].delta = Mock()
         chunk.choices[0].delta.content = content
         return chunk
+
     return create_chunk
 
 
@@ -174,6 +181,7 @@ def mock_litellm_response():
 @pytest.fixture
 def mock_litellm_stream(mock_litellm_chunk, mock_litellm_response):
     """Create a mock LiteLLM streaming response."""
+
     def create_stream(text_chunks: list[str]):
         """Create a generator that yields chunks and has usage attribute."""
         chunks = [mock_litellm_chunk(chunk) for chunk in text_chunks]
@@ -198,6 +206,7 @@ def mock_litellm_stream(mock_litellm_chunk, mock_litellm_response):
 
 # ==================== Pricing Fixtures ====================
 
+
 @pytest.fixture
 def sample_pricing_data() -> dict:
     """Sample pricing data from OpenRouter API."""
@@ -205,30 +214,19 @@ def sample_pricing_data() -> dict:
         "data": [
             {
                 "id": "anthropic/claude-sonnet-4.5",
-                "pricing": {
-                    "prompt": "0.000003",
-                    "completion": "0.000015"
-                }
+                "pricing": {"prompt": "0.000003", "completion": "0.000015"},
             },
             {
                 "id": "anthropic/claude-opus-4",
-                "pricing": {
-                    "prompt": "0.000015",
-                    "completion": "0.000075"
-                }
+                "pricing": {"prompt": "0.000015", "completion": "0.000075"},
             },
-            {
-                "id": "openai/gpt-4",
-                "pricing": {
-                    "prompt": "0.00003",
-                    "completion": "0.00006"
-                }
-            }
+            {"id": "openai/gpt-4", "pricing": {"prompt": "0.00003", "completion": "0.00006"}},
         ]
     }
 
 
 # ==================== Schema Config Fixtures ====================
+
 
 @pytest.fixture
 def sample_model_config() -> dict:
@@ -256,7 +254,11 @@ def sample_context_snapshot() -> dict:
     """Sample context snapshot for conversation schema."""
     return {
         "files_loaded": [
-            {"path": "data/context/personal_context.md", "hash": "sha256:abcdef1234567890", "size_bytes": 342},
+            {
+                "path": "data/context/personal_context.md",
+                "hash": "sha256:abcdef1234567890",
+                "size_bytes": 342,
+            },
         ],
         "metadata": {},
     }
@@ -276,15 +278,18 @@ def sample_environment() -> dict:
 
 # ==================== Time Freezing Fixtures ====================
 
+
 @pytest.fixture
 def frozen_time():
     """Freeze time at a specific datetime for consistent timestamp testing."""
     from freezegun import freeze_time
+
     with freeze_time("2026-01-15 14:30:00"):
         yield
 
 
 # ==================== Obsidian Vault Fixtures ====================
+
 
 @pytest.fixture
 def temp_vault(tmp_path: Path) -> Path:
@@ -301,9 +306,11 @@ def sample_vault_config(temp_vault: Path):
     from packages.core.filesystem_access import FilesystemGuard, AccessRule, AccessLevel
 
     daily_dir = temp_vault / "Daily Notes"
-    guard = FilesystemGuard([
-        AccessRule(path=daily_dir, access=AccessLevel.READ_WRITE),
-    ])
+    guard = FilesystemGuard(
+        [
+            AccessRule(path=daily_dir, access=AccessLevel.READ_WRITE),
+        ]
+    )
     return VaultConfig(
         vault_path=temp_vault,
         filesystem_guard=guard,
@@ -334,6 +341,7 @@ def daily_note_with_callout(temp_vault: Path) -> Path:
 
 # ==================== Cleanup ====================
 
+
 @pytest.fixture(autouse=True)
 def reset_lru_cache():
     """Placeholder for test isolation (pricing cache removed in favour of litellm.model_cost)."""
@@ -342,26 +350,27 @@ def reset_lru_cache():
 
 # ==================== LLM-as-Judge Evaluation ====================
 
+
 def pytest_addoption(parser):
     """Add custom command line options for LLM-as-judge evaluation."""
     parser.addoption(
         "--evaluate",
         action="store_true",
         default=False,
-        help="Run actual LLM calls and judge evaluation for golden tests (incurs cost)"
+        help="Run actual LLM calls and judge evaluation for golden tests (incurs cost)",
     )
     parser.addoption(
         "--judge-model",
         action="store",
         default="anthropic/claude-opus-4.5",
-        help="Model to use as judge (default: claude-opus-4.5)"
+        help="Model to use as judge (default: claude-opus-4.5)",
     )
     parser.addoption(
         "--quality-threshold",
         action="store",
         type=float,
         default=0.70,
-        help="Minimum quality score to pass (default: 0.70)"
+        help="Minimum quality score to pass (default: 0.70)",
     )
 
 
@@ -369,7 +378,7 @@ def pytest_configure(config):
     """Configure pytest with custom markers and evaluation config."""
     config.addinivalue_line(
         "markers",
-        "evaluate: Mark test as requiring LLM evaluation (auto-skipped without --evaluate)"
+        "evaluate: Mark test as requiring LLM evaluation (auto-skipped without --evaluate)",
     )
 
     # Store evaluation config for access in tests
@@ -396,6 +405,7 @@ def evaluator(evaluation_config):
 
     # Import here to avoid import errors if modules don't exist yet
     import os
+
     sys.path.insert(0, str(Path(__file__).parent / "golden"))
     from evaluator import JudgeEvaluator
 

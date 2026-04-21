@@ -84,8 +84,7 @@ class TestSearchWeb:
     @patch("packages.core.tools.web_search.DDGS")
     def test_output_truncated_at_max_chars(self, MockDDGS):
         MockDDGS.return_value.text.return_value = [
-            _make_result(f"Title {i}", f"https://example.com/{i}", "x" * 1000)
-            for i in range(10)
+            _make_result(f"Title {i}", f"https://example.com/{i}", "x" * 1000) for i in range(10)
         ]
 
         result = _search_web("test", max_results=10)

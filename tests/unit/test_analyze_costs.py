@@ -38,7 +38,10 @@ def _make_conversation(
     avg_latency_ms: float = 0.0,
 ) -> dict:
     messages = [
-        {"role": "user" if i % 2 == 0 else "assistant", "content": [{"type": "text", "text": f"msg {i}"}]}
+        {
+            "role": "user" if i % 2 == 0 else "assistant",
+            "content": [{"type": "text", "text": f"msg {i}"}],
+        }
         for i in range(msg_count)
     ]
     conv: dict = {
@@ -65,7 +68,9 @@ class TestClassifySource:
         assert classify_source(_make_conversation(tags=[])) == "native"
 
     def test_imported_chatgpt(self):
-        assert classify_source(_make_conversation(tags=["imported", "chatgpt"])) == "imported/chatgpt"
+        assert (
+            classify_source(_make_conversation(tags=["imported", "chatgpt"])) == "imported/chatgpt"
+        )
 
     def test_imported_claude(self):
         assert classify_source(_make_conversation(tags=["imported", "claude"])) == "imported/claude"

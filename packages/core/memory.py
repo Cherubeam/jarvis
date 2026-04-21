@@ -154,6 +154,7 @@ def migrate_conversation(data: dict) -> dict:
 @dataclass
 class SessionMetrics:
     """Aggregated token usage, costs, and latency for a session."""
+
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
     total_tokens: int = 0
@@ -292,13 +293,21 @@ class ConversationLogger:
             keywords = section_keywords.get(name, [name])
             if any(kw in text_lower for kw in keywords):
                 utilized.append(name)
-        self.utilization.append({
-            "turn": self.metrics.request_count,
-            "sections_loaded": section_names,
-            "sections_utilized": utilized,
-        })
+        self.utilization.append(
+            {
+                "turn": self.metrics.request_count,
+                "sections_loaded": section_names,
+                "sections_utilized": utilized,
+            }
+        )
 
-    def set_feedback(self, overall_rating: int | None = None, helpful: bool | None = None, notes: str | None = None, **kwargs):
+    def set_feedback(
+        self,
+        overall_rating: int | None = None,
+        helpful: bool | None = None,
+        notes: str | None = None,
+        **kwargs,
+    ):
         """Set session-level feedback."""
         self.feedback = {
             "overall_rating": overall_rating,
@@ -405,9 +414,15 @@ class ConversationLogger:
                     "total_ms": total_latency_ms,
                 }
             self.metrics.add_usage(
-                prompt_tokens, completion_tokens, total_tokens, cost_usd,
-                ttft_ms, total_latency_ms,
-                cache_read_tokens, cache_write_tokens, thinking_tokens,
+                prompt_tokens,
+                completion_tokens,
+                total_tokens,
+                cost_usd,
+                ttft_ms,
+                total_latency_ms,
+                cache_read_tokens,
+                cache_write_tokens,
+                thinking_tokens,
             )
 
         self.current_conversation.append(message)
@@ -427,10 +442,7 @@ class ConversationLogger:
         if context and self.context_metadata:
             context = {**context}
             # Add approx_tokens to each file entry
-            section_tokens = {
-                s.name: s.approx_tokens
-                for s in self.context_metadata.sections
-            }
+            section_tokens = {s.name: s.approx_tokens for s in self.context_metadata.sections}
             context["system_prompt_approx_tokens"] = self.context_metadata.total_approx_tokens
             context["section_breakdown"] = [
                 {"name": s.name, "approx_tokens": s.approx_tokens, "size_bytes": s.size_bytes}

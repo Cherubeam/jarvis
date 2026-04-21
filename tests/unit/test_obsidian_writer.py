@@ -80,7 +80,10 @@ class TestAppendToNote:
         result = append_to_note(note, "New summary line", config, handler)
         assert result.success is True
         assert result.action == "appended"
-        assert result.message == f"Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
+        assert (
+            result.message
+            == f"Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
+        )
         assert result.diff is not None
         assert handler.presented_diff is not None
         # Verify file was actually written with exact content structure
@@ -121,9 +124,7 @@ class TestAppendToNote:
             filesystem_guard=guard,
         )
         handler = MockConfirmationHandler()
-        result = append_to_note(
-            daily_dir / "missing.md", "Content", config, handler
-        )
+        result = append_to_note(daily_dir / "missing.md", "Content", config, handler)
         assert result.success is False
         assert result.action == "error"
         assert result.message == "Note not found: Daily Notes/missing.md"
@@ -180,9 +181,7 @@ class TestAppendToNote:
     def test_multi_line_content(self, vault_with_daily_note):
         config, note = vault_with_daily_note
         handler = MockConfirmationHandler(confirm=True)
-        result = append_to_note(
-            note, "- Item one\n- Item two\n- Item three", config, handler
-        )
+        result = append_to_note(note, "- Item one\n- Item two\n- Item three", config, handler)
         assert result.success is True
         content = note.read_text(encoding="utf-8")
         assert "> - Item one" in content
@@ -197,9 +196,7 @@ class TestAppendToDailyNote:
     def test_append_to_specific_date(self, vault_with_daily_note):
         config, note = vault_with_daily_note
         handler = MockConfirmationHandler(confirm=True)
-        result = append_to_daily_note(
-            "Daily summary", config, handler, date="2026-02-09"
-        )
+        result = append_to_daily_note("Daily summary", config, handler, date="2026-02-09")
         assert result.success is True
         assert result.action == "appended"
         assert "Daily Notes/2026-02-09.md" in result.message
@@ -214,9 +211,7 @@ class TestAppendToDailyNote:
             filesystem_guard=guard,
         )
         handler = MockConfirmationHandler()
-        result = append_to_daily_note(
-            "Content", config, handler, date="2099-01-01"
-        )
+        result = append_to_daily_note("Content", config, handler, date="2099-01-01")
         assert result.success is False
         assert result.action == "error"
         assert "2099-01-01" in result.message
@@ -228,6 +223,7 @@ class TestAppendToDailyNote:
 class TestCLIConfirmationHandler:
     def test_present_diff_prints(self, capsys):
         from packages.integrations.obsidian.diff import compute_diff
+
         handler = CLIConfirmationHandler()
         diff = compute_diff("test.md", "old line\n", "new line\n")
         handler.present_diff(diff)

@@ -35,7 +35,8 @@ def mcp_tools_to_tool_definitions(
         definitions.append(
             ToolDefinition(
                 name=namespaced_name,
-                description=tool.description or f"MCP tool '{tool.name}' from server '{server_name}'.",  # pragma: no mutate
+                description=tool.description
+                or f"MCP tool '{tool.name}' from server '{server_name}'.",  # pragma: no mutate
                 parameters=tool.inputSchema,
                 execute=execute,
             )

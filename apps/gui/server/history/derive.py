@@ -163,7 +163,9 @@ def _text_from_content(content: Any) -> str:
     return ""
 
 
-def preview_messages(messages: Iterable[dict], max_items: int = 4, max_chars: int = 240) -> list[dict[str, str]]:
+def preview_messages(
+    messages: Iterable[dict], max_items: int = 4, max_chars: int = 240
+) -> list[dict[str, str]]:
     """First few non-tool messages as {role, text}.
 
     role: 'user' for user messages, the agent name (or 'JARVIS') for

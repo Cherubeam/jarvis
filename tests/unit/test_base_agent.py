@@ -27,8 +27,10 @@ def _make_stream_result(text: str = "response") -> StreamResult:
         usage=TokenUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
         cost_usd=0.001,
         metrics=ResponseMetrics(
-            ttft_ms=50, total_latency_ms=200,
-            prompt_tokens=10, completion_tokens=5,
+            ttft_ms=50,
+            total_latency_ms=200,
+            prompt_tokens=10,
+            completion_tokens=5,
         ),
     )
 
@@ -127,11 +129,13 @@ class TestBaseAgentLoadPrompt:
     def test_load_prompt_from_agent_directory(self):
         """Test that load_prompt reads from prompts/ relative to agent file."""
         from packages.agents.jarvis.agent import JarvisAgent
+
         prompt = JarvisAgent.load_prompt("daily_note_entry")
         assert "Daily Note" in prompt
 
     def test_load_prompt_missing_file_raises(self):
         from packages.agents.jarvis.agent import JarvisAgent
+
         with pytest.raises(FileNotFoundError, match="Prompt file not found"):
             JarvisAgent.load_prompt("nonexistent")
 

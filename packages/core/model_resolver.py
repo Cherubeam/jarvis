@@ -12,9 +12,10 @@ from dataclasses import dataclass
 @dataclass
 class ResolvedModel:
     """A fully resolved model ready for LiteLLM routing."""
-    model_id: str       # LiteLLM-routable ID (e.g. "openrouter/anthropic/claude-sonnet-4.6")
-    provider: str       # "openrouter", "anthropic", "openai", etc.
-    display_name: str   # For UI (e.g. "claude-sonnet-4.6 via openrouter")
+
+    model_id: str  # LiteLLM-routable ID (e.g. "openrouter/anthropic/claude-sonnet-4.6")
+    provider: str  # "openrouter", "anthropic", "openai", etc.
+    display_name: str  # For UI (e.g. "claude-sonnet-4.6 via openrouter")
 
 
 # Known providers and their env var names

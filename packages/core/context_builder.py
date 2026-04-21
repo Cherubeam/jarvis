@@ -24,6 +24,7 @@ def _approx_tokens(text: str) -> int:
 @dataclass
 class ContextSection:
     """Metadata for a single section of the system prompt."""
+
     name: str
     size_bytes: int
     approx_tokens: int
@@ -32,6 +33,7 @@ class ContextSection:
 @dataclass
 class ContextMetadata:
     """Metadata about the assembled system prompt, for instrumentation."""
+
     total_approx_tokens: int = 0
     sections: list[ContextSection] = field(default_factory=list)
 
@@ -39,10 +41,7 @@ class ContextMetadata:
         """Return each section's percentage of total tokens."""
         if self.total_approx_tokens == 0:
             return {}
-        return {
-            s.name: (s.approx_tokens / self.total_approx_tokens) * 100
-            for s in self.sections
-        }
+        return {s.name: (s.approx_tokens / self.total_approx_tokens) * 100 for s in self.sections}
 
 
 def load_context_file(filepath: Path) -> str:
@@ -58,6 +57,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     Backward-compat re-export of :func:`packages.core.frontmatter.parse`.
     """
     from packages.core import frontmatter as _fm
+
     return _fm.parse(text)
 
 
@@ -87,10 +87,13 @@ def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMe
 
     soul = load_context_file(context_dir / "soul.md")
     if soul:
-        metadata.sections.append(ContextSection(
-            name="soul", size_bytes=len(soul.encode("utf-8")),
-            approx_tokens=_approx_tokens(soul),
-        ))
+        metadata.sections.append(
+            ContextSection(
+                name="soul",
+                size_bytes=len(soul.encode("utf-8")),
+                approx_tokens=_approx_tokens(soul),
+            )
+        )
 
     sections = []
 
@@ -109,10 +112,13 @@ def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMe
         if content:
             section_text = f"{header}{content}"
             sections.append(section_text)
-            metadata.sections.append(ContextSection(
-                name=section_name, size_bytes=len(section_text.encode("utf-8")),
-                approx_tokens=_approx_tokens(section_text),
-            ))
+            metadata.sections.append(
+                ContextSection(
+                    name=section_name,
+                    size_bytes=len(section_text.encode("utf-8")),
+                    approx_tokens=_approx_tokens(section_text),
+                )
+            )
 
     context_block = "\n\n---\n\n".join(sections)
 

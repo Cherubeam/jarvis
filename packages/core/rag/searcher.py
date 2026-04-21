@@ -31,6 +31,7 @@ def _invert_date(session_date: str) -> str:
 @dataclass
 class SearchResult:
     """A single search result from ChromaDB."""
+
     conv_id: str
     session_date: str
     document: str
@@ -120,15 +121,17 @@ class ConversationSearcher:
         distances = result.get("distances", [[]])[0]
 
         for doc, meta, dist in zip(documents, metadatas, distances):
-            search_results.append(SearchResult(
-                conv_id=meta.get("conv_id", ""),
-                session_date=meta.get("session_date", ""),
-                document=doc,
-                user_snippet=meta.get("user_snippet", ""),
-                assistant_snippet=meta.get("assistant_snippet", ""),
-                title=meta.get("title", ""),
-                distance=float(dist),
-            ))
+            search_results.append(
+                SearchResult(
+                    conv_id=meta.get("conv_id", ""),
+                    session_date=meta.get("session_date", ""),
+                    document=doc,
+                    user_snippet=meta.get("user_snippet", ""),
+                    assistant_snippet=meta.get("assistant_snippet", ""),
+                    title=meta.get("title", ""),
+                    distance=float(dist),
+                )
+            )
 
         # Recency tiebreaker: bucket distances to 2 decimal places so that
         # results with similar relevance are ordered newest-first.

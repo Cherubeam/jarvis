@@ -75,12 +75,14 @@ class WebStreamHandler:
         try:
             if isinstance(event, TextChunk):
                 self._chunk_buffer.append(event.text)
-                self._put({
-                    "type": "chunk",
-                    "id": self._turn_id,
-                    "agent": self._agent,
-                    "delta": event.text,
-                })
+                self._put(
+                    {
+                        "type": "chunk",
+                        "id": self._turn_id,
+                        "agent": self._agent,
+                        "delta": event.text,
+                    }
+                )
             elif isinstance(event, ToolCallStarted):
                 started = time.monotonic()
                 self._tool_started_at[event.tool_call_id] = started
@@ -92,16 +94,18 @@ class WebStreamHandler:
                 started = self._tool_started_at.pop(event.tool_call_id, None)
                 elapsed_ms = int((time.monotonic() - started) * 1000) if started else 0
                 pending = self._pending.pop(event.tool_call_id, {})
-                self._put({
-                    "type": "tool_call",
-                    "id": event.tool_call_id or self._turn_id,
-                    "agent": self._agent,
-                    "tool": pending.get("tool", event.tool_name),
-                    "args": _safe_parse_json(pending.get("args_raw", "")),
-                    "result": {"summary": _truncate(event.result, 240)},
-                    "elapsed_ms": elapsed_ms,
-                    "status": "ok",
-                })
+                self._put(
+                    {
+                        "type": "tool_call",
+                        "id": event.tool_call_id or self._turn_id,
+                        "agent": self._agent,
+                        "tool": pending.get("tool", event.tool_name),
+                        "args": _safe_parse_json(pending.get("args_raw", "")),
+                        "result": {"summary": _truncate(event.result, 240)},
+                        "elapsed_ms": elapsed_ms,
+                        "status": "ok",
+                    }
+                )
             elif isinstance(event, UsageReport):
                 # Stash for the bridge to attach to the final TextEvent.
                 # TTFT/total come from StreamResult.metrics (the bridge fills them).

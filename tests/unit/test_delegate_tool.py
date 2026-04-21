@@ -15,7 +15,6 @@ AVAILABLE_AGENTS = [
 
 @pytest.mark.unit
 class TestDelegationState:
-
     def test_defaults_to_none(self):
         state = DelegationState()
         assert state.agent_name is None
@@ -25,7 +24,6 @@ class TestDelegationState:
 
 @pytest.mark.unit
 class TestDelegateTool:
-
     def test_factory_returns_tool_definition(self):
         state = DelegationState()
         tool = make_delegate_tool(AVAILABLE_AGENTS, state)

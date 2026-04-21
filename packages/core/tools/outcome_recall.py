@@ -30,10 +30,7 @@ def make_outcome_recall_tool(
         parts: list[str] = []
         total_chars = 0
         for r in results:
-            header = (
-                f"--- {r.outcome_id} "
-                f"(outcome: {r.outcome}, rated {r.quality}/5) ---"
-            )
+            header = f"--- {r.outcome_id} (outcome: {r.outcome}, rated {r.quality}/5) ---"
             lines = [header, f"What: {r.what}", f"Why: {r.why}"]
             if r.retrospective:
                 lines.append(f"Retrospective: {r.retrospective}")

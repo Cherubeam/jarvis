@@ -51,7 +51,6 @@ Return your evaluation as JSON:
     "passed_criteria": ["list", "of", "passed"],
     "failed_criteria": ["list", "of", "failed"]
 }}""",
-
     "context_recall": """Evaluate whether the assistant correctly used personal context:
 
 PERSONAL CONTEXT PROVIDED:
@@ -78,7 +77,6 @@ Return your evaluation as JSON:
     "passed_criteria": ["list"],
     "failed_criteria": ["list"]
 }}""",
-
     "personalization": """Evaluate whether the assistant followed style/tone preferences:
 
 PREFERENCES PROVIDED:
@@ -107,7 +105,6 @@ Return your evaluation as JSON:
     "passed_criteria": ["list"],
     "failed_criteria": ["list"]
 }}""",
-
     "edge_cases": """Evaluate how the assistant handles this edge case:
 
 USER QUERY: {user_message}
@@ -131,7 +128,6 @@ Return your evaluation as JSON:
     "passed_criteria": ["list"],
     "failed_criteria": ["list"]
 }}""",
-
     "tool_use": """Evaluate this assistant's tool-calling behavior:
 
 AVAILABLE TOOLS:
@@ -245,7 +241,7 @@ def format_forbidden_patterns(patterns: list[str]) -> str:
 
     lines = ["FORBIDDEN PATTERNS (must not appear):"]
     for pattern in patterns:
-        lines.append(f"- \"{pattern}\"")
+        lines.append(f'- "{pattern}"')
 
     return "\n".join(lines)
 

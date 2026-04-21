@@ -42,7 +42,8 @@ def _make_mock_session(tools: list[types.Tool] | None = None):
     session.initialize = AsyncMock()
     session.list_tools = AsyncMock(
         return_value=types.ListToolsResult(
-            tools=tools or [
+            tools=tools
+            or [
                 types.Tool(
                     name="echo",
                     description="Echo input",
@@ -180,11 +181,12 @@ class TestMCPManager:
         async def _bad_connect():
             raise ConnectionError("down")
 
-        with patch.object(MCPConnection, "__init__", return_value=None), \
-             patch(
-                 "packages.integrations.mcp.client.MCPConnection",
-             ) as MockConn:
-
+        with (
+            patch.object(MCPConnection, "__init__", return_value=None),
+            patch(
+                "packages.integrations.mcp.client.MCPConnection",
+            ) as MockConn,
+        ):
             call_count = 0
 
             def side_effect(cfg):

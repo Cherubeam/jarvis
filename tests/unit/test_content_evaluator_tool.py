@@ -35,9 +35,7 @@ def skill_dir(tmp_path):
 def skill_dir_with_py(skill_dir):
     """Skill directory with a skill.py that sets temperature."""
     skill_py = skill_dir / "skill.py"
-    skill_py.write_text(
-        'SKILL_CONFIG = {"temperature": 0.9, "max_tokens": 4096}\n'
-    )
+    skill_py.write_text('SKILL_CONFIG = {"temperature": 0.9, "max_tokens": 4096}\n')
     return skill_dir
 
 
@@ -53,7 +51,6 @@ def mock_client():
 
 @pytest.mark.unit
 class TestContentEvaluatorTool:
-
     def test_factory_returns_tool_definition(self, skill_dir, mock_client):
         tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
 
@@ -112,7 +109,9 @@ class TestContentEvaluatorTool:
         """skill.py SKILL_CONFIG temperature overrides the default 0.8."""
         mock_module = MagicMock()
         mock_module.SKILL_CONFIG = {"temperature": 0.9}
-        with patch("packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module):
+        with patch(
+            "packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module
+        ):
             tool = make_content_evaluator_tool(skill_dir_with_py, mock_client, "test-model")
         tool.execute(content="test")
 

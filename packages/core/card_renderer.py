@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PatternData:
     """Parsed pattern extracted from an Obsidian markdown note."""
@@ -432,6 +433,7 @@ body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 # Rendering
 # ---------------------------------------------------------------------------
 
+
 def render_card_html(
     pattern: PatternData,
     image_path: str | None = None,
@@ -582,7 +584,9 @@ def generate_card_files(
     html_path.write_text(html_content, encoding="utf-8")
 
     # WeasyPrint render uses absolute paths for reliable image loading
-    png_html = render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
+    png_html = (
+        render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
+    )
     png_path = cards_dir / f"{slug}.png"
     render_card_to_png(png_html, png_path)
 
@@ -703,11 +707,7 @@ def build_image_prompt(pattern: PatternData) -> str:
 
     style = _STYLE_PREAMBLE.format(palette=palette, mood=mood)
 
-    return (
-        f"{subject}. "
-        f"Composition: {composition}. "
-        f"{style}"
-    )
+    return f"{subject}. Composition: {composition}. {style}"
 
 
 def export_image_prompts(
@@ -736,16 +736,18 @@ def export_image_prompts(
             continue
         slug = _slugify(p.name)
         prompt = build_image_prompt(p)
-        lines.extend([
-            f"## {p.name}",
-            f"**Slug:** `{slug}`  ",
-            f"**Save as:** `images/{slug}.png`",
-            "",
-            f"> {prompt}",
-            "",
-            "---",
-            "",
-        ])
+        lines.extend(
+            [
+                f"## {p.name}",
+                f"**Slug:** `{slug}`  ",
+                f"**Save as:** `images/{slug}.png`",
+                "",
+                f"> {prompt}",
+                "",
+                "---",
+                "",
+            ]
+        )
 
     output_path.write_text("\n".join(lines), encoding="utf-8")
     return output_path
@@ -754,6 +756,7 @@ def export_image_prompts(
 # ---------------------------------------------------------------------------
 # API image generation (Track B — opt-in)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ImageGenerationConfig:
@@ -827,10 +830,12 @@ def generate_pattern_image(
 
     if hasattr(image_data, "b64_json") and image_data.b64_json:
         import base64
+
         img_bytes = base64.b64decode(image_data.b64_json)
         output_path.write_bytes(img_bytes)
     elif hasattr(image_data, "url") and image_data.url:
         import httpx
+
         resp = httpx.get(image_data.url, timeout=60)
         resp.raise_for_status()
         output_path.write_bytes(resp.content)

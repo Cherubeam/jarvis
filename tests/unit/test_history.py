@@ -214,7 +214,9 @@ class TestSummarizeHistory:
         history = _make_long_history(20)
         client = _mock_client("The user asked 20 questions.")
         result = summarize_history(
-            history, client, model_id="openrouter/google/gemini-2.5-flash",
+            history,
+            client,
+            model_id="openrouter/google/gemini-2.5-flash",
             token_threshold=1000,  # low threshold to force trigger
         )
 
@@ -232,15 +234,22 @@ class TestSummarizeHistory:
         """Split point walks forward to land on a user message, not a tool result."""
         history = [
             {"role": "user", "content": "x" * 8000},
-            {"role": "assistant", "content": "called tool", "tool_calls": [{"function": {"name": "foo"}}]},
+            {
+                "role": "assistant",
+                "content": "called tool",
+                "tool_calls": [{"function": {"name": "foo"}}],
+            },
             {"role": "tool", "tool_call_id": "t1", "content": "tool output " * 500},
             {"role": "user", "content": "follow up " * 500},
             {"role": "assistant", "content": "response " * 500},
         ]
         client = _mock_client("Summary.")
         result = summarize_history(
-            history, client, model_id="fast-model",
-            token_threshold=100, keep_recent=3,
+            history,
+            client,
+            model_id="fast-model",
+            token_threshold=100,
+            keep_recent=3,
         )
         # With keep_recent=3, naive split_idx=2 lands on a tool message.
         # Should walk forward to idx=3 (user message).
@@ -256,7 +265,10 @@ class TestSummarizeHistory:
         history = _make_long_history(10)
         client = _mock_client("Concise summary here.")
         result = summarize_history(
-            history, client, model_id="fast-model", token_threshold=100,
+            history,
+            client,
+            model_id="fast-model",
+            token_threshold=100,
         )
         summary = result[0]
         assert summary["role"] == "assistant"
@@ -271,7 +283,10 @@ class TestSummarizeHistory:
         client = _mock_client()
         client.complete.side_effect = RuntimeError("API down")
         result = summarize_history(
-            history, client, model_id="fast-model", token_threshold=100,
+            history,
+            client,
+            model_id="fast-model",
+            token_threshold=100,
         )
         assert result is history
 
@@ -284,7 +299,9 @@ class TestSummarizeHistory:
         ]
         client = _mock_client()
         result = summarize_history(
-            history, client, model_id="fast-model",
+            history,
+            client,
+            model_id="fast-model",
             token_threshold=40000,
         )
         assert result is history
@@ -296,13 +313,12 @@ class TestSummarizeHistory:
             {"role": "assistant", "content": f"{_SUMMARY_MARKER} Previous summary."},
             {"role": "user", "content": "x" * 8000},
             {"role": "assistant", "content": "y" * 8000},
-        ] + [
-            {"role": "user", "content": f"q{i}: " + "z" * 4000}
-            for i in range(12)
-        ]
+        ] + [{"role": "user", "content": f"q{i}: " + "z" * 4000} for i in range(12)]
         client = _mock_client("Re-summarized.")
         result = summarize_history(
-            history, client, model_id="fast-model",
+            history,
+            client,
+            model_id="fast-model",
             token_threshold=100,  # low to force trigger
             keep_recent=3,
         )
@@ -319,8 +335,11 @@ class TestSummarizeHistory:
         ]
         client = _mock_client()
         result = summarize_history(
-            history, client, model_id="fast-model",
-            token_threshold=100, keep_recent=1,
+            history,
+            client,
+            model_id="fast-model",
+            token_threshold=100,
+            keep_recent=1,
         )
         assert result is history
 
@@ -340,7 +359,10 @@ class TestSummarizeHistory:
         history = _make_long_history(10)
         client = _mock_client("Done.")
         result = summarize_history(
-            history, client, model_id="fast-model", token_threshold=100,
+            history,
+            client,
+            model_id="fast-model",
+            token_threshold=100,
         )
         summary = result[0]
         assert set(summary.keys()) == {"role", "content"}
@@ -413,14 +435,16 @@ class TestFormatMessagesForSummary:
         assert "\n" not in result.split(": ", 1)[1].rstrip(".")
 
     def test_assistant_with_tool_calls_format(self):
-        msgs = [{
-            "role": "assistant",
-            "content": None,
-            "tool_calls": [
-                {"function": {"name": "search"}},
-                {"function": {"name": "read_note"}},
-            ],
-        }]
+        msgs = [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {"function": {"name": "search"}},
+                    {"function": {"name": "read_note"}},
+                ],
+            }
+        ]
         result = _format_messages_for_summary(msgs)
         assert result == "[assistant called tools: search, read_note]"
 

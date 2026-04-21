@@ -114,7 +114,10 @@ def make_blog_tools(
             full_content = content
 
         result: WriteResult = write_note(
-            target_path, full_content, vault_config, confirmation_handler,
+            target_path,
+            full_content,
+            vault_config,
+            confirmation_handler,
         )
         return result.message
 
@@ -160,7 +163,10 @@ def make_blog_tools(
             return f"Error: File not found: {path}. Use create_blog_post for new files."
 
         result: WriteResult = write_note(
-            full_path, new_content, vault_config, confirmation_handler,
+            full_path,
+            new_content,
+            vault_config,
+            confirmation_handler,
             reasoning=reasoning,
         )
         return result.message

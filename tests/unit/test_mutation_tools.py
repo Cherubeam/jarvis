@@ -11,9 +11,7 @@ from packages.core.tools.mutation_tools import make_mutation_tools
 @pytest.fixture
 def project_dir(tmp_path):
     # Create a pyproject.toml so mutation_tools can update it
-    (tmp_path / "pyproject.toml").write_text(
-        'paths_to_mutate = ["packages/core/"]\n'
-    )
+    (tmp_path / "pyproject.toml").write_text('paths_to_mutate = ["packages/core/"]\n')
     return tmp_path
 
 
@@ -215,7 +213,10 @@ class TestExactOutputs:
         with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("uv", 300)
             result = run_tool.execute(module="packages/core/foo.py")
-        assert result == "Error: Mutation testing timed out after 300s. Try a smaller module or narrower test scope."
+        assert (
+            result
+            == "Error: Mutation testing timed out after 300s. Try a smaller module or narrower test scope."
+        )
 
     def test_run_uv_not_found_exact(self, run_tool):
         with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
@@ -274,7 +275,9 @@ class TestExactOutputs:
 
     def test_status_filter_case_insensitive(self, show_tool):
         with patch("packages.core.tools.mutation_tools.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(stdout="foo: SURVIVED\nbar: killed\n", stderr="", returncode=0)
+            mock_run.return_value = MagicMock(
+                stdout="foo: SURVIVED\nbar: killed\n", stderr="", returncode=0
+            )
             result = show_tool.execute(status_filter="survived")
         assert "SURVIVED" in result
         assert "killed" not in result

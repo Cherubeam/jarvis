@@ -60,7 +60,9 @@ class WebConfirmationHandler(ConfirmationHandler):
     left blocked.
     """
 
-    def __init__(self, event_queue: Queue[dict[str, Any]], turn_id: str, agent: str = "JARVIS") -> None:
+    def __init__(
+        self, event_queue: Queue[dict[str, Any]], turn_id: str, agent: str = "JARVIS"
+    ) -> None:
         self._queue = event_queue
         self._turn_id = turn_id
         self._agent = agent
@@ -83,28 +85,36 @@ class WebConfirmationHandler(ConfirmationHandler):
         path = getattr(diff, "path", "") or ""
         summary = getattr(diff, "summary", "") or prompt
 
-        self._queue.put({
-            "type": "approval_pending",
-            "id": approval_id,
-            "tool": "vault_write",
-            "agent": self._agent,
-            "path": path,
-            "diff": _diff_lines(diff),
-            "summary": summary,
-        })
+        self._queue.put(
+            {
+                "type": "approval_pending",
+                "id": approval_id,
+                "tool": "vault_write",
+                "agent": self._agent,
+                "path": path,
+                "diff": _diff_lines(diff),
+                "summary": summary,
+            }
+        )
 
         self._event.wait()  # released by resolve()
-        self._queue.put({
-            "type": "approval_resolved",
-            "id": approval_id,
-            "approved": self._approved,
-        })
+        self._queue.put(
+            {
+                "type": "approval_resolved",
+                "id": approval_id,
+                "approved": self._approved,
+            }
+        )
         return self._approved
 
     # Called by the WS handler when an approval_decision arrives, OR by the
     # bridge to force-release on disconnect / takeover.
     def resolve(self, approved: bool, approval_id: str | None = None) -> bool:
-        if approval_id is not None and self._pending_id is not None and approval_id != self._pending_id:
+        if (
+            approval_id is not None
+            and self._pending_id is not None
+            and approval_id != self._pending_id
+        ):
             return False
         self._approved = approved
         self._event.set()

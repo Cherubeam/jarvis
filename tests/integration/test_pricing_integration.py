@@ -26,7 +26,7 @@ class TestPricingIntegration:
                 "output_cost_per_token": 0.000015,
             }
         }
-        with patch('packages.core.pricing._get_litellm_cost_map', return_value=mock_cost_map):
+        with patch("packages.core.pricing._get_litellm_cost_map", return_value=mock_cost_map):
             # Get specific model pricing
             claude_pricing = get_model_pricing("anthropic/claude-sonnet-4.6")
             assert claude_pricing is not None
@@ -47,7 +47,7 @@ class TestPricingIntegration:
 
     def test_pricing_fallback_to_litellm(self):
         """Test fallback to LiteLLM cost calculation when pricing unavailable."""
-        with patch('packages.core.pricing._get_litellm_cost_map', return_value={}):
+        with patch("packages.core.pricing._get_litellm_cost_map", return_value={}):
             # Pricing lookup will return None for unknown model
             pricing = get_model_pricing("anthropic/claude-sonnet-4.6")
             assert pricing is None
@@ -55,7 +55,7 @@ class TestPricingIntegration:
         # Now try fallback via LiteLLM completion_cost
         mock_response = Mock()
 
-        with patch('litellm.completion_cost') as mock_cost:
+        with patch("litellm.completion_cost") as mock_cost:
             mock_cost.return_value = 0.0042
 
             cost = calculate_cost_from_litellm(mock_response)
@@ -66,18 +66,16 @@ class TestPricingIntegration:
         """Test cost display formatting in various scenarios."""
         # Create a pricing object
         pricing = ModelPricing(
-            prompt_cost=0.000003,
-            completion_cost=0.000015,
-            model_id="test-model"
+            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
         )
 
         # Test various token counts and their formatted costs
         # Format rules: <0.0001=6 decimals, <0.01=4 decimals, >=0.01=2 decimals
         test_cases = [
             # (prompt_tokens, completion_tokens, expected_format)
-            (100, 50, "$0.0011"),      # 0.00105 < 0.01, so 4 decimals -> $0.0011 (rounded)
-            (1000, 500, "$0.01"),      # 0.0105 >= 0.01, so 2 decimals -> $0.01 (rounded)
-            (10000, 5000, "$0.10"),    # 0.105 >= 0.01, so 2 decimals -> $0.10 (banker's rounding)
+            (100, 50, "$0.0011"),  # 0.00105 < 0.01, so 4 decimals -> $0.0011 (rounded)
+            (1000, 500, "$0.01"),  # 0.0105 >= 0.01, so 2 decimals -> $0.01 (rounded)
+            (10000, 5000, "$0.10"),  # 0.105 >= 0.01, so 2 decimals -> $0.10 (banker's rounding)
             (100000, 50000, "$1.05"),  # 1.05 >= 0.01, so 2 decimals -> $1.05
         ]
 

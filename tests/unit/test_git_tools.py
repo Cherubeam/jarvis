@@ -12,7 +12,9 @@ from packages.core.tools.git_tools import make_git_tools, _run_git
 def git_dir(tmp_path):
     """Create a temporary git repo."""
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
     (tmp_path / "README.md").write_text("# Test\n")
     subprocess.run(["git", "add", "README.md"], cwd=tmp_path, capture_output=True)
@@ -98,7 +100,9 @@ class TestGitCommit:
         # Verify the tag is in the commit message
         log = subprocess.run(
             ["git", "log", "--oneline", "-1"],
-            cwd=git_dir, capture_output=True, text=True,
+            cwd=git_dir,
+            capture_output=True,
+            text=True,
         )
         assert "[JARVIS-auto]" in log.stdout
 
@@ -199,7 +203,10 @@ class TestExactOutputs:
 
     def test_invalid_branch_exact(self, tools):
         result = tools["git_branch"].execute(name="bad-name")
-        assert result == "Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: bad-name"
+        assert (
+            result
+            == "Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: bad-name"
+        )
 
     def test_empty_paths_exact(self, tools):
         result = tools["git_add"].execute(paths=[])

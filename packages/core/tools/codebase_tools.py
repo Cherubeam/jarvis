@@ -50,29 +50,33 @@ def make_codebase_tools(project_root: Path) -> list[ToolDefinition]:
         except UnicodeDecodeError:
             return f"Error: Cannot read binary file: {path}"
 
-    tools.append(ToolDefinition(
-        name="read_source_file",
-        description=(  # pragma: no mutate
-            "Read any file in the JARVIS project. "  # pragma: no mutate
-            "Path is relative to the project root. "  # pragma: no mutate
-            "Returns the file content as text. Max 50KB."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "File path relative to project root (e.g. 'packages/core/tools/base.py').",  # pragma: no mutate
+    tools.append(
+        ToolDefinition(
+            name="read_source_file",
+            description=(  # pragma: no mutate
+                "Read any file in the JARVIS project. "  # pragma: no mutate
+                "Path is relative to the project root. "  # pragma: no mutate
+                "Returns the file content as text. Max 50KB."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to project root (e.g. 'packages/core/tools/base.py').",  # pragma: no mutate
+                    },
                 },
+                "required": ["path"],
             },
-            "required": ["path"],
-        },
-        execute=_read_source_file,
-    ))
+            execute=_read_source_file,
+        )
+    )
 
     # --- search_code ---
 
-    def _search_code(pattern: str, glob: str = "**/*.py", max_results: int = _MAX_SEARCH_RESULTS) -> str:
+    def _search_code(
+        pattern: str, glob: str = "**/*.py", max_results: int = _MAX_SEARCH_RESULTS
+    ) -> str:
         """Regex search across project files."""
         try:
             regex = re.compile(pattern)
@@ -105,34 +109,36 @@ def make_codebase_tools(project_root: Path) -> list[ToolDefinition]:
             return f"No matches found for pattern '{pattern}' in '{glob}'."
         return "\n".join(matches)
 
-    tools.append(ToolDefinition(
-        name="search_code",
-        description=(  # pragma: no mutate
-            "Search project files using a regex pattern. "  # pragma: no mutate
-            "Returns file:line matches. Use glob to filter file types."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "pattern": {
-                    "type": "string",
-                    "description": "Regex pattern to search for.",  # pragma: no mutate
+    tools.append(
+        ToolDefinition(
+            name="search_code",
+            description=(  # pragma: no mutate
+                "Search project files using a regex pattern. "  # pragma: no mutate
+                "Returns file:line matches. Use glob to filter file types."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Regex pattern to search for.",  # pragma: no mutate
+                    },
+                    "glob": {
+                        "type": "string",
+                        "description": "Glob pattern for files to search (default: '**/*.py').",  # pragma: no mutate
+                        "default": "**/*.py",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of matches to return (default: 50).",  # pragma: no mutate
+                        "default": 50,
+                    },
                 },
-                "glob": {
-                    "type": "string",
-                    "description": "Glob pattern for files to search (default: '**/*.py').",  # pragma: no mutate
-                    "default": "**/*.py",
-                },
-                "max_results": {
-                    "type": "integer",
-                    "description": "Maximum number of matches to return (default: 50).",  # pragma: no mutate
-                    "default": 50,
-                },
+                "required": ["pattern"],
             },
-            "required": ["pattern"],
-        },
-        execute=_search_code,
-    ))
+            execute=_search_code,
+        )
+    )
 
     # --- list_directory ---
 
@@ -160,31 +166,33 @@ def make_codebase_tools(project_root: Path) -> list[ToolDefinition]:
             return f"Empty directory: {path or '.'}"
         return "\n".join(entries)
 
-    tools.append(ToolDefinition(
-        name="list_directory",
-        description=(  # pragma: no mutate
-            "List contents of a project directory. "  # pragma: no mutate
-            "Path is relative to project root (empty string for root). "  # pragma: no mutate
-            "Returns entries with / suffix for directories."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "Directory path relative to project root (default: root).",  # pragma: no mutate
-                    "default": "",
+    tools.append(
+        ToolDefinition(
+            name="list_directory",
+            description=(  # pragma: no mutate
+                "List contents of a project directory. "  # pragma: no mutate
+                "Path is relative to project root (empty string for root). "  # pragma: no mutate
+                "Returns entries with / suffix for directories."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path relative to project root (default: root).",  # pragma: no mutate
+                        "default": "",
+                    },
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to filter entries (default: '*').",  # pragma: no mutate
+                        "default": "*",
+                    },
                 },
-                "pattern": {
-                    "type": "string",
-                    "description": "Glob pattern to filter entries (default: '*').",  # pragma: no mutate
-                    "default": "*",
-                },
+                "required": [],
             },
-            "required": [],
-        },
-        execute=_list_directory,
-    ))
+            execute=_list_directory,
+        )
+    )
 
     # --- read_architecture_map ---
 
@@ -195,18 +203,20 @@ def make_codebase_tools(project_root: Path) -> list[ToolDefinition]:
             return "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
         return map_path.read_text(encoding="utf-8")
 
-    tools.append(ToolDefinition(
-        name="read_architecture_map",
-        description=(  # pragma: no mutate
-            "Read the codebase architecture map — a compact summary of all modules, "  # pragma: no mutate
-            "agents, tools, skills, and config structure."  # pragma: no mutate
-        ),
-        parameters={
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        execute=_read_architecture_map,
-    ))
+    tools.append(
+        ToolDefinition(
+            name="read_architecture_map",
+            description=(  # pragma: no mutate
+                "Read the codebase architecture map — a compact summary of all modules, "  # pragma: no mutate
+                "agents, tools, skills, and config structure."  # pragma: no mutate
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            execute=_read_architecture_map,
+        )
+    )
 
     return tools

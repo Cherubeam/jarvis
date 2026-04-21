@@ -112,7 +112,9 @@ class TestReadwiseToolExecution:
         result = search_tool.execute(query="ai agents")
         assert result == '[{"title": "AI Article"}]'
         mock_client.search_documents.assert_called_once_with(
-            "ai agents", location="", category="",
+            "ai agents",
+            location="",
+            category="",
         )
 
     @patch("packages.core.tools.readwise_tools.is_cli_available")
@@ -164,5 +166,7 @@ class TestReadwiseToolExecution:
 
         search_tool.execute(query="test", location="inbox", category="article")
         mock_client.search_documents.assert_called_once_with(
-            "test", location="inbox", category="article",
+            "test",
+            location="inbox",
+            category="article",
         )

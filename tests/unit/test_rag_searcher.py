@@ -13,15 +13,19 @@ from packages.core.rag.searcher import _MAX_EMBED_CHARS, _date_str_to_int, _inve
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_searcher(tmp_path: Path, collection_count: int = 3):
     """Return a ConversationSearcher backed by a fully mocked ChromaDB."""
     mock_chroma_module = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = collection_count
-    mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+    mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
+        mock_collection
+    )
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
         from packages.core.rag.searcher import ConversationSearcher
+
         searcher = ConversationSearcher.__new__(ConversationSearcher)
         searcher.db_path = tmp_path / "chroma"
         searcher.embedding_model = "test-model"
@@ -58,6 +62,7 @@ def _fake_chroma_result(n: int = 2) -> dict:
 # _build_where_filter
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestBuildWhereFilter:
     def _searcher(self, tmp_path):
@@ -92,6 +97,7 @@ class TestBuildWhereFilter:
 # ---------------------------------------------------------------------------
 # search()
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestSearch:
@@ -178,11 +184,31 @@ class TestSearch:
         # Three results with distances that round to the same bucket (0.05)
         chroma_result = {
             "documents": [["doc old", "doc mid", "doc new"]],
-            "metadatas": [[
-                {"conv_id": "c_old", "session_date": "2026-01-10", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "c_mid", "session_date": "2026-02-15", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "c_new", "session_date": "2026-02-27", "user_snippet": "", "assistant_snippet": "", "title": ""},
-            ]],
+            "metadatas": [
+                [
+                    {
+                        "conv_id": "c_old",
+                        "session_date": "2026-01-10",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "c_mid",
+                        "session_date": "2026-02-15",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "c_new",
+                        "session_date": "2026-02-27",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                ]
+            ],
             "distances": [[0.051, 0.054, 0.052]],  # all round to 0.05
         }
         mock_collection.query.return_value = chroma_result
@@ -204,14 +230,52 @@ class TestSearch:
         # Two conversations, each with 3 chunks at varying distances
         chroma_result = {
             "documents": [["doc_a1", "doc_a2", "doc_a3", "doc_b1", "doc_b2", "doc_b3"]],
-            "metadatas": [[
-                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
-            ]],
+            "metadatas": [
+                [
+                    {
+                        "conv_id": "conv_a",
+                        "session_date": "2026-02-20",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_a",
+                        "session_date": "2026-02-20",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_a",
+                        "session_date": "2026-02-20",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_b",
+                        "session_date": "2026-02-25",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_b",
+                        "session_date": "2026-02-25",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_b",
+                        "session_date": "2026-02-25",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                ]
+            ],
             "distances": [[0.01, 0.05, 0.10, 0.02, 0.06, 0.11]],
         }
         mock_collection.query.return_value = chroma_result
@@ -235,12 +299,38 @@ class TestSearch:
 
         chroma_result = {
             "documents": [["doc1", "doc2", "doc3", "doc4"]],
-            "metadatas": [[
-                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_a", "session_date": "2026-02-20", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "conv_b", "session_date": "2026-02-25", "user_snippet": "", "assistant_snippet": "", "title": ""},
-            ]],
+            "metadatas": [
+                [
+                    {
+                        "conv_id": "conv_a",
+                        "session_date": "2026-02-20",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_a",
+                        "session_date": "2026-02-20",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_b",
+                        "session_date": "2026-02-25",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "conv_b",
+                        "session_date": "2026-02-25",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                ]
+            ],
             "distances": [[0.01, 0.02, 0.03, 0.04]],
         }
         mock_collection.query.return_value = chroma_result
@@ -281,10 +371,24 @@ class TestSearch:
 
         chroma_result = {
             "documents": [["doc close old", "doc far new"]],
-            "metadatas": [[
-                {"conv_id": "c_close", "session_date": "2026-01-01", "user_snippet": "", "assistant_snippet": "", "title": ""},
-                {"conv_id": "c_far", "session_date": "2026-02-27", "user_snippet": "", "assistant_snippet": "", "title": ""},
-            ]],
+            "metadatas": [
+                [
+                    {
+                        "conv_id": "c_close",
+                        "session_date": "2026-01-01",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                    {
+                        "conv_id": "c_far",
+                        "session_date": "2026-02-27",
+                        "user_snippet": "",
+                        "assistant_snippet": "",
+                        "title": "",
+                    },
+                ]
+            ],
             "distances": [[0.02, 0.15]],  # different buckets
         }
         mock_collection.query.return_value = chroma_result
@@ -300,6 +404,7 @@ class TestSearch:
 # ---------------------------------------------------------------------------
 # _invert_date helper
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestDateStrToInt:
@@ -322,4 +427,8 @@ class TestInvertDate:
         dates = ["2026-01-10", "2026-02-15", "2026-02-27"]
         inverted = [_invert_date(d) for d in dates]
         # Ascending inverted should give descending original dates
-        assert sorted(inverted) == [_invert_date("2026-02-27"), _invert_date("2026-02-15"), _invert_date("2026-01-10")]
+        assert sorted(inverted) == [
+            _invert_date("2026-02-27"),
+            _invert_date("2026-02-15"),
+            _invert_date("2026-01-10"),
+        ]

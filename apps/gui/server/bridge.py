@@ -83,13 +83,15 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     if "cost" not in stats:
         stats["cost"] = float(result.cost_usd or 0.0)
 
-    queue.put({
-        "type": "text",
-        "id": turn_id,
-        "agent": agent_name,
-        "markdown": final_text,
-        "stats": stats,
-    })
+    queue.put(
+        {
+            "type": "text",
+            "id": turn_id,
+            "agent": agent_name,
+            "markdown": final_text,
+            "stats": stats,
+        }
+    )
 
     # Persist to logger (mirroring apps/cli/main.py:1222-1237)
     if result.tool_messages:
@@ -127,12 +129,14 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     _mark_current_dirty(session)
 
     # Totals — current_conversation is list[dict]; metrics lives on logger.metrics.
-    queue.put({
-        "type": "totals",
-        "messages": len(components.logger.current_conversation),
-        "tokens": int(components.logger.metrics.total_tokens or 0),
-        "cost": float(components.logger.metrics.total_cost_usd or 0.0),
-    })
+    queue.put(
+        {
+            "type": "totals",
+            "messages": len(components.logger.current_conversation),
+            "tokens": int(components.logger.metrics.total_tokens or 0),
+            "cost": float(components.logger.metrics.total_cost_usd or 0.0),
+        }
+    )
     queue.put({"type": "turn_finished", "id": turn_id})
 
     # Cleanup per-turn state.
@@ -147,16 +151,16 @@ def _run_one_turn(session: GuiSession, user_text: str):
     c = session.components
     history = c.logger.get_messages_for_api()
 
-    history_bytes = sum(
-        len(str(m.get("content", "")).encode("utf-8")) for m in history
-    )
+    history_bytes = sum(len(str(m.get("content", "")).encode("utf-8")) for m in history)
     c.logger.metrics.record_history_tokens(history_bytes // 4)
 
     summ_config = c.config.get("summarization", {})
     if summ_config.get("enabled", False):
         fast_model = resolve_model("fast", c.config).model_id
         history = summarize_history(
-            history, c.client, model_id=fast_model,
+            history,
+            c.client,
+            model_id=fast_model,
             token_threshold=summ_config.get("token_threshold", 40000),
             keep_recent=summ_config.get("keep_recent", 10),
         )
@@ -170,19 +174,23 @@ def _run_one_turn(session: GuiSession, user_text: str):
     )
 
 
-async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result) -> None:
+async def _run_delegation(
+    session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result
+) -> None:
     """Single-shot delegation: emit notice, run delegate, emit its text, return."""
     c = session.components
     delegate_id = result.delegate_to
     delegate_meta = c.agent_registry[delegate_id]
 
-    queue.put({
-        "type": "delegation",
-        "id": f"d-{uuid.uuid4().hex[:8]}",
-        "from": c.agent_name,
-        "to": delegate_id,
-        "reason": result.delegate_task or "",
-    })
+    queue.put(
+        {
+            "type": "delegation",
+            "id": f"d-{uuid.uuid4().hex[:8]}",
+            "from": c.agent_name,
+            "to": delegate_id,
+            "reason": result.delegate_task or "",
+        }
+    )
 
     delegate_agent = build_delegate_agent(c, delegate_meta, session.confirmation)
 
@@ -196,11 +204,15 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
 
     try:
         delegate_result = await asyncio.to_thread(
-            delegate_agent.run, initial, stream_handler=c.stream_handler,
+            delegate_agent.run,
+            initial,
+            stream_handler=c.stream_handler,
         )
     except Exception as e:
         logger.exception("Delegate run failed")
-        queue.put({"type": "error", "id": turn_id, "message": f"Delegate {delegate_id} failed: {e}"})
+        queue.put(
+            {"type": "error", "id": turn_id, "message": f"Delegate {delegate_id} failed: {e}"}
+        )
         return
 
     queue.put({"type": "thinking_end", "agent": delegate_id})
@@ -216,13 +228,15 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
     if "cost" not in stats:
         stats["cost"] = float(delegate_result.cost_usd or 0.0)
 
-    queue.put({
-        "type": "text",
-        "id": f"r-{uuid.uuid4().hex[:8]}",
-        "agent": delegate_id,
-        "markdown": final_text,
-        "stats": stats,
-    })
+    queue.put(
+        {
+            "type": "text",
+            "id": f"r-{uuid.uuid4().hex[:8]}",
+            "agent": delegate_id,
+            "markdown": final_text,
+            "stats": stats,
+        }
+    )
 
     if delegate_result.tool_messages:
         c.logger.add_tool_messages(delegate_result.tool_messages, agent_name=delegate_id)
@@ -261,5 +275,3 @@ def _find_deferred_handler(session: GuiSession):
     Falls back to None if no deferred handler is wired (older sessions).
     """
     return getattr(session.components, "_deferred_handler", None)
-
-

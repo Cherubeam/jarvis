@@ -10,13 +10,23 @@ from pathlib import Path
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.context_builder import (
-        load_context_file, build_system_prompt, build_system_prompt_with_metadata,
-        parse_frontmatter, _approx_tokens, ContextMetadata, ContextSection,
+        load_context_file,
+        build_system_prompt,
+        build_system_prompt_with_metadata,
+        parse_frontmatter,
+        _approx_tokens,
+        ContextMetadata,
+        ContextSection,
     )
 except ImportError:
     from context_builder import (
-        load_context_file, build_system_prompt, build_system_prompt_with_metadata,
-        parse_frontmatter, _approx_tokens, ContextMetadata, ContextSection,
+        load_context_file,
+        build_system_prompt,
+        build_system_prompt_with_metadata,
+        parse_frontmatter,
+        _approx_tokens,
+        ContextMetadata,
+        ContextSection,
     )
 
 
@@ -262,7 +272,7 @@ class TestParseFrontmatter:
 
     def test_valid_frontmatter(self):
         """Test parsing valid YAML frontmatter."""
-        text = "---\nactive: true\ntopics: [python, ai]\nsummary: \"A project\"\n---\n# Content\nBody text."
+        text = '---\nactive: true\ntopics: [python, ai]\nsummary: "A project"\n---\n# Content\nBody text.'
         meta, content = parse_frontmatter(text)
         assert meta == {"active": True, "topics": ["python", "ai"], "summary": "A project"}
         assert content == "# Content\nBody text."
@@ -291,7 +301,7 @@ class TestParseFrontmatter:
 
     def test_frontmatter_active_false(self):
         """Test parsing active: false."""
-        text = "---\nactive: false\nsummary: \"Inactive project\"\n---\nBody"
+        text = '---\nactive: false\nsummary: "Inactive project"\n---\nBody'
         meta, content = parse_frontmatter(text)
         assert meta["active"] is False
         assert meta["summary"] == "Inactive project"

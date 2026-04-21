@@ -145,9 +145,7 @@ def format_table(groups: dict[str, GroupStats], group_by: str) -> str:
 
     for label in sorted(groups, key=lambda k: groups[k].total_cost, reverse=True):
         stats = groups[label]
-        latency_str = (
-            f"{stats.avg_latency_ms:.0f} ms" if stats.latency_count else "n/a"
-        )
+        latency_str = f"{stats.avg_latency_ms:.0f} ms" if stats.latency_count else "n/a"
         lines.append(
             f"| {label} | {stats.count} | "
             f"{format_cost(stats.total_cost)} | "
@@ -171,9 +169,7 @@ def format_full_report(
         "",
     ]
 
-    total_cost = sum(
-        c.get("metrics", {}).get("total_cost_usd", 0.0) for c in conversations
-    )
+    total_cost = sum(c.get("metrics", {}).get("total_cost_usd", 0.0) for c in conversations)
     lines.append(f"**Total cost**: {format_cost(total_cost)}")
     lines.append("")
 
@@ -186,9 +182,7 @@ def format_full_report(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Analyze costs per conversation type."
-    )
+    parser = argparse.ArgumentParser(description="Analyze costs per conversation type.")
     parser.add_argument(
         "--conversations-dir",
         default="data/conversations",

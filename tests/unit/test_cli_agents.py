@@ -8,8 +8,12 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch, call, ANY
 
 from apps.cli.main import (
-    parse_args, _handle_agent_command, _instantiate_agent,
-    _run_agent_session, _make_agent_vault_tools, _assemble_agent_tools,
+    parse_args,
+    _handle_agent_command,
+    _instantiate_agent,
+    _run_agent_session,
+    _make_agent_vault_tools,
+    _assemble_agent_tools,
 )
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
@@ -25,8 +29,10 @@ def _make_stream_result(text: str = "response") -> StreamResult:
         usage=TokenUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
         cost_usd=0.001,
         metrics=ResponseMetrics(
-            ttft_ms=50, total_latency_ms=200,
-            prompt_tokens=10, completion_tokens=5,
+            ttft_ms=50,
+            total_latency_ms=200,
+            prompt_tokens=10,
+            completion_tokens=5,
         ),
     )
 
@@ -84,12 +90,17 @@ class TestAssembleAgentTools:
         blog = [Mock(spec=ToolDefinition), Mock(spec=ToolDefinition)]
         dev = [Mock(spec=ToolDefinition)]
         meta = AgentMeta(
-            name="test", description="", command="/test",
+            name="test",
+            description="",
+            command="/test",
             tool_groups=("blog_tools", "dev_tools"),
         )
         result = _assemble_agent_tools(
-            meta, shared, {"blog_tools": blog, "dev_tools": dev},
-            only_tool_groups={"blog_tools"}, include_shared=False,
+            meta,
+            shared,
+            {"blog_tools": blog, "dev_tools": dev},
+            only_tool_groups={"blog_tools"},
+            include_shared=False,
         )
         # Only blog tools, no shared, no dev
         assert len(result) == 2
@@ -100,9 +111,7 @@ class TestAssembleAgentTools:
 @pytest.mark.unit
 class TestHandleAgentCommand:
     def test_returns_false_for_unknown_command(self):
-        result = _handle_agent_command(
-            "/unknown", "payload", Mock(), Mock(), Mock(), "model", {}
-        )
+        result = _handle_agent_command("/unknown", "payload", Mock(), Mock(), Mock(), "model", {})
         assert result is False
 
     def test_returns_true_for_known_command(self):
@@ -139,9 +148,7 @@ class TestHandleAgentCommand:
             )
         }
 
-        result = _handle_agent_command(
-            "/write", "", Mock(), Mock(), Mock(), "model", registry
-        )
+        result = _handle_agent_command("/write", "", Mock(), Mock(), Mock(), "model", registry)
         assert result is True
         captured = capsys.readouterr()
         assert "Usage: /write" in captured.out
@@ -196,15 +203,18 @@ class TestHandleAgentCommand:
     def test_tool_groups_passed_to_agent(self):
         """Tool groups are assembled and passed to the agent."""
         dummy_tool = ToolDefinition(
-            name="search_tactics", description="Search",
+            name="search_tactics",
+            description="Search",
             parameters={"type": "object", "properties": {}},
             execute=lambda: "r",
         )
 
         registry = {
             "tactics": AgentMeta(
-                name="tactics", description="desc",
-                command="/tactics", meta_path=None,
+                name="tactics",
+                description="desc",
+                command="/tactics",
+                meta_path=None,
                 tool_groups=("card_search",),
             )
         }
@@ -215,7 +225,12 @@ class TestHandleAgentCommand:
             mock_factory.return_value = mock_agent
 
             _handle_agent_command(
-                "/tactics", "help me pitch", Mock(), Mock(), Mock(), "model",
+                "/tactics",
+                "help me pitch",
+                Mock(),
+                Mock(),
+                Mock(),
+                "model",
                 registry,
                 shared_tools=[],
                 tool_groups={"card_search": [dummy_tool]},
@@ -223,24 +238,38 @@ class TestHandleAgentCommand:
 
             # Verify extra_tools passed to agent_from_meta
             call_kwargs = mock_factory.call_args
-            extra = call_kwargs[1].get("extra_tools") or call_kwargs[0][3] if len(call_kwargs[0]) > 3 else call_kwargs[1].get("extra_tools")
+            extra = (
+                call_kwargs[1].get("extra_tools") or call_kwargs[0][3]
+                if len(call_kwargs[0]) > 3
+                else call_kwargs[1].get("extra_tools")
+            )
             assert extra == [dummy_tool]
 
     def test_no_payload_starts_session_when_session_provided(self):
         """No-payload + session triggers _run_agent_session instead of usage."""
         registry = {
             "tactics": AgentMeta(
-                name="tactics", description="desc",
-                command="/tactics", meta_path=None,
+                name="tactics",
+                description="desc",
+                command="/tactics",
+                meta_path=None,
             )
         }
 
-        with patch("apps.cli.main._run_agent_session") as mock_session, \
-             patch("apps.cli.main.agent_from_meta") as mock_factory:
+        with (
+            patch("apps.cli.main._run_agent_session") as mock_session,
+            patch("apps.cli.main.agent_from_meta") as mock_factory,
+        ):
             mock_factory.return_value = Mock()
             result = _handle_agent_command(
-                "/tactics", "", Mock(), Mock(), Mock(), "model",
-                registry, session=Mock(),
+                "/tactics",
+                "",
+                Mock(),
+                Mock(),
+                Mock(),
+                "model",
+                registry,
+                session=Mock(),
             )
 
         assert result is True
@@ -250,14 +279,22 @@ class TestHandleAgentCommand:
         """No-payload + no session falls back to usage text."""
         registry = {
             "tactics": AgentMeta(
-                name="tactics", description="Pip Decks coaching",
-                command="/tactics", meta_path=None,
+                name="tactics",
+                description="Pip Decks coaching",
+                command="/tactics",
+                meta_path=None,
             )
         }
 
         result = _handle_agent_command(
-            "/tactics", "", Mock(), Mock(), Mock(), "model",
-            registry, session=None,
+            "/tactics",
+            "",
+            Mock(),
+            Mock(),
+            Mock(),
+            "model",
+            registry,
+            session=None,
         )
         assert result is True
         captured = capsys.readouterr()
@@ -369,9 +406,7 @@ class TestRunAgentSessionHandoff:
     @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
     @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
     @patch("apps.cli.main.prompt_user")
-    def test_returns_history_with_messages(
-        self, mock_prompt, mock_chunk, mock_start, mock_finish
-    ):
+    def test_returns_history_with_messages(self, mock_prompt, mock_chunk, mock_start, mock_finish):
         """Session with messages returns populated history."""
         mock_prompt.side_effect = ["hello", "/exit"]
         agent = Mock()
@@ -388,7 +423,11 @@ class TestRunAgentSessionHandoff:
         """context param prepends a context exchange to session_history."""
         mock_prompt.side_effect = ["/exit"]
         result = _run_agent_session(
-            Mock(), "test", Mock(), Mock(), Mock(),
+            Mock(),
+            "test",
+            Mock(),
+            Mock(),
+            Mock(),
             context="User wants formal tone",
         )
         assert len(result) == 2
@@ -405,7 +444,11 @@ class TestRunAgentSessionHandoff:
             {"role": "assistant", "content": "previous answer"},
         ]
         result = _run_agent_session(
-            Mock(), "test", Mock(), Mock(), Mock(),
+            Mock(),
+            "test",
+            Mock(),
+            Mock(),
+            Mock(),
             prior_session=prior,
         )
         assert len(result) == 2
@@ -421,7 +464,11 @@ class TestRunAgentSessionHandoff:
             {"role": "assistant", "content": "a1"},
         ]
         result = _run_agent_session(
-            Mock(), "test", Mock(), Mock(), Mock(),
+            Mock(),
+            "test",
+            Mock(),
+            Mock(),
+            Mock(),
             context="some context",
             prior_session=prior,
         )
@@ -444,23 +491,30 @@ class TestInstantiateAgent:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         meta_path = agent_dir / "meta.yaml"
-        meta_path.write_text(_yaml.dump({
-            "name": "test-agent",
-            "description": "A test agent",
-            "command": "/test-agent",
-        }))
+        meta_path.write_text(
+            _yaml.dump(
+                {
+                    "name": "test-agent",
+                    "description": "A test agent",
+                    "command": "/test-agent",
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
 
         meta = AgentMeta(
-            name="test-agent", description="A test agent",
-            command="/test-agent", meta_path=meta_path,
+            name="test-agent",
+            description="A test agent",
+            command="/test-agent",
+            meta_path=meta_path,
         )
         client = Mock(spec=LLMClient)
         agent = _instantiate_agent(meta, client, "test-model")
 
         from packages.agents.base import DataDrivenAgent
+
         assert isinstance(agent, DataDrivenAgent)
         assert agent.config.name == "test-agent"
 
@@ -471,24 +525,31 @@ class TestInstantiateAgent:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         meta_path = agent_dir / "meta.yaml"
-        meta_path.write_text(_yaml.dump({
-            "name": "test-agent",
-            "description": "desc",
-            "command": "/test",
-        }))
+        meta_path.write_text(
+            _yaml.dump(
+                {
+                    "name": "test-agent",
+                    "description": "desc",
+                    "command": "/test",
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a test agent." * 5)
 
         dummy_tool = ToolDefinition(
-            name="test_tool", description="test",
+            name="test_tool",
+            description="test",
             parameters={"type": "object", "properties": {}},
             execute=lambda: "ok",
         )
 
         meta = AgentMeta(
-            name="test-agent", description="desc",
-            command="/test", meta_path=meta_path,
+            name="test-agent",
+            description="desc",
+            command="/test",
+            meta_path=meta_path,
         )
         agent = _instantiate_agent(meta, Mock(spec=LLMClient), "model", [dummy_tool])
         assert len(agent.config.tools) == 1
@@ -499,19 +560,25 @@ class TestInstantiateAgent:
 
         agent_dir = tmp_path / "writer"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(_yaml.dump({
-            "name": "writer",
-            "description": "Writing agent",
-            "command": "/write",
-            "max_iterations": 2,
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            _yaml.dump(
+                {
+                    "name": "writer",
+                    "description": "Writing agent",
+                    "command": "/write",
+                    "max_iterations": 2,
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You are a writing agent." * 5)
 
         meta = AgentMeta(
-            name="writer", description="Writing agent",
-            command="/write", meta_path=agent_dir / "meta.yaml",
+            name="writer",
+            description="Writing agent",
+            command="/write",
+            meta_path=agent_dir / "meta.yaml",
         )
 
         agent = _instantiate_agent(meta, Mock(spec=LLMClient), "test-model")
@@ -523,15 +590,22 @@ class TestInstantiateAgent:
 
         agent_dir = tmp_path / "clarity"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(_yaml.dump({
-            "name": "clarity", "description": "Explains things", "command": "/clarity",
-        }))
+        (agent_dir / "meta.yaml").write_text(
+            _yaml.dump(
+                {
+                    "name": "clarity",
+                    "description": "Explains things",
+                    "command": "/clarity",
+                }
+            )
+        )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         (prompts_dir / "system.md").write_text("You explain things clearly." * 5)
 
         meta = AgentMeta(
-            name="clarity", description="Explains things",
+            name="clarity",
+            description="Explains things",
             command="/clarity",
             meta_path=agent_dir / "meta.yaml",
         )
@@ -543,8 +617,13 @@ class TestInstantiateAgent:
             mock_factory.return_value = mock_agent
 
             result = _handle_agent_command(
-                "/clarity", "explain this", Mock(), Mock(), Mock(),
-                "model", registry,
+                "/clarity",
+                "explain this",
+                Mock(),
+                Mock(),
+                Mock(),
+                "model",
+                registry,
             )
 
         assert result is True

@@ -28,6 +28,7 @@ if _project_root not in sys.path:
 def main():
     """Entry point that imports and runs the actual CLI."""
     from apps.cli.main import main as cli_main
+
     cli_main()
 
 

@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 import litellm
@@ -56,17 +57,18 @@ def _print_usage(label: str, usage):
 
     # Raw dict fallback
     if hasattr(usage, "__dict__"):
-        extras = {k: v for k, v in usage.__dict__.items()
-                  if "cache" in k.lower() or "cached" in k.lower()}
+        extras = {
+            k: v for k, v in usage.__dict__.items() if "cache" in k.lower() or "cached" in k.lower()
+        }
         if extras:
             print(f"  (extra cache fields): {extras}")
 
 
 def test_approach(name: str, call_fn):
     """Run a caching approach twice and report results."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"APPROACH: {name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     try:
         print("\n--- Call 1 (cache write expected) ---")
@@ -125,6 +127,7 @@ def main():
             ],
             max_tokens=50,
         )
+
     results["A: Per-block cache_control"] = test_approach(
         "A: Per-block cache_control (current JARVIS approach)", call_a
     )
@@ -142,6 +145,7 @@ def main():
             max_tokens=50,
             extra_body={"cache_control": {"type": "ephemeral"}},
         )
+
     results["B: Top-level extra_body"] = test_approach(
         "B: Top-level cache_control via extra_body", call_b
     )
@@ -157,18 +161,17 @@ def main():
                 {"role": "user", "content": USER_MSG},
             ],
             max_tokens=50,
-            cache_control_injection_points=[
-                {"location": "message", "role": "system"}
-            ],
+            cache_control_injection_points=[{"location": "message", "role": "system"}],
         )
+
     results["C: LiteLLM auto-inject"] = test_approach(
         "C: LiteLLM cache_control_injection_points", call_c
     )
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for name, worked in results.items():
         status = "✓ WORKS" if worked else "✗ No cache hit"
         print(f"  {name}: {status}")

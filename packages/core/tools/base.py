@@ -9,11 +9,12 @@ from typing import Callable
 @dataclass
 class ToolDefinition:
     """Defines a callable tool that can be invoked by the LLM."""
+
     name: str
     description: str
-    parameters: dict          # JSON Schema for the tool's arguments
+    parameters: dict  # JSON Schema for the tool's arguments
     execute: Callable[..., str]
-    terminal: bool = False    # If True, skip streaming after this tool fires
+    terminal: bool = False  # If True, skip streaming after this tool fires
 
     def to_litellm_format(self) -> dict:
         """Convert to LiteLLM/OpenAI function-calling format."""

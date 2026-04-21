@@ -207,9 +207,7 @@ class TestJudgeEvaluator:
             judge_client=mock_judge_client, config={"quality_threshold": 0.70}
         )
 
-        criteria = EvaluationCriteria(
-            qualities={}, forbidden_patterns=["bad", "terrible"]
-        )
+        criteria = EvaluationCriteria(qualities={}, forbidden_patterns=["bad", "terrible"])
 
         result = evaluator.evaluate_response(
             test_name="test",
@@ -236,9 +234,7 @@ class TestJudgeEvaluator:
             judge_client=mock_judge_client, config={"quality_threshold": 0.70}
         )
 
-        criteria = EvaluationCriteria(
-            qualities={}, expected_content=["Paris", "France"]
-        )
+        criteria = EvaluationCriteria(qualities={}, expected_content=["Paris", "France"])
 
         result = evaluator.evaluate_response(
             test_name="test",
@@ -263,9 +259,7 @@ class TestJudgeEvaluator:
             judge_client=mock_judge_client, config={"quality_threshold": 0.70}
         )
 
-        criteria = EvaluationCriteria(
-            qualities={}, expected_content=["Paris", "France"]
-        )
+        criteria = EvaluationCriteria(qualities={}, expected_content=["Paris", "France"])
 
         result = evaluator.evaluate_response(
             test_name="test",
@@ -290,9 +284,7 @@ class TestJudgeEvaluator:
         mock_client = Mock()
         mock_client.chat_stream.side_effect = Exception("API error")
 
-        evaluator = JudgeEvaluator(
-            judge_client=mock_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={"accurate": True})
 
@@ -318,9 +310,7 @@ class TestJudgeEvaluator:
 
     def test_parse_valid_json_response(self):
         """Test parsing valid JSON from judge."""
-        evaluator = JudgeEvaluator(
-            judge_client=Mock(), config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=Mock(), config={"quality_threshold": 0.70})
 
         json_response = """{
             "overall_score": 0.85,
@@ -339,9 +329,7 @@ class TestJudgeEvaluator:
 
     def test_parse_malformed_json_fallback(self):
         """Test fallback parsing for malformed JSON."""
-        evaluator = JudgeEvaluator(
-            judge_client=Mock(), config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=Mock(), config={"quality_threshold": 0.70})
 
         # Malformed JSON with score in text
         bad_response = "The overall score is 0.75 based on the criteria"

@@ -79,9 +79,7 @@ class TestResolveInclude:
         meta = _make_agent(tmp_path)
         agent_dir = meta.parent
         shared = _make_shared_dir(tmp_path)
-        (agent_dir / "prompts" / "voice.md.example").write_text(
-            "LOCAL_EXAMPLE", encoding="utf-8"
-        )
+        (agent_dir / "prompts" / "voice.md.example").write_text("LOCAL_EXAMPLE", encoding="utf-8")
         (shared / "voice.md.example").write_text("SHARED_EXAMPLE", encoding="utf-8")
 
         res = resolve_include(agent_dir, "voice", shared)
@@ -121,9 +119,7 @@ class TestResolveInclude:
         agent_dir = meta.parent
         shared = _make_shared_dir(tmp_path)
         (agent_dir / "prompts" / "voice.md").write_text("REAL", encoding="utf-8")
-        (agent_dir / "prompts" / "voice.md.example").write_text(
-            "EXAMPLE", encoding="utf-8"
-        )
+        (agent_dir / "prompts" / "voice.md.example").write_text("EXAMPLE", encoding="utf-8")
 
         res = resolve_include(agent_dir, "voice", shared)
 
@@ -160,9 +156,7 @@ class TestValidateAgentIncludes:
     def test_flags_example_fallback(self, tmp_path: Path):
         shared = _make_shared_dir(tmp_path)
         meta = _make_agent(tmp_path, prompt_includes={"voice_profile": "voice"})
-        (meta.parent / "prompts" / "voice.md.example").write_text(
-            "EXAMPLE", encoding="utf-8"
-        )
+        (meta.parent / "prompts" / "voice.md.example").write_text("EXAMPLE", encoding="utf-8")
 
         issues = validate_agent_includes([meta], shared_dir=shared)
 

@@ -21,6 +21,7 @@ from packages.integrations.obsidian.vault import VaultConfig
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_vault_config(vault_path="/fake/vault"):
     cfg = Mock(spec=VaultConfig)
     cfg.vault_path = Path(vault_path)
@@ -49,9 +50,9 @@ def _get_tool(tools, name):
 # Factory structure
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestMakeCardGeneratorTools:
-
     def test_returns_three_tools(self):
         tools, _ = _make_tools()
         assert len(tools) == 3
@@ -71,9 +72,9 @@ class TestMakeCardGeneratorTools:
 # generate_card — schema + execution
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestGenerateCard:
-
     def test_schema_properties(self):
         tools, _ = _make_tools()
         tool = _get_tool(tools, "generate_card")
@@ -197,9 +198,9 @@ class TestGenerateCard:
 # generate_deck — schema + execution
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestGenerateDeck:
-
     def test_schema_properties(self):
         tools, _ = _make_tools()
         tool = _get_tool(tools, "generate_deck")
@@ -317,9 +318,9 @@ class TestGenerateDeck:
 # generate_image_prompts — schema + execution
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestGenerateImagePrompts:
-
     def test_schema_properties(self):
         tools, _ = _make_tools()
         tool = _get_tool(tools, "generate_image_prompts")

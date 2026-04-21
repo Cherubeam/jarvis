@@ -23,13 +23,15 @@ async def chat_ws(websocket: WebSocket) -> None:
 
     # Tell the client about the session so it can render the header.
     await websocket.send_json({"type": "session_start", "session": session.session_meta()})
-    await websocket.send_json({
-        "type": "system",
-        "text": (
-            f"Session started. {len(session.components.agent_registry)} agents registered."
-        ),
-        "time": session.started_at,
-    })
+    await websocket.send_json(
+        {
+            "type": "system",
+            "text": (
+                f"Session started. {len(session.components.agent_registry)} agents registered."
+            ),
+            "time": session.started_at,
+        }
+    )
 
     queue: Queue[dict[str, Any]] = Queue(maxsize=1024)
     drain_task = asyncio.create_task(_drain_queue(queue, websocket))
@@ -49,10 +51,12 @@ async def chat_ws(websocket: WebSocket) -> None:
             kind = msg.get("type")
             if kind == "submit":
                 if session.in_flight:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "A turn is already in flight. Cancel first.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "A turn is already in flight. Cancel first.",
+                        }
+                    )
                     continue
                 user_text = msg.get("text", "").strip()
                 if not user_text:

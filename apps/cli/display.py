@@ -24,15 +24,17 @@ from packages.core.stream_handler import StreamResult
 # Theme & console
 # ---------------------------------------------------------------------------
 
-JARVIS_THEME = Theme({
-    "prompt.you": "bold green",
-    "prompt.assistant": "bold cyan",
-    "agent.name": "bold cyan",
-    "stats": "dim",
-    "error": "bold red",
-    "system": "dim yellow",
-    "tool": "dim magenta",
-})
+JARVIS_THEME = Theme(
+    {
+        "prompt.you": "bold green",
+        "prompt.assistant": "bold cyan",
+        "agent.name": "bold cyan",
+        "stats": "dim",
+        "error": "bold red",
+        "system": "dim yellow",
+        "tool": "dim magenta",
+    }
+)
 
 console = Console(theme=JARVIS_THEME, highlight=False)
 
@@ -42,12 +44,12 @@ console = Console(theme=JARVIS_THEME, highlight=False)
 
 _MARKDOWN_PATTERNS = re.compile(
     r"(?m)"
-    r"(?:^```)"          # fenced code block
-    r"|(?:^#{1,6}\s)"    # ATX heading
+    r"(?:^```)"  # fenced code block
+    r"|(?:^#{1,6}\s)"  # ATX heading
     r"|(?:\*\*.+?\*\*)"  # bold
-    r"|(?:^- )"          # unordered list
-    r"|(?:^\d+\.\s)"     # ordered list
-    r"|(?:`[^`]+`)"      # inline code
+    r"|(?:^- )"  # unordered list
+    r"|(?:^\d+\.\s)"  # ordered list
+    r"|(?:`[^`]+`)"  # inline code
 )
 
 
@@ -59,6 +61,7 @@ def _has_markdown(text: str) -> bool:
 # ---------------------------------------------------------------------------
 # Startup & banners
 # ---------------------------------------------------------------------------
+
 
 def print_startup(
     agent_name: str,
@@ -80,6 +83,7 @@ def print_startup(
 # Prefixes & labels
 # ---------------------------------------------------------------------------
 
+
 def print_assistant_prefix(agent_name: str = "JARVIS") -> None:
     """Print the assistant label before streaming begins."""
     console.print(f"\n[prompt.assistant]{agent_name}:[/]")
@@ -94,6 +98,7 @@ def print_agent_prefix(agent_name: str) -> None:
 # Live streaming display
 # ---------------------------------------------------------------------------
 
+
 def start_live_stream(thinking: bool = True) -> tuple[Live, list[str]]:
     """Create and start a rich.Live context for streaming output.
 
@@ -102,18 +107,22 @@ def start_live_stream(thinking: bool = True) -> tuple[Live, list[str]]:
     ``transient=True`` ensures the spinner vanishes when stopped (no stale frames).
     """
     initial = Spinner("dots", text=Text(" Thinking…", style="dim")) if thinking else Text("")
-    live = Live(initial, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
+    live = Live(
+        initial, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop"
+    )
     live.start()
     return live, []
 
 
 def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]:
     """Return a closure that appends chunks to *buf* and updates the Live display."""
+
     def handler(chunk: str) -> None:
         buf.append(chunk)
         if not live.is_started:
             live.start()
         live.update(Markdown("".join(buf)))
+
     return handler
 
 
@@ -127,7 +136,9 @@ def finish_live_stream(live: Live, full_text: str) -> None:
 def start_waiting_spinner() -> Live:
     """Show a spinner while waiting for a non-streaming response."""
     spinner = Spinner("dots", text=Text(" Waiting…", style="dim"))
-    live = Live(spinner, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
+    live = Live(
+        spinner, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop"
+    )
     live.start()
     return live
 
@@ -143,13 +154,18 @@ def finish_waiting(live: Live, full_text: str) -> None:
 # Stats & feedback
 # ---------------------------------------------------------------------------
 
+
 def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> None:
     """Print dim-styled token usage, cost, and latency stats.
 
     Args:
         routed_model: If set, the model was changed by routing — show it.
     """
-    ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms" if result.metrics.ttft_ms > 0 else "TTFT: N/A (tool call)"
+    ttft_str = (
+        f"TTFT: {result.metrics.ttft_ms:.0f}ms"
+        if result.metrics.ttft_ms > 0
+        else "TTFT: N/A (tool call)"
+    )
     latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
     if result.cost_usd > 0:
         line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"
@@ -184,6 +200,7 @@ def print_system(message: str) -> None:
 # ---------------------------------------------------------------------------
 # Input handling (prompt_toolkit)
 # ---------------------------------------------------------------------------
+
 
 def create_prompt_session(history_file: str | None = None):
     """Create a prompt_toolkit PromptSession with optional file history.

@@ -26,8 +26,13 @@ class TestFetchUrlTool:
         mock_response.text = html
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value="Clean article text here."):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch(
+                "packages.core.tools.web_fetch.trafilatura.extract",
+                return_value="Clean article text here.",
+            ),
+        ):
             result = _fetch_url("https://example.com/article")
 
         assert result == "Clean article text here."
@@ -38,14 +43,18 @@ class TestFetchUrlTool:
         mock_response.text = html
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None),
+        ):
             result = _fetch_url("https://example.com")
 
         assert "Raw HTML content" in result
 
     def test_timeout_returns_error_string(self):
-        with patch("packages.core.tools.web_fetch.httpx.get", side_effect=httpx.TimeoutException("timeout")):
+        with patch(
+            "packages.core.tools.web_fetch.httpx.get", side_effect=httpx.TimeoutException("timeout")
+        ):
             result = _fetch_url("https://example.com")
 
         assert result == "Error: Request to https://example.com timed out after 10s."
@@ -82,8 +91,10 @@ class TestFetchUrlTool:
         mock_response.text = "<html><body>stub</body></html>"
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=large_content):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=large_content),
+        ):
             result = _fetch_url("https://example.com")
 
         assert result.endswith("\n\n[Content truncated at 50 KB]")
@@ -96,8 +107,10 @@ class TestFetchUrlTool:
         mock_response.text = "<html><body>stub</body></html>"
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=exact_content):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=exact_content),
+        ):
             result = _fetch_url("https://example.com")
 
         assert result == exact_content
@@ -109,8 +122,10 @@ class TestFetchUrlTool:
         mock_response.text = large_html
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None),
+        ):
             result = _fetch_url("https://example.com")
 
         assert result.endswith("\n\n[Content truncated at 50 KB]")
@@ -123,8 +138,10 @@ class TestFetchUrlTool:
         mock_response.text = exact_html
         mock_response.raise_for_status = MagicMock()
 
-        with patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response), \
-             patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None):
+        with (
+            patch("packages.core.tools.web_fetch.httpx.get", return_value=mock_response),
+            patch("packages.core.tools.web_fetch.trafilatura.extract", return_value=None),
+        ):
             result = _fetch_url("https://example.com")
 
         assert result == exact_html

@@ -32,13 +32,21 @@ class TestLinearizeMessageTree:
             "root": {"id": "root", "message": None, "parent": None, "children": ["a"]},
             "a": {
                 "id": "a",
-                "message": {"id": "a", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["hi"]}},
+                "message": {
+                    "id": "a",
+                    "author": {"role": "user"},
+                    "content": {"content_type": "text", "parts": ["hi"]},
+                },
                 "parent": "root",
                 "children": ["b"],
             },
             "b": {
                 "id": "b",
-                "message": {"id": "b", "author": {"role": "assistant"}, "content": {"content_type": "text", "parts": ["hello"]}},
+                "message": {
+                    "id": "b",
+                    "author": {"role": "assistant"},
+                    "content": {"content_type": "text", "parts": ["hello"]},
+                },
                 "parent": "a",
                 "children": [],
             },
@@ -53,7 +61,11 @@ class TestLinearizeMessageTree:
             "root": {"id": "root", "message": None, "parent": None, "children": ["a"]},
             "a": {
                 "id": "a",
-                "message": {"id": "a", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["hi"]}},
+                "message": {
+                    "id": "a",
+                    "author": {"role": "user"},
+                    "content": {"content_type": "text", "parts": ["hi"]},
+                },
                 "parent": "root",
                 "children": [],
             },
@@ -66,13 +78,21 @@ class TestLinearizeMessageTree:
         mapping = {
             "a": {
                 "id": "a",
-                "message": {"id": "a", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["hi"]}},
+                "message": {
+                    "id": "a",
+                    "author": {"role": "user"},
+                    "content": {"content_type": "text", "parts": ["hi"]},
+                },
                 "parent": "b",
                 "children": [],
             },
             "b": {
                 "id": "b",
-                "message": {"id": "b", "author": {"role": "assistant"}, "content": {"content_type": "text", "parts": ["yo"]}},
+                "message": {
+                    "id": "b",
+                    "author": {"role": "assistant"},
+                    "content": {"content_type": "text", "parts": ["yo"]},
+                },
                 "parent": "a",
                 "children": ["a"],
             },
@@ -95,19 +115,34 @@ class TestLinearizeMessageTree:
             "root": {"id": "root", "message": None, "parent": None, "children": ["a"]},
             "a": {
                 "id": "a",
-                "message": {"id": "a", "author": {"role": "user"}, "create_time": 1.0, "content": {"content_type": "text", "parts": ["first"]}},
+                "message": {
+                    "id": "a",
+                    "author": {"role": "user"},
+                    "create_time": 1.0,
+                    "content": {"content_type": "text", "parts": ["first"]},
+                },
                 "parent": "root",
                 "children": ["b"],
             },
             "b": {
                 "id": "b",
-                "message": {"id": "b", "author": {"role": "assistant"}, "create_time": 2.0, "content": {"content_type": "text", "parts": ["second"]}},
+                "message": {
+                    "id": "b",
+                    "author": {"role": "assistant"},
+                    "create_time": 2.0,
+                    "content": {"content_type": "text", "parts": ["second"]},
+                },
                 "parent": "a",
                 "children": ["c"],
             },
             "c": {
                 "id": "c",
-                "message": {"id": "c", "author": {"role": "user"}, "create_time": 3.0, "content": {"content_type": "text", "parts": ["third"]}},
+                "message": {
+                    "id": "c",
+                    "author": {"role": "user"},
+                    "create_time": 3.0,
+                    "content": {"content_type": "text", "parts": ["third"]},
+                },
                 "parent": "b",
                 "children": [],
             },
@@ -198,7 +233,14 @@ class TestConvertContentParts:
     def test_thoughts(self):
         content = {
             "content_type": "thoughts",
-            "thoughts": [{"summary": "Thinking...", "content": "Deep analysis here", "chunks": [], "finished": True}],
+            "thoughts": [
+                {
+                    "summary": "Thinking...",
+                    "content": "Deep analysis here",
+                    "chunks": [],
+                    "finished": True,
+                }
+            ],
         }
         result = convert_content_parts(content)
         assert len(result) == 1
@@ -210,7 +252,9 @@ class TestConvertContentParts:
     def test_thoughts_empty_content_falls_back_to_summary(self):
         content = {
             "content_type": "thoughts",
-            "thoughts": [{"summary": "Brief thought", "content": "", "chunks": [], "finished": True}],
+            "thoughts": [
+                {"summary": "Brief thought", "content": "", "chunks": [], "finished": True}
+            ],
         }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Brief thought"
@@ -228,16 +272,28 @@ class TestConvertContentParts:
         assert result[0]["metadata"] == {"execution_output": True}
 
     def test_tether_browsing_display(self):
-        content = {"content_type": "tether_browsing_display", "result": "Search results here", "summary": ""}
+        content = {
+            "content_type": "tether_browsing_display",
+            "result": "Search results here",
+            "summary": "",
+        }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Search results here"
         assert result[0]["metadata"] == {"browsing_display": True}
 
     def test_tether_quote(self):
-        content = {"content_type": "tether_quote", "text": "Quoted text", "domain": "example.com", "url": "https://example.com"}
+        content = {
+            "content_type": "tether_quote",
+            "text": "Quoted text",
+            "domain": "example.com",
+            "url": "https://example.com",
+        }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Quoted text"
-        assert result[0]["metadata"] == {"quote_source": "example.com", "quote_url": "https://example.com"}
+        assert result[0]["metadata"] == {
+            "quote_source": "example.com",
+            "quote_url": "https://example.com",
+        }
 
     def test_reasoning_recap(self):
         content = {"content_type": "reasoning_recap", "content": "Thought for 5s"}
@@ -246,7 +302,11 @@ class TestConvertContentParts:
         assert result[0]["metadata"]["reasoning_recap"] is True
 
     def test_system_error(self):
-        content = {"content_type": "system_error", "name": "SomeError", "text": "Something went wrong"}
+        content = {
+            "content_type": "system_error",
+            "name": "SomeError",
+            "text": "Something went wrong",
+        }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Something went wrong"
         assert result[0]["metadata"]["error_name"] == "SomeError"
@@ -267,7 +327,11 @@ class TestConvertContentParts:
 
     def test_tether_browsing_display_result_empty_uses_summary(self):
         """When result is empty, falls back to summary."""
-        content = {"content_type": "tether_browsing_display", "result": "", "summary": "Fallback summary"}
+        content = {
+            "content_type": "tether_browsing_display",
+            "result": "",
+            "summary": "Fallback summary",
+        }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Fallback summary"
 
@@ -626,18 +690,24 @@ class TestImportConversations:
         assert summary.skipped_archived == 0
 
     def test_filter_by_model(self, sample_source, tmp_path):
-        summary = import_conversations(sample_source, tmp_path, model_filter="gpt-4o", include_archived=True)
+        summary = import_conversations(
+            sample_source, tmp_path, model_filter="gpt-4o", include_archived=True
+        )
         assert summary.imported == 1
         assert summary.skipped_filter == 2
 
     def test_filter_by_date_from(self, sample_source, tmp_path):
         # Archived conv is from 2023-11, others from 2024-03
-        summary = import_conversations(sample_source, tmp_path, date_from="2024-01-01", include_archived=True)
+        summary = import_conversations(
+            sample_source, tmp_path, date_from="2024-01-01", include_archived=True
+        )
         assert summary.imported == 2
         assert summary.skipped_filter == 1
 
     def test_filter_by_date_to(self, sample_source, tmp_path):
-        summary = import_conversations(sample_source, tmp_path, date_to="2023-12-31", include_archived=True)
+        summary = import_conversations(
+            sample_source, tmp_path, date_to="2023-12-31", include_archived=True
+        )
         assert summary.imported == 1
         assert summary.skipped_filter == 2
 
@@ -655,7 +725,9 @@ class TestImportConversations:
                 "title": f"Conv {i}",
                 "create_time": 1711580000.0,
                 "update_time": 1711580100.0,
-                "mapping": {"root": {"id": "root", "message": None, "parent": None, "children": []}},
+                "mapping": {
+                    "root": {"id": "root", "message": None, "parent": None, "children": []}
+                },
                 "current_node": "root",
                 "conversation_id": f"id-{i}",
                 "is_archived": False,
@@ -680,7 +752,9 @@ class TestImportConversations:
                 "title": "Good",
                 "create_time": 1711580000.0,
                 "update_time": 1711580100.0,
-                "mapping": {"root": {"id": "root", "message": None, "parent": None, "children": []}},
+                "mapping": {
+                    "root": {"id": "root", "message": None, "parent": None, "children": []}
+                },
                 "current_node": "root",
                 "conversation_id": "good-id",
                 "is_archived": False,

@@ -22,6 +22,7 @@ from packages.skills.registry import SkillMeta
 @dataclass
 class AgentConfig:
     """Configuration for an agent."""
+
     name: str
     description: str
     model: str
@@ -80,6 +81,7 @@ class BaseAgent(ABC):
             FileNotFoundError: If prompt file does not exist.
         """
         import inspect
+
         # Walk the MRO to find the first concrete subclass file
         agent_file = inspect.getfile(cls)
         prompts_dir = Path(agent_file).parent / "prompts"
@@ -141,14 +143,13 @@ class BaseAgent(ABC):
         kwargs: dict = {}
         if self.config.max_iterations is not None:
             kwargs["max_iterations"] = self.config.max_iterations
-        return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
+        return stream_handler.stream(
+            messages, print_chunks=print_chunks, tool_registry=registry, **kwargs
+        )
 
     def add_to_history(self, role: str, content: str):
         """Add a message to conversation history."""
-        self.conversation_history.append({
-            "role": role,
-            "content": content
-        })
+        self.conversation_history.append({"role": role, "content": content})
 
     def clear_history(self):
         """Clear conversation history."""
@@ -158,7 +159,7 @@ class BaseAgent(ABC):
         """Get messages formatted for API call."""
         return [
             {"role": "system", "content": self.config.system_prompt},
-            *self.conversation_history
+            *self.conversation_history,
         ]
 
     def to_dict(self) -> dict:
@@ -248,16 +249,16 @@ def agent_from_meta(
     for placeholder, filename in prompt_includes.items():
         resolution = resolve_include(agent_dir, filename)
         include_text = (
-            resolution.path.read_text(encoding="utf-8")
-            if resolution.path is not None
-            else ""
+            resolution.path.read_text(encoding="utf-8") if resolution.path is not None else ""
         )
         system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
 
     tools = list(extra_tools) if extra_tools else []
 
     # Resolve bound skills if declared in meta.yaml
-    skill_names = skill_names_override if skill_names_override is not None else meta.get("skills", [])
+    skill_names = (
+        skill_names_override if skill_names_override is not None else meta.get("skills", [])
+    )
     if skill_names and skill_registry is not None:
         from packages.skills.resolver import resolve_skills
 

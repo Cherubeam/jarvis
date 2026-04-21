@@ -120,10 +120,7 @@ def make_card_generator_tools(
             return "No patterns found in the vault."
 
         if category:
-            patterns = [
-                p for p in patterns
-                if p.category.lower() == category.lower()
-            ]
+            patterns = [p for p in patterns if p.category.lower() == category.lower()]
             if not patterns:
                 return f"No patterns found in category '{category}'."
 
@@ -201,7 +198,8 @@ def make_card_generator_tools(
     # --- generate_image_prompts (Track A) ---
 
     def _generate_image_prompts(
-        pattern_name: str = "", category: str = "",
+        pattern_name: str = "",
+        category: str = "",
     ) -> str:
         if pattern_name:
             match, err = _find_pattern(pattern_name)
@@ -215,10 +213,7 @@ def make_card_generator_tools(
                 return "No patterns found in the vault."
 
             if category:
-                patterns = [
-                    p for p in patterns
-                    if p.category.lower() == category.lower()
-                ]
+                patterns = [p for p in patterns if p.category.lower() == category.lower()]
                 if not patterns:
                     return f"No patterns found in category '{category}'."
 

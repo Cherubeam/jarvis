@@ -39,17 +39,27 @@ def allowed_dirs():
 @pytest.fixture
 def tools_approve(project_dir, allowed_dirs):
     handler = StubConfirmationHandler(approve=True)
-    return {t.name: t for t in make_project_write_tools(
-        project_dir, handler, allowed_dirs,
-    )}
+    return {
+        t.name: t
+        for t in make_project_write_tools(
+            project_dir,
+            handler,
+            allowed_dirs,
+        )
+    }
 
 
 @pytest.fixture
 def tools_reject(project_dir, allowed_dirs):
     handler = StubConfirmationHandler(approve=False)
-    return {t.name: t for t in make_project_write_tools(
-        project_dir, handler, allowed_dirs,
-    )}
+    return {
+        t.name: t
+        for t in make_project_write_tools(
+            project_dir,
+            handler,
+            allowed_dirs,
+        )
+    }
 
 
 class TestWriteFile:
@@ -200,8 +210,13 @@ class TestExactErrorMessages:
         assert result == "Error: Path '../../../tmp/evil.yaml' is outside the project directory."
 
     def test_write_file_overwrite_exact(self, tools_approve):
-        result = tools_approve["write_file"].execute(path="packages/agents/existing.yaml", content="x")
-        assert result == "Error: File already exists: packages/agents/existing.yaml. Use edit_file to modify it."
+        result = tools_approve["write_file"].execute(
+            path="packages/agents/existing.yaml", content="x"
+        )
+        assert (
+            result
+            == "Error: File already exists: packages/agents/existing.yaml. Use edit_file to modify it."
+        )
 
     def test_write_file_disallowed_dir_exact(self, tools_approve):
         result = tools_approve["write_file"].execute(path="apps/cli/hack.md", content="x")
@@ -212,15 +227,24 @@ class TestExactErrorMessages:
         assert result.startswith("Error: File type '.py' not allowed.")
 
     def test_edit_file_not_found_exact(self, tools_approve):
-        result = tools_approve["edit_file"].execute(path="packages/agents/ghost.yaml", new_content="x")
-        assert result == "Error: File not found: packages/agents/ghost.yaml. Use write_file for new files."
+        result = tools_approve["edit_file"].execute(
+            path="packages/agents/ghost.yaml", new_content="x"
+        )
+        assert (
+            result
+            == "Error: File not found: packages/agents/ghost.yaml. Use write_file for new files."
+        )
 
     def test_write_success_format(self, tools_approve):
-        result = tools_approve["write_file"].execute(path="packages/agents/new.yaml", content="name: t\n")
+        result = tools_approve["write_file"].execute(
+            path="packages/agents/new.yaml", content="name: t\n"
+        )
         assert result == "Created: packages/agents/new.yaml"
 
     def test_edit_success_format(self, tools_approve):
-        result = tools_approve["edit_file"].execute(path="packages/agents/existing.yaml", new_content="name: new\n")
+        result = tools_approve["edit_file"].execute(
+            path="packages/agents/existing.yaml", new_content="name: new\n"
+        )
         assert result == "Updated: packages/agents/existing.yaml"
 
     def test_create_directory_success_format(self, tools_approve):
@@ -232,7 +256,9 @@ class TestExactErrorMessages:
         assert result == "Write cancelled by user."
 
     def test_edit_cancelled_format(self, tools_reject):
-        result = tools_reject["edit_file"].execute(path="packages/agents/existing.yaml", new_content="x")
+        result = tools_reject["edit_file"].execute(
+            path="packages/agents/existing.yaml", new_content="x"
+        )
         assert result == "Edit cancelled by user."
 
     def test_default_extensions(self, project_dir, allowed_dirs):

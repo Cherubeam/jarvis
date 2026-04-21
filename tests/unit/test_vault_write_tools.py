@@ -52,7 +52,8 @@ def tools_with_target(vault_with_target):
     config, target, template = vault_with_target
     handler = MockConfirmationHandler(confirm=True)
     tools = make_vault_write_tools(
-        config, handler,
+        config,
+        handler,
         target_dir="Patterns",
         template_path="Templates/Pattern Template.md",
     )
@@ -185,7 +186,8 @@ class TestCreateNote:
         config, target, template = vault_with_target
         handler = MockConfirmationHandler(confirm=False)
         tools = make_vault_write_tools(
-            config, handler,
+            config,
+            handler,
             target_dir="Patterns",
             template_path="Templates/Pattern Template.md",
         )
@@ -263,7 +265,8 @@ class TestCreateNote:
         template.unlink()
         # Create fresh tools pointing to the now-missing template
         new_tools = make_vault_write_tools(
-            config, handler,
+            config,
+            handler,
             target_dir="Patterns",
             template_path="Templates/Pattern Template.md",
         )
@@ -318,7 +321,8 @@ class TestEditNote:
         note.write_text("original")
         handler = MockConfirmationHandler(confirm=False)
         tools = make_vault_write_tools(
-            config, handler,
+            config,
+            handler,
             target_dir="Patterns",
             template_path="Templates/Pattern Template.md",
         )

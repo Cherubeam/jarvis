@@ -17,20 +17,24 @@ async def list_agents(request: Request) -> list[dict]:
     session = request.app.state.gui_session
     registry = session.components.agent_registry
 
-    out = [{
-        "name": "JARVIS",
-        "command": "",
-        "description": "Orchestrator. Delegates to specialists.",
-        "tools": ["web_tools", "things3_tools", "delegate"],
-    }]
+    out = [
+        {
+            "name": "JARVIS",
+            "command": "",
+            "description": "Orchestrator. Delegates to specialists.",
+            "tools": ["web_tools", "things3_tools", "delegate"],
+        }
+    ]
     for name in sorted(registry):
         meta = registry[name]
-        out.append({
-            "name": name,
-            "command": meta.command or "",
-            "description": meta.description or "",
-            "tools": list(meta.tool_groups or []),
-        })
+        out.append(
+            {
+                "name": name,
+                "command": meta.command or "",
+                "description": meta.description or "",
+                "tools": list(meta.tool_groups or []),
+            }
+        )
     return out
 
 

@@ -18,8 +18,10 @@ def _make_stream_result(text: str = "response") -> StreamResult:
         usage=TokenUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
         cost_usd=0.001,
         metrics=ResponseMetrics(
-            ttft_ms=50, total_latency_ms=200,
-            prompt_tokens=10, completion_tokens=5,
+            ttft_ms=50,
+            total_latency_ms=200,
+            prompt_tokens=10,
+            completion_tokens=5,
         ),
     )
 
@@ -93,9 +95,8 @@ class TestBaseSkillRun:
 
 _SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
 _REAL_SKILLS_PRESENT = (
-    (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists()
-    and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
-)
+    _SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md"
+).exists() and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
 
 
 @pytest.mark.unit
@@ -107,7 +108,12 @@ class TestBaseSkillFromSkillMd:
     """Tests for BaseSkill.from_skill_md()."""
 
     def test_loads_from_real_technical_humanist_image_architect(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "technical-humanist-image-architect"
+        skill_dir = (
+            Path(__file__).parent.parent.parent
+            / "packages"
+            / "skills"
+            / "technical-humanist-image-architect"
+        )
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
@@ -118,7 +124,9 @@ class TestBaseSkillFromSkillMd:
         assert "Technical Humanist" in skill.config.system_prompt
 
     def test_loads_from_real_content_evaluator(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
+        skill_dir = (
+            Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
+        )
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
@@ -128,14 +136,21 @@ class TestBaseSkillFromSkillMd:
         assert skill.command == "/content-evaluator"
 
     def test_content_evaluator_has_custom_temperature(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
+        skill_dir = (
+            Path(__file__).parent.parent.parent / "packages" / "skills" / "content-evaluator"
+        )
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client)
         assert skill.config.temperature == 0.8
 
     def test_model_override_takes_precedence(self):
-        skill_dir = Path(__file__).parent.parent.parent / "packages" / "skills" / "technical-humanist-image-architect"
+        skill_dir = (
+            Path(__file__).parent.parent.parent
+            / "packages"
+            / "skills"
+            / "technical-humanist-image-architect"
+        )
         client = Mock(spec=LLMClient)
 
         skill = BaseSkill.from_skill_md(skill_dir, client, model="custom/model")

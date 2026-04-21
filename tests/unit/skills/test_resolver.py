@@ -54,9 +54,7 @@ class TestResolveSkillsSimple:
     def test_simple_skill_strips_frontmatter(self, tmp_path):
         skill_dir = tmp_path / "test-skill"
         skill_dir.mkdir()
-        (skill_dir / "SKILL.md").write_text(
-            "---\nname: test-skill\n---\n\nBody content only."
-        )
+        (skill_dir / "SKILL.md").write_text("---\nname: test-skill\n---\n\nBody content only.")
         registry = {"test-skill": _make_skill_meta("test-skill", skill_dir)}
 
         result = resolve_skills(["test-skill"], registry)

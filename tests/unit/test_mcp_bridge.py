@@ -20,7 +20,8 @@ def _make_mcp_tool(
     return types.Tool(
         name=name,
         description=description,
-        inputSchema=input_schema or {
+        inputSchema=input_schema
+        or {
             "type": "object",
             "properties": {"path": {"type": "string"}},
             "required": ["path"],

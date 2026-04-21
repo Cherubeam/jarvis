@@ -126,7 +126,10 @@ class TestReadArchitectureMap:
     def test_missing_map(self, tools, project_dir):
         (project_dir / "data" / "codebase_map.md").unlink()
         result = tools["read_architecture_map"].execute()
-        assert result == "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
+        assert (
+            result
+            == "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
+        )
 
 
 class TestToolFormat:
@@ -141,7 +144,12 @@ class TestToolFormat:
         tools = make_codebase_tools(project_dir)
         assert len(tools) == 4
         names = {t.name for t in tools}
-        assert names == {"read_source_file", "search_code", "list_directory", "read_architecture_map"}
+        assert names == {
+            "read_source_file",
+            "search_code",
+            "list_directory",
+            "read_architecture_map",
+        }
 
 
 class TestSchemaValidation:

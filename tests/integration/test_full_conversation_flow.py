@@ -19,9 +19,7 @@ class TestFullConversationFlow:
     """Integration tests for complete conversation flows."""
 
     def test_single_turn_conversation(
-        self,
-        temp_conversations_dir: Path,
-        sample_context_all_files: Path
+        self, temp_conversations_dir: Path, sample_context_all_files: Path
     ):
         """Test a single user→assistant conversation turn."""
         # Setup
@@ -34,7 +32,7 @@ class TestFullConversationFlow:
         system_prompt = build_system_prompt(sample_context_all_files)
 
         # Mock LiteLLM completion
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             # Create mock streaming response
             response_text = "Hello! How can I help you today?"
             mock_chunks = []
@@ -63,7 +61,7 @@ class TestFullConversationFlow:
 
             messages = [
                 {"role": "system", "content": system_prompt},
-                *logger.get_messages_for_api()
+                *logger.get_messages_for_api(),
             ]
 
             stream = client.chat_stream(messages)
@@ -77,7 +75,7 @@ class TestFullConversationFlow:
                 prompt_tokens=usage.prompt_tokens,
                 completion_tokens=usage.completion_tokens,
                 total_tokens=usage.total_tokens,
-                cost_usd=0.0045
+                cost_usd=0.0045,
             )
 
             # Verify
@@ -87,16 +85,12 @@ class TestFullConversationFlow:
             assert logger.metrics.total_tokens == 150
             assert logger.metrics.request_count == 1
 
-    def test_multi_turn_conversation(
-        self,
-        temp_conversations_dir: Path,
-        temp_context_dir: Path
-    ):
+    def test_multi_turn_conversation(self, temp_conversations_dir: Path, temp_context_dir: Path):
         """Test multiple back-and-forth exchanges."""
         client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
         logger = ConversationLogger(temp_conversations_dir)
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             # Mock responses for 3 turns
             def create_mock_stream(text: str, prompt_tokens: int, completion_tokens: int):
                 chunk = Mock()
@@ -109,7 +103,7 @@ class TestFullConversationFlow:
                 stream.usage = Mock(
                     prompt_tokens=prompt_tokens,
                     completion_tokens=completion_tokens,
-                    total_tokens=prompt_tokens + completion_tokens
+                    total_tokens=prompt_tokens + completion_tokens,
                 )
                 return stream
 
@@ -143,9 +137,7 @@ class TestFullConversationFlow:
             assert logger.metrics.total_tokens == 120 + 145 + 175
 
     def test_context_included_in_request(
-        self,
-        temp_conversations_dir: Path,
-        sample_context_all_files: Path
+        self, temp_conversations_dir: Path, sample_context_all_files: Path
     ):
         """Test that system prompt with context is sent to LLM."""
         client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
@@ -154,7 +146,7 @@ class TestFullConversationFlow:
         (sample_context_all_files / "soul.md").write_text("You are Jarvis.")
         system_prompt = build_system_prompt(sample_context_all_files)
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             chunk = Mock()
             chunk.choices = [Mock()]
             chunk.choices[0].delta = Mock()
@@ -176,7 +168,7 @@ class TestFullConversationFlow:
             # Build messages with context
             messages = [
                 {"role": "system", "content": system_prompt},
-                *logger.get_messages_for_api()
+                *logger.get_messages_for_api(),
             ]
 
             # Make request
@@ -222,12 +214,10 @@ class TestFullConversationFlow:
 
         # Mock pricing
         pricing = ModelPricing(
-            prompt_cost=0.000003,
-            completion_cost=0.000015,
-            model_id="test-model"
+            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
         )
 
-        with patch('litellm.completion') as mock_completion:
+        with patch("litellm.completion") as mock_completion:
             content_chunk = Mock()
             content_chunk.choices = [Mock()]
             content_chunk.choices[0].delta = Mock()
@@ -264,7 +254,7 @@ class TestFullConversationFlow:
                 usage.prompt_tokens,
                 usage.completion_tokens,
                 usage.total_tokens,
-                cost
+                cost,
             )
 
             assert logger.metrics.total_cost_usd == pytest.approx(0.0105)
@@ -272,7 +262,13 @@ class TestFullConversationFlow:
     def test_saved_json_has_schema_v1_structure(self, temp_conversations_dir: Path):
         """Test that saved conversation JSON contains all v1.0.0 schema fields."""
         model_config = {"id": "test-model", "provider": "openrouter", "parameters": {}}
-        environment = {"client": "cli", "client_version": "0.3.0", "platform": "darwin", "python_version": "3.13.1", "metadata": {}}
+        environment = {
+            "client": "cli",
+            "client_version": "0.3.0",
+            "platform": "darwin",
+            "python_version": "3.13.1",
+            "metadata": {},
+        }
 
         logger = ConversationLogger(
             temp_conversations_dir,
@@ -281,7 +277,14 @@ class TestFullConversationFlow:
         )
 
         logger.add_message("user", "Hello")
-        logger.add_message("assistant", "Hi!", prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.001)
+        logger.add_message(
+            "assistant",
+            "Hi!",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            cost_usd=0.001,
+        )
         logger.save()
 
         files = list(temp_conversations_dir.rglob("*.json"))

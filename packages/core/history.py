@@ -56,10 +56,12 @@ def trim_tool_results(
         if i < cutoff and msg.get("role") == "tool":
             content = msg.get("content", "")
             if len(content) > _TOOL_RESULT_SUMMARY_LEN:
-                trimmed.append({
-                    **msg,
-                    "content": content[:_TOOL_RESULT_SUMMARY_LEN] + "\n[... truncated]",
-                })
+                trimmed.append(
+                    {
+                        **msg,
+                        "content": content[:_TOOL_RESULT_SUMMARY_LEN] + "\n[... truncated]",
+                    }
+                )
                 continue
         trimmed.append(msg)
 
@@ -163,14 +165,19 @@ def summarize_history(
     try:
         response = client.complete(
             messages=[
-                {"role": "system", "content": "You are a conversation summarizer. Be concise."},  # pragma: no mutate
+                {
+                    "role": "system",
+                    "content": "You are a conversation summarizer. Be concise.",
+                },  # pragma: no mutate
                 {"role": "user", "content": prompt},
             ],
             model=model_id,
         )
         summary_text = response.choices[0].message.content
     except Exception:
-        logger.warning("History summarization failed; returning original history", exc_info=True)  # pragma: no mutate
+        logger.warning(
+            "History summarization failed; returning original history", exc_info=True
+        )  # pragma: no mutate
         return history
 
     summary_msg = {

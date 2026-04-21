@@ -83,25 +83,19 @@ def read_note(path: Path, vault_config: VaultConfig) -> str:
         FileNotFoundError: If note does not exist.
     """
     if not validate_read(path, vault_config):
-        raise PermissionError(
-            f"Access denied: {path} is not readable"
-        )
+        raise PermissionError(f"Access denied: {path} is not readable")
 
     return path.read_text(encoding="utf-8")
 
 
-def list_notes(
-    directory: Path, vault_config: VaultConfig, pattern: str = "*.md"
-) -> list[Path]:
+def list_notes(directory: Path, vault_config: VaultConfig, pattern: str = "*.md") -> list[Path]:
     """List notes in a directory within the vault.
 
     Raises:
         PermissionError: If directory is not readable.
     """
     if not validate_read(directory, vault_config):
-        raise PermissionError(
-            f"Access denied: {directory} is not readable"
-        )
+        raise PermissionError(f"Access denied: {directory} is not readable")
 
     if not directory.is_dir():
         return []
@@ -109,9 +103,7 @@ def list_notes(
     return sorted(directory.glob(pattern))
 
 
-def get_daily_note_path(
-    vault_config: VaultConfig, target_date: str | None = None
-) -> Path:
+def get_daily_note_path(vault_config: VaultConfig, target_date: str | None = None) -> Path:
     """Get the path to a daily note.
 
     Args:

@@ -37,8 +37,9 @@ def make_mutation_tools(project_root: Path) -> list[ToolDefinition]:
         try:
             text = pyproject.read_text()
             import re
+
             text = re.sub(
-                r'paths_to_mutate = \[.*?\]',
+                r"paths_to_mutate = \[.*?\]",
                 f'paths_to_mutate = ["{module}"]',
                 text,
             )
@@ -93,7 +94,9 @@ def make_mutation_tools(project_root: Path) -> list[ToolDefinition]:
         if status_filter and not mutant_id:
             lines = output.splitlines()
             filtered = [ln for ln in lines if status_filter.lower() in ln.lower()]
-            output = "\n".join(filtered) if filtered else f"No mutants with status '{status_filter}'."
+            output = (
+                "\n".join(filtered) if filtered else f"No mutants with status '{status_filter}'."
+            )
 
         if len(output) > _MAX_OUTPUT:
             output = output[:_MAX_OUTPUT] + f"\n\n[Output truncated at {_MAX_OUTPUT // 1000} KB]"

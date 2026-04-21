@@ -20,8 +20,12 @@ def _guard_for(path: Path, access: AccessLevel = AccessLevel.READ_WRITE) -> File
 
 # --- _slugify ---
 
+
 def test_slugify_basic():
-    assert _slugify("Migrate auth service off legacy middleware") == "migrate-auth-service-off-legacy-middleware"
+    assert (
+        _slugify("Migrate auth service off legacy middleware")
+        == "migrate-auth-service-off-legacy-middleware"
+    )
 
 
 def test_slugify_caps_at_max_words():
@@ -46,6 +50,7 @@ def test_slugify_collapses_multiple_dashes():
 
 # --- _next_available_path ---
 
+
 def test_next_available_path_first_slot_free(tmp_path: Path):
     result = _next_available_path(tmp_path, "2026-04-18", "foo")
     assert result == tmp_path / "2026-04-18-foo.md"
@@ -66,6 +71,7 @@ def test_next_available_path_multiple_collisions(tmp_path: Path):
 
 
 # --- track_recommendation tool ---
+
 
 @freeze_time("2026-04-18 14:32:00")
 def test_track_recommendation_writes_file(tmp_path: Path):
@@ -189,7 +195,5 @@ def test_track_recommendation_uses_iso_date_input(tmp_path: Path):
     with freeze_time("2026-04-18 14:32:00"):
         tools = make_outcome_tools(tmp_path, _guard_for(tmp_path), "c1")
         tools[0].execute(what="X", why="Y", revisit_in="2026-09-01")
-    meta, _ = frontmatter.parse(
-        (tmp_path / "2026-04-18-x.md").read_text(encoding="utf-8")
-    )
+    meta, _ = frontmatter.parse((tmp_path / "2026-04-18-x.md").read_text(encoding="utf-8"))
     assert meta["revisit_at"] == "2026-09-01"

@@ -38,8 +38,18 @@ class TestCortexSearchTool:
         mock_client = MagicMock()
         mock_client.search.return_value = {
             "results": [
-                {"path": "Projects/Alpha.md", "heading": "Overview", "score": 0.92, "content": "Alpha project details."},
-                {"path": "Notes/Beta.md", "heading": "", "score": 0.85, "content": "Beta notes here."},
+                {
+                    "path": "Projects/Alpha.md",
+                    "heading": "Overview",
+                    "score": 0.92,
+                    "content": "Alpha project details.",
+                },
+                {
+                    "path": "Notes/Beta.md",
+                    "heading": "",
+                    "score": 0.85,
+                    "content": "Beta notes here.",
+                },
             ],
             "count": 2,
         }

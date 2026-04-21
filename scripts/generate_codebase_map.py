@@ -38,8 +38,14 @@ def get_module_docstring(filepath: Path) -> str:
 def scan_modules(root: Path) -> list[str]:
     """Scan Python packages and return module descriptions."""
     lines: list[str] = []
-    packages = ["packages/core", "packages/agents", "packages/integrations", "packages/skills",
-                 "packages/telemetry", "apps/cli"]
+    packages = [
+        "packages/core",
+        "packages/agents",
+        "packages/integrations",
+        "packages/skills",
+        "packages/telemetry",
+        "apps/cli",
+    ]
 
     for pkg in packages:
         pkg_path = root / pkg

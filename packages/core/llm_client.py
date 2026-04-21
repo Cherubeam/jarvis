@@ -94,7 +94,8 @@ _PROMPT_LIMIT_RE = re.compile(r"Prompt tokens limit exceeded:\s*(\d+)\s*>\s*(\d+
 
 
 def _parse_credit_error(
-    error: Exception, max_tokens: int | None,
+    error: Exception,
+    max_tokens: int | None,
 ) -> InsufficientCreditsError | PromptTokenLimitError | None:
     """Parse a 402 API error into a typed exception, or return None."""
     if getattr(error, "status_code", None) != 402:
@@ -112,6 +113,7 @@ def _parse_credit_error(
 @dataclass
 class TokenUsage:
     """Token usage statistics from a single API call."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
@@ -122,6 +124,7 @@ class TokenUsage:
 @dataclass
 class StreamToolResult:
     """Result from a streaming call that detected tool calls instead of content."""
+
     tool_calls: list  # Accumulated tool call objects
     usage: TokenUsage
     finish_reason: str = "tool_calls"
@@ -240,7 +243,9 @@ class LLMClient:
         Returns:
             StreamingResponse that yields text chunks and provides usage stats after completion
         """
-        return StreamingResponse(self._stream_response(messages, model, tools, max_tokens=max_tokens))
+        return StreamingResponse(
+            self._stream_response(messages, model, tools, max_tokens=max_tokens)
+        )
 
     def stream_with_tool_detection(
         self,
@@ -292,7 +297,7 @@ class LLMClient:
 
         for chunk in response:
             # Extract usage from final chunk
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 cache_read, cache_write = _extract_cache_tokens(chunk.usage)
                 usage = TokenUsage(
                     prompt_tokens=chunk.usage.prompt_tokens or 0,
@@ -309,7 +314,7 @@ class LLMClient:
             finish_reason = chunk.choices[0].finish_reason
 
             # Accumulate tool call deltas
-            if hasattr(delta, 'tool_calls') and delta.tool_calls:
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
                 is_tool_response = True
                 for tc_delta in delta.tool_calls:
                     idx = tc_delta.index
@@ -321,7 +326,7 @@ class LLMClient:
                     entry = tool_call_deltas[idx]
                     if tc_delta.id:
                         entry["id"] = tc_delta.id
-                    if hasattr(tc_delta, 'function') and tc_delta.function:
+                    if hasattr(tc_delta, "function") and tc_delta.function:
                         if tc_delta.function.name:
                             entry["function"]["name"] = tc_delta.function.name
                         if tc_delta.function.arguments:
@@ -334,17 +339,20 @@ class LLMClient:
         if is_tool_response:
             # Build tool call objects that match the complete() response format
             from types import SimpleNamespace
+
             tool_calls = []
             for idx in sorted(tool_call_deltas):
                 tc = tool_call_deltas[idx]
-                tool_calls.append(SimpleNamespace(
-                    id=tc["id"],
-                    function=SimpleNamespace(
-                        name=tc["function"]["name"],
-                        arguments=tc["function"]["arguments"],
-                    ),
-                    type="function",
-                ))
+                tool_calls.append(
+                    SimpleNamespace(
+                        id=tc["id"],
+                        function=SimpleNamespace(
+                            name=tc["function"]["name"],
+                            arguments=tc["function"]["arguments"],
+                        ),
+                        type="function",
+                    )
+                )
             return StreamToolResult(tool_calls=tool_calls, usage=usage)
 
         # Content response — wrap remaining content in a StreamingResponse
@@ -396,7 +404,7 @@ class LLMClient:
                 yield chunk.choices[0].delta.content
 
             # Check if this chunk contains usage info (usually the last chunk)
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 cache_read, cache_write = _extract_cache_tokens(chunk.usage)
                 usage = TokenUsage(
                     prompt_tokens=chunk.usage.prompt_tokens or 0,

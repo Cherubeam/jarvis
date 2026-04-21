@@ -16,7 +16,9 @@ def make_cortex_search_tool(client: CortexClient) -> ToolDefinition:
         n_results: int = 5,
         path_prefix: str | None = None,
     ) -> str:
-        result = client.search(query, n_results=max(1, min(int(n_results), 20)), path_prefix=path_prefix)
+        result = client.search(
+            query, n_results=max(1, min(int(n_results), 20)), path_prefix=path_prefix
+        )
 
         if result is None:
             return (

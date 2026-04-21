@@ -29,18 +29,23 @@ from packages.telemetry.metrics import ResponseMetrics
 # _has_markdown detection
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestHasMarkdown:
     """Tests for the markdown detection heuristic."""
 
-    @pytest.mark.parametrize("text", [
-        "Here is code:\n```python\nprint('hi')\n```",
-        "## Section Title\nSome text",
-        "This is **important** text",
-        "Items:\n- first\n- second",
-        "Steps:\n1. first\n2. second",
-        "Use `print()` to output",
-    ], ids=["fenced_code", "atx_heading", "bold", "unordered_list", "ordered_list", "inline_code"])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Here is code:\n```python\nprint('hi')\n```",
+            "## Section Title\nSome text",
+            "This is **important** text",
+            "Items:\n- first\n- second",
+            "Steps:\n1. first\n2. second",
+            "Use `print()` to output",
+        ],
+        ids=["fenced_code", "atx_heading", "bold", "unordered_list", "ordered_list", "inline_code"],
+    )
     def test_detects_markdown(self, text):
         assert _has_markdown(text) is True
 
@@ -57,6 +62,7 @@ class TestHasMarkdown:
 # ---------------------------------------------------------------------------
 # print_usage_stats
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestPrintUsageStats:
@@ -109,6 +115,7 @@ class TestPrintUsageStats:
 # print_startup
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestPrintStartup:
     """Tests for the startup banner."""
@@ -134,6 +141,7 @@ class TestPrintStartup:
 # create_prompt_session
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestCreatePromptSession:
     """Tests for prompt_toolkit session creation."""
@@ -151,6 +159,7 @@ class TestCreatePromptSession:
 # ---------------------------------------------------------------------------
 # Live streaming display
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestLiveStreamDisplay:
@@ -206,6 +215,7 @@ class TestLiveStreamDisplay:
         mock_live.stop.assert_called_once()
         mock_console.print.assert_called_once()
         from rich.markdown import Markdown
+
         arg = mock_console.print.call_args[0][0]
         assert isinstance(arg, Markdown)
 
@@ -239,6 +249,7 @@ class TestLiveStreamDisplay:
 # ---------------------------------------------------------------------------
 # Styled print helpers (smoke tests)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestStyledHelpers:

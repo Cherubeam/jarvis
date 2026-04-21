@@ -57,7 +57,9 @@ def load_config(project_root: Path | None = None) -> dict:
     return config
 
 
-def init_llm_client(config: dict, model_override: str | None = None) -> tuple[LLMClient, str, ModelPricing | None]:
+def init_llm_client(
+    config: dict, model_override: str | None = None
+) -> tuple[LLMClient, str, ModelPricing | None]:
     """Initialize LLM client with model resolution and pricing.
 
     Args:
@@ -69,7 +71,9 @@ def init_llm_client(config: dict, model_override: str | None = None) -> tuple[LL
     """
     api_keys = collect_api_keys()
     models_config = config.get("models", {})
-    model_source = model_override or models_config.get("default", "openrouter/anthropic/claude-sonnet-4.6")
+    model_source = model_override or models_config.get(
+        "default", "openrouter/anthropic/claude-sonnet-4.6"
+    )
     resolved = resolve_model(model_source, config)
 
     client = LLMClient(api_keys=api_keys, default_model=resolved.model_id)
@@ -94,7 +98,10 @@ def init_stream_handler(
     """
     metrics_tracker = MetricsTracker()
     handler = StreamHandler(
-        client, metrics_tracker, pricing, model_id,
+        client,
+        metrics_tracker,
+        pricing,
+        model_id,
         on_tool_call=on_tool_call,
         max_tokens=config.get("models", {}).get("default_max_tokens"),
         on_event=on_event,
@@ -122,7 +129,9 @@ def instantiate_agent(
 ):
     """Create an agent from AgentMeta via agent_from_meta()."""
     return agent_from_meta(
-        meta.meta_path, client, model_id,
+        meta.meta_path,
+        client,
+        model_id,
         extra_tools=extra_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,

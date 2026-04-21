@@ -13,9 +13,13 @@ from freezegun import freeze_time
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.memory import (
-        SessionMetrics, ConversationLogger, SCHEMA_VERSION,
-        generate_conversation_id, hash_content,
-        _normalize_content, _extract_text_from_content,
+        SessionMetrics,
+        ConversationLogger,
+        SCHEMA_VERSION,
+        generate_conversation_id,
+        hash_content,
+        _normalize_content,
+        _extract_text_from_content,
         migrate_conversation,
     )
 except ImportError:
@@ -29,6 +33,7 @@ class TestGenerateConversationId:
     def test_format_pattern(self):
         """Test that ID matches conv_{YYYYMMDD}_{HHMMSS}_{6hex} pattern."""
         import re
+
         conv_id = generate_conversation_id()
         assert re.match(r"^conv_\d{8}_\d{6}_[0-9a-f]{6}$", conv_id)
 
@@ -56,6 +61,7 @@ class TestHashContent:
     def test_returns_16_hex_chars(self):
         """Test that hash is 16 hex characters."""
         import re
+
         result = hash_content("test")
         assert re.match(r"^[0-9a-f]{16}$", result)
 
@@ -79,7 +85,10 @@ class TestNormalizeContent:
 
     def test_list_passed_through(self):
         """Test that a list of content blocks is passed through."""
-        blocks = [{"type": "text", "text": "Hello!"}, {"type": "code", "language": "python", "text": "x=1"}]
+        blocks = [
+            {"type": "text", "text": "Hello!"},
+            {"type": "code", "language": "python", "text": "x=1"},
+        ]
         result = _normalize_content(blocks)
         assert result is blocks
 
@@ -135,10 +144,7 @@ class TestSessionMetrics:
         metrics = SessionMetrics()
 
         metrics.add_usage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150,
-            cost_usd=0.0045
+            prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.0045
         )
 
         assert metrics.total_prompt_tokens == 100
@@ -157,14 +163,28 @@ class TestSessionMetrics:
         metrics = SessionMetrics()
 
         # Use different values so += vs = is distinguishable
-        metrics.add_usage(100, 50, 150, 0.0045,
-                          ttft_ms=200.0, total_latency_ms=1000.0,
-                          cache_read_tokens=10, cache_write_tokens=5,
-                          thinking_tokens=300)
-        metrics.add_usage(200, 75, 275, 0.0082,
-                          ttft_ms=400.0, total_latency_ms=2000.0,
-                          cache_read_tokens=20, cache_write_tokens=15,
-                          thinking_tokens=700)
+        metrics.add_usage(
+            100,
+            50,
+            150,
+            0.0045,
+            ttft_ms=200.0,
+            total_latency_ms=1000.0,
+            cache_read_tokens=10,
+            cache_write_tokens=5,
+            thinking_tokens=300,
+        )
+        metrics.add_usage(
+            200,
+            75,
+            275,
+            0.0082,
+            ttft_ms=400.0,
+            total_latency_ms=2000.0,
+            cache_read_tokens=20,
+            cache_write_tokens=15,
+            thinking_tokens=700,
+        )
 
         assert metrics.total_prompt_tokens == 300
         assert metrics.total_completion_tokens == 125
@@ -226,10 +246,17 @@ class TestSessionMetrics:
         metrics = SessionMetrics()
         result = metrics.to_dict()
         expected_keys = {
-            "total_prompt_tokens", "total_completion_tokens", "total_tokens",
-            "total_cost_usd", "total_cache_read_tokens", "total_cache_write_tokens",
-            "total_thinking_tokens", "request_count",
-            "average_ttft_ms", "average_latency_ms", "metadata",
+            "total_prompt_tokens",
+            "total_completion_tokens",
+            "total_tokens",
+            "total_cost_usd",
+            "total_cache_read_tokens",
+            "total_cache_write_tokens",
+            "total_thinking_tokens",
+            "request_count",
+            "average_ttft_ms",
+            "average_latency_ms",
+            "metadata",
         }
         assert set(result.keys()) == expected_keys
         assert result["metadata"] == {}
@@ -312,9 +339,12 @@ class TestConversationLogger:
         assert logger.metadata == {}
 
     def test_conversation_logger_init_with_configs(
-        self, temp_conversations_dir: Path,
-        sample_model_config, sample_agent_config,
-        sample_context_snapshot, sample_environment,
+        self,
+        temp_conversations_dir: Path,
+        sample_model_config,
+        sample_agent_config,
+        sample_context_snapshot,
+        sample_environment,
     ):
         """Test that ConversationLogger accepts optional config dicts."""
         logger = ConversationLogger(
@@ -373,7 +403,7 @@ class TestConversationLogger:
                 prompt_tokens=100,
                 completion_tokens=50,
                 total_tokens=150,
-                cost_usd=0.0045
+                cost_usd=0.0045,
             )
 
         assert len(logger.current_conversation) == 1
@@ -412,7 +442,9 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "First")
-        logger.add_message("assistant", "Second", total_tokens=10, prompt_tokens=5, completion_tokens=5)
+        logger.add_message(
+            "assistant", "Second", total_tokens=10, prompt_tokens=5, completion_tokens=5
+        )
         logger.add_message("user", "Third")
 
         assert logger.current_conversation[0]["id"] == "msg_001"
@@ -447,8 +479,11 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message(
-            "assistant", "Full response",
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            "assistant",
+            "Full response",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
             stop_reason="end_turn",
         )
 
@@ -482,7 +517,9 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "Hello")
-        logger.add_message("assistant", "Hi there", prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        logger.add_message(
+            "assistant", "Hi there", prompt_tokens=10, completion_tokens=5, total_tokens=15
+        )
 
         api_messages = logger.get_messages_for_api()
 
@@ -535,25 +572,35 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "fetch example.com")
-        logger.add_tool_messages([
-            {
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}],
-            },
-            {
-                "role": "tool",
-                "content": "page content",
-                "tool_call_id": "tc1",
-            },
-        ])
-        logger.add_message("assistant", "Here is the content", prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        logger.add_tool_messages(
+            [
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}],
+                },
+                {
+                    "role": "tool",
+                    "content": "page content",
+                    "tool_call_id": "tc1",
+                },
+            ]
+        )
+        logger.add_message(
+            "assistant",
+            "Here is the content",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+        )
 
         api_msgs = logger.get_messages_for_api()
 
         assert len(api_msgs) == 4
         # Assistant tool_calls message
-        assert api_msgs[1]["tool_calls"] == [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}]
+        assert api_msgs[1]["tool_calls"] == [
+            {"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}
+        ]
         assert api_msgs[1]["content"] is None
         # Tool result message
         assert api_msgs[2]["role"] == "tool"
@@ -569,7 +616,14 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "Hello")
-        logger.add_message("assistant", "Hi!", prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.001)
+        logger.add_message(
+            "assistant",
+            "Hi!",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            cost_usd=0.001,
+        )
 
         with freeze_time("2026-01-15 14:31:00"):
             logger.save()
@@ -613,9 +667,12 @@ class TestConversationLogger:
 
     @freeze_time("2026-01-15 14:30:00")
     def test_save_conversation_with_configs(
-        self, temp_conversations_dir: Path,
-        sample_model_config, sample_agent_config,
-        sample_context_snapshot, sample_environment,
+        self,
+        temp_conversations_dir: Path,
+        sample_model_config,
+        sample_agent_config,
+        sample_context_snapshot,
+        sample_environment,
     ):
         """Test that save includes model, agent, context, and environment."""
         logger = ConversationLogger(
@@ -679,8 +736,11 @@ class TestAddMessageMutationTargets:
     def test_agent_name_tags_assistant_messages(self, temp_conversations_dir: Path):
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message(
-            "assistant", "Done.",
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
+            "assistant",
+            "Done.",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
             agent_name="writer",
         )
         msg = logger.current_conversation[0]
@@ -695,9 +755,13 @@ class TestAddMessageMutationTargets:
     def test_add_message_with_latency(self, temp_conversations_dir: Path):
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message(
-            "assistant", "response",
-            prompt_tokens=100, completion_tokens=50, total_tokens=150,
-            ttft_ms=250.5, total_latency_ms=1200.0,
+            "assistant",
+            "response",
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+            ttft_ms=250.5,
+            total_latency_ms=1200.0,
         )
         msg = logger.current_conversation[0]
         assert msg["latency"] == {"ttft_ms": 250.5, "total_ms": 1200.0}
@@ -705,9 +769,13 @@ class TestAddMessageMutationTargets:
     def test_add_message_latency_none_when_both_zero(self, temp_conversations_dir: Path):
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message(
-            "assistant", "response",
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
-            ttft_ms=0.0, total_latency_ms=0.0,
+            "assistant",
+            "response",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            ttft_ms=0.0,
+            total_latency_ms=0.0,
         )
         msg = logger.current_conversation[0]
         assert msg["latency"] is None
@@ -716,9 +784,13 @@ class TestAddMessageMutationTargets:
         """Latency set when only ttft_ms > 0 (total_latency_ms = 0)."""
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message(
-            "assistant", "response",
-            prompt_tokens=10, completion_tokens=5, total_tokens=15,
-            ttft_ms=100.0, total_latency_ms=0.0,
+            "assistant",
+            "response",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            ttft_ms=100.0,
+            total_latency_ms=0.0,
         )
         msg = logger.current_conversation[0]
         assert msg["latency"] is not None
@@ -727,9 +799,14 @@ class TestAddMessageMutationTargets:
     def test_add_message_cache_and_thinking_tokens(self, temp_conversations_dir: Path):
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message(
-            "assistant", "response",
-            prompt_tokens=100, completion_tokens=50, total_tokens=150,
-            cache_read_tokens=80, cache_write_tokens=20, thinking_tokens=30,
+            "assistant",
+            "response",
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+            cache_read_tokens=80,
+            cache_write_tokens=20,
+            thinking_tokens=30,
         )
         usage = logger.current_conversation[0]["usage"]
         assert usage["cache_read_tokens"] == 80
@@ -762,9 +839,11 @@ class TestAddMessageMutationTargets:
     def test_tool_messages_field_defaults(self, temp_conversations_dir: Path):
         """Stored tool messages have all required fields with correct defaults."""
         logger = ConversationLogger(temp_conversations_dir)
-        logger.add_tool_messages([
-            {"role": "tool", "tool_call_id": "tc1", "content": "data"},
-        ])
+        logger.add_tool_messages(
+            [
+                {"role": "tool", "tool_call_id": "tc1", "content": "data"},
+            ]
+        )
         stored = logger.current_conversation[0]
         assert stored["parent_id"] is None
         assert stored["usage"] is None
@@ -777,9 +856,11 @@ class TestAddMessageMutationTargets:
     def test_tool_messages_content_none_normalized(self, temp_conversations_dir: Path):
         """Tool messages with content=None get normalized to empty content."""
         logger = ConversationLogger(temp_conversations_dir)
-        logger.add_tool_messages([
-            {"role": "assistant", "content": None},
-        ])
+        logger.add_tool_messages(
+            [
+                {"role": "assistant", "content": None},
+            ]
+        )
         stored = logger.current_conversation[0]
         # content should be normalized (not None, not "None")
         assert stored["content"] == [{"type": "text", "text": ""}]
@@ -788,18 +869,22 @@ class TestAddMessageMutationTargets:
         """tool_calls field on assistant messages is preserved in storage."""
         logger = ConversationLogger(temp_conversations_dir)
         calls = [{"id": "tc1", "type": "function", "function": {"name": "search"}}]
-        logger.add_tool_messages([
-            {"role": "assistant", "content": None, "tool_calls": calls},
-        ])
+        logger.add_tool_messages(
+            [
+                {"role": "assistant", "content": None, "tool_calls": calls},
+            ]
+        )
         stored = logger.current_conversation[0]
         assert stored["tool_calls"] == calls
 
     def test_tool_messages_preserves_tool_call_id(self, temp_conversations_dir: Path):
         """tool_call_id field on tool result messages is preserved."""
         logger = ConversationLogger(temp_conversations_dir)
-        logger.add_tool_messages([
-            {"role": "tool", "tool_call_id": "tc_42", "content": "result"},
-        ])
+        logger.add_tool_messages(
+            [
+                {"role": "tool", "tool_call_id": "tc_42", "content": "result"},
+            ]
+        )
         stored = logger.current_conversation[0]
         assert stored["tool_call_id"] == "tc_42"
 
@@ -807,10 +892,12 @@ class TestAddMessageMutationTargets:
         """Tool message IDs continue the sequence from prior messages."""
         logger = ConversationLogger(temp_conversations_dir)
         logger.add_message("user", "question")  # msg_001
-        logger.add_tool_messages([
-            {"role": "assistant", "content": None},
-            {"role": "tool", "tool_call_id": "tc1", "content": "r"},
-        ])
+        logger.add_tool_messages(
+            [
+                {"role": "assistant", "content": None},
+                {"role": "tool", "tool_call_id": "tc1", "content": "r"},
+            ]
+        )
         assert logger.current_conversation[1]["id"] == "msg_002"
         assert logger.current_conversation[2]["id"] == "msg_003"
 
@@ -838,10 +925,13 @@ class TestMigrateConversationMutationTargets:
     def test_migrate_message_usage_default_values(self):
         """Usage migration uses correct defaults for missing fields."""
         old = {
-            "messages": [{
-                "role": "assistant", "content": "Hi",
-                "usage": {"prompt_tokens": 1},  # minimal to be truthy; other fields missing
-            }],
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": "Hi",
+                    "usage": {"prompt_tokens": 1},  # minimal to be truthy; other fields missing
+                }
+            ],
         }
         result = migrate_conversation(old)
         usage = result["messages"][0]["usage"]
@@ -857,10 +947,13 @@ class TestMigrateConversationMutationTargets:
     def test_migrate_message_latency_default_values(self):
         """Latency migration uses correct defaults for missing fields."""
         old = {
-            "messages": [{
-                "role": "assistant", "content": "Hi",
-                "latency": {"ttft_ms": 0.0},  # minimal to be truthy; total_ms missing
-            }],
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": "Hi",
+                    "latency": {"ttft_ms": 0.0},  # minimal to be truthy; total_ms missing
+                }
+            ],
         }
         result = migrate_conversation(old)
         latency = result["messages"][0]["latency"]
@@ -895,7 +988,9 @@ class TestMigrateConversationMutationTargets:
 
     def test_migrate_message_id_format(self):
         """Message IDs start at 1 and use 3-digit zero-padded format."""
-        old = {"messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]}
+        old = {
+            "messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]
+        }
         result = migrate_conversation(old)
         assert result["messages"][0]["id"] == "msg_001"
         assert result["messages"][1]["id"] == "msg_002"
@@ -997,6 +1092,7 @@ class TestMigrateConversation:
     def test_unknown_schema_version_logs_warning(self, caplog):
         """Test that an unexpected schema version logs a warning."""
         import logging
+
         data = {"schema_version": "99.0.0", "id": "conv_future"}
         with caplog.at_level(logging.WARNING, logger="packages.core.memory"):
             result = migrate_conversation(data)
@@ -1012,17 +1108,28 @@ class TestMigrateConversation:
             "messages": [
                 {"role": "user", "content": "Hello", "timestamp": "2025-11-28T14:23:56"},
                 {"role": "assistant", "content": "Hi!", "timestamp": "2025-11-28T14:23:59"},
-            ]
+            ],
         }
 
         result = migrate_conversation(old_data)
 
         # Verify all top-level keys exist
         expected_top_keys = {
-            "schema_version", "id", "title", "topic", "tags",
-            "session_start", "session_end", "model", "agent",
-            "context", "metrics", "environment", "messages",
-            "feedback", "metadata",
+            "schema_version",
+            "id",
+            "title",
+            "topic",
+            "tags",
+            "session_start",
+            "session_end",
+            "model",
+            "agent",
+            "context",
+            "metrics",
+            "environment",
+            "messages",
+            "feedback",
+            "metadata",
         }
         assert set(result.keys()) == expected_top_keys
 
@@ -1089,7 +1196,7 @@ class TestMigrateConversation:
                     },
                     "latency": {"ttft_ms": 1154.24, "total_ms": 1480.24},
                 },
-            ]
+            ],
         }
 
         result = migrate_conversation(old_data)
@@ -1132,7 +1239,7 @@ class TestMigrateConversation:
             "session_end": "2025-11-28T14:24:18",
             "messages": [
                 {"role": "user", "content": "Test", "timestamp": "2025-11-28T14:23:56"},
-            ]
+            ],
         }
         filepath = tmp_path / "old_conversation.json"
         filepath.write_text(json.dumps(old_data))
@@ -1226,8 +1333,13 @@ class TestConversationLoggerUtilization:
             context_metadata=metadata,
         )
         logger.add_message("user", "What are my tasks?")
-        logger.add_message("assistant", "Here are your tasks: buy milk",
-                           prompt_tokens=100, completion_tokens=20, total_tokens=120)
+        logger.add_message(
+            "assistant",
+            "Here are your tasks: buy milk",
+            prompt_tokens=100,
+            completion_tokens=20,
+            total_tokens=120,
+        )
         logger.record_utilization("Here are your tasks: buy milk", ["tasks"])
 
         logger.save()
@@ -1302,7 +1414,9 @@ class TestConversationLoggerUtilization:
             context_metadata=metadata,
         )
         logger.add_message("user", "Hello")
-        logger.add_message("assistant", "Hi!", prompt_tokens=50, completion_tokens=5, total_tokens=55)
+        logger.add_message(
+            "assistant", "Hi!", prompt_tokens=50, completion_tokens=5, total_tokens=55
+        )
 
         logger.save()
 

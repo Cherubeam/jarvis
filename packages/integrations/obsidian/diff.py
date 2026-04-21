@@ -79,9 +79,7 @@ def compute_diff(
             diff_lines.append(DiffLine(type="removed", content=content[1:]))
             removed_count += 1
         else:
-            diff_lines.append(
-                DiffLine(type="unchanged", content=content[1:] if content else "")
-            )
+            diff_lines.append(DiffLine(type="unchanged", content=content[1:] if content else ""))
             line_num += 1
 
     # Build summary
@@ -135,7 +133,5 @@ def format_diff_for_api(diff: VaultDiff) -> dict:
         "file_path": diff.file_path,
         "summary": diff.summary,
         "has_changes": bool(diff.diff_lines),
-        "lines": [
-            {"type": dl.type, "content": dl.content} for dl in diff.diff_lines
-        ],
+        "lines": [{"type": dl.type, "content": dl.content} for dl in diff.diff_lines],
     }

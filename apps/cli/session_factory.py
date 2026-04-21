@@ -109,8 +109,10 @@ def make_agent_vault_tools(
         from packages.core.tools.vault_write_tools import make_vault_write_tools
 
         return make_vault_write_tools(
-            vault_config, confirmation_handler,
-            target_dir=target_dir, template_path=template_path,
+            vault_config,
+            confirmation_handler,
+            target_dir=target_dir,
+            template_path=template_path,
         )
     except Exception:
         return []
@@ -143,7 +145,9 @@ def instantiate_agent(
     prompt_includes_override: dict[str, str] | None = None,
 ):
     return agent_from_meta(
-        meta.meta_path, client, model_id,
+        meta.meta_path,
+        client,
+        model_id,
         extra_tools=extra_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
@@ -180,9 +184,8 @@ def build_session(
     api_keys = collect_api_keys()
 
     models_config = config.get("models", {})
-    model_source = (
-        getattr(args, "model", None)
-        or models_config.get("default", "openrouter/anthropic/claude-sonnet-4.6")
+    model_source = getattr(args, "model", None) or models_config.get(
+        "default", "openrouter/anthropic/claude-sonnet-4.6"
     )
     resolved = resolve_model(model_source, config)
     model_id = resolved.model_id
@@ -194,7 +197,9 @@ def build_session(
         )
 
     context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
-    conversations_dir = jarvis_dir / config.get("paths", {}).get("conversations_dir", "data/conversations")
+    conversations_dir = jarvis_dir / config.get("paths", {}).get(
+        "conversations_dir", "data/conversations"
+    )
 
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
@@ -219,7 +224,9 @@ def build_session(
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
             db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-            embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
+            embedding_model = rag_cfg.get(
+                "embedding_model", "openrouter/openai/text-embedding-3-small"
+            )
             rag_api_key = get_api_key("openrouter", api_keys) or ""
 
             indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
@@ -227,13 +234,17 @@ def build_session(
             if n_new:
                 print_system(f"[RAG] Indexed {n_new} new conversation(s).")
 
-            shared_tools.append(make_conversation_recall_tool(db_path, embedding_model, rag_api_key))
+            shared_tools.append(
+                make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
+            )
 
             outcomes_cfg_for_index = config.get("outcomes", {})
             if outcomes_cfg_for_index.get("enabled", True):
                 from packages.core.rag.outcome_indexer import OutcomeIndexer
 
-                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get("dir", "data/outcomes")
+                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get(
+                    "dir", "data/outcomes"
+                )
                 outcome_indexer = OutcomeIndexer(db_path, embedding_model, rag_api_key)
                 n_outcomes = outcome_indexer.index_new(outcomes_dir_for_index)
                 if n_outcomes:
@@ -241,7 +252,8 @@ def build_session(
 
             if rag_cfg.get("index_cards", True):
                 deck_dirs = [
-                    meta.path for meta in skill_registry.values()
+                    meta.path
+                    for meta in skill_registry.values()
                     if (meta.path / "deck.yaml").is_file()
                 ]
                 if deck_dirs:
@@ -312,7 +324,9 @@ def build_session(
                 outcomes_api_key = get_api_key("openrouter", api_keys) or ""
                 shared_tools.append(
                     make_outcome_recall_tool(
-                        db_path_for_outcomes, embedding_model_for_outcomes, outcomes_api_key,
+                        db_path_for_outcomes,
+                        embedding_model_for_outcomes,
+                        outcomes_api_key,
                     )
                 )
             except Exception as e:
@@ -328,7 +342,10 @@ def build_session(
             template_path = writing_cfg.get("template_path", "")
             if blog_dir:
                 blog_tools = make_blog_tools(
-                    vault_config, confirmation_handler, blog_dir, template_path,
+                    vault_config,
+                    confirmation_handler,
+                    blog_dir,
+                    template_path,
                 )
                 tool_groups["blog_tools"] = blog_tools
                 print_system(f"[Blog] {len(blog_tools)} blog tools loaded.")
@@ -356,10 +373,16 @@ def build_session(
             from packages.core.tools.project_write_tools import make_project_write_tools
             from packages.core.tools.test_tools import make_test_runner_tool
 
-            dev_scope = dev_cfg.get("scope", [
-                "packages/agents/", "packages/skills/",
-                "data/context/", "data/prompts/", "config/",
-            ])
+            dev_scope = dev_cfg.get(
+                "scope",
+                [
+                    "packages/agents/",
+                    "packages/skills/",
+                    "data/context/",
+                    "data/prompts/",
+                    "config/",
+                ],
+            )
             dev_extensions = dev_cfg.get("allowed_extensions", [".md", ".yaml", ".yml"])
 
             dev_tools: list = []
@@ -371,10 +394,14 @@ def build_session(
                 dev_confirmation = AutoConfirmationHandler(dev_scope, jarvis_dir)
             else:
                 dev_confirmation = confirmation_handler
-            dev_tools.extend(make_project_write_tools(
-                jarvis_dir, dev_confirmation,
-                allowed_dirs=dev_scope, allowed_extensions=dev_extensions,
-            ))
+            dev_tools.extend(
+                make_project_write_tools(
+                    jarvis_dir,
+                    dev_confirmation,
+                    allowed_dirs=dev_scope,
+                    allowed_extensions=dev_extensions,
+                )
+            )
             dev_tools.append(make_test_runner_tool(jarvis_dir))
             dev_tools.extend(make_mutation_tools(jarvis_dir))
             tool_groups["dev_tools"] = dev_tools
@@ -437,11 +464,16 @@ def build_session(
                 card_output = jarvis_dir / card_cfg.get("output_dir", "data/pattern-cards")
                 img_config = ImageGenerationConfig.from_dict(card_cfg)
                 card_gen_tools = make_card_generator_tools(
-                    vault_config, patterns_dir, card_output, image_config=img_config,
+                    vault_config,
+                    patterns_dir,
+                    card_output,
+                    image_config=img_config,
                 )
                 tool_groups["card_generator"] = card_gen_tools
                 img_status = "enabled" if img_config.enabled else "prompts only"
-                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status}).")
+                print_system(
+                    f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status})."
+                )
             except Exception as e:
                 print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
 
@@ -465,22 +497,24 @@ def build_session(
     if requested_agent:
         if requested_agent not in agent_registry:
             available = ", ".join(sorted(agent_registry)) or "(none)"
-            raise RuntimeError(
-                f"Unknown agent '{requested_agent}'. Available: {available}"
-            )
+            raise RuntimeError(f"Unknown agent '{requested_agent}'. Available: {available}")
         meta = agent_registry[requested_agent]
         all_agent_tools = assemble_agent_tools(meta, shared_tools, tool_groups)
-        all_agent_tools.extend(make_agent_vault_tools(meta, config, vault_config, confirmation_handler))
+        all_agent_tools.extend(
+            make_agent_vault_tools(meta, config, vault_config, confirmation_handler)
+        )
         active_agent = instantiate_agent(
-            meta, client, model_id, all_agent_tools,
+            meta,
+            client,
+            model_id,
+            all_agent_tools,
             skill_registry=skill_registry,
             card_search_tool=card_search_tool,
         )
         agent_name = meta.name
     else:
         available_agents = [
-            {"name": meta.name, "description": meta.description}
-            for meta in agent_registry.values()
+            {"name": meta.name, "description": meta.description} for meta in agent_registry.values()
         ]
         jarvis_tools = (
             list(shared_tools)
@@ -515,12 +549,14 @@ def build_session(
             if f.is_file() and f.suffix == ".md":
                 content = f.read_text(encoding="utf-8")
                 size_bytes = f.stat().st_size
-                context_files.append({
-                    "path": str(f.relative_to(jarvis_dir)),
-                    "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": size_bytes,
-                    "approx_tokens": size_bytes // 4,
-                })
+                context_files.append(
+                    {
+                        "path": str(f.relative_to(jarvis_dir)),
+                        "hash": f"sha256:{hash_content(content)}",
+                        "size_bytes": size_bytes,
+                        "approx_tokens": size_bytes // 4,
+                    }
+                )
         projects_dir = context_dir / "projects"
         if projects_dir.is_dir():
             for f in sorted(projects_dir.glob("*.md")):
@@ -564,7 +600,10 @@ def build_session(
 
     streaming_enabled = config.get("models", {}).get("streaming", True)
     stream_handler = StreamHandler(
-        client, metrics_tracker, pricing, model_id,
+        client,
+        metrics_tracker,
+        pricing,
+        model_id,
         on_tool_call=on_tool_call,
         max_tokens=config.get("models", {}).get("default_max_tokens"),
         streaming=streaming_enabled,

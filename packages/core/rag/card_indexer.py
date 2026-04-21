@@ -225,16 +225,18 @@ class CardSearcher:
         distances = result.get("distances", [[]])[0]
 
         for doc, meta, dist in zip(documents, metadatas, distances):
-            search_results.append({
-                "card_id": meta.get("card_id", ""),
-                "deck": meta.get("deck", ""),
-                "deck_dir": meta.get("deck_dir", ""),
-                "name": meta.get("name", ""),
-                "category": meta.get("category", ""),
-                "tags": meta.get("tags", ""),
-                "when": meta.get("when", ""),
-                "content": doc,
-                "distance": float(dist),
-            })
+            search_results.append(
+                {
+                    "card_id": meta.get("card_id", ""),
+                    "deck": meta.get("deck", ""),
+                    "deck_dir": meta.get("deck_dir", ""),
+                    "name": meta.get("name", ""),
+                    "category": meta.get("category", ""),
+                    "tags": meta.get("tags", ""),
+                    "when": meta.get("when", ""),
+                    "content": doc,
+                    "distance": float(dist),
+                }
+            )
 
         return search_results

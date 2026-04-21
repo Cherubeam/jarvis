@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 
 from apps.gui.server.home.cost_week import cost_week_rollup
 from apps.gui.server.home.task_links import link_tasks_to_conversations
+
 # fetch_tasks is imported at module level so tests can patch this symbol.
 # task_sync.py imports the macOS-only `things` module lazily inside the
 # function body, so this import is safe on Linux CI.
@@ -19,11 +20,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 _QUICK_START = [
-    {"label": "new chat",       "cmd": None,             "agent": "JARVIS"},
+    {"label": "new chat", "cmd": None, "agent": "JARVIS"},
     {"label": "/daily-summary", "cmd": "/daily-summary", "agent": "JARVIS"},
-    {"label": "/weekly-review", "cmd": "/navigator",     "agent": "navigator"},
-    {"label": "/research",      "cmd": "/research",      "agent": "researcher"},
-    {"label": "/write",         "cmd": "/write",         "agent": "writer"},
+    {"label": "/weekly-review", "cmd": "/navigator", "agent": "navigator"},
+    {"label": "/research", "cmd": "/research", "agent": "researcher"},
+    {"label": "/write", "cmd": "/write", "agent": "writer"},
 ]
 
 _TASKS_CAP = 6
@@ -101,7 +102,7 @@ async def get_home(request: Request) -> dict[str, Any]:
 
     # -- resume + recent ----------------------------------------------------
     resume = all_summaries[0] if all_summaries else None
-    recent = all_summaries[1:1 + _RECENT_CAP] if resume else []
+    recent = all_summaries[1 : 1 + _RECENT_CAP] if resume else []
 
     # -- greeting + date ----------------------------------------------------
     now = datetime.now()

@@ -89,7 +89,9 @@ def convert_content_parts(content: dict) -> list[dict]:
         text = content.get("text", "")
         domain = content.get("domain", "")
         url = content.get("url", "")
-        return [{"type": "text", "text": text, "metadata": {"quote_source": domain, "quote_url": url}}]
+        return [
+            {"type": "text", "text": text, "metadata": {"quote_source": domain, "quote_url": url}}
+        ]
 
     if content_type == "reasoning_recap":
         text = content.get("content", "")
@@ -134,20 +136,24 @@ def _convert_multimodal_parts(parts: list) -> list[dict]:
         elif isinstance(p, dict):
             ct = p.get("content_type", "")
             if ct == "image_asset_pointer":
-                blocks.append({
-                    "type": "text",
-                    "text": "[Image not available]",
-                    "metadata": {
-                        "original_type": "image",
-                        "asset_pointer": p.get("asset_pointer", ""),
-                    },
-                })
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": "[Image not available]",
+                        "metadata": {
+                            "original_type": "image",
+                            "asset_pointer": p.get("asset_pointer", ""),
+                        },
+                    }
+                )
             else:
-                blocks.append({
-                    "type": "text",
-                    "text": str(p),
-                    "metadata": {"original_type": ct or "unknown"},
-                })
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": str(p),
+                        "metadata": {"original_type": ct or "unknown"},
+                    }
+                )
         else:
             blocks.append({"type": "text", "text": str(p)})
     return blocks or [{"type": "text", "text": ""}]
@@ -218,19 +224,21 @@ def convert_conversation(chatgpt_conv: dict) -> dict:
         msg_update = raw_msg.get("update_time")
         timestamp = _unix_to_iso(msg_create or msg_update)
 
-        messages.append({
-            "id": f"msg_{i:03d}",
-            "parent_id": None,
-            "role": role,
-            "timestamp": timestamp,
-            "content": content_blocks,
-            "usage": None,
-            "latency": None,
-            "stop_reason": None,
-            "status": "completed",
-            "error": None,
-            "metadata": {},
-        })
+        messages.append(
+            {
+                "id": f"msg_{i:03d}",
+                "parent_id": None,
+                "role": role,
+                "timestamp": timestamp,
+                "content": content_blocks,
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            }
+        )
 
     now_iso = datetime.now(tz=timezone.utc).isoformat()
 
@@ -289,7 +297,9 @@ def import_conversations(
     summary.total = len(conversations)
 
     # Parse filter dates
-    dt_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+    dt_from = (
+        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+    )
     dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)
@@ -345,7 +355,9 @@ def import_conversations(
             # Generate filename
             update_time = conv.get("update_time")
             ts = create_time or update_time
-            ts_dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(tz=timezone.utc)
+            ts_dt = (
+                datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(tz=timezone.utc)
+            )
             filename = make_filename(ts_dt)
 
             # Handle collisions
