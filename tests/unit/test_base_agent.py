@@ -2,15 +2,14 @@
 Unit tests for BaseAgent — run() and load_prompt().
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from pathlib import Path
+from unittest.mock import Mock
 
-from packages.agents.base import BaseAgent, AgentConfig
-from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
+import pytest
+
+from packages.agents.base import AgentConfig, BaseAgent
+from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.stream_handler import StreamHandler, StreamResult
-from packages.core.pricing import ModelPricing
-from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
+from packages.telemetry.metrics import ResponseMetrics
 
 
 class ConcreteAgent(BaseAgent):

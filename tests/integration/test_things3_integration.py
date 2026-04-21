@@ -3,7 +3,6 @@ Integration tests for Things 3 integration.
 Tests full flow from configuration to context inclusion.
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

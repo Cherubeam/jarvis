@@ -17,13 +17,12 @@ import uuid
 from queue import Queue
 from typing import Any
 
-from packages.core.history import summarize_history, trim_tool_results
-from packages.core.model_resolver import resolve_model
-
 from apps.gui.server.confirmation import WebConfirmationHandler
 from apps.gui.server.session_factory_helpers import build_delegate_agent
 from apps.gui.server.state import GuiSession
 from apps.gui.server.streaming import WebStreamHandler
+from packages.core.history import summarize_history, trim_tool_results
+from packages.core.model_resolver import resolve_model
 
 logger = logging.getLogger(__name__)
 

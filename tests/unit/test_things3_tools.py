@@ -4,12 +4,11 @@ Tests create_task, complete_task, and update_task tool factory.
 """
 
 import sys
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from packages.core.tools.base import ToolDefinition
-
 
 _NOT_DARWIN_REASON = (
     "things-py requires macOS: importing it touches the Things 3 SQLite database, "

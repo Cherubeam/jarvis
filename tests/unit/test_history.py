@@ -2,20 +2,20 @@
 Unit tests for session history trimming and summarization.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from packages.core.history import (
-    trim_tool_results,
-    summarize_history,
+    _DEFAULT_KEEP_RECENT_FOR_SUMMARY,
+    _DEFAULT_TOKEN_THRESHOLD,
+    _KEEP_RECENT_MESSAGES,
+    _SUMMARY_MARKER,
+    _TOOL_RESULT_SUMMARY_LEN,
     _approx_tokens,
     _format_messages_for_summary,
-    _TOOL_RESULT_SUMMARY_LEN,
-    _SUMMARY_MARKER,
-    _DEFAULT_TOKEN_THRESHOLD,
-    _DEFAULT_KEEP_RECENT_FOR_SUMMARY,
-    _KEEP_RECENT_MESSAGES,
+    summarize_history,
+    trim_tool_results,
 )
 
 

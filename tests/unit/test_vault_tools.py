@@ -2,20 +2,18 @@
 
 import os
 import re
-import time
-
-import pytest
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+
+import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
-from packages.integrations.obsidian.vault import VaultConfig
 from packages.core.tools.vault_read_tools import (
-    make_vault_read_tools,
     MAX_CONTENT_SIZE,
     MAX_SEARCH_RESULTS,
+    make_vault_read_tools,
 )
+from packages.integrations.obsidian.vault import VaultConfig
 
 
 def _guard(*rules: tuple[Path, AccessLevel]) -> FilesystemGuard:

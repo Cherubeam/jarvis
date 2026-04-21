@@ -8,7 +8,6 @@ import respx
 
 from packages.integrations.cortex.client import CortexClient
 
-
 BASE_URL = "http://127.0.0.1:8100"
 
 

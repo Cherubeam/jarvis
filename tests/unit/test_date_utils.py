@@ -6,7 +6,6 @@ import pytest
 
 from packages.core.date_utils import parse_relative_date
 
-
 NOW = datetime(2026, 4, 18, 14, 30, 0)
 
 

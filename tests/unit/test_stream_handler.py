@@ -2,12 +2,13 @@
 Unit tests for StreamHandler.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-from packages.core.stream_handler import StreamHandler, StreamResult
-from packages.core.llm_client import LLMClient, StreamToolResult, TokenUsage, StreamingResponse
+import pytest
+
+from packages.core.llm_client import LLMClient, StreamingResponse, StreamToolResult, TokenUsage
 from packages.core.pricing import ModelPricing
+from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
 
@@ -303,7 +304,8 @@ class TestStreamHandlerAgenticLoop:
     def test_tool_call_then_final_answer(self, capsys):
         """One tool call followed by a final streaming answer."""
         import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="fetch_url",
@@ -349,8 +351,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_multi_tool_chain(self, capsys):
         """LLM calls tool A, then tool B, then streams final answer."""
-        import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool_a = ToolDefinition(
             name="tool_a", description="a", parameters={}, execute=lambda: "result_a"
@@ -399,8 +400,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_on_tool_call_callback_invoked(self, capsys):
         """When on_tool_call is set, it is called instead of plain print()."""
-        import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",
@@ -436,8 +436,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_on_tool_call_default_prints(self, capsys):
         """When on_tool_call is None, the default print() is used."""
-        import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",
@@ -468,8 +467,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_tool_messages_populated_after_tool_calls(self):
         """StreamResult.tool_messages contains assistant+tool messages from the agentic loop."""
-        import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",
@@ -537,7 +535,8 @@ class TestStreamHandlerAgenticLoop:
     def test_terminal_tool_skips_streaming(self):
         """When a terminal tool fires, stream() returns without further streaming."""
         import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="delegate_to_agent",
@@ -584,7 +583,8 @@ class TestStreamHandlerAgenticLoop:
     def test_terminal_tool_uses_litellm_fallback_when_no_pricing(self):
         """Terminal tool path falls back to zero cost when pricing is None and no raw_response."""
         import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="delegate_to_agent",
@@ -624,8 +624,9 @@ class TestStreamHandlerAgenticLoop:
     def test_terminal_tool_emits_usage_report(self):
         """Terminal tool path emits a UsageReport event."""
         import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
         from packages.core.events import UsageReport
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="delegate_to_agent",
@@ -676,7 +677,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_duplicate_parallel_tool_calls_deduplicated(self, capsys):
         """LLM returns 3 identical tool calls; only one is executed."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         call_count = 0
 
@@ -717,7 +718,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_different_parallel_tool_calls_preserved(self, capsys):
         """Two distinct tools in parallel; both execute."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool_a = ToolDefinition(
             name="tool_a", description="a", parameters={}, execute=lambda: "a_result"
@@ -755,7 +756,8 @@ class TestStreamHandlerAgenticLoop:
     def test_same_tool_different_args_not_deduplicated(self):
         """Same tool name with different args; both execute."""
         import json
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         results_seen = []
 
@@ -792,7 +794,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_tools_stripped_when_loop_exhausted(self):
         """When all iterations are consumed, chat_stream is called with tools=None."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
         registry = ToolRegistry()
@@ -826,8 +828,8 @@ class TestStreamHandlerAgenticLoop:
 
     def test_default_max_iterations_is_5(self):
         """Without explicit max_iterations, the loop runs up to _MAX_AGENTIC_ITERATIONS=5."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
         from packages.core.stream_handler import _MAX_AGENTIC_ITERATIONS
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         assert _MAX_AGENTIC_ITERATIONS == 5
 
@@ -868,7 +870,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_max_tokens_passed_to_stream_with_tool_detection(self):
         """When max_tokens is set, it is forwarded to stream_with_tool_detection."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
         registry = ToolRegistry()
@@ -890,7 +892,7 @@ class TestStreamHandlerAgenticLoop:
 
     def test_no_tool_call_streams_directly(self):
         """When model returns content (no tools), the streaming response is used directly."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok"
@@ -1136,7 +1138,7 @@ class TestStreamHandlerNonStreaming:
         handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
 
         # Need a real tool registry
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         registry = ToolRegistry()
         registry.register(
@@ -1189,7 +1191,7 @@ class TestStreamHandlerNonStreaming:
 
         handler = StreamHandler(client, tracker, pricing, "test-model", streaming=False)
 
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         registry = ToolRegistry()
         registry.register(
@@ -1234,7 +1236,7 @@ class TestStreamHandlerNonStreaming:
         )
         handler.stream([{"role": "user", "content": "hi"}])
 
-        from packages.core.events import UsageReport, TextChunk
+        from packages.core.events import TextChunk, UsageReport
 
         usage_events = [e for e in events if isinstance(e, UsageReport)]
         text_events = [e for e in events if isinstance(e, TextChunk)]
@@ -1267,7 +1269,7 @@ class TestStreamHandlerNonStreaming:
 
     def test_nonstreaming_events_include_instance_id(self):
         """Non-streaming TextChunk and UsageReport events carry instance_id."""
-        from packages.core.events import UsageReport, TextChunk
+        from packages.core.events import TextChunk, UsageReport
 
         client = Mock(spec=LLMClient)
         client.complete.return_value = _make_complete_response("response")
@@ -1310,7 +1312,7 @@ class TestStreamHandlerNonStreaming:
 
     def test_on_before_after_tool_exec_callbacks(self):
         """on_before_tool_exec and on_after_tool_exec are called around tool execution."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok")
         registry = ToolRegistry()
@@ -1341,7 +1343,7 @@ class TestStreamHandlerNonStreaming:
 
     def test_nonstreaming_on_before_after_tool_exec_callbacks(self):
         """on_before/after_tool_exec callbacks work in non-streaming mode."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool_call = Mock()
         tool_call.id = "tc1"
@@ -1378,7 +1380,7 @@ class TestStreamHandlerNonStreaming:
 
     def test_nonstreaming_dedup_parallel_tool_calls(self):
         """Non-streaming agentic loop deduplicates identical parallel tool calls."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         exec_count = 0
 
@@ -1546,7 +1548,7 @@ class TestStreamHandlerMutationTargets:
 
     def test_streaming_intermediate_usage_accumulated(self):
         """Intermediate tool-call usage is ADDED to final streaming usage."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",
@@ -1602,7 +1604,7 @@ class TestStreamHandlerMutationTargets:
 
     def test_nonstreaming_intermediate_usage_accumulated(self):
         """Non-streaming: intermediate tool usage ADDED to final response usage."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",
@@ -1689,7 +1691,7 @@ class TestStreamHandlerMutationTargets:
 
     def test_tool_message_structure_exact_keys(self):
         """Tool call assistant messages have exact required dict keys."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="search",
@@ -1740,7 +1742,7 @@ class TestStreamHandlerMutationTargets:
 
     def test_nonstreaming_tool_message_structure_exact_keys(self):
         """Non-streaming tool call messages have exact required dict keys."""
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="lookup",

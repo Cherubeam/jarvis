@@ -4,8 +4,7 @@ Unit tests for intelligent model routing.
 
 import pytest
 
-from packages.core.model_router import classify_query, route_query, RoutingDecision
-
+from packages.core.model_router import RoutingDecision, classify_query, route_query
 
 _SAMPLE_CONFIG = {
     "models": {

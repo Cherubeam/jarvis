@@ -1,7 +1,7 @@
 """Tests for packages.core.filesystem_access module."""
 
+
 import pytest
-from pathlib import Path
 
 from packages.core.filesystem_access import (
     AccessLevel,
@@ -9,7 +9,6 @@ from packages.core.filesystem_access import (
     FilesystemGuard,
     load_filesystem_guard,
 )
-
 
 # ==================== AccessLevel ====================
 

@@ -4,17 +4,18 @@ Unit tests for result storage and reporting.
 Tests the storage, markdown generation, and historical tracking.
 """
 
-import pytest
 import json
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add golden tests to path
 golden_dir = Path(__file__).parent.parent / "golden"
 sys.path.insert(0, str(golden_dir))
 
-from result_storage import ResultStorage, RunSummary
 from evaluator import EvaluationResult, EvaluationScore
+from result_storage import ResultStorage, RunSummary
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
 """Tests for MCP tool bridging (MCP types → ToolDefinition)."""
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from mcp import types
 
 from packages.integrations.mcp.bridge import (

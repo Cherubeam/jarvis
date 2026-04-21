@@ -12,9 +12,8 @@ from dotenv import load_dotenv
 
 from packages.agents.base import agent_from_meta
 from packages.agents.registry import AgentMeta, discover_agents
-from packages.core.context_builder import build_system_prompt_with_metadata
 from packages.core.llm_client import LLMClient
-from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
+from packages.core.model_resolver import collect_api_keys, resolve_model
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.stream_handler import StreamHandler
 from packages.skills.registry import discover_skills

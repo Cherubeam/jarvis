@@ -2,14 +2,13 @@
 Unit tests for the content-evaluator tool factory.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
+from packages.core.llm_client import LLMClient
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.content_evaluator import make_content_evaluator_tool
-from packages.core.llm_client import LLMClient
-
 
 SKILL_MD_CONTENT = """\
 ---

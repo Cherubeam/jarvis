@@ -5,7 +5,6 @@ Tests task synchronization from Things 3 via things.py (SQLite).
 
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -1,7 +1,7 @@
 """Tests for packages.core.tools.codebase_tools."""
 
+
 import pytest
-from pathlib import Path
 
 from packages.core.tools.codebase_tools import make_codebase_tools
 

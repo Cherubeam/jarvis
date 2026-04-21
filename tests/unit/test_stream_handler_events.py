@@ -1,16 +1,18 @@
 """Unit tests for StreamHandler event emission."""
 
-import json
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from packages.core.events import (
     TextChunk,
     ToolCallStarted,
-    ToolResult as ToolResultEvent,
     UsageReport,
 )
-from packages.core.llm_client import LLMClient, StreamToolResult, TokenUsage, StreamingResponse
+from packages.core.events import (
+    ToolResult as ToolResultEvent,
+)
+from packages.core.llm_client import LLMClient, StreamingResponse, StreamToolResult, TokenUsage
 from packages.core.pricing import ModelPricing
 from packages.core.stream_handler import StreamHandler
 from packages.telemetry.metrics import MetricsTracker
@@ -81,7 +83,7 @@ class TestStreamHandlerEvents:
         assert usage_events[0].instance_id == "test-inst"
 
     def test_tool_call_events_emitted(self):
-        from packages.core.tools.base import ToolRegistry, ToolDefinition
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
 
         tool = ToolDefinition(
             name="my_tool",

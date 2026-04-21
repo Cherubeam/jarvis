@@ -4,8 +4,6 @@ from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from apps.cli.review import (
     _apply_review,
     _load_pending_due,
@@ -13,7 +11,6 @@ from apps.cli.review import (
     handle_review_command,
 )
 from packages.core import frontmatter
-
 
 TODAY = date(2026, 5, 18)
 NOW = datetime(2026, 5, 18, 19, 12, 0)

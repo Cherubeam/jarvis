@@ -1,11 +1,11 @@
 """Tests for packages.core.tools.git_tools."""
 
 import subprocess
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from packages.core.tools.git_tools import make_git_tools, _run_git
+import pytest
+
+from packages.core.tools.git_tools import _run_git, make_git_tools
 
 
 @pytest.fixture

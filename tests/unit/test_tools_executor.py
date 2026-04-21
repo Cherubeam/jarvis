@@ -3,8 +3,9 @@ Unit tests for execute_tool_calls().
 """
 
 import json
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from packages.core.tools.base import ToolDefinition, ToolRegistry
 from packages.core.tools.executor import execute_tool_calls

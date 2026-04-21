@@ -83,7 +83,7 @@ class ReadwiseClient:
         """
         cmd = ["readwise", "--json", *args]
         try:
-            result = subprocess.run(  # noqa: S603, S607
+            result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,

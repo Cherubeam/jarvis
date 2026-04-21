@@ -16,7 +16,6 @@ from packages.agents.prompt_includes import resolve_include
 from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition, ToolRegistry
-from packages.skills.registry import SkillMeta
 
 
 @dataclass

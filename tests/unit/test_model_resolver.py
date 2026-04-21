@@ -5,15 +5,15 @@ Tests preset resolution, literal model IDs, provider inference, and API key coll
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from packages.core.model_resolver import (
-    ResolvedModel,
-    infer_provider,
-    resolve_model,
     collect_api_keys,
     get_api_key,
+    infer_provider,
+    resolve_model,
 )
 
 

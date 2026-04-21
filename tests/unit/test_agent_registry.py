@@ -2,11 +2,10 @@
 Unit tests for agent registry.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 
-from packages.agents.registry import discover_agents, get_by_command, AgentMeta
+import pytest
+
+from packages.agents.registry import AgentMeta, discover_agents, get_by_command
 
 
 @pytest.mark.unit

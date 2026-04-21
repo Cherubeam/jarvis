@@ -3,18 +3,17 @@ Unit tests for ConversationIndexer.
 """
 
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from packages.core.rag.indexer import (
-    _MAX_EMBED_CHARS,
     _CHUNK_OVERLAP_CHARS,
-    _EMBED_BATCH_SIZE,
+    _MAX_EMBED_CHARS,
     _chunk_document,
     _date_str_to_int,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

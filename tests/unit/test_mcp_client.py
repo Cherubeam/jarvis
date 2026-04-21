@@ -1,10 +1,8 @@
 """Tests for MCP client connection lifecycle and MCPManager."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from mcp import types
 
 from packages.integrations.mcp.client import MCPConnection, MCPManager

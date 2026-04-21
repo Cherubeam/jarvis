@@ -4,21 +4,22 @@ Unit tests for agent-related CLI functionality.
 Tests parse_args, _handle_agent_command, and --agent flag behavior.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call, ANY
 
 from apps.cli.main import (
-    parse_args,
+    _assemble_agent_tools,
     _handle_agent_command,
     _instantiate_agent,
-    _run_agent_session,
     _make_agent_vault_tools,
-    _assemble_agent_tools,
+    _run_agent_session,
+    parse_args,
 )
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
-from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.memory import ConversationLogger
+from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.telemetry.metrics import ResponseMetrics
 

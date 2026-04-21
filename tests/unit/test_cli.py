@@ -4,8 +4,9 @@ Unit tests for cli module.
 Tests configuration loading and main function behavior.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from apps.cli.main import _deep_merge, load_config
 

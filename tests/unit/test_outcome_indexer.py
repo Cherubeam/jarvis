@@ -3,8 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.core import frontmatter
 from packages.core.rag.outcome_indexer import (
     OutcomeResult,

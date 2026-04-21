@@ -1,35 +1,33 @@
 """Tests for packages.core.card_renderer."""
 
 import os
-import sys
-
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from packages.core.card_renderer import (
+    CATEGORY_COLORS,
+    DEFAULT_COLOR,
     ImageGenerationConfig,
     PatternData,
+    _category_color,
+    _clean_wikilinks,
+    _ensure_homebrew_lib_path,
+    _extract_intent,
+    _extract_sections,
+    _slugify,
+    _truncate,
     build_image_prompt,
     export_image_prompts,
     generate_pattern_image,
-    parse_pattern,
     list_vault_patterns,
-    render_card_html,
+    parse_pattern,
     render_card_back_html,
-    render_card_to_png,
+    render_card_html,
     render_card_to_pdf,
-    _ensure_homebrew_lib_path,
-    _slugify,
-    _truncate,
-    _extract_intent,
-    _extract_sections,
-    _clean_wikilinks,
-    _category_color,
-    CATEGORY_COLORS,
-    DEFAULT_COLOR,
+    render_card_to_png,
 )
-
 
 # ---------------------------------------------------------------------------
 # Sample pattern markdown
@@ -596,9 +594,8 @@ class TestRenderCardToPng:
         with patch(
             "packages.core.card_renderer._get_weasyprint_html",
             side_effect=RuntimeError("brew install pango"),
-        ):
-            with pytest.raises(RuntimeError, match="brew install pango"):
-                render_card_to_png("<html></html>", Path("/tmp/test.png"))
+        ), pytest.raises(RuntimeError, match="brew install pango"):
+            render_card_to_png("<html></html>", Path("/tmp/test.png"))
 
     def test_renders_png_via_pdf_and_pymupdf(self, tmp_path):
         """render_card_to_png pipes WeasyPrint PDF through PyMuPDF."""
@@ -639,9 +636,8 @@ class TestRenderCardToPdf:
         with patch(
             "packages.core.card_renderer._get_weasyprint_html",
             side_effect=RuntimeError("brew install pango"),
-        ):
-            with pytest.raises(RuntimeError, match="brew install pango"):
-                render_card_to_pdf("<html></html>", Path("/tmp/test.pdf"))
+        ), pytest.raises(RuntimeError, match="brew install pango"):
+            render_card_to_pdf("<html></html>", Path("/tmp/test.pdf"))
 
 
 # ---------------------------------------------------------------------------

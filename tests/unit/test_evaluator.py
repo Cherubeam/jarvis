@@ -4,22 +4,21 @@ Unit tests for the evaluation system.
 Tests the evaluator logic with mocked judge responses.
 """
 
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+
+import pytest
 
 # Add golden tests to path
 golden_dir = Path(__file__).parent.parent / "golden"
 sys.path.insert(0, str(golden_dir))
 
 from evaluator import (
-    JudgeEvaluator,
     EvaluationCriteria,
-    EvaluationScore,
-    EvaluationResult,
+    JudgeEvaluator,
 )
-from judge_prompts import build_judge_prompt, format_criteria, format_context
+from judge_prompts import build_judge_prompt, format_context, format_criteria
 
 
 class TestEvaluationCriteria:

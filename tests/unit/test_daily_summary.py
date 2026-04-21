@@ -2,13 +2,13 @@
 Unit tests for handle_daily_summary().
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import MagicMock, Mock, patch
 
-from packages.core.llm_client import LLMClient, TokenUsage, StreamingResponse
+import pytest
+
+from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
 from packages.core.pricing import ModelPricing
-from packages.core.stream_handler import StreamResult
-from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
+from packages.telemetry.metrics import MetricsTracker
 
 
 def _make_streaming_response(chunks: list[str], usage: TokenUsage | None = None):

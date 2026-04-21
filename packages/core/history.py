@@ -93,7 +93,7 @@ def _format_messages_for_summary(messages: list[dict]) -> str:
     return "\n".join(lines)
 
 
-_SUMMARIZATION_PROMPT = """\  # pragma: no mutate
+_SUMMARIZATION_PROMPT = r"""\  # pragma: no mutate
 Summarize this conversation history concisely. Preserve:
 - Key decisions made by the user
 - User preferences and corrections expressed

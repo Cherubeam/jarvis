@@ -1,20 +1,18 @@
 """Tests for packages.integrations.obsidian.writer module."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock
+
+import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
-from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
+from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.writer import (
-    ConfirmationHandler,
     CLIConfirmationHandler,
-    WriteResult,
+    ConfirmationHandler,
     append_to_daily_note,
     append_to_note,
 )
-
 
 # ==================== Test Helpers ====================
 
@@ -82,7 +80,7 @@ class TestAppendToNote:
         assert result.action == "appended"
         assert (
             result.message
-            == f"Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
+            == "Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
         )
         assert result.diff is not None
         assert handler.presented_diff is not None

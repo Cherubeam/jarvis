@@ -6,9 +6,9 @@ This module provides fixtures that can be used across all test files.
 
 import sys
 from pathlib import Path
-from typing import Generator
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 # Add the project root to the path so we can import packages
 project_root = Path(__file__).parent.parent
@@ -302,8 +302,8 @@ def temp_vault(tmp_path: Path) -> Path:
 @pytest.fixture
 def sample_vault_config(temp_vault: Path):
     """Sample VaultConfig pointing at the temp vault."""
+    from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
     from packages.integrations.obsidian.vault import VaultConfig
-    from packages.core.filesystem_access import FilesystemGuard, AccessRule, AccessLevel
 
     daily_dir = temp_vault / "Daily Notes"
     guard = FilesystemGuard(

@@ -12,8 +12,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from packages.core.memory import migrate_conversation
-
 from apps.gui.server.history.derive import (
     agents_seen,
     dominant_agent,
@@ -25,6 +23,7 @@ from apps.gui.server.history.derive import (
     tools_used,
 )
 from apps.gui.server.history.summary import ConversationDetail, ConversationSummary
+from packages.core.memory import migrate_conversation
 
 logger = logging.getLogger(__name__)
 

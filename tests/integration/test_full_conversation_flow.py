@@ -5,12 +5,14 @@ Tests the complete flow from user input through LLM response to logging.
 """
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
-from packages.core.llm_client import LLMClient, TokenUsage
-from packages.core.memory import ConversationLogger, SCHEMA_VERSION
+from unittest.mock import Mock, patch
+
+import pytest
+
 from packages.core.context_builder import build_system_prompt
+from packages.core.llm_client import LLMClient
+from packages.core.memory import SCHEMA_VERSION, ConversationLogger
 from packages.core.pricing import ModelPricing
 
 

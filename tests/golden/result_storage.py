@@ -6,10 +6,9 @@ markdown reports, and tracking of historical trends.
 """
 
 import json
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from evaluator import EvaluationResult
 
@@ -216,7 +215,7 @@ class ResultStorage:
 
         return RunSummary(
             run_id=run_id,
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             model_tested=results[0].model_tested if results else "unknown",
             judge_model=results[0].judge_model if results else "unknown",
             total_tests=total_tests,
@@ -319,7 +318,7 @@ class ResultStorage:
                         for pattern in r.evaluation.forbidden_patterns_found:
                             f.write(f'- 🚫 "{pattern}"\n')
 
-                    f.write(f"\n**Judge Reasoning**:\n")
+                    f.write("\n**Judge Reasoning**:\n")
                     f.write(f"> {r.evaluation.reasoning}\n\n")
 
                     f.write("---\n\n")
@@ -407,7 +406,7 @@ class ResultStorage:
         """
         # Load existing history
         if self.history_file.exists():
-            with open(self.history_file, "r") as f:
+            with open(self.history_file) as f:
                 history = json.load(f)
         else:
             history = {"runs": []}
@@ -441,7 +440,7 @@ class ResultStorage:
         if not self.history_file.exists():
             return {"runs": [], "trends": {}}
 
-        with open(self.history_file, "r") as f:
+        with open(self.history_file) as f:
             history = json.load(f)
 
         runs = history.get("runs", [])

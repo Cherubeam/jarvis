@@ -4,11 +4,9 @@ Unit tests for the make_conversation_recall_tool factory.
 
 import sys
 from datetime import date
-
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -48,11 +46,10 @@ class TestMakeConversationRecallToolImportError:
         # Temporarily hide chromadb from sys.modules
         saved = sys.modules.pop("chromadb", None)
         # Also block the import inside ConversationSearcher
-        with patch.dict("sys.modules", {"chromadb": None}):
-            with pytest.raises(ImportError):
-                from packages.core.tools.conversation_recall import make_conversation_recall_tool
+        with patch.dict("sys.modules", {"chromadb": None}), pytest.raises(ImportError):
+            from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
-                make_conversation_recall_tool(tmp_path / "db", "test-model")
+            make_conversation_recall_tool(tmp_path / "db", "test-model")
 
         # Restore chromadb if it was present
         if saved is not None:
@@ -75,13 +72,12 @@ class TestRecallToolOutput:
             mock_collection
         )
 
-        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
-            with patch(
-                "packages.core.rag.searcher.ConversationSearcher.search", return_value=mock_results
-            ):
-                from packages.core.tools.conversation_recall import make_conversation_recall_tool
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}), patch(
+            "packages.core.rag.searcher.ConversationSearcher.search", return_value=mock_results
+        ):
+            from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
-                tool = make_conversation_recall_tool(tmp_path / "db", "test-model", api_key="key")
+            tool = make_conversation_recall_tool(tmp_path / "db", "test-model", api_key="key")
 
         return tool
 

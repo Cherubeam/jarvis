@@ -31,7 +31,6 @@ from pathlib import Path
 
 import yaml
 
-
 # Default location for shared prompt includes — resolved lazily so tests can
 # pass their own directory via ``shared_dir`` if needed.
 _DEFAULT_SHARED_DIR = Path(__file__).parent / "_shared" / "prompts"

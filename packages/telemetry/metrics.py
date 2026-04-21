@@ -8,7 +8,6 @@ token usage, costs, and other performance metrics.
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 
 @dataclass

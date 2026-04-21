@@ -2,8 +2,8 @@
 Tool interface and registry for JARVIS function calling.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass

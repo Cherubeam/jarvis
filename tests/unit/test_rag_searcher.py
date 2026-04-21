@@ -2,12 +2,12 @@
 Unit tests for ConversationSearcher.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from packages.core.rag.searcher import _MAX_EMBED_CHARS, _date_str_to_int, _invert_date
+import pytest
 
+from packages.core.rag.searcher import _MAX_EMBED_CHARS, _date_str_to_int, _invert_date
 
 # ---------------------------------------------------------------------------
 # Helpers

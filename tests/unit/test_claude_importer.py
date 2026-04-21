@@ -1,7 +1,7 @@
 """Tests for the Claude conversation importer."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,6 @@ from packages.core.importers.claude import (
 )
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename
 from packages.core.memory import ConversationLogger
-
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -502,7 +501,7 @@ class TestHelpers:
     def test_parse_iso_no_timezone(self):
         dt = _parse_iso("2025-12-10T10:30:00")
         assert dt is not None
-        assert dt.tzinfo == timezone.utc
+        assert dt.tzinfo == UTC
 
 
 # ==================== Common utilities ====================
@@ -510,19 +509,19 @@ class TestHelpers:
 
 class TestCommonUtilities:
     def test_make_conv_id_deterministic(self):
-        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=UTC)
         id1 = make_conv_id("test-uuid", dt)
         id2 = make_conv_id("test-uuid", dt)
         assert id1 == id2
 
     def test_make_conv_id_different_uuids(self):
-        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=UTC)
         id1 = make_conv_id("uuid-1", dt)
         id2 = make_conv_id("uuid-2", dt)
         assert id1 != id2
 
     def test_make_conv_id_format(self):
-        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=UTC)
         conv_id = make_conv_id("test-uuid", dt)
         assert conv_id.startswith("conv_20251210_103000_")
         parts = conv_id.split("_")
@@ -530,12 +529,12 @@ class TestCommonUtilities:
         assert len(parts[3]) == 4
 
     def test_make_filename(self):
-        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 12, 10, 10, 30, 0, tzinfo=UTC)
         filename = make_filename(dt)
         assert filename == "2025-12-10_10-30-00.json"
 
     def test_make_filename_format(self):
-        dt = datetime(2025, 1, 5, 8, 5, 3, tzinfo=timezone.utc)
+        dt = datetime(2025, 1, 5, 8, 5, 3, tzinfo=UTC)
         filename = make_filename(dt)
         assert filename.endswith(".json")
         assert filename.count("-") == 4

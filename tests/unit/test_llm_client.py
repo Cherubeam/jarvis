@@ -4,23 +4,24 @@ Unit tests for llm_client module.
 Tests LLMClient, TokenUsage, and StreamingResponse functionality.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.llm_client import (
-        TokenUsage,
-        StreamingResponse,
-        LLMClient,
         InsufficientCreditsError,
+        LLMClient,
         PromptTokenLimitError,
-        _parse_credit_error,
+        StreamingResponse,
+        TokenUsage,
         _apply_cache_control,
         _extract_cache_tokens,
+        _parse_credit_error,
     )
 except ImportError:
-    from llm_client import TokenUsage, StreamingResponse, LLMClient
+    from llm_client import LLMClient, StreamingResponse, TokenUsage
 
 
 @pytest.mark.unit

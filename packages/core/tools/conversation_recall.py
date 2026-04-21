@@ -24,7 +24,7 @@ def make_conversation_recall_tool(
     Raises ImportError if chromadb is not installed.
     """
     # Eagerly import to surface missing dependency at setup time, not at call time.
-    from packages.core.rag.searcher import ConversationSearcher  # noqa: F401 (import check)
+    from packages.core.rag.searcher import ConversationSearcher
 
     searcher = ConversationSearcher(db_path, embedding_model, api_key, api_base)
 

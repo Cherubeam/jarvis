@@ -4,7 +4,6 @@ Unit tests for the skill resolver module.
 
 import logging
 from pathlib import Path
-from unittest.mock import Mock
 
 import pytest
 

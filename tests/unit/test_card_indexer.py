@@ -2,13 +2,13 @@
 Unit tests for CardIndexer and CardSearcher.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Import the module eagerly so litellm is importable and patchable
 from packages.core.rag import card_indexer as _card_indexer_mod  # noqa: F401
-
 
 # ---------------------------------------------------------------------------
 # Helpers

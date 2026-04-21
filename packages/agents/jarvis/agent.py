@@ -7,9 +7,9 @@ direct user interactions. It can delegate tasks to specialized agents.
 
 from pathlib import Path
 
-from packages.agents.base import BaseAgent, AgentConfig
-from packages.core.llm_client import LLMClient, StreamingResponse
+from packages.agents.base import AgentConfig, BaseAgent
 from packages.core.context_builder import build_system_prompt
+from packages.core.llm_client import LLMClient, StreamingResponse
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
