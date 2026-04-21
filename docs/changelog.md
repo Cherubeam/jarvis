@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **JARVIS GUI — Phase 4 (Sidebar Timeline mode)** — togglable timeline variant of the Chat sidebar, ported from design prototype v3. Pure frontend change — reuses `/api/conversations?limit=20&sort=recent`.
+  - New `sidebarMode: 'list' | 'timeline'` tweak in `TweaksPanel` (default `list`). Backward-compatible — `loadTweaks` spread over `DEFAULT_TWEAKS` backfills the new key on existing stores.
+  - Timeline layout: 40px day-axis column (weekday + day-number + day-cost sum, rendered only on the first row of each calendar day) + continuous card rail; cards scale in height (48–80px) with a log-bucketed token formula so long conversations don't dominate and heights stay stable across refreshes.
+  - Agent-hue visual: 2px left-border on all cards (hue per dominant agent via `hueFor`), bumped to 3px + full-card hue border + `surface2` background when the row is the active session — three differentiation cues, not one.
+  - New `parseLocalDate()` in `apps/gui/web/src/lib/dateBucket.ts` — parses `"YYYY-MM-DD"` as a local-timezone `Date` so weekday labels don't shift in negative-offset zones.
+  - **No backend changes, no new tests** — all 59 GUI tests still pass. Manual browser verification across list↔timeline toggle, light/dark theme, multi-conv-same-day grouping, and day-cost aggregation.
 - **JARVIS GUI — Phase 3 (Dashboard / Home)** — first screen in the design narrative, reachable from the left-rail's Home slot (previously stubbed). Covers design v1 Home.
   - Backend: new `apps/gui/server/home/` package (`cost_week.py` 7-day rollup, `task_links.py` heuristic task↔conversation linking) + `apps/gui/server/routes/home.py` composite endpoint `GET /api/home` that returns greeting, today's date, Things 3 tasks (with priority derived from list key — `today` → high, `upcoming` → medium, `inbox` → low), cost-week with 7 zero-filled days, most-recent conversation as `resume`, next 4 as `recent`, and the quick-start button list.
   - Live Things 3 read via `fetch_tasks()` (no file I/O; 5-minute TTL cache). Imported at module level so tests can patch the symbol without triggering the macOS-only `things` import (which is lazy inside `fetch_tasks` body).
