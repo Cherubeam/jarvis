@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jarvis-gui",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "python", "-m", "apps.gui.main", "--no-browser"],
+      "port": 8123
+    }
+  ]
+}
