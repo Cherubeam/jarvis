@@ -5,7 +5,6 @@ This module provides prompt templates organized by test category
 to ensure consistent and effective evaluation of AI responses.
 """
 
-from dataclasses import dataclass
 
 
 # System prompt for the judge
@@ -171,9 +170,7 @@ def format_criteria(qualities: dict) -> str:
     for key, value in qualities.items():
         if isinstance(value, bool):
             lines.append(f"- {key}: {'must be present' if value else 'must not be present'}")
-        elif isinstance(value, str):
-            lines.append(f"- {key}: {value}")
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, str) or isinstance(value, (int, float)):
             lines.append(f"- {key}: {value}")
         else:
             lines.append(f"- {key}: {value}")

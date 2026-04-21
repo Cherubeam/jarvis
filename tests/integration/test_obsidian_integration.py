@@ -5,35 +5,31 @@ Tests the full flow: config → read → parse → diff → confirm → write.
 Uses temporary vaults with real filesystem operations.
 """
 
+
 import pytest
-from pathlib import Path
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
-from packages.integrations.obsidian.vault import (
-    VaultConfig,
-    load_vault_config,
-    read_note,
-    get_daily_note_path,
-    list_notes,
-)
 from packages.integrations.obsidian.callout import (
     CalloutBlock,
-    CalloutNotFound,
-    find_jarvis_callout,
     build_updated_content,
+    find_jarvis_callout,
 )
 from packages.integrations.obsidian.diff import (
+    VaultDiff,
     compute_diff,
-    format_diff_for_cli,
     format_diff_for_api,
+    format_diff_for_cli,
+)
+from packages.integrations.obsidian.vault import (
+    list_notes,
+    load_vault_config,
+    read_note,
 )
 from packages.integrations.obsidian.writer import (
     ConfirmationHandler,
-    WriteResult,
-    append_to_note,
     append_to_daily_note,
+    append_to_note,
 )
-from packages.integrations.obsidian.diff import VaultDiff
 
 
 class AutoConfirmHandler(ConfirmationHandler):

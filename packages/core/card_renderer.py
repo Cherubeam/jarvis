@@ -725,7 +725,7 @@ def export_image_prompts(
         "# Pattern Card — Image Prompts",
         "",
         "Copy each prompt into your image generation tool (e.g. Gemini, DALL-E).",
-        f"Save the generated image as `data/pattern-cards/images/{{slug}}.png`.",
+        "Save the generated image as `data/pattern-cards/images/{slug}.png`.",
         "",
         "---",
         "",

@@ -3,13 +3,13 @@ Unit tests verifying that delegated agents receive only agent_only_tools,
 not JARVIS's orchestration tools (extra_tools like conversation recall).
 """
 
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
-from packages.agents.registry import AgentMeta
-from packages.core.tools.base import ToolDefinition
-from packages.core.stream_handler import StreamResult
+import pytest
+
 from packages.core.llm_client import TokenUsage
+from packages.core.stream_handler import StreamResult
+from packages.core.tools.base import ToolDefinition
 from packages.telemetry.metrics import ResponseMetrics
 
 

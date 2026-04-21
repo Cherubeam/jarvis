@@ -8,9 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import platform
 import secrets
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -234,7 +232,7 @@ class ConversationLogger:
         agent_config: dict | None = None,
         context_snapshot: dict | None = None,
         environment: dict | None = None,
-        context_metadata: "ContextMetadata | None" = None,
+        context_metadata: ContextMetadata | None = None,
         conversation_id: str | None = None,
     ):
         self.conversations_dir = Path(conversations_dir)

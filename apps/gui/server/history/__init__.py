@@ -3,4 +3,4 @@
 from apps.gui.server.history.index import ConversationIndex
 from apps.gui.server.history.summary import ConversationDetail, ConversationSummary
 
-__all__ = ["ConversationIndex", "ConversationDetail", "ConversationSummary"]
+__all__ = ["ConversationDetail", "ConversationIndex", "ConversationSummary"]

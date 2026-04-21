@@ -4,15 +4,12 @@ Ties everything together.
 """
 
 import argparse
-import os
-import platform
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
-
 from rich.spinner import Spinner
 from rich.text import Text
 
@@ -20,6 +17,7 @@ from apps.cli.display import (
     console,
     create_prompt_session,
     finish_live_stream,
+    finish_waiting,
     make_live_chunk_handler,
     print_agent_prefix,
     print_assistant_prefix,
@@ -32,29 +30,21 @@ from apps.cli.display import (
     prompt_user,
     start_live_stream,
     start_waiting_spinner,
-    finish_waiting,
 )
 from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, validate_agent_includes
-from packages.agents.registry import AgentMeta, discover_agents, get_by_command
-from packages.core.context_builder import (
-    build_system_prompt,
-    build_system_prompt_with_metadata,
-    parse_frontmatter,
-)
-from packages.skills.registry import discover_skills
-from packages.core.llm_client import LLMClient
-from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
-from packages.core.model_resolver import resolve_model, collect_api_keys, get_api_key
-from packages.core.model_router import route_query
-from packages.core.pricing import ModelPricing, get_model_pricing, format_cost
-from packages.core.history import trim_tool_results, summarize_history
-from packages.core.stream_handler import StreamHandler, StreamResult
-from packages.integrations.things3.task_sync import sync_tasks_to_file
+from packages.agents.registry import AgentMeta, get_by_command
 from packages.core.filesystem_access import load_filesystem_guard
-from packages.integrations.obsidian.vault import load_vault_config, read_note, get_daily_note_path
-from packages.integrations.obsidian.callout import find_jarvis_callout, CalloutNotFound
+from packages.core.history import summarize_history, trim_tool_results
+from packages.core.llm_client import LLMClient
+from packages.core.memory import ConversationLogger
+from packages.core.model_resolver import get_api_key, resolve_model
+from packages.core.model_router import route_query
+from packages.core.pricing import ModelPricing, get_model_pricing
+from packages.core.stream_handler import StreamHandler, StreamResult
+from packages.integrations.obsidian.callout import CalloutNotFound, find_jarvis_callout
+from packages.integrations.obsidian.vault import get_daily_note_path, load_vault_config, read_note
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.telemetry.metrics import MetricsTracker
 
@@ -544,7 +534,7 @@ def _run_agent_session(
     except KeyboardInterrupt:
         pass
 
-    print_system(f"\nReturning to JARVIS.\n")
+    print_system("\nReturning to JARVIS.\n")
     return session_history
 
 
@@ -656,9 +646,13 @@ def main(argv: list[str] | None = None):
     # The CLI passes its own ConfirmationHandler + tool-feedback printer.
     from apps.cli.session_factory import (
         assemble_agent_tools as _assemble_agent_tools,
+    )
+    from apps.cli.session_factory import (
         build_session,
-        instantiate_agent as _instantiate_agent,
         make_agent_vault_tools,
+    )
+    from apps.cli.session_factory import (
+        instantiate_agent as _instantiate_agent,
     )
 
     confirmation_handler = CLIConfirmationHandler()

@@ -4,9 +4,11 @@ Integration tests for context system.
 Tests that context files are properly loaded and integrated into system prompts.
 """
 
-import pytest
 from pathlib import Path
-from packages.core.context_builder import build_system_prompt, load_context_file
+
+import pytest
+
+from packages.core.context_builder import build_system_prompt
 
 
 @pytest.mark.integration

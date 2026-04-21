@@ -2,11 +2,12 @@
 Unit tests for the fetch_url web fetch tool.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-import httpx
+from unittest.mock import MagicMock, patch
 
-from packages.core.tools.web_fetch import FETCH_URL_TOOL, _fetch_url, _MAX_BYTES
+import httpx
+import pytest
+
+from packages.core.tools.web_fetch import _MAX_BYTES, FETCH_URL_TOOL, _fetch_url
 
 
 @pytest.mark.unit

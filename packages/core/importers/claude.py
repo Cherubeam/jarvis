@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
@@ -59,7 +59,7 @@ def _parse_iso(ts: str | None) -> datetime | None:
         return None
     dt = datetime.fromisoformat(ts)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -203,7 +203,7 @@ def convert_conversation(claude_conv: dict) -> dict:
     updated_dt = _parse_iso(updated_at)
 
     # Generate deterministic conv_id
-    dt_for_id = created_dt or updated_dt or datetime.now(tz=timezone.utc)
+    dt_for_id = created_dt or updated_dt or datetime.now(tz=UTC)
     conv_id = make_conv_id(claude_id, dt_for_id)
 
     # Parse title prefixes into tags
@@ -244,7 +244,7 @@ def convert_conversation(claude_conv: dict) -> dict:
             }
         )
 
-    now_iso = datetime.now(tz=timezone.utc).isoformat()
+    now_iso = datetime.now(tz=UTC).isoformat()
 
     metadata = {
         "import_source": "claude",
@@ -382,7 +382,7 @@ def update_conversation(existing_path: Path, claude_conv: dict, *, dry_run: bool
         changed = True
 
     if changed:
-        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        now_iso = datetime.now(tz=UTC).isoformat()
         jarvis_data.setdefault("metadata", {})["last_sync_timestamp"] = now_iso
         if not dry_run:
             existing_path.write_text(json.dumps(jarvis_data, indent=2, ensure_ascii=False))
@@ -419,9 +419,9 @@ def import_conversations(
 
     # Parse filter dates
     dt_from = (
-        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
     )
-    dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_to else None
+    dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=UTC) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)
 
@@ -469,7 +469,7 @@ def import_conversations(
 
             # Generate filename
             updated_at = conv.get("updated_at")
-            ts_dt = created_dt or _parse_iso(updated_at) or datetime.now(tz=timezone.utc)
+            ts_dt = created_dt or _parse_iso(updated_at) or datetime.now(tz=UTC)
             filename = make_filename(ts_dt)
 
             # Handle collisions

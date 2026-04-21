@@ -5,7 +5,7 @@ Factory function that creates read-only tools for accessing Obsidian vault
 notes. Uses the closure pattern to capture VaultConfig.
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import (

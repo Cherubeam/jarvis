@@ -1,15 +1,13 @@
 """Tests for packages.integrations.obsidian.callout module."""
 
-import pytest
 
 from packages.integrations.obsidian.callout import (
     CalloutBlock,
     CalloutNotFound,
+    build_updated_content,
     find_jarvis_callout,
     format_callout_entry,
-    build_updated_content,
 )
-
 
 # ==================== find_jarvis_callout ====================
 

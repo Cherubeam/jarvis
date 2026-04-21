@@ -3,9 +3,9 @@ Unit tests for the delegation tool and DelegationState.
 """
 
 import pytest
+
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
-
 
 AVAILABLE_AGENTS = [
     {"name": "writer", "description": "Writing and content creation"},

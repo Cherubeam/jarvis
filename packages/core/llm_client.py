@@ -4,13 +4,14 @@ Supports multiple providers via LiteLLM's routing conventions.
 """
 
 import re
-from dataclasses import dataclass, field
-from typing import Generator
+from collections.abc import Generator
+from dataclasses import dataclass
+
 import litellm
 
 litellm.suppress_debug_info = True
 
-from packages.core.model_resolver import infer_provider, get_api_key
+from packages.core.model_resolver import get_api_key, infer_provider
 
 
 def _apply_cache_control(messages: list[dict], model: str) -> list[dict]:

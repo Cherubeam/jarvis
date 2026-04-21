@@ -5,14 +5,14 @@ This module provides infrastructure for running and evaluating golden test conve
 Use --evaluate flag to run actual LLM calls with judge evaluation.
 """
 
-import json
+import os
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
 import pytest
 import yaml
-import os
-import time
-import sys
-from pathlib import Path
-from typing import Dict, Any, List
 
 # Add project root and golden directory to path
 project_root = Path(__file__).resolve().parents[2]
@@ -21,10 +21,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Import evaluation modules (only when --evaluate is used)
 try:
-    from evaluator import JudgeEvaluator, EvaluationCriteria
+    from evaluator import EvaluationCriteria, JudgeEvaluator
     from result_storage import ResultStorage
-    from packages.core.llm_client import LLMClient
+
     from packages.core.context_builder import build_system_prompt
+    from packages.core.llm_client import LLMClient
 
     EVALUATION_AVAILABLE = True
 except ImportError:
@@ -41,7 +42,7 @@ def golden_conversations_dir() -> Path:
 def load_golden_test():
     """Factory fixture to load a golden test by filename."""
 
-    def _load(filename: str) -> Dict[str, Any]:
+    def _load(filename: str) -> dict[str, Any]:
         test_path = Path(__file__).parent / "conversations" / filename
         with open(test_path) as f:
             return yaml.safe_load(f)
@@ -183,7 +184,6 @@ class TestGoldenConversations:
             from packages.core.llm_client import LLMClient
         except ImportError:
             from llm_client import LLMClient
-        from evaluator import EvaluationCriteria
 
         model_id = (
             f"openrouter/{self.model_tested}"
@@ -334,7 +334,7 @@ class TestGoldenConversations:
     ):
         """Execute an agentic golden test with tool calls (tests 09-12)."""
         from evaluator import EvaluationCriteria, evaluate_tool_calls
-        from judge_prompts import format_transcript, format_tools_description
+        from judge_prompts import format_tools_description, format_transcript
 
         tools_yaml = test_case["tools"]
         mock_results = test_case.get("mock_tool_results", {})
@@ -620,7 +620,7 @@ def run_golden_test_manual(test_file: str):
         if turn["role"] == "user":
             print(f"\n  User: {turn['content']}")
         else:
-            print(f"\n  Expected Assistant Response:")
+            print("\n  Expected Assistant Response:")
             if "expected_themes" in turn:
                 print(f"    Themes: {', '.join(turn['expected_themes'])}")
             if "expected_qualities" in turn:

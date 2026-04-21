@@ -2,11 +2,11 @@
 Unit tests for skill registry — filesystem-based SKILL.md discovery.
 """
 
-import pytest
 from pathlib import Path
 
-from packages.skills.registry import discover_skills, get_skill_by_command, SkillMeta
+import pytest
 
+from packages.skills.registry import SkillMeta, discover_skills, get_skill_by_command
 
 _SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
 _REAL_SKILLS_PRESENT = (

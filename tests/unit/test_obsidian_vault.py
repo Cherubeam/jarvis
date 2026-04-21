@@ -1,17 +1,18 @@
 """Tests for packages.integrations.obsidian.vault module."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.vault import (
     VaultConfig,
+    get_daily_note_path,
+    list_notes,
     load_vault_config,
+    read_note,
     validate_read,
     validate_write,
-    read_note,
-    list_notes,
-    get_daily_note_path,
 )
 
 

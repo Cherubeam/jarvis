@@ -6,7 +6,6 @@ Requires OPENROUTER_API_KEY in environment (loaded from .env).
 Usage: uv run python scripts/test_prompt_caching.py
 """
 
-import os
 import sys
 import time
 from pathlib import Path
@@ -53,7 +52,7 @@ def _print_usage(label: str, usage):
         cached = getattr(ptd, "cached_tokens", None)
         print(f"  prompt_tokens_details.cached: {cached}")
     else:
-        print(f"  prompt_tokens_details:        None")
+        print("  prompt_tokens_details:        None")
 
     # Raw dict fallback
     if hasattr(usage, "__dict__"):
@@ -94,7 +93,7 @@ def test_approach(name: str, call_fn):
             print(f"\n  ✓ CACHE HIT on call 2! (cache_read={cr2}, cached_tokens={cached2})")
             return True
         else:
-            print(f"\n  ✗ No cache hit detected on call 2")
+            print("\n  ✗ No cache hit detected on call 2")
             return False
 
     except Exception as e:

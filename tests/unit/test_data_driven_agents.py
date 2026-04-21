@@ -5,7 +5,7 @@ All agents are now data-driven (including writing, tactics, developer).
 """
 
 from pathlib import Path
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
@@ -13,7 +13,6 @@ import yaml
 from packages.agents.base import DataDrivenAgent, agent_from_meta
 from packages.agents.registry import discover_agents
 from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
-
 
 DATA_DRIVEN_AGENTS = [
     "content_reviewer",
@@ -123,7 +122,6 @@ class TestDataDrivenAgentsSkillBinding:
 
     def test_agent_with_skills_appends_skill_content(self, tmp_path):
         """meta.yaml with skills: list appends skill content to system prompt."""
-        from packages.core.tools.base import ToolDefinition
         from packages.skills.registry import SkillMeta
 
         # Create agent with skills: field

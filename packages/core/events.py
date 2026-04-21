@@ -5,8 +5,7 @@ These events allow multiple consumers (CLI, Web UI, activity feed)
 to subscribe to agent output without tight coupling to print() or callbacks.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

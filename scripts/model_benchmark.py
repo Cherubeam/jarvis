@@ -14,7 +14,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from packages.core.benchmark_costs import estimate_benchmark_costs, get_run_dir
 from packages.core.pricing import format_cost
 
-
 DEFAULT_MODELS = [
     "anthropic/claude-sonnet-4.5",
     "anthropic/claude-opus-4.5",

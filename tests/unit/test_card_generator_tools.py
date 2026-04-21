@@ -7,7 +7,7 @@ error paths, default arguments, and closure bindings. All external calls
 """
 
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -15,7 +15,6 @@ from packages.core.card_renderer import ImageGenerationConfig, PatternData
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.card_generator_tools import make_card_generator_tools
 from packages.integrations.obsidian.vault import VaultConfig
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -37,7 +36,7 @@ def _make_tools(**kwargs):
     vault_config = kwargs.get("vault_config", _make_vault_config())
     patterns_dir = kwargs.get("patterns_dir", "01 – Patterns")
     output_dir = kwargs.get("output_dir", Path("/tmp/test-cards"))
-    image_config = kwargs.get("image_config", None)
+    image_config = kwargs.get("image_config")
     tools = make_card_generator_tools(vault_config, patterns_dir, output_dir, image_config)
     return tools, output_dir
 

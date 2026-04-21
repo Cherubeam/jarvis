@@ -8,16 +8,13 @@ basic quality checks on AI assistant responses.
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-from typing import Any
-import sys
-from pathlib import Path
-
-from packages.core.llm_client import LLMClient, TokenUsage
-from packages.core.pricing import calculate_cost_from_litellm, get_model_pricing
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 
 from judge_prompts import build_judge_prompt
+
+from packages.core.llm_client import LLMClient
+from packages.core.pricing import get_model_pricing
 
 
 @dataclass
@@ -344,7 +341,7 @@ class JudgeEvaluator:
         # Build complete result
         result = EvaluationResult(
             test_name=test_name,
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             model_tested=model_tested,
             judge_model=self.judge_model,
             test_category=test_category,
@@ -455,7 +452,7 @@ class JudgeEvaluator:
             else:
                 raise ValueError("No JSON found in response")
 
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError):
             # Fallback: Try to extract scores from text
             return self._fallback_parse(judge_output)
 

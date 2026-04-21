@@ -4,29 +4,30 @@ Unit tests for context_builder module.
 Tests the functionality of loading context files and building system prompts.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.context_builder import (
-        load_context_file,
-        build_system_prompt,
-        build_system_prompt_with_metadata,
-        parse_frontmatter,
-        _approx_tokens,
         ContextMetadata,
         ContextSection,
+        _approx_tokens,
+        build_system_prompt,
+        build_system_prompt_with_metadata,
+        load_context_file,
+        parse_frontmatter,
     )
 except ImportError:
     from context_builder import (
-        load_context_file,
-        build_system_prompt,
-        build_system_prompt_with_metadata,
-        parse_frontmatter,
-        _approx_tokens,
         ContextMetadata,
         ContextSection,
+        _approx_tokens,
+        build_system_prompt,
+        build_system_prompt_with_metadata,
+        load_context_file,
+        parse_frontmatter,
     )
 
 

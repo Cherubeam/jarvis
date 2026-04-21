@@ -3,13 +3,13 @@
 import pytest
 
 from packages.core.events import (
+    AgentFinished,
+    AgentStarted,
+    DelegationRequested,
     TextChunk,
     ToolCallStarted,
     ToolResult,
     UsageReport,
-    DelegationRequested,
-    AgentStarted,
-    AgentFinished,
 )
 
 

@@ -79,7 +79,7 @@ def main() -> int:
             print(f"    - {f}")
 
     if summary.warnings:
-        print(f"  Warnings:")
+        print("  Warnings:")
         for w in summary.warnings:
             print(f"    - {w}")
 

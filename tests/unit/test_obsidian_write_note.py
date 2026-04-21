@@ -1,14 +1,14 @@
 """Tests for write_note() in packages.integrations.obsidian.writer."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
-from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.diff import VaultDiff
+from packages.integrations.obsidian.vault import VaultConfig
 from packages.integrations.obsidian.writer import (
     ConfirmationHandler,
-    WriteResult,
     write_note,
 )
 

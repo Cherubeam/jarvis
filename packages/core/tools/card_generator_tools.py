@@ -9,11 +9,11 @@ from pathlib import Path
 
 from packages.core.card_renderer import (
     ImageGenerationConfig,
+    _slugify,
     export_image_prompts,
     generate_card_files,
     generate_pattern_image,
     list_vault_patterns,
-    _slugify,
 )
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import VaultConfig

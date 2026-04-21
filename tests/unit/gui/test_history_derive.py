@@ -13,7 +13,6 @@ from apps.gui.server.history.derive import (
     tools_used,
 )
 
-
 # -- title_from_messages -----------------------------------------------------
 
 

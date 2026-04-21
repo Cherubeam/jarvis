@@ -1,24 +1,21 @@
 """Tests for the ChatGPT conversation importer."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from packages.core.importers.chatgpt import (
-    ImportSummary,
+    _make_conv_id,
+    _make_filename,
+    _unix_to_iso,
     convert_content_parts,
     convert_conversation,
     import_conversations,
     linearize_message_tree,
-    _make_conv_id,
-    _make_filename,
-    _unix_to_iso,
 )
 from packages.core.memory import ConversationLogger
-
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -626,7 +623,7 @@ class TestHelpers:
         result = _unix_to_iso(1711580000.0)
         assert result is not None
         dt = datetime.fromisoformat(result)
-        assert dt.tzinfo == timezone.utc
+        assert dt.tzinfo == UTC
 
     def test_unix_to_iso_none(self):
         assert _unix_to_iso(None) is None

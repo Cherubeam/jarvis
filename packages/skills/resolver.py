@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from packages.core.context_builder import parse_frontmatter
 from packages.core.tools.base import ToolDefinition

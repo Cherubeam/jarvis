@@ -1,11 +1,11 @@
 """Unit tests for Claude context importer (memories + projects)."""
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
+
 from packages.core.importers.claude_context import (
-    ContextImportSummary,
     _is_starter_project,
     _sanitize_filename,
     build_current_focus,
@@ -17,7 +17,6 @@ from packages.core.importers.claude_context import (
     parse_memory_sections,
     slugify_project_name,
 )
-
 
 # ==================== parse_memory_sections ====================
 

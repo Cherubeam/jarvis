@@ -6,7 +6,6 @@ blog posts in the Obsidian vault. Uses the closure pattern (like conversation_re
 to capture VaultConfig and ConfirmationHandler.
 """
 
-from pathlib import Path
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note, validate_write

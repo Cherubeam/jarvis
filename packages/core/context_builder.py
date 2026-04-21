@@ -13,8 +13,6 @@ Project files support YAML frontmatter for selective loading:
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
-
 
 def _approx_tokens(text: str) -> int:
     """Approximate token count from text (1 token ≈ 4 bytes for English)."""

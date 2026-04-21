@@ -4,26 +4,27 @@ Unit tests for memory module.
 Tests SessionMetrics, ConversationLogger, and schema v1.0.0 functionality.
 """
 
-import pytest
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import pytest
 from freezegun import freeze_time
 
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.memory import (
-        SessionMetrics,
-        ConversationLogger,
         SCHEMA_VERSION,
+        ConversationLogger,
+        SessionMetrics,
+        _extract_text_from_content,
+        _normalize_content,
         generate_conversation_id,
         hash_content,
-        _normalize_content,
-        _extract_text_from_content,
         migrate_conversation,
     )
 except ImportError:
-    from memory import SessionMetrics, ConversationLogger
+    from memory import ConversationLogger, SessionMetrics
 
 
 @pytest.mark.unit

@@ -12,14 +12,15 @@ from packages.core.events import (
     Event,
     TextChunk,
     ToolCallStarted,
-    ToolResult as ToolResultEvent,
     UsageReport,
-    AgentFinished,
+)
+from packages.core.events import (
+    ToolResult as ToolResultEvent,
 )
 from packages.core.llm_client import (
     LLMClient,
-    StreamToolResult,
     StreamingResponse,
+    StreamToolResult,
     TokenUsage,
     _extract_cache_tokens,
 )
@@ -137,7 +138,6 @@ class StreamHandler:
             StreamResult with full text, usage, cost, and metrics.
         """
         # Import here to avoid circular imports at module load time
-        from packages.core.tools.base import ToolRegistry
         from packages.core.tools.executor import execute_tool_calls
 
         tools_format = None

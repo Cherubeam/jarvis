@@ -8,7 +8,7 @@ Writes are restricted to allowed directories and file extensions.
 from pathlib import Path
 
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.diff import compute_diff, format_diff_for_cli
+from packages.integrations.obsidian.diff import compute_diff
 from packages.integrations.obsidian.writer import ConfirmationHandler
 
 

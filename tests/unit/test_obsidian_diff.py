@@ -1,15 +1,12 @@
 """Tests for packages.integrations.obsidian.diff module."""
 
-import pytest
 
 from packages.integrations.obsidian.diff import (
-    DiffLine,
     VaultDiff,
     compute_diff,
-    format_diff_for_cli,
     format_diff_for_api,
+    format_diff_for_cli,
 )
-
 
 # ==================== compute_diff ====================
 

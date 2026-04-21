@@ -138,7 +138,7 @@ def handle_review_command(
 
             _apply_review(item, outcome, int(quality_str), note, now)
             reviewed_count += 1
-            console.print(f"  ✓ saved\n")
+            console.print("  ✓ saved\n")
         except KeyboardInterrupt:
             console.print(
                 f"\nAborted. {reviewed_count} reviewed, {len(pending) - reviewed_count} remaining."

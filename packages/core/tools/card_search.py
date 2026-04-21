@@ -22,7 +22,7 @@ def make_card_search_tool(
 
     Raises ImportError if chromadb is not installed.
     """
-    from packages.core.rag.card_indexer import CardSearcher  # noqa: F401
+    from packages.core.rag.card_indexer import CardSearcher
 
     searcher = CardSearcher(db_path, embedding_model, api_key, api_base)
 

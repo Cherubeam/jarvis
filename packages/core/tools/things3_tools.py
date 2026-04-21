@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _open_things_url(url: str) -> bool:
     """Open a things:/// URL via macOS open command. Returns True on success."""
-    result = subprocess.run(["open", url], capture_output=True)  # noqa: S603, S607
+    result = subprocess.run(["open", url], capture_output=True)
     return result.returncode == 0
 
 

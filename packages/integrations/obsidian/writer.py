@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from packages.integrations.obsidian.callout import (
-    CalloutBlock,
     CalloutNotFound,
     build_updated_content,
     find_jarvis_callout,

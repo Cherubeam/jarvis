@@ -22,7 +22,6 @@ from scripts.analyze_costs import (
     format_table,
 )
 
-
 # --- Helpers ---
 
 

@@ -7,8 +7,9 @@ and imported conversations don't crash the index.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any
 
 # If packages/core/tools/delegate.py ever renames the tool, update this.
 HANDOFF_TOOL_NAME = "delegate_to_agent"

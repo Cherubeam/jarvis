@@ -2,7 +2,7 @@
 Unit tests for Readwise tool definitions.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
@@ -168,24 +168,24 @@ def _extract_fallback_text(content: dict, parts: list) -> str:
 def _unix_to_iso(ts: float | None) -> str | None:
     if ts is None:
         return None
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ts, tz=UTC).isoformat()
 
 
 def _make_conv_id(chatgpt_uuid: str, create_time: float | None) -> str:
     """Generate deterministic conv_id from ChatGPT UUID."""
     if create_time:
-        dt = datetime.fromtimestamp(create_time, tz=timezone.utc)
+        dt = datetime.fromtimestamp(create_time, tz=UTC)
     else:
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
     return make_conv_id(chatgpt_uuid, dt)
 
 
 def _make_filename(create_time: float | None, update_time: float | None) -> str:
     ts = create_time or update_time
     if ts:
-        dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        dt = datetime.fromtimestamp(ts, tz=UTC)
     else:
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
     return make_filename(dt)
 
 
@@ -240,7 +240,7 @@ def convert_conversation(chatgpt_conv: dict) -> dict:
             }
         )
 
-    now_iso = datetime.now(tz=timezone.utc).isoformat()
+    now_iso = datetime.now(tz=UTC).isoformat()
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -298,9 +298,9 @@ def import_conversations(
 
     # Parse filter dates
     dt_from = (
-        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
     )
-    dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_to else None
+    dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=UTC) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)
 
@@ -333,7 +333,7 @@ def import_conversations(
 
             # Filter: date range
             if create_time and (dt_from or dt_to):
-                conv_dt = datetime.fromtimestamp(create_time, tz=timezone.utc)
+                conv_dt = datetime.fromtimestamp(create_time, tz=UTC)
                 if dt_from and conv_dt < dt_from:
                     summary.skipped_filter += 1
                     continue
@@ -356,7 +356,7 @@ def import_conversations(
             update_time = conv.get("update_time")
             ts = create_time or update_time
             ts_dt = (
-                datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(tz=timezone.utc)
+                datetime.fromtimestamp(ts, tz=UTC) if ts else datetime.now(tz=UTC)
             )
             filename = make_filename(ts_dt)
 

@@ -4,8 +4,9 @@ Uses LiteLLM's built-in cost map — works offline, covers all providers.
 """
 
 import warnings
-import litellm
 from dataclasses import dataclass
+
+import litellm
 
 # Suppress Pydantic serialization warnings from LiteLLM streaming responses
 # These occur when LiteLLM tries to serialize streaming response objects during cleanup

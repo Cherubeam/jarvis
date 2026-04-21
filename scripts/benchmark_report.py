@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
-from pathlib import Path
-import warnings
 import sys
+import warnings
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.core.pricing import get_model_pricing, format_cost, ModelPricing
+from packages.core.pricing import format_cost, get_model_pricing
 
 
 @dataclass
@@ -170,7 +170,7 @@ def _build_report_section(runs: list[RunStats]) -> str:
         return "No benchmark runs found."
 
     judge_models = sorted({run.judge_model for run in runs})
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     lines = [
         f"Generated: {generated_at}",

@@ -2,28 +2,28 @@
 Unit tests for the CLI display module.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
 
 from apps.cli.display import (
     _has_markdown,
     create_prompt_session,
     finish_live_stream,
     make_live_chunk_handler,
-    print_startup,
-    print_usage_stats,
-    print_separator,
-    print_tool_feedback,
-    print_error,
-    print_system,
-    print_assistant_prefix,
     print_agent_prefix,
+    print_assistant_prefix,
+    print_error,
+    print_separator,
+    print_startup,
+    print_system,
+    print_tool_feedback,
+    print_usage_stats,
     start_live_stream,
 )
-from packages.core.stream_handler import StreamResult
 from packages.core.llm_client import TokenUsage
+from packages.core.stream_handler import StreamResult
 from packages.telemetry.metrics import ResponseMetrics
-
 
 # ---------------------------------------------------------------------------
 # _has_markdown detection

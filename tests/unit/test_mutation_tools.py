@@ -1,9 +1,9 @@
 """Tests for packages.core.tools.mutation_tools."""
 
 import subprocess
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from packages.core.tools.mutation_tools import make_mutation_tools
 

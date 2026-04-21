@@ -1,9 +1,9 @@
 """Tests for JARVIS agent — delegation directive builder."""
 
 from packages.agents.jarvis.agent import (
+    _SPECIAL_HINTS,
     _build_delegation_directive,
     _build_outcome_tracking_directive,
-    _SPECIAL_HINTS,
 )
 
 

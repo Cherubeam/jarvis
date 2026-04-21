@@ -2,10 +2,11 @@
 Unit tests for the web search tool.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from packages.core.tools.web_search import _search_web, WEB_SEARCH_TOOL, _MAX_OUTPUT_CHARS
+import pytest
+
+from packages.core.tools.web_search import _MAX_OUTPUT_CHARS, WEB_SEARCH_TOOL, _search_web
 
 
 def _make_result(title="Title", href="https://example.com", body="Snippet text"):

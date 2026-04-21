@@ -9,7 +9,7 @@ to cheap/fast models and complex queries to high-quality models.
 import re
 from dataclasses import dataclass
 
-from packages.core.model_resolver import resolve_model, ResolvedModel
+from packages.core.model_resolver import ResolvedModel, resolve_model
 
 
 @dataclass

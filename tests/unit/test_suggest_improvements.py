@@ -1,13 +1,13 @@
 """Tests for packages.core.tools.suggest_improvements."""
 
+
 import pytest
-from pathlib import Path
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
-from packages.integrations.obsidian.vault import VaultConfig
-from packages.integrations.obsidian.diff import VaultDiff
-from packages.integrations.obsidian.writer import ConfirmationHandler
 from packages.core.tools.suggest_improvements import make_suggest_improvements_tool
+from packages.integrations.obsidian.diff import VaultDiff
+from packages.integrations.obsidian.vault import VaultConfig
+from packages.integrations.obsidian.writer import ConfirmationHandler
 
 
 class MockConfirmationHandler(ConfirmationHandler):

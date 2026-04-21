@@ -1,8 +1,7 @@
 """Tests for packages.core.tools.project_write_tools."""
 
+
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock
 
 from packages.core.tools.project_write_tools import make_project_write_tools
 
