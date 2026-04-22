@@ -35,7 +35,7 @@ def make_things3_tools(config: dict) -> list[ToolDefinition]:
         logger.info("Things 3 tools skipped: macOS only")  # pragma: no mutate
         return []
 
-    import things
+    import things  # type: ignore[unreachable]
 
     cache = TaskSyncCache(cache_ttl_seconds=config.get("cache_ttl_seconds", 300))
     tools: list[ToolDefinition] = []
