@@ -1,12 +1,16 @@
 name: Tests
 
-# Runs the pytest suite + ruff lint/format checks on every push and pull
-# request so regressions are caught before they reach main. Runs are fast
-# (~10 seconds on GitHub runners) and require no secrets — all tests are
-# offline unless opted into with --evaluate.
+# Runs the pytest suite + ruff lint/format checks on every push to main
+# and every pull request so regressions are caught before they reach main.
+# Runs are fast (~10 seconds on GitHub runners) and require no secrets —
+# all tests are offline unless opted into with --evaluate.
+#
+# `push` is scoped to main so feature-branch pushes don't double-run with
+# the `pull_request` event once a PR is open.
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
