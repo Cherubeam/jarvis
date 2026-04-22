@@ -218,6 +218,6 @@ class JarvisAgent(BaseAgent):
         # Get streaming response
         return self.llm_client.chat_stream(messages)
 
-    def refresh_context(self):
+    def refresh_context(self) -> None:
         """Reload context files and rebuild system prompt."""
         self.config.system_prompt = build_system_prompt(self.context_dir)

@@ -142,7 +142,7 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     session.confirmation = None
 
 
-def _run_one_turn(session: GuiSession, user_text: str):
+def _run_one_turn(session: GuiSession, user_text: str) -> Any:
     """Synchronous body — runs in asyncio.to_thread."""
     c = session.components
     history = c.logger.get_messages_for_api()
@@ -170,7 +170,7 @@ def _run_one_turn(session: GuiSession, user_text: str):
     )
 
 
-async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result) -> None:
+async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result: Any) -> None:
     """Single-shot delegation: emit notice, run delegate, emit its text, return."""
     c = session.components
     delegate_id = result.delegate_to
@@ -186,6 +186,7 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
         }
     )
 
+    assert session.confirmation is not None, "delegation requires a bound WebConfirmationHandler"
     delegate_agent = build_delegate_agent(c, delegate_meta, session.confirmation)
 
     web_stream = WebStreamHandler(queue, turn_id, agent=delegate_id)
@@ -260,7 +261,7 @@ def _mark_current_dirty(session: GuiSession) -> None:
         logger.debug("mark_dirty failed", exc_info=True)
 
 
-def _find_deferred_handler(session: GuiSession):
+def _find_deferred_handler(session: GuiSession) -> Any:
     """Look up the _DeferredConfirmationHandler that was passed to build_session.
 
     We stored a reference on the components so the bridge can rebind per turn.

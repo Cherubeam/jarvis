@@ -34,7 +34,7 @@ def hash_content(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-def _normalize_content(content) -> list[dict]:
+def _normalize_content(content: Any) -> list[dict]:
     """Wrap string content in typed block array; pass-through if already a list."""
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
@@ -176,7 +176,7 @@ class SessionMetrics:
         cache_read_tokens: int = 0,
         cache_write_tokens: int = 0,
         thinking_tokens: int = 0,
-    ):
+    ) -> None:
         """Add usage from a single request."""
         self.total_prompt_tokens += prompt_tokens
         self.total_completion_tokens += completion_tokens
@@ -189,7 +189,7 @@ class SessionMetrics:
         self.total_thinking_tokens += thinking_tokens
         self.request_count += 1
 
-    def record_history_tokens(self, approx_tokens: int):
+    def record_history_tokens(self, approx_tokens: int) -> None:
         """Record approximate history token count for the current turn."""
         self.history_tokens_per_turn.append(approx_tokens)
 
@@ -256,20 +256,20 @@ class ConversationLogger:
         self.metadata: dict = {}
         self.utilization: list[dict] = []
 
-    def set_title(self, title: str):
+    def set_title(self, title: str) -> None:
         """Set the conversation title."""
         self.title = title
 
-    def set_topic(self, topic: str):
+    def set_topic(self, topic: str) -> None:
         """Set the conversation topic."""
         self.topic = topic
 
-    def add_tag(self, tag: str):
+    def add_tag(self, tag: str) -> None:
         """Add a tag to the conversation."""
         if tag not in self.tags:
             self.tags.append(tag)
 
-    def record_utilization(self, response_text: str, section_names: list[str]):
+    def record_utilization(self, response_text: str, section_names: list[str]) -> None:
         """Check which context sections appear referenced in a response.
 
         Uses simple keyword matching as a heuristic — not perfect, but
@@ -304,8 +304,8 @@ class ConversationLogger:
         overall_rating: int | None = None,
         helpful: bool | None = None,
         notes: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Set session-level feedback."""
         self.feedback = {
             "overall_rating": overall_rating,
@@ -355,7 +355,7 @@ class ConversationLogger:
     def add_message(
         self,
         role: str,
-        content,
+        content: Any,
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
         total_tokens: int = 0,
@@ -370,7 +370,7 @@ class ConversationLogger:
         error: dict | None = None,
         metadata: dict | None = None,
         agent_name: str | None = None,
-    ):
+    ) -> None:
         """Add a message to the current conversation with optional token usage, cost, and latency."""
         self._message_counter += 1
         msg_id = f"msg_{self._message_counter:03d}"
@@ -425,7 +425,7 @@ class ConversationLogger:
 
         self.current_conversation.append(message)
 
-    def save(self):
+    def save(self) -> None:
         """Save the current conversation to a file."""
         if not self.current_conversation:
             return
@@ -469,7 +469,7 @@ class ConversationLogger:
         print(f"\nConversation saved to {filepath}")
         self._print_session_summary()
 
-    def _print_session_summary(self):
+    def _print_session_summary(self) -> None:
         """Print token usage, cost, and latency summary for the session."""
         m = self.metrics
         if m.request_count > 0:

@@ -10,7 +10,7 @@ Usage:
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     conversations_dir = Path(__file__).resolve().parent.parent / "data" / "conversations"
 
     if not conversations_dir.exists():

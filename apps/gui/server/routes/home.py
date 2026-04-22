@@ -45,7 +45,7 @@ def _day_label(d: date) -> str:
     return d.strftime("%A, %B %-d") if hasattr(d, "strftime") else d.isoformat()
 
 
-def _task_to_dict(task, list_key: str) -> dict[str, Any]:
+def _task_to_dict(task: Any, list_key: str) -> dict[str, Any]:
     """Convert a things3 Task dataclass to the wire shape. Priority from list key."""
     if list_key == "today":
         priority = "high"

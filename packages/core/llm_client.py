@@ -48,7 +48,7 @@ def _apply_cache_control(messages: list[dict], model: str) -> list[dict]:
     return messages
 
 
-def _get_nested(obj, *attrs):
+def _get_nested(obj: Any, *attrs: str) -> Any:
     """Safely traverse nested attributes, returning None if any is missing."""
     for attr in attrs:
         obj = getattr(obj, attr, None)
@@ -57,7 +57,7 @@ def _get_nested(obj, *attrs):
     return obj
 
 
-def _extract_cache_tokens(usage) -> tuple[int, int]:
+def _extract_cache_tokens(usage: Any) -> tuple[int, int]:
     """Extract cache read/write tokens from a usage object, regardless of provider.
 
     Anthropic: cache_read_input_tokens, cache_creation_input_tokens
@@ -142,7 +142,7 @@ class StreamingResponse:
         self._usage: TokenUsage | None = None
         self._raw_response: object | None = None
 
-    def __iter__(self):
+    def __iter__(self) -> "StreamingResponse":
         return self
 
     def __next__(self) -> str:

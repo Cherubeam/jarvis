@@ -7,7 +7,7 @@ reusable class shared by all agents.
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Any, cast
 
 from packages.core.events import (
     Event,
@@ -86,7 +86,7 @@ class StreamHandler:
         if self.on_event is not None:
             self.on_event(event)
 
-    def _calculate_cost(self, usage: TokenUsage, raw_response=None) -> float:
+    def _calculate_cost(self, usage: TokenUsage, raw_response: Any = None) -> float:
         """Calculate cost using pricing, LiteLLM fallback, or zero."""
         if self.pricing:
             return self.pricing.calculate_cost(
@@ -99,7 +99,7 @@ class StreamHandler:
             return calculate_cost_from_litellm(raw_response)
         return 0.0
 
-    def _try_with_credit_fallback(self, api_call):
+    def _try_with_credit_fallback(self, api_call: Callable[..., Any]) -> Any:
         """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
         from packages.core.llm_client import InsufficientCreditsError, PromptTokenLimitError
 
@@ -126,7 +126,7 @@ class StreamHandler:
         self,
         messages: list[dict],
         print_chunks: bool = False,
-        tool_registry=None,
+        tool_registry: Any = None,
         max_iterations: int | None = None,
     ) -> StreamResult:
         """Stream an LLM response, tracking metrics and cost.
@@ -227,8 +227,8 @@ class StreamHandler:
     def _run_agentic_loop(
         self,
         messages: list[dict],
-        tool_registry,
-        execute_tool_calls,
+        tool_registry: Any,
+        execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
     ) -> tuple[list[dict], list[dict]]:
         """Run agentic tool-calling loop using streaming-first detection.
@@ -490,8 +490,8 @@ class StreamHandler:
     def _run_agentic_loop_nonstreaming(
         self,
         messages: list[dict],
-        tool_registry,
-        execute_tool_calls,
+        tool_registry: Any,
+        execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
     ) -> tuple[list[dict], list[dict] | None, str | None, TokenUsage | None]:
         """Run agentic tool-calling loop using non-streaming complete().

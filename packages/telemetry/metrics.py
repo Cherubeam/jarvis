@@ -60,18 +60,18 @@ class MetricsTracker:
         )
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.session_start = datetime.now()
         self.responses: list[ResponseMetrics] = []
         self._request_start: float | None = None
         self._first_token_time: float | None = None
 
-    def start_request(self):
+    def start_request(self) -> None:
         """Start timing a new request."""
         self._request_start = time.perf_counter()
         self._first_token_time = None
 
-    def record_first_token(self):
+    def record_first_token(self) -> None:
         """Record when the first token was received (for TTFT)."""
         if self._request_start and self._first_token_time is None:
             self._first_token_time = time.perf_counter()

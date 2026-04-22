@@ -140,7 +140,7 @@ def scan_config(root: Path) -> list[str]:
     return lines
 
 
-def main():
+def main() -> None:
     root = get_project_root()
     output_path = root / "data" / "codebase_map.md"
 

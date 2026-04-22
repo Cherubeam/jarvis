@@ -5,6 +5,7 @@ Uses LiteLLM's built-in cost map — works offline, covers all providers.
 
 import warnings
 from dataclasses import dataclass
+from typing import Any
 
 import litellm
 
@@ -93,7 +94,7 @@ def get_model_pricing(model_id: str) -> ModelPricing | None:
     return None
 
 
-def calculate_cost_from_litellm(response) -> float:
+def calculate_cost_from_litellm(response: Any) -> float:
     """
     Calculate cost using LiteLLM's built-in cost tracking.
     Useful as a fallback when pricing data isn't available upfront.

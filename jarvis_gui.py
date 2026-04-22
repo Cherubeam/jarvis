@@ -19,7 +19,7 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 
-def main():
+def main() -> None:
     """Entry point that imports and runs the GUI server."""
     from apps.gui.main import main as gui_main
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import platform
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -31,6 +32,7 @@ from packages.core.memory import ConversationLogger, generate_conversation_id, h
 from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.stream_handler import StreamHandler
+from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
 from packages.integrations.obsidian.writer import ConfirmationHandler
 from packages.integrations.things3.task_sync import sync_tasks_to_file
@@ -97,7 +99,7 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
 def make_agent_vault_tools(
     meta: AgentMeta,
     config: dict,
-    vault_config,
+    vault_config: Any,
     confirmation_handler: ConfirmationHandler,
 ) -> list:
     """Create vault write tools scoped to an agent's `vault_writing` config section."""
@@ -143,10 +145,10 @@ def instantiate_agent(
     model_id: str,
     extra_tools: list | None = None,
     skill_registry: dict | None = None,
-    card_search_tool=None,
+    card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
-):
+) -> Any:
     if meta.meta_path is None:
         raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
     return agent_from_meta(
@@ -166,7 +168,7 @@ def build_session(
     config: dict,
     confirmation_handler: ConfirmationHandler,
     *,
-    on_tool_call=None,
+    on_tool_call: Callable[[str], None] | None = None,
     client_label: str = "cli",
     auto_confirm: bool = False,
 ) -> SessionComponents:

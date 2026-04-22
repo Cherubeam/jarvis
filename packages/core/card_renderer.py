@@ -17,6 +17,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Template
 
@@ -498,7 +499,7 @@ def _ensure_homebrew_lib_path() -> None:
         os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = new_value
 
 
-def _get_weasyprint_html():
+def _get_weasyprint_html() -> Any:
     """Lazily import WeasyPrint's HTML class, with Homebrew library fix."""
     _ensure_homebrew_lib_path()
     try:

@@ -5,7 +5,9 @@ Provides config loading, component initialization, and agent setup
 that can be reused by CLI, Web UI, and worker processes.
 """
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -82,8 +84,8 @@ def init_stream_handler(
     model_id: str,
     pricing: ModelPricing | None,
     config: dict,
-    on_tool_call=None,
-    on_event=None,
+    on_tool_call: Callable[[str], None] | None = None,
+    on_event: Callable[..., None] | None = None,
     instance_id: str = "",
 ) -> tuple[StreamHandler, MetricsTracker]:
     """Create a StreamHandler and MetricsTracker pair.
@@ -120,8 +122,8 @@ def instantiate_agent(
     model_id: str,
     extra_tools: list | None = None,
     skill_registry: dict | None = None,
-    card_search_tool=None,
-):
+    card_search_tool: Any = None,
+) -> Any:
     """Create an agent from AgentMeta via agent_from_meta()."""
     if meta.meta_path is None:
         raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")

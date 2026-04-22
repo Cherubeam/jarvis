@@ -7,6 +7,7 @@ import argparse
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -43,6 +44,7 @@ from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.stream_handler import StreamHandler, StreamResult
+from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.callout import CalloutNotFound, find_jarvis_callout
 from packages.integrations.obsidian.vault import get_daily_note_path, load_vault_config, read_note
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
@@ -83,10 +85,10 @@ def _instantiate_agent(
     model_id: str,
     extra_tools: list | None = None,
     skill_registry: dict | None = None,
-    card_search_tool=None,
+    card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
-):
+) -> Any:
     """Create an agent from AgentMeta via agent_from_meta()."""
     if meta.meta_path is None:
         raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
@@ -102,7 +104,7 @@ def _instantiate_agent(
     )
 
 
-def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config) -> list:
+def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config: Any) -> list:
     """Create vault write tools scoped to an agent's declared vault_writing config section.
 
     Reads meta.vault_writing (e.g. "patterns", "slip_box"), looks up the
@@ -433,11 +435,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _run_agent_session(
-    agent,
+    agent: Any,
     agent_name: str,
     stream_handler: StreamHandler,
     logger: ConversationLogger,
-    session,
+    session: Any,
     initial_message: str | None = None,
     context: str | None = None,
     prior_session: list[dict] | None = None,
@@ -535,7 +537,13 @@ def _run_agent_session(
     return session_history
 
 
-def _run_with_display(stream_handler, agent, user_input, print_chunks=True, messages_override=None):
+def _run_with_display(
+    stream_handler: StreamHandler,
+    agent: Any,
+    user_input: str,
+    print_chunks: bool = True,
+    messages_override: list[dict] | None = None,
+) -> StreamResult:
     """Run agent with appropriate display (streaming or spinner)."""
     if stream_handler.streaming:
         live, buf = start_live_stream()
@@ -543,7 +551,7 @@ def _run_with_display(stream_handler, agent, user_input, print_chunks=True, mess
     else:
         live = start_waiting_spinner()
 
-    def _resume_spinner():
+    def _resume_spinner() -> None:
         live.update(Spinner("dots", text=Text(" Thinking…", style="dim")))
         live.start()
 
@@ -576,11 +584,11 @@ def _handle_agent_command(
     agent_registry: dict,
     shared_tools: list | None = None,
     tool_groups: dict[str, list] | None = None,
-    session=None,
+    session: Any = None,
     skill_registry: dict | None = None,
-    card_search_tool=None,
+    card_search_tool: ToolDefinition | None = None,
     config: dict | None = None,
-    vault_config=None,
+    vault_config: Any = None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
     meta = get_by_command(command, agent_registry)
@@ -635,7 +643,7 @@ def _handle_agent_command(
     return True
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     config = load_config()
 
@@ -686,7 +694,7 @@ def main(argv: list[str] | None = None):
     mcp_manager = components.mcp_manager
 
     # Helper: bind the CLI confirmation handler into delegate-agent vault tools.
-    def _make_agent_vault_tools(meta, _config, _vc):
+    def _make_agent_vault_tools(meta: AgentMeta, _config: dict, _vc: Any) -> list:
         return make_agent_vault_tools(meta, _config, _vc, confirmation_handler)
 
     # Pricing display string for the startup banner.

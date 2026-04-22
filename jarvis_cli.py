@@ -25,7 +25,7 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 
-def main():
+def main() -> None:
     """Entry point that imports and runs the actual CLI."""
     from apps.cli.main import main as cli_main
 

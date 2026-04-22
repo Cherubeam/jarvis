@@ -8,7 +8,9 @@ Usage: uv run python scripts/test_prompt_caching.py
 
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 # Project root on sys.path so litellm picks up .env
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -33,7 +35,7 @@ SYSTEM_TEXT = (
 USER_MSG = "What color is the fox?"
 
 
-def _print_usage(label: str, usage):
+def _print_usage(label: str, usage: Any) -> None:
     """Print all relevant usage fields."""
     print(f"\n  [{label}]")
     print(f"  prompt_tokens:   {getattr(usage, 'prompt_tokens', '?')}")
@@ -61,7 +63,7 @@ def _print_usage(label: str, usage):
             print(f"  (extra cache fields): {extras}")
 
 
-def test_approach(name: str, call_fn):
+def test_approach(name: str, call_fn: Callable[[], Any]) -> bool:
     """Run a caching approach twice and report results."""
     print(f"\n{'=' * 60}")
     print(f"APPROACH: {name}")
@@ -98,14 +100,14 @@ def test_approach(name: str, call_fn):
         return False
 
 
-def main():
+def main() -> None:
     print(f"Model: {MODEL}")
     print(f"System prompt length: ~{len(SYSTEM_TEXT)} chars")
 
     results = {}
 
     # Approach A: Per-block cache_control (current JARVIS implementation)
-    def call_a():
+    def call_a() -> Any:
         return litellm.completion(
             model=MODEL,
             messages=[
@@ -131,7 +133,7 @@ def main():
     time.sleep(3)
 
     # Approach B: Top-level cache_control via extra_body
-    def call_b():
+    def call_b() -> Any:
         return litellm.completion(
             model=MODEL,
             messages=[
@@ -147,7 +149,7 @@ def main():
     time.sleep(3)
 
     # Approach C: LiteLLM auto-inject
-    def call_c():
+    def call_c() -> Any:
         return litellm.completion(
             model=MODEL,
             messages=[
