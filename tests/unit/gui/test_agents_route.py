@@ -54,9 +54,7 @@ def _build_app(tmp_path, conv_entries=()):
 
     app = FastAPI()
     app.state.conversation_index = index
-    app.state.gui_session = SimpleNamespace(
-        components=SimpleNamespace(agent_registry=discover_agents())
-    )
+    app.state.gui_session = SimpleNamespace(components=SimpleNamespace(agent_registry=discover_agents()))
     app.include_router(agents_router)
     return app
 

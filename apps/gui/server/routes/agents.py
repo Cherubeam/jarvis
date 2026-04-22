@@ -39,12 +39,14 @@ async def list_agents(request: Request) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = [dict(_JARVIS_LIST_ENTRY)]
     for name in sorted(registry):
         meta = registry[name]
-        out.append({
-            "name": name,
-            "command": meta.command or "",
-            "description": meta.description or "",
-            "tools": list(meta.tool_groups or []),
-        })
+        out.append(
+            {
+                "name": name,
+                "command": meta.command or "",
+                "description": meta.description or "",
+                "tools": list(meta.tool_groups or []),
+            }
+        )
     return out
 
 
