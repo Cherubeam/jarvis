@@ -16,7 +16,7 @@ from packages.core.tools.base import ToolDefinition
 def mcp_tools_to_tool_definitions(
     server_name: str,
     mcp_tools: list[types.Tool],
-    call_fn: Callable[[str, dict], str],
+    call_fn: Callable[[str, dict[str, Any]], str],
 ) -> list[ToolDefinition]:
     """Convert MCP Tool objects to JARVIS ToolDefinition instances.
 
@@ -46,7 +46,7 @@ def mcp_tools_to_tool_definitions(
 
 
 def _make_execute_fn(
-    call_fn: Callable[[str, dict], str],
+    call_fn: Callable[[str, dict[str, Any]], str],
     tool_name: str,
 ) -> Callable[..., str]:
     """Create an execute closure for a single MCP tool."""

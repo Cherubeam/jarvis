@@ -7,6 +7,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,7 @@ def _sanitize_filename(name: str) -> str:
     return sanitized
 
 
-def _is_starter_project(project: dict) -> bool:
+def _is_starter_project(project: dict[str, Any]) -> bool:
     """Detect Claude starter/template projects that shouldn't be imported."""
     if project.get("is_starter_project"):
         return True
@@ -348,7 +349,7 @@ def import_context(
         summary.files_written.append("profile.md (deleted)")
 
     # Process projects
-    projects_by_uuid: dict[str, dict] = {}
+    projects_by_uuid: dict[str, dict[str, Any]] = {}
     if projects_path and projects_path.exists():
         with open(projects_path) as f:
             projects_data = json.load(f)

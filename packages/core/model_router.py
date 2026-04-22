@@ -8,6 +8,7 @@ to cheap/fast models and complex queries to high-quality models.
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 from packages.core.model_resolver import ResolvedModel, resolve_model
 
@@ -33,7 +34,7 @@ _NUMBERED_LIST_RE = re.compile(r"^\s*\d+\.\s", re.MULTILINE)
 
 def classify_query(
     query: str,
-    config: dict,
+    config: dict[str, Any],
     agent_name: str | None = None,
 ) -> tuple[str, str, float]:
     """Classify query complexity and return (preset, reason, confidence).
@@ -73,7 +74,7 @@ def classify_query(
 
 def route_query(
     query: str,
-    config: dict,
+    config: dict[str, Any],
     agent_name: str | None = None,
 ) -> RoutingDecision:
     """Route a query to the appropriate model based on complexity.

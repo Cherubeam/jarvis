@@ -4,6 +4,7 @@ Tool interface and registry for JARVIS function calling.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -12,11 +13,11 @@ class ToolDefinition:
 
     name: str
     description: str
-    parameters: dict  # JSON Schema for the tool's arguments
+    parameters: dict[str, Any]  # JSON Schema for the tool's arguments
     execute: Callable[..., str]
     terminal: bool = False  # If True, skip streaming after this tool fires
 
-    def to_litellm_format(self) -> dict:
+    def to_litellm_format(self) -> dict[str, Any]:
         """Convert to LiteLLM/OpenAI function-calling format."""
         return {
             "type": "function",
@@ -42,7 +43,7 @@ class ToolRegistry:
         """Look up a tool by name. Returns None if not found."""
         return self._tools.get(name)
 
-    def to_litellm_format(self) -> list[dict]:
+    def to_litellm_format(self) -> list[dict[str, Any]]:
         """Return all tools in LiteLLM/OpenAI format."""
         return [t.to_litellm_format() for t in self._tools.values()]
 

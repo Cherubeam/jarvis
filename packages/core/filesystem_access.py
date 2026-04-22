@@ -11,6 +11,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class FilesystemGuard:
         return access in (AccessLevel.WRITE, AccessLevel.READ_WRITE)
 
 
-def load_filesystem_guard(config: dict) -> FilesystemGuard:
+def load_filesystem_guard(config: dict[str, Any]) -> FilesystemGuard:
     """Build a FilesystemGuard from config dictionary.
 
     Expected config shape:

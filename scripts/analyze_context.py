@@ -16,6 +16,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from typing import Any
+
 from packages.core.memory import migrate_conversation
 
 
@@ -138,7 +140,7 @@ def check_context_referenced(
     return matches >= threshold
 
 
-def _extract_assistant_text(conversation: dict) -> str:
+def _extract_assistant_text(conversation: dict[str, Any]) -> str:
     """Extract all assistant response text from a conversation."""
     parts = []
     for msg in conversation.get("messages", []):
@@ -159,7 +161,7 @@ def _estimate_context_tokens(size_bytes: int) -> int:
     return size_bytes // 4
 
 
-def load_conversations(conversations_dir: Path) -> list[dict]:
+def load_conversations(conversations_dir: Path) -> list[dict[str, Any]]:
     """Load and migrate all conversation files."""
     conversations = []
     for json_file in sorted(conversations_dir.rglob("*.json")):
@@ -173,7 +175,7 @@ def load_conversations(conversations_dir: Path) -> list[dict]:
 
 
 def analyze_context_utilization(
-    conversations: list[dict],
+    conversations: list[dict[str, Any]],
     context_dir: Path | None = None,
 ) -> AnalysisResult:
     """Analyze how context files are utilized across conversations.

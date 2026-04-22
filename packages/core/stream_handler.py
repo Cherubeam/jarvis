@@ -40,7 +40,7 @@ class StreamResult:
     usage: TokenUsage
     cost_usd: float
     metrics: ResponseMetrics
-    tool_messages: list[dict] = field(default_factory=list)
+    tool_messages: list[dict[str, Any]] = field(default_factory=list)
     delegate_to: str | None = None
     delegate_task: str | None = None
     delegate_context: str | None = None
@@ -78,7 +78,7 @@ class StreamHandler:
         # mutated by the agentic-loop helpers via getattr/setattr patterns.
         self._streaming_response: StreamingResponse | None = None
         self._intermediate_usage: TokenUsage | None = None
-        self._tool_messages: list[dict] = []
+        self._tool_messages: list[dict[str, Any]] = []
         self._terminal_tool_fired: bool = False
 
     def _emit(self, event: Event) -> None:
@@ -124,7 +124,7 @@ class StreamHandler:
 
     def stream(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         print_chunks: bool = False,
         tool_registry: Any = None,
         max_iterations: int | None = None,
@@ -226,11 +226,11 @@ class StreamHandler:
 
     def _run_agentic_loop(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         tool_registry: Any,
         execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
-    ) -> tuple[list[dict], list[dict]]:
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Run agentic tool-calling loop using streaming-first detection.
 
         Uses stream_with_tool_detection() instead of complete() to avoid
@@ -241,7 +241,7 @@ class StreamHandler:
         """
         tools_format = tool_registry.to_litellm_format()
         accumulated_usage = TokenUsage()
-        tool_messages: list[dict] = []
+        tool_messages: list[dict[str, Any]] = []
 
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
             # Default args bind current values to silence B023; the lambda is
@@ -416,7 +416,9 @@ class StreamHandler:
             tool_messages=tool_messages,
         )
 
-    def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
+    def _stream_simple(
+        self, messages: list[dict[str, Any]], print_chunks: bool, tools: list[dict[str, Any]] | None = None
+    ) -> StreamResult:
         """Stream the final response and return a StreamResult."""
         response = self._try_with_credit_fallback(
             lambda: self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
@@ -489,11 +491,11 @@ class StreamHandler:
 
     def _run_agentic_loop_nonstreaming(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         tool_registry: Any,
         execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
-    ) -> tuple[list[dict], list[dict] | None, str | None, TokenUsage | None]:
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None, str | None, TokenUsage | None]:
         """Run agentic tool-calling loop using non-streaming complete().
 
         Returns (messages, tools_format, final_text, final_usage) where
@@ -501,7 +503,7 @@ class StreamHandler:
         """
         tools_format = tool_registry.to_litellm_format()
         accumulated_usage = TokenUsage()
-        tool_messages: list[dict] = []
+        tool_messages: list[dict[str, Any]] = []
         final_text: str | None = None
         final_usage: TokenUsage | None = None
 
@@ -622,7 +624,9 @@ class StreamHandler:
         self._tool_messages = tool_messages
         return messages, tools_format, final_text, final_usage
 
-    def _complete_simple(self, messages: list[dict], tools: list[dict] | None = None) -> StreamResult:
+    def _complete_simple(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
+    ) -> StreamResult:
         """Non-streaming final response — returns full text at once."""
         response = self._try_with_credit_fallback(
             lambda: self.client.complete(messages, tools=tools, max_tokens=self.max_tokens)

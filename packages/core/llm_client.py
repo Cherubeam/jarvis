@@ -17,7 +17,7 @@ litellm.suppress_debug_info = True
 from packages.core.model_resolver import get_api_key, infer_provider  # noqa: E402
 
 
-def _apply_cache_control(messages: list[dict], model: str) -> list[dict]:
+def _apply_cache_control(messages: list[dict[str, Any]], model: str) -> list[dict[str, Any]]:
     """Add cache_control breakpoint to system message for Anthropic models.
 
     Only activates when the model string contains 'anthropic' (covers both
@@ -129,7 +129,7 @@ class TokenUsage:
 class StreamToolResult:
     """Result from a streaming call that detected tool calls instead of content."""
 
-    tool_calls: list  # Accumulated tool call objects
+    tool_calls: list[Any]  # Accumulated tool call objects
     usage: TokenUsage
     finish_reason: str = "tool_calls"
 
@@ -190,9 +190,9 @@ class LLMClient:
 
     def complete(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
-        tools: list[dict] | None = None,
+        tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> Any:
@@ -213,7 +213,7 @@ class LLMClient:
         model_to_use = model or self.default_model
         messages = _apply_cache_control(messages, model_to_use)
 
-        kwargs: dict = dict(
+        kwargs: dict[str, Any] = dict(
             model=model_to_use,
             messages=messages,
             stream=False,
@@ -230,9 +230,9 @@ class LLMClient:
 
     def chat_stream(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
-        tools: list[dict] | None = None,
+        tools: list[dict[str, Any]] | None = None,
         max_tokens: int | None = None,
     ) -> StreamingResponse:
         """
@@ -251,9 +251,9 @@ class LLMClient:
 
     def stream_with_tool_detection(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
-        tools: list[dict] | None = None,
+        tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> StreamingResponse | StreamToolResult:
@@ -269,7 +269,7 @@ class LLMClient:
         model_to_use = model or self.default_model
         messages = _apply_cache_control(messages, model_to_use)
 
-        kwargs: dict = dict(
+        kwargs: dict[str, Any] = dict(
             model=model_to_use,
             messages=messages,
             stream=True,
@@ -293,7 +293,7 @@ class LLMClient:
 
         # Peek at chunks to determine if this is a tool call or content response
         content_chunks: list[str] = []
-        tool_call_deltas: dict[int, dict] = {}  # index -> accumulated tool call
+        tool_call_deltas: dict[int, dict[str, Any]] = {}  # index -> accumulated tool call
         usage = TokenUsage()
         is_tool_response = False
 
@@ -365,9 +365,9 @@ class LLMClient:
 
     def _stream_response(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
-        tools: list[dict] | None = None,
+        tools: list[dict[str, Any]] | None = None,
         max_tokens: int | None = None,
     ) -> Generator[str, None, tuple[TokenUsage, object]]:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
@@ -376,7 +376,7 @@ class LLMClient:
         messages = _apply_cache_control(messages, model_to_use)
 
         # LiteLLM will handle provider-specific auth and formatting
-        kwargs: dict = dict(
+        kwargs: dict[str, Any] = dict(
             model=model_to_use,
             messages=messages,
             stream=True,

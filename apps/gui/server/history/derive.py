@@ -17,7 +17,7 @@ HANDOFF_TOOL_NAME = "delegate_to_agent"
 _TITLE_MAX = 80
 
 
-def _user_messages(messages: Iterable[dict]) -> list[str]:
+def _user_messages(messages: Iterable[dict[str, Any]]) -> list[str]:
     """Collect user-role text bodies. Handles both string and block-list content."""
     out: list[str] = []
     for m in messages:
@@ -34,7 +34,7 @@ def _user_messages(messages: Iterable[dict]) -> list[str]:
     return out
 
 
-def title_from_messages(messages: Iterable[dict], max_len: int = _TITLE_MAX) -> str:
+def title_from_messages(messages: Iterable[dict[str, Any]], max_len: int = _TITLE_MAX) -> str:
     """Derive a conversation title from the first user message.
 
     Strips newlines and leading slashes. Truncates with `…`. Fallback
@@ -53,7 +53,7 @@ def title_from_messages(messages: Iterable[dict], max_len: int = _TITLE_MAX) -> 
     return flat
 
 
-def _tool_calls(messages: Iterable[dict]) -> Iterable[dict]:
+def _tool_calls(messages: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
     """Yield each tool_call dict on any assistant message (flat)."""
     for m in messages:
         if m.get("role") != "assistant":
@@ -63,7 +63,7 @@ def _tool_calls(messages: Iterable[dict]) -> Iterable[dict]:
                 yield tc
 
 
-def handoff_count(messages: Iterable[dict]) -> int:
+def handoff_count(messages: Iterable[dict[str, Any]]) -> int:
     """Count `delegate_to_agent` invocations — the only on-disk marker of a handoff."""
     n = 0
     for tc in _tool_calls(messages):
@@ -73,7 +73,7 @@ def handoff_count(messages: Iterable[dict]) -> int:
     return n
 
 
-def tools_used(messages: Iterable[dict]) -> list[str]:
+def tools_used(messages: Iterable[dict[str, Any]]) -> list[str]:
     """Unique tool names invoked, excluding the handoff tool. Stable order."""
     seen: set[str] = set()
     out: list[str] = []
@@ -86,12 +86,12 @@ def tools_used(messages: Iterable[dict]) -> list[str]:
     return sorted(out)
 
 
-def tool_call_count(messages: Iterable[dict]) -> int:
+def tool_call_count(messages: Iterable[dict[str, Any]]) -> int:
     """Total tool invocations (including the handoff tool)."""
     return sum(1 for _ in _tool_calls(messages))
 
 
-def agents_seen(messages: Iterable[dict]) -> list[str]:
+def agents_seen(messages: Iterable[dict[str, Any]]) -> list[str]:
     """Unique agent names from assistant messages' top-level `agent` field.
 
     Legacy CLI runs and imported conversations may not have this field —
@@ -156,7 +156,9 @@ def _text_from_content(content: Any) -> str:
     return ""
 
 
-def preview_messages(messages: Iterable[dict], max_items: int = 4, max_chars: int = 240) -> list[dict[str, str]]:
+def preview_messages(
+    messages: Iterable[dict[str, Any]], max_items: int = 4, max_chars: int = 240
+) -> list[dict[str, str]]:
     """First few non-tool messages as {role, text}.
 
     role: 'user' for user messages, the agent name (or 'JARVIS') for

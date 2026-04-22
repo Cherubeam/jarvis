@@ -62,7 +62,7 @@ def _task_to_dict(task: Any, list_key: str) -> dict[str, Any]:
     }
 
 
-def _flatten_tasks(by_list: dict) -> list[dict[str, Any]]:
+def _flatten_tasks(by_list: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten today/upcoming/inbox lists into one ordered array, today first."""
     flat: list[dict[str, Any]] = []
     for key in ("today", "upcoming", "inbox"):

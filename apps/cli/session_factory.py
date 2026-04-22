@@ -53,7 +53,7 @@ class SessionComponents:
     every helper. The chat loop reads what it needs.
     """
 
-    config: dict
+    config: dict[str, Any]
     args: Any  # argparse.Namespace or a GUI-shim equivalent
     jarvis_dir: Path
     context_dir: Path
@@ -70,9 +70,9 @@ class SessionComponents:
     system_prompt: str
     context_metadata: Any
     agent_registry: dict[str, AgentMeta]
-    skill_registry: dict
-    shared_tools: list = field(default_factory=list)
-    tool_groups: dict[str, list] = field(default_factory=dict)
+    skill_registry: dict[str, Any]
+    shared_tools: list[Any] = field(default_factory=list)
+    tool_groups: dict[str, list[Any]] = field(default_factory=dict)
     card_search_tool: Any = None
     vault_config: Any = None
     fs_guard: Any = None
@@ -98,10 +98,10 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
 
 def make_agent_vault_tools(
     meta: AgentMeta,
-    config: dict,
+    config: dict[str, Any],
     vault_config: Any,
     confirmation_handler: ConfirmationHandler,
-) -> list:
+) -> list[Any]:
     """Create vault write tools scoped to an agent's `vault_writing` config section."""
     if vault_config is None or not meta.vault_writing:
         return []
@@ -125,11 +125,11 @@ def make_agent_vault_tools(
 
 def assemble_agent_tools(
     meta: AgentMeta,
-    shared_tools: list,
-    tool_groups: dict[str, list],
+    shared_tools: list[Any],
+    tool_groups: dict[str, list[Any]],
     only_tool_groups: set[str] | None = None,
     include_shared: bool = True,
-) -> list:
+) -> list[Any]:
     """Assemble tools for an agent from shared_tools + its declared tool_groups."""
     agent_tools = list(shared_tools) if include_shared else []
     groups = only_tool_groups if only_tool_groups is not None else set(meta.tool_groups)
@@ -143,8 +143,8 @@ def instantiate_agent(
     meta: AgentMeta,
     client: LLMClient,
     model_id: str,
-    extra_tools: list | None = None,
-    skill_registry: dict | None = None,
+    extra_tools: list[Any] | None = None,
+    skill_registry: dict[str, Any] | None = None,
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
@@ -165,7 +165,7 @@ def instantiate_agent(
 
 def build_session(
     args: Any,
-    config: dict,
+    config: dict[str, Any],
     confirmation_handler: ConfirmationHandler,
     *,
     on_tool_call: Callable[[str], None] | None = None,
@@ -217,8 +217,8 @@ def build_session(
 
     conversation_id = generate_conversation_id()
 
-    shared_tools: list = []
-    tool_groups: dict[str, list] = {}
+    shared_tools: list[Any] = []
+    tool_groups: dict[str, list[Any]] = {}
     card_search_tool = None
 
     rag_cfg = config.get("rag", {})
@@ -377,7 +377,7 @@ def build_session(
             )
             dev_extensions = dev_cfg.get("allowed_extensions", [".md", ".yaml", ".yml"])
 
-            dev_tools: list = []
+            dev_tools: list[Any] = []
             dev_tools.extend(make_codebase_tools(jarvis_dir))
             dev_tools.extend(make_git_tools(jarvis_dir))
             dev_confirmation: ConfirmationHandler

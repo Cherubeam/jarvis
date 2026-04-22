@@ -5,6 +5,7 @@ Pure data transformation — no I/O, no MCP SDK imports.
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
 _VALID_TRANSPORTS = {"stdio", "sse", "streamable_http"}
 
@@ -27,7 +28,7 @@ class MCPServerConfig:
     headers: dict[str, str] | None = None
 
 
-def parse_mcp_config(config: dict) -> list[MCPServerConfig]:
+def parse_mcp_config(config: dict[str, Any]) -> list[MCPServerConfig]:
     """Parse the mcp section from the full config dict.
 
     Returns an empty list if the section is absent or disabled.
@@ -47,7 +48,7 @@ def parse_mcp_config(config: dict) -> list[MCPServerConfig]:
     return configs
 
 
-def _parse_server(name: str, server: dict) -> MCPServerConfig:
+def _parse_server(name: str, server: dict[str, Any]) -> MCPServerConfig:
     """Parse and validate a single server entry."""
     if "__" in name:
         raise ValueError(

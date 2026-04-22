@@ -11,6 +11,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from typing import Any
+
 from packages.core.benchmark_costs import estimate_benchmark_costs, get_run_dir
 from packages.core.pricing import format_cost
 
@@ -29,7 +31,7 @@ DEFAULT_RESULTS_DIR = "tests/golden/results"
 
 
 def _print_estimates(
-    estimates: dict,
+    estimates: dict[str, Any],
     judge_model: str,
     run_dir: Path,
 ) -> None:

@@ -8,6 +8,7 @@ token usage, costs, and other performance metrics.
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -143,7 +144,7 @@ class MetricsTracker:
             responses=self.responses,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert session metrics to dictionary."""
         summary = self.get_session_summary()
         return {

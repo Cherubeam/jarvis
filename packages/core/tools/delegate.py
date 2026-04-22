@@ -3,6 +3,7 @@ Agent delegation tools — allows JARVIS to hand off tasks to specialized agents
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 from packages.core.tools.base import ToolDefinition
 
@@ -17,7 +18,7 @@ class DelegationState:
 
 
 def make_delegate_tool(
-    available_agents: list[dict],
+    available_agents: list[dict[str, Any]],
     state: DelegationState,
 ) -> ToolDefinition:
     """Create a delegation tool that routes tasks to specialized agents.

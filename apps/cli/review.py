@@ -23,7 +23,7 @@ class _PromptSessionLike(Protocol):
 @dataclass
 class _PendingItem:
     path: Path
-    meta: dict
+    meta: dict[str, Any]
     body: str
 
 

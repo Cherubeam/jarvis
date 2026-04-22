@@ -6,7 +6,7 @@ direct user interactions. It can delegate tasks to specialized agents.
 """
 
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from packages.agents.base import AgentConfig, BaseAgent
 from packages.core.context_builder import build_system_prompt
@@ -52,7 +52,7 @@ shifts (1 month), strategic bets (3-6 months).
 """
 
 
-def _build_delegation_directive(available_agents: list[dict]) -> str:
+def _build_delegation_directive(available_agents: list[dict[str, Any]]) -> str:
     """Build the delegation directive dynamically from discovered agents.
 
     Args:
@@ -125,7 +125,7 @@ class JarvisAgent(BaseAgent):
         context_dir: Path,
         model: str = "anthropic/claude-sonnet-4",
         extra_tools: list[ToolDefinition] | None = None,
-        available_agents: list[dict] | None = None,
+        available_agents: list[dict[str, Any]] | None = None,
     ):
         """
         Initialize JARVIS.
@@ -172,7 +172,7 @@ class JarvisAgent(BaseAgent):
         message: str,
         stream_handler: StreamHandler,
         print_chunks: bool = False,
-        messages_override: list[dict] | None = None,
+        messages_override: list[dict[str, Any]] | None = None,
     ) -> StreamResult:
         """Run JARVIS, then check for delegation."""
         # Reset delegation state before each run
@@ -198,7 +198,7 @@ class JarvisAgent(BaseAgent):
         """Load the daily note entry prompt."""
         return cls.load_prompt("daily_note_entry")
 
-    def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
+    def process_message(self, message: str, context: dict[str, Any] | None = None) -> StreamingResponse:
         """
         Process a user message and return a streaming response.
 

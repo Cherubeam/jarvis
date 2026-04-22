@@ -16,6 +16,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from typing import Any
+
 from packages.core.memory import migrate_conversation
 from packages.core.pricing import format_cost
 
@@ -45,7 +47,7 @@ class GroupStats:
         return self.total_latency_ms / self.latency_count if self.latency_count else 0.0
 
 
-def classify_source(conversation: dict) -> str:
+def classify_source(conversation: dict[str, Any]) -> str:
     """Classify conversation source from tags."""
     tags = conversation.get("tags", [])
     if "imported" in tags:
@@ -57,7 +59,7 @@ def classify_source(conversation: dict) -> str:
     return "native"
 
 
-def classify_model(conversation: dict) -> str:
+def classify_model(conversation: dict[str, Any]) -> str:
     """Extract model ID from conversation."""
     model = conversation.get("model")
     if isinstance(model, dict):
@@ -65,7 +67,7 @@ def classify_model(conversation: dict) -> str:
     return "unknown"
 
 
-def classify_length(conversation: dict) -> str:
+def classify_length(conversation: dict[str, Any]) -> str:
     """Classify conversation by message count."""
     msg_count = len(conversation.get("messages", []))
     if msg_count <= 3:
@@ -76,7 +78,7 @@ def classify_length(conversation: dict) -> str:
         return "long (11+)"
 
 
-def aggregate_conversation(stats: GroupStats, conversation: dict) -> None:
+def aggregate_conversation(stats: GroupStats, conversation: dict[str, Any]) -> None:
     """Add a conversation's metrics to a group."""
     stats.count += 1
     metrics = conversation.get("metrics", {})
@@ -91,7 +93,7 @@ def aggregate_conversation(stats: GroupStats, conversation: dict) -> None:
         stats.latency_count += 1
 
 
-def load_conversations(conversations_dir: Path) -> list[dict]:
+def load_conversations(conversations_dir: Path) -> list[dict[str, Any]]:
     """Load and migrate all conversation files."""
     conversations = []
     for json_file in sorted(conversations_dir.rglob("*.json")):
@@ -105,7 +107,7 @@ def load_conversations(conversations_dir: Path) -> list[dict]:
 
 
 def analyze_by_group(
-    conversations: list[dict],
+    conversations: list[dict[str, Any]],
     group_by: str,
 ) -> dict[str, GroupStats]:
     """Group conversations and aggregate stats.
@@ -158,7 +160,7 @@ def format_table(groups: dict[str, GroupStats], group_by: str) -> str:
 
 
 def format_full_report(
-    conversations: list[dict],
+    conversations: list[dict[str, Any]],
     group_types: list[str],
 ) -> str:
     """Generate the full report with all requested groupings."""

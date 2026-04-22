@@ -10,6 +10,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class TaskSyncCache:
         self.cache_file = Path.home() / ".cache" / "jarvis" / "tasks_cache.json"
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-    def get(self) -> dict | None:
+    def get(self) -> dict[str, Any] | None:
         """Get cached tasks if not expired."""
         if not self.cache_file.exists():
             return None
@@ -53,7 +54,7 @@ class TaskSyncCache:
 
         return None
 
-    def set(self, tasks: dict) -> None:
+    def set(self, tasks: dict[str, Any]) -> None:
         """Cache tasks with timestamp."""
         try:
             data = {"timestamp": datetime.now().isoformat(), "tasks": tasks}
@@ -72,7 +73,7 @@ class TaskSyncCache:
             logger.warning(f"Cache invalidation error: {e}")
 
 
-def _to_task(t: dict) -> Task:
+def _to_task(t: dict[str, Any]) -> Task:
     """Convert a things.py task dict to a Task dataclass."""
     return Task(
         title=t.get("title", ""),
@@ -86,7 +87,7 @@ def _to_task(t: dict) -> Task:
     )
 
 
-def fetch_tasks(config: dict, use_cache: bool = True) -> dict[str, list[Task]]:
+def fetch_tasks(config: dict[str, Any], use_cache: bool = True) -> dict[str, list[Task]]:
     """
     Fetch tasks from Things 3 via SQLite (things.py).
 
@@ -131,7 +132,7 @@ def fetch_tasks(config: dict, use_cache: bool = True) -> dict[str, list[Task]]:
         logger.error(f"Error fetching tasks: {e}")
 
     # Cache results
-    cache_data: dict[str, list[dict]] = {}
+    cache_data: dict[str, list[dict[str, Any]]] = {}
     for key, task_list in tasks_data.items():
         cache_data[key] = [
             {
@@ -257,7 +258,7 @@ def format_tasks_as_markdown(
     return "\n".join(sections)
 
 
-def sync_tasks_to_file(output_path: Path, config: dict) -> bool:
+def sync_tasks_to_file(output_path: Path, config: dict[str, Any]) -> bool:
     """
     Synchronize tasks from Things 3 to markdown file.
 

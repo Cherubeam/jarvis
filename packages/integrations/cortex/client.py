@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import httpx
 
@@ -24,9 +25,9 @@ class CortexClient:
         query: str,
         n_results: int = 5,
         path_prefix: str | None = None,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """POST /search. Returns response dict or None on failure."""
-        payload: dict = {"query": query, "n_results": n_results}
+        payload: dict[str, Any] = {"query": query, "n_results": n_results}
         if path_prefix:
             payload["path_prefix"] = path_prefix
         try:

@@ -10,11 +10,12 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 
-def parse(text: str) -> tuple[dict, str]:
+def parse(text: str) -> tuple[dict[str, Any], str]:
     """Extract YAML frontmatter from markdown. Returns (metadata, body).
 
     Returns ({}, text) unchanged if no frontmatter delimiters are present.
@@ -28,7 +29,7 @@ def parse(text: str) -> tuple[dict, str]:
     return {}, text
 
 
-def dump(metadata: dict, body: str) -> str:
+def dump(metadata: dict[str, Any], body: str) -> str:
     """Serialize (metadata, body) into a markdown document with frontmatter.
 
     Preserves insertion order via `sort_keys=False`. Body is appended verbatim.
