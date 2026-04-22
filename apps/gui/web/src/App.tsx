@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { LeftRail, type ViewKey } from './components/LeftRail'
+import { AgentDetailView } from './views/AgentDetailView'
+import { AgentsView } from './views/AgentsView'
 import { ChatView } from './views/ChatView'
 import { HistoryView } from './views/HistoryView'
 import { HomeView } from './views/HomeView'
@@ -30,6 +32,8 @@ function loadTweaks(): Tweaks {
 
 function loadView(): ViewKey {
   const v = localStorage.getItem(VIEW_STORAGE_KEY) as ViewKey | null
+  // 'agent' (detail) is NOT persisted — a refresh on the detail page lands on
+  // 'agents' (the overview grid) because `selectedAgentId` doesn't survive reloads.
   return v && ['chat', 'home', 'agents', 'history', 'settings'].includes(v) ? v : 'chat'
 }
 
@@ -40,6 +44,8 @@ export default function App() {
   const [session, setSession] = useState<SessionMeta | null>(null)
   // Lifted selection for History view; Sidebar writes it, HistoryView reads.
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
+  // Agents detail sub-view target. Cleared when the user leaves detail.
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   // Bumped when a turn finishes so Sidebar + HistoryView + HomeView invalidate and re-fetch.
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0)
   const bumpHistoryRefresh = useCallback(
@@ -58,6 +64,15 @@ export default function App() {
   const openHistoryId = useCallback((id: string) => {
     setSelectedHistoryId(id)
     setView('history')
+  }, [])
+  const openAgent = useCallback((id: string) => {
+    setSelectedAgentId(id)
+    setView('agent')
+  }, [])
+  // Clicking the Agents rail button while on detail should return to the grid.
+  const setViewWithAgentReset = useCallback((v: ViewKey) => {
+    if (v === 'agents') setSelectedAgentId(null)
+    setView(v)
   }, [])
 
   useEffect(() => {
@@ -95,7 +110,12 @@ export default function App() {
         overflow: 'hidden',
       }}
     >
-      <LeftRail theme={theme} accent={accent} view={view} setView={setView} />
+      <LeftRail
+        theme={theme}
+        accent={accent}
+        view={view === 'agent' ? 'agents' : view}
+        setView={setViewWithAgentReset}
+      />
       {view === 'chat' && (
         <ChatView
           theme={theme}
@@ -123,7 +143,31 @@ export default function App() {
           onStartChat={onStartChat}
         />
       )}
-      {view === 'agents' && <Stub theme={theme} name="Agents" />}
+      {view === 'agents' && (
+        <AgentsView
+          theme={theme}
+          accent={accent}
+          agents={agents}
+          refreshToken={historyRefreshToken}
+          onOpenAgent={openAgent}
+        />
+      )}
+      {view === 'agent' && selectedAgentId && (
+        <AgentDetailView
+          theme={theme}
+          accent={accent}
+          agentId={selectedAgentId}
+          refreshToken={historyRefreshToken}
+          onBack={() => {
+            setSelectedAgentId(null)
+            setView('agents')
+          }}
+          onStartSession={(cmd) => {
+            setSelectedAgentId(null)
+            onStartChat(cmd ? cmd + ' ' : null)
+          }}
+        />
+      )}
       {view === 'history' && (
         <HistoryView
           theme={theme}
