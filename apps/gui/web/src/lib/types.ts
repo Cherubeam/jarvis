@@ -64,6 +64,24 @@ export type Agent = {
   tools: string[]
 }
 
+export type AgentDetail = {
+  name: string
+  command: string
+  description: string
+  tools: string[]
+  temperature: number | null
+  max_tokens: number | null
+  max_iterations: number | null
+  skills: string[]
+  prompt_path: string | null      // null for JARVIS (prompt is assembled dynamically)
+  prompt_includes_count: number
+  model: string | null
+  last_used: string | null
+  recent_sessions: ConversationSummary[]
+  cost_14d: { date: string; cost: number }[]
+  cost_14d_total: number
+}
+
 // -- Conversations (Phase 2) ------------------------------------------------
 
 export type ConversationSummary = {

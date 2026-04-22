@@ -1,7 +1,8 @@
 # JARVIS GUI — engineering notes
 
-Phase 1 ships the **Chat shell**. Dashboard, Agents, Conversations, Settings,
-and the Agent-Prompt-editor surfaces are stubbed and will land in later phases.
+Phases 1–5 ship Chat, Conversations (History), Dashboard (Home), Sidebar
+Timeline mode, and Agents overview + detail. The remaining surfaces
+(Settings, Agent Prompt editor) are stubbed and will land in later phases.
 
 ## Run
 
@@ -105,6 +106,53 @@ uv run jarvis-gui --no-browser   # backend on :8123
 ```
 
 Open http://localhost:5173 for hot-reloading UI with a live backend.
+
+## Agents view (Phase 5)
+
+The left-rail **Agents** slot — previously stubbed — now renders the Agents overview grid and an Agent Detail page. Matches the v6 prototype's Agents Overview and the Overview tab of Agent Detail.
+
+### Overview grid
+
+`apps/gui/web/src/views/AgentsView.tsx`. A single 1040px column with:
+
+- `Agents` title + "N registered · packages/agents/" subtitle.
+- `ORCHESTRATOR` section with JARVIS as a featured full-width card.
+- Six category sections (`WRITING`, `KNOWLEDGE`, `PLANNING`, `ANALYSIS`, `GENERATION`, `ENGINEERING`), each a 3-column grid of compact cards. Agents whose id isn't in any category fall into an `OTHER` section so new agents aren't silently hidden — see `groupByCategory()` in `lib/agentCategories.ts`.
+
+Each card shows speaker-labeled title, mono command, description, tool count, and relative last-used (`today` / `yesterday` / `Nd ago` / `Nw ago` / `Nmo ago` / `unused`). `last_used` is derived client-side from `/api/conversations?limit=500` in a single fetch — avoids changing the wire shape of the list endpoint.
+
+### Detail page
+
+`apps/gui/web/src/views/AgentDetailView.tsx`. Reached by clicking a card; routed via App-lifted `selectedAgentId` + a new `'agent'` sub-view key (not persisted, excluded from `loadView()`'s allowlist). LeftRail receives `view === 'agent' ? 'agents' : view` so the Agents rail button stays highlighted on detail.
+
+Layout:
+
+- `← agents` back link.
+- Agent-hue left bar + large speaker label + command (in hue) + `packages/agents/<id>/` path + `start session →` button (hue background). Clicking the button seeds the agent's command (e.g. `/write `) and switches to Chat — reuses the existing `onStartChat` + `pendingSeed` wiring from Home's Quick Start. JARVIS's empty command seeds `null` and just opens a blank Chat.
+- Placeholder tab row (`[Overview]` active · `Prompt · Versions · Stats · Context` greyed) — previews the upcoming Prompt Editor phase without leaving a visual gap.
+- Description paragraph.
+- `TOOLS` chips (or "no tools · pure reasoning agent" when empty).
+- `RECENT SESSIONS` — up to 6 rows from `recent_sessions_for_agent(index, agent_id)` (4-column grid: date / title / msg count / cost).
+- `COST · LAST 14 DAYS` — agent-hue sparkline via `Cost14dSparkline`. 14 days, not 30 — reads closer to `CostCard`'s 7-day aesthetic and avoids too many zero bars for infrequently-used agents.
+- `CONFIGURATION` — model ("(inherits from session)"), `prompt_path`, `prompt_includes_count`, optional `temperature`, `max_iterations`, `skills`. JARVIS's `prompt_path` is `null`; UI shows `(assembled from ~/.jarvis/context/)` because `build_system_prompt()` composes it from soul.md + personal/professional/preferences/focus/tasks/reading profile files at turn time.
+
+### Endpoints
+
+- `GET /api/agents` — list, moved from `routes/api.py` to `routes/agents.py`. JARVIS first (hard-coded synthetic entry — registry skips it via `_SKIP_DIRS`), then data-driven agents alphabetical.
+- `GET /api/agents/{id}` — detail. Re-parses `meta.meta_path` with `yaml.safe_load` to surface `temperature / max_tokens / max_iterations / prompt_includes` (these fields live on `AgentConfig`, not on the registry's `AgentMeta`). Defensive 404 on `/` or `..` in the id. `await idx.refresh()` at the top so the cache reflects any `mark_dirty` calls since boot — same pattern as `home.py`.
+
+### Helpers
+
+`apps/gui/server/agents/detail.py`:
+
+- `cost_14d_rollup(index, agent_id, today=None, *, days=14)` — walks `index._cache.values()`, sums `cost` only where `agent_id in summary["agents"]`. Tolerates missing `cost` / `None` / missing `agents` key.
+- `recent_sessions_for_agent(index, agent_id, *, limit=6)` — filters summaries by `agent_id in summary["agents"]`, sorts by `summary["id"]` descending (matching the index's own "recent" sort).
+
+### Known limitations (Phase 5)
+
+- **`last_used` caps at 500 conversations.** Agents whose most recent session is older than the 500th most recent conversation show as `unused`. Acceptable for localhost.
+- **No tabs bar beyond Overview.** Placeholder row is visual-only — Prompt / Versions / Stats / Context are not yet clickable. They land with the Prompt Editor phase.
+- **No per-agent search on the grid.** 16 agents × 3 columns = ~6 rows; a search bar would be noise. v6 doesn't have one either.
 
 ## Sidebar Timeline mode (Phase 4)
 
