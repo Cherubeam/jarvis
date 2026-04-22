@@ -6,6 +6,7 @@ Supports multiple providers via LiteLLM's routing conventions.
 import re
 from collections.abc import Generator
 from dataclasses import dataclass
+from typing import Any
 
 import litellm
 
@@ -194,7 +195,7 @@ class LLMClient:
         tools: list[dict] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-    ) -> object:
+    ) -> Any:
         """
         Non-streaming completion. Used in the agentic tool-calling loop
         and as the primary path when streaming is disabled.

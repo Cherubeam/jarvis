@@ -431,13 +431,13 @@ def import_conversations(
     # Track already-imported claude IDs → file path for incremental sync
     existing_claude_ids: dict[str, Path] = {}
     if target_dir.exists():
-        used_filenames = {f.name for f in target_dir.rglob("*.json")}
-        for f in target_dir.rglob("*.json"):
+        used_filenames = {p.name for p in target_dir.rglob("*.json")}
+        for path in target_dir.rglob("*.json"):
             try:
-                data = json.loads(f.read_text())
+                data = json.loads(path.read_text())
                 cid = data.get("metadata", {}).get("claude_id")
                 if cid:
-                    existing_claude_ids[cid] = f
+                    existing_claude_ids[cid] = path
             except (json.JSONDecodeError, OSError):
                 pass
 

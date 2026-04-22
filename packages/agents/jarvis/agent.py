@@ -6,6 +6,7 @@ direct user interactions. It can delegate tasks to specialized agents.
 """
 
 from pathlib import Path
+from typing import cast
 
 from packages.agents.base import AgentConfig, BaseAgent
 from packages.core.context_builder import build_system_prompt
@@ -181,9 +182,12 @@ class JarvisAgent(BaseAgent):
 
         result = super().run(message, stream_handler, print_chunks, messages_override)
 
-        # Propagate delegation info to the result
-        if self._delegation_state.agent_name:
-            result.delegate_to = self._delegation_state.agent_name
+        # Propagate delegation info to the result. Cast to bypass mypy
+        # narrowing — the delegate tool mutates _delegation_state during
+        # super().run(), which mypy can't track across the reset above.
+        agent_name = cast(str | None, self._delegation_state.agent_name)
+        if agent_name:
+            result.delegate_to = agent_name
             result.delegate_task = self._delegation_state.task
             result.delegate_context = self._delegation_state.context
 

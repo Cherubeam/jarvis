@@ -72,8 +72,12 @@ def _extract_intent(body: str) -> str:
     return m.group(1).strip() if m else ""
 
 
-def _clean_wikilinks(text: str) -> list[str]:
-    """Convert Obsidian wikilinks to plain names."""
+def _clean_wikilinks(text: str | list) -> list[str]:
+    """Convert Obsidian wikilinks to plain names.
+
+    Accepts a single string or a list of strings (YAML frontmatter may
+    parse the related-patterns field as either, depending on its shape).
+    """
     results: list[str] = []
     for item in text if isinstance(text, list) else [text]:
         cleaned = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]", r"\1", str(item))
@@ -824,6 +828,7 @@ def generate_pattern_image(
     )
 
     # Extract image data — litellm returns URL or base64
+    assert response.data is not None, "litellm.image_generation returned no data"
     image_data = response.data[0]
 
     if hasattr(image_data, "b64_json") and image_data.b64_json:

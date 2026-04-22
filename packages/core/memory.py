@@ -12,7 +12,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from packages.core.context_builder import ContextMetadata
@@ -70,7 +70,7 @@ def migrate_conversation(data: dict) -> dict:
             )
         return data
 
-    migrated = {
+    migrated: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "id": None,
         "title": None,

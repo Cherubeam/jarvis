@@ -7,6 +7,7 @@ reusable class shared by all agents.
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import cast
 
 from packages.core.events import (
     Event,
@@ -73,6 +74,12 @@ class StreamHandler:
         self.streaming = streaming
         self.on_before_tool_exec: Callable[[], None] | None = None
         self.on_after_tool_exec: Callable[[], None] | None = None
+        # Per-call agentic state — initialized at the top of stream() and
+        # mutated by the agentic-loop helpers via getattr/setattr patterns.
+        self._streaming_response: StreamingResponse | None = None
+        self._intermediate_usage: TokenUsage | None = None
+        self._tool_messages: list[dict] = []
+        self._terminal_tool_fired: bool = False
 
     def _emit(self, event: Event) -> None:
         """Emit a typed event to the event callback if registered."""
@@ -200,9 +207,13 @@ class StreamHandler:
             )
 
         # If the agentic loop already received a streaming content response,
-        # use it directly instead of making another streaming call
-        if self._streaming_response is not None:
-            return self._stream_from_response(self._streaming_response, print_chunks)
+        # use it directly instead of making another streaming call. Cast to
+        # bypass mypy narrowing — the agentic loop helpers mutate this
+        # attribute via direct assignment, which mypy can't track across
+        # the local `self._streaming_response = None` reset above.
+        streaming_response = cast(StreamingResponse | None, self._streaming_response)
+        if streaming_response is not None:
+            return self._stream_from_response(streaming_response, print_chunks)
 
         # Non-streaming agentic loop already got the final answer
         if final_text is not None:

@@ -68,6 +68,7 @@ class MCPConnection:
     async def _open_transport(self):
         """Open the appropriate transport based on config."""
         if self.config.transport == "stdio":
+            assert self.config.command is not None, "stdio transport requires `command`"
             params = StdioServerParameters(
                 command=self.config.command,
                 args=self.config.args,
@@ -76,6 +77,7 @@ class MCPConnection:
             )
             return await self._exit_stack.enter_async_context(stdio_client(params))
         elif self.config.transport == "sse":
+            assert self.config.url is not None, "sse transport requires `url`"
             return await self._exit_stack.enter_async_context(
                 sse_client(
                     url=self.config.url,
@@ -83,6 +85,7 @@ class MCPConnection:
                 )
             )
         elif self.config.transport == "streamable_http":
+            assert self.config.url is not None, "streamable_http transport requires `url`"
             return await self._exit_stack.enter_async_context(
                 streamablehttp_client(
                     url=self.config.url,
