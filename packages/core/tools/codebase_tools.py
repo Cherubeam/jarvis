@@ -74,9 +74,7 @@ def make_codebase_tools(project_root: Path) -> list[ToolDefinition]:
 
     # --- search_code ---
 
-    def _search_code(
-        pattern: str, glob: str = "**/*.py", max_results: int = _MAX_SEARCH_RESULTS
-    ) -> str:
+    def _search_code(pattern: str, glob: str = "**/*.py", max_results: int = _MAX_SEARCH_RESULTS) -> str:
         """Regex search across project files."""
         try:
             regex = re.compile(pattern)

@@ -11,7 +11,9 @@ import litellm
 
 litellm.suppress_debug_info = True
 
-from packages.core.model_resolver import get_api_key, infer_provider
+# E402: import deferred so suppress_debug_info is set before downstream imports
+# of litellm (avoids debug spam at startup).
+from packages.core.model_resolver import get_api_key, infer_provider  # noqa: E402
 
 
 def _apply_cache_control(messages: list[dict], model: str) -> list[dict]:
@@ -244,9 +246,7 @@ class LLMClient:
         Returns:
             StreamingResponse that yields text chunks and provides usage stats after completion
         """
-        return StreamingResponse(
-            self._stream_response(messages, model, tools, max_tokens=max_tokens)
-        )
+        return StreamingResponse(self._stream_response(messages, model, tools, max_tokens=max_tokens))
 
     def stream_with_tool_detection(
         self,
@@ -312,7 +312,6 @@ class LLMClient:
                 continue
 
             delta = chunk.choices[0].delta
-            finish_reason = chunk.choices[0].finish_reason
 
             # Accumulate tool call deltas
             if hasattr(delta, "tool_calls") and delta.tool_calls:
@@ -358,8 +357,7 @@ class LLMClient:
 
         # Content response — wrap remaining content in a StreamingResponse
         def _replay_content() -> Generator[str, None, tuple[TokenUsage, object]]:
-            for c in content_chunks:
-                yield c
+            yield from content_chunks
             return usage, response
 
         return StreamingResponse(_replay_content())

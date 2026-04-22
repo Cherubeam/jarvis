@@ -92,9 +92,7 @@ def load_filesystem_guard(config: dict) -> FilesystemGuard:
         try:
             access = AccessLevel(raw_access)
         except ValueError:
-            logger.warning(
-                f"Unknown access level '{raw_access}' for {raw_path}, defaulting to deny"
-            )
+            logger.warning(f"Unknown access level '{raw_access}' for {raw_path}, defaulting to deny")
             access = AccessLevel.DENY
 
         rules.append(AccessRule(path=path, access=access))

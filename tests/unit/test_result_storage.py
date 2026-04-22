@@ -91,7 +91,7 @@ class TestResultStorage:
 
     def test_initialization_creates_directories(self, tmp_path):
         """Test that initialization creates necessary directories."""
-        storage = ResultStorage(tmp_path / "results")
+        ResultStorage(tmp_path / "results")
 
         assert (tmp_path / "results" / "runs").exists()
         assert (tmp_path / "results" / "reports").exists()
@@ -135,9 +135,7 @@ class TestResultStorage:
         assert summary.average_overall_score == 0.95
         assert summary.total_cost_usd == 0.018
 
-    def test_calculate_summary_multiple_results(
-        self, tmp_path, sample_evaluation_result, sample_failed_result
-    ):
+    def test_calculate_summary_multiple_results(self, tmp_path, sample_evaluation_result, sample_failed_result):
         """Test summary calculation with multiple results."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -152,9 +150,7 @@ class TestResultStorage:
         assert summary.average_overall_score == pytest.approx((0.95 + 0.62) / 2, 0.01)
         assert summary.total_cost_usd == pytest.approx(0.038, 0.001)
 
-    def test_calculate_summary_by_category(
-        self, tmp_path, sample_evaluation_result, sample_failed_result
-    ):
+    def test_calculate_summary_by_category(self, tmp_path, sample_evaluation_result, sample_failed_result):
         """Test that summary calculates scores by category."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -167,9 +163,7 @@ class TestResultStorage:
         assert summary.scores_by_category["reasoning"] == 0.95
         assert summary.scores_by_category["edge_cases"] == 0.62
 
-    def test_calculate_summary_dimension_scores(
-        self, tmp_path, sample_evaluation_result, sample_failed_result
-    ):
+    def test_calculate_summary_dimension_scores(self, tmp_path, sample_evaluation_result, sample_failed_result):
         """Test aggregation of dimension scores across tests."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -187,7 +181,7 @@ class TestResultStorage:
         run_id = storage.start_run("test-model", "judge-model")
 
         storage.save_result(run_id, sample_evaluation_result)
-        summary = storage.finalize_run(run_id, [sample_evaluation_result])
+        storage.finalize_run(run_id, [sample_evaluation_result])
 
         summary_file = tmp_path / "results" / "runs" / run_id / "run_summary.json"
         assert summary_file.exists()
@@ -215,9 +209,7 @@ class TestResultStorage:
             assert "Test Results" in content
             assert "test_basic_qa" in content
 
-    def test_markdown_report_includes_failed_tests(
-        self, tmp_path, sample_evaluation_result, sample_failed_result
-    ):
+    def test_markdown_report_includes_failed_tests(self, tmp_path, sample_evaluation_result, sample_failed_result):
         """Test that markdown report includes failed tests section."""
         storage = ResultStorage(tmp_path / "results")
         run_id = storage.start_run("test-model", "judge-model")
@@ -299,7 +291,7 @@ class TestResultStorage:
         storage = ResultStorage(tmp_path / "results")
 
         # Create multiple runs
-        for i in range(3):
+        for _i in range(3):
             run_id = storage.start_run("test-model", "judge-model")
             summary = storage._calculate_summary(run_id, [sample_evaluation_result])
             storage.update_history(summary)

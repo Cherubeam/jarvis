@@ -61,10 +61,7 @@ class TestClassifyQuery:
         assert confidence == 0.8
 
     def test_medium_query_routes_to_balanced(self):
-        query = (
-            "Can you explain how the agent framework works in this project and how agents are discovered? "
-            * 3
-        )
+        query = "Can you explain how the agent framework works in this project and how agents are discovered? " * 3
         preset, reason, confidence = classify_query(query, _SAMPLE_CONFIG)
         assert preset == "balanced"
         assert reason == "moderate complexity"
@@ -166,10 +163,7 @@ class TestRouteQuery:
         assert decision.confidence == 0.95
 
     def test_balanced_preset_resolves_to_balanced_model(self):
-        query = (
-            "Can you explain how the agent framework works in this project and how agents are discovered? "
-            * 3
-        )
+        query = "Can you explain how the agent framework works in this project and how agents are discovered? " * 3
         decision = route_query(query, _SAMPLE_CONFIG)
         assert decision.preset == "balanced"
         assert decision.resolved.model_id == "openrouter/anthropic/claude-sonnet-4.6"

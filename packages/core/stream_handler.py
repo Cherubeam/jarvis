@@ -155,13 +155,11 @@ class StreamHandler:
                     max_iterations=max_iterations,
                 )
             else:
-                messages, tools_format, final_text, final_usage = (
-                    self._run_agentic_loop_nonstreaming(
-                        messages,
-                        tool_registry,
-                        execute_tool_calls,
-                        max_iterations=max_iterations,
-                    )
+                messages, tools_format, final_text, final_usage = self._run_agentic_loop_nonstreaming(
+                    messages,
+                    tool_registry,
+                    execute_tool_calls,
+                    max_iterations=max_iterations,
                 )
 
         if self._terminal_tool_fired:
@@ -235,10 +233,12 @@ class StreamHandler:
         tool_messages: list[dict] = []
 
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
+            # Default args bind current values to silence B023; the lambda is
+            # invoked synchronously inside _try_with_credit_fallback.
             result = self._try_with_credit_fallback(
-                lambda: self.client.stream_with_tool_detection(
-                    messages,
-                    tools=tools_format,
+                lambda m=messages, t=tools_format: self.client.stream_with_tool_detection(
+                    m,
+                    tools=t,
                     max_tokens=self.max_tokens,
                 )
             )
@@ -268,14 +268,11 @@ class StreamHandler:
 
             accumulated_usage = TokenUsage(
                 prompt_tokens=accumulated_usage.prompt_tokens + tool_result.usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens
-                + tool_result.usage.completion_tokens,
+                completion_tokens=accumulated_usage.completion_tokens + tool_result.usage.completion_tokens,
                 total_tokens=accumulated_usage.total_tokens
                 + (tool_result.usage.prompt_tokens + tool_result.usage.completion_tokens),
-                cache_read_tokens=accumulated_usage.cache_read_tokens
-                + tool_result.usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens
-                + tool_result.usage.cache_write_tokens,
+                cache_read_tokens=accumulated_usage.cache_read_tokens + tool_result.usage.cache_read_tokens,
+                cache_write_tokens=accumulated_usage.cache_write_tokens + tool_result.usage.cache_write_tokens,
             )
 
             # UX feedback for each tool call
@@ -333,10 +330,7 @@ class StreamHandler:
             tool_messages.extend(tool_results)
 
             # Check if any executed tool is terminal (e.g. delegation)
-            if any(
-                (t := tool_registry.get(call.function.name)) and t.terminal
-                for call in tool_result.tool_calls
-            ):
+            if any((t := tool_registry.get(call.function.name)) and t.terminal for call in tool_result.tool_calls):
                 self._terminal_tool_fired = True
                 break
 
@@ -349,9 +343,7 @@ class StreamHandler:
         self._tool_messages = tool_messages
         return messages, tools_format
 
-    def _stream_from_response(
-        self, response: StreamingResponse, print_chunks: bool
-    ) -> StreamResult:
+    def _stream_from_response(self, response: StreamingResponse, print_chunks: bool) -> StreamResult:
         """Stream from an already-started StreamingResponse (from tool detection)."""
         chunks: list[str] = []
         first_token = True
@@ -413,9 +405,7 @@ class StreamHandler:
             tool_messages=tool_messages,
         )
 
-    def _stream_simple(
-        self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None
-    ) -> StreamResult:
+    def _stream_simple(self, messages: list[dict], print_chunks: bool, tools: list[dict] | None = None) -> StreamResult:
         """Stream the final response and return a StreamResult."""
         response = self._try_with_credit_fallback(
             lambda: self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
@@ -505,10 +495,12 @@ class StreamHandler:
         final_usage: TokenUsage | None = None
 
         for _ in range(max_iterations or _MAX_AGENTIC_ITERATIONS):
+            # Default args bind current values to silence B023; the lambda is
+            # invoked synchronously inside _try_with_credit_fallback.
             response = self._try_with_credit_fallback(
-                lambda: self.client.complete(
-                    messages,
-                    tools=tools_format,
+                lambda m=messages, t=tools_format: self.client.complete(
+                    m,
+                    tools=t,
                     max_tokens=self.max_tokens,
                 )
             )
@@ -536,13 +528,10 @@ class StreamHandler:
             # Tool calls detected
             accumulated_usage = TokenUsage(
                 prompt_tokens=accumulated_usage.prompt_tokens + call_usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens
-                + call_usage.completion_tokens,
+                completion_tokens=accumulated_usage.completion_tokens + call_usage.completion_tokens,
                 total_tokens=accumulated_usage.total_tokens + call_usage.total_tokens,
-                cache_read_tokens=accumulated_usage.cache_read_tokens
-                + call_usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens
-                + call_usage.cache_write_tokens,
+                cache_read_tokens=accumulated_usage.cache_read_tokens + call_usage.cache_read_tokens,
+                cache_write_tokens=accumulated_usage.cache_write_tokens + call_usage.cache_write_tokens,
             )
 
             tool_calls = choice.message.tool_calls
@@ -610,9 +599,7 @@ class StreamHandler:
             tool_messages.extend(tool_results)
 
             # Check if any executed tool is terminal
-            if any(
-                (t := tool_registry.get(call.function.name)) and t.terminal for call in tool_calls
-            ):
+            if any((t := tool_registry.get(call.function.name)) and t.terminal for call in tool_calls):
                 self._terminal_tool_fired = True
                 break
 
@@ -624,9 +611,7 @@ class StreamHandler:
         self._tool_messages = tool_messages
         return messages, tools_format, final_text, final_usage
 
-    def _complete_simple(
-        self, messages: list[dict], tools: list[dict] | None = None
-    ) -> StreamResult:
+    def _complete_simple(self, messages: list[dict], tools: list[dict] | None = None) -> StreamResult:
         """Non-streaming final response — returns full text at once."""
         response = self._try_with_credit_fallback(
             lambda: self.client.complete(messages, tools=tools, max_tokens=self.max_tokens)

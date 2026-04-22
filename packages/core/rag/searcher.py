@@ -120,7 +120,7 @@ class ConversationSearcher:
         metadatas = result.get("metadatas", [[]])[0]
         distances = result.get("distances", [[]])[0]
 
-        for doc, meta, dist in zip(documents, metadatas, distances):
+        for doc, meta, dist in zip(documents, metadatas, distances, strict=True):
             search_results.append(
                 SearchResult(
                     conv_id=meta.get("conv_id", ""),

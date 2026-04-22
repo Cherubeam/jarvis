@@ -53,11 +53,11 @@ class TestDelegationToolIsolation:
         blog_tool = _dummy_tool("blog_read")
         evaluator_tool = _dummy_tool("content_evaluator")
 
-        extra_tools = [recall_tool, card_search_tool]
         agent_only_tools = [blog_tool, evaluator_tool]
 
-        # Simulate the delegation logic from main.py (line ~740)
-        all_delegate_tools = agent_only_tools  # NOT extra_tools + agent_only_tools
+        # Simulate the delegation logic from main.py (line ~740):
+        # delegated agents get agent_only_tools, NOT [recall_tool, card_search_tool]
+        all_delegate_tools = agent_only_tools
 
         assert recall_tool not in all_delegate_tools
         assert card_search_tool not in all_delegate_tools
@@ -69,7 +69,6 @@ class TestDelegationToolIsolation:
         recall_tool = _dummy_tool("recall_conversations")
         blog_tool = _dummy_tool("blog_read")
 
-        extra_tools = [recall_tool]
         agent_only_tools = [blog_tool]
 
         created_with = {}

@@ -267,9 +267,7 @@ def format_report(result: AnalysisResult) -> str:
             ]
         )
 
-        for stats in sorted(
-            result.file_stats.values(), key=lambda s: s.utilization_pct, reverse=True
-        ):
+        for stats in sorted(result.file_stats.values(), key=lambda s: s.utilization_pct, reverse=True):
             lines.append(
                 f"| {stats.path} | {stats.times_loaded} | "
                 f"{stats.avg_size_bytes:,} bytes | "
@@ -293,9 +291,7 @@ def format_report(result: AnalysisResult) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Analyze context utilization across conversations."
-    )
+    parser = argparse.ArgumentParser(description="Analyze context utilization across conversations.")
     parser.add_argument(
         "--conversations-dir",
         default="data/conversations",
@@ -325,9 +321,7 @@ def main() -> int:
         print("No conversations found.")
         return 1
 
-    result = analyze_context_utilization(
-        conversations, context_dir if context_dir.exists() else None
-    )
+    result = analyze_context_utilization(conversations, context_dir if context_dir.exists() else None)
     report = format_report(result)
 
     if args.output:

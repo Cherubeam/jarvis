@@ -20,13 +20,9 @@ DEFAULT_PORT = 8123
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="jarvis-gui", description="Launch the JARVIS GUI server.")
     p.add_argument("--host", default=DEFAULT_HOST, help=f"Bind host (default: {DEFAULT_HOST}).")
-    p.add_argument(
-        "--port", type=int, default=DEFAULT_PORT, help=f"Bind port (default: {DEFAULT_PORT})."
-    )
+    p.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Bind port (default: {DEFAULT_PORT}).")
     p.add_argument("--no-browser", action="store_true", help="Don't auto-open the browser.")
-    p.add_argument(
-        "--log-level", default="info", choices=["critical", "error", "warning", "info", "debug"]
-    )
+    p.add_argument("--log-level", default="info", choices=["critical", "error", "warning", "info", "debug"])
     return p.parse_args(argv)
 
 

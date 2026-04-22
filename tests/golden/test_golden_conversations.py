@@ -21,11 +21,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Import evaluation modules (only when --evaluate is used)
 try:
-    from evaluator import EvaluationCriteria, JudgeEvaluator
-    from result_storage import ResultStorage
+    # Imports are availability checks for the optional --evaluate path.
+    from evaluator import EvaluationCriteria, JudgeEvaluator  # noqa: F401
+    from result_storage import ResultStorage  # noqa: F401
 
-    from packages.core.context_builder import build_system_prompt
-    from packages.core.llm_client import LLMClient
+    from packages.core.context_builder import build_system_prompt  # noqa: F401
+    from packages.core.llm_client import LLMClient  # noqa: F401
 
     EVALUATION_AVAILABLE = True
 except ImportError:
@@ -107,12 +108,8 @@ class TestGoldenConversationStructure:
             else:
                 assert "conversation" in data, f"{yaml_file.name}: missing 'conversation' field"
                 conversation = data["conversation"]
-                assert isinstance(conversation, list), (
-                    f"{yaml_file.name}: conversation must be a list"
-                )
-                assert len(conversation) >= 2, (
-                    f"{yaml_file.name}: conversation must have at least user + assistant"
-                )
+                assert isinstance(conversation, list), f"{yaml_file.name}: conversation must be a list"
+                assert len(conversation) >= 2, f"{yaml_file.name}: conversation must have at least user + assistant"
 
 
 @pytest.mark.golden
@@ -186,9 +183,7 @@ class TestGoldenConversations:
             from llm_client import LLMClient
 
         model_id = (
-            f"openrouter/{self.model_tested}"
-            if not self.model_tested.startswith("openrouter/")
-            else self.model_tested
+            f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested
         )
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
@@ -376,7 +371,7 @@ class TestGoldenConversations:
         start_time = time.time()
 
         # Agentic loop
-        for iteration in range(max_rounds):
+        for _iteration in range(max_rounds):
             response = model_client.complete(messages, tools=tools_litellm)
             choice = response.choices[0]
 
@@ -422,9 +417,7 @@ class TestGoldenConversations:
 
                 # Append mock tool results
                 for tc in tool_calls:
-                    mock_content = mock_results.get(
-                        tc.function.name, f"Error: unknown tool '{tc.function.name}'"
-                    )
+                    mock_content = mock_results.get(tc.function.name, f"Error: unknown tool '{tc.function.name}'")
                     tool_msg = {
                         "role": "tool",
                         "tool_call_id": tc.id,
@@ -440,9 +433,7 @@ class TestGoldenConversations:
                 break
         else:
             # Max iterations exhausted without final text
-            pytest.fail(
-                f"Test {test_case['name']}: model did not converge in {max_rounds} iterations"
-            )
+            pytest.fail(f"Test {test_case['name']}: model did not converge in {max_rounds} iterations")
 
         response_latency = (time.time() - start_time) * 1000
 
@@ -495,8 +486,7 @@ class TestGoldenConversations:
             capped_score = min(result.evaluation.overall_score, tool_check.score_cap)
             result.evaluation.overall_score = capped_score
             result.evaluation.reasoning += (
-                f"\n\nTool call checks: {'; '.join(tool_check.details)}"
-                f"\nScore capped at {tool_check.score_cap}"
+                f"\n\nTool call checks: {'; '.join(tool_check.details)}\nScore capped at {tool_check.score_cap}"
             )
             result.passed = (
                 capped_score >= evaluation_config["quality_threshold"]
@@ -520,39 +510,27 @@ class TestGoldenConversations:
 
     def test_02_context_recall(self, evaluator, evaluation_config, result_storage):
         """Test that assistant recalls information from profile."""
-        self._run_golden_test(
-            "02_context_recall.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("02_context_recall.yaml", evaluator, evaluation_config, result_storage)
 
     def test_03_multi_turn_reasoning(self, evaluator, evaluation_config, result_storage):
         """Test multi-turn technical conversation with context retention."""
-        self._run_golden_test(
-            "03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("03_multi_turn_reasoning.yaml", evaluator, evaluation_config, result_storage)
 
     def test_04_personalization_tone(self, evaluator, evaluation_config, result_storage):
         """Test that assistant follows tone preferences."""
-        self._run_golden_test(
-            "04_personalization_tone.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("04_personalization_tone.yaml", evaluator, evaluation_config, result_storage)
 
     def test_05_technical_deep_dive(self, evaluator, evaluation_config, result_storage):
         """Test handling of complex technical questions."""
-        self._run_golden_test(
-            "05_technical_deep_dive.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("05_technical_deep_dive.yaml", evaluator, evaluation_config, result_storage)
 
     def test_06_current_focus_aware(self, evaluator, evaluation_config, result_storage):
         """Test awareness of current priorities from current_focus.md."""
-        self._run_golden_test(
-            "06_current_focus_aware.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("06_current_focus_aware.yaml", evaluator, evaluation_config, result_storage)
 
     def test_07_ambiguous_query(self, evaluator, evaluation_config, result_storage):
         """Test graceful handling of ambiguous questions."""
-        self._run_golden_test(
-            "07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("07_ambiguous_query.yaml", evaluator, evaluation_config, result_storage)
 
     def test_08_preferences_adherence(self, evaluator, evaluation_config, result_storage):
         """Test following multiple preference guidelines simultaneously."""
@@ -573,15 +551,11 @@ class TestGoldenConversations:
 
     def test_11_multi_step_tool_use(self, evaluator, evaluation_config, result_storage):
         """Test that model chains search then read to answer a question."""
-        self._run_golden_test(
-            "11_multi_step_tool_use.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("11_multi_step_tool_use.yaml", evaluator, evaluation_config, result_storage)
 
     def test_12_tool_termination(self, evaluator, evaluation_config, result_storage):
         """Test that model answers directly without unnecessary tool calls."""
-        self._run_golden_test(
-            "12_tool_termination.yaml", evaluator, evaluation_config, result_storage
-        )
+        self._run_golden_test("12_tool_termination.yaml", evaluator, evaluation_config, result_storage)
 
 
 # Helper function for manual golden test evaluation (to be used in Phase 2)

@@ -28,11 +28,7 @@ def _user_messages(messages: Iterable[dict]) -> list[str]:
             out.append(content)
         elif isinstance(content, list):
             # Content blocks: pick text blocks, concatenate.
-            pieces = [
-                b.get("text", "")
-                for b in content
-                if isinstance(b, dict) and b.get("type") in (None, "text")
-            ]
+            pieces = [b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") in (None, "text")]
             if pieces:
                 out.append(" ".join(p for p in pieces if p))
     return out
@@ -156,17 +152,11 @@ def _text_from_content(content: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return " ".join(
-            b.get("text", "")
-            for b in content
-            if isinstance(b, dict) and b.get("type") in (None, "text")
-        )
+        return " ".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") in (None, "text"))
     return ""
 
 
-def preview_messages(
-    messages: Iterable[dict], max_items: int = 4, max_chars: int = 240
-) -> list[dict[str, str]]:
+def preview_messages(messages: Iterable[dict], max_items: int = 4, max_chars: int = 240) -> list[dict[str, str]]:
     """First few non-tool messages as {role, text}.
 
     role: 'user' for user messages, the agent name (or 'JARVIS') for

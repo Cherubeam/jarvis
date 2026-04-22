@@ -153,17 +153,15 @@ def test_estimate_benchmark_costs_warns_on_missing_pricing(
 
     assert estimates == {}
     assert len(caught) == 1
-    assert (
-        str(caught[0].message)
-        == "Pricing unavailable for model anthropic/claude-sonnet-4.5; skipping."
-    )
+    assert str(caught[0].message) == "Pricing unavailable for model anthropic/claude-sonnet-4.5; skipping."
     assert caught[0].category is RuntimeWarning
 
 
 def test_get_run_dir_raises_on_missing(tmp_path: Path):
     """get_run_dir raises ValueError with exact message when no runs exist."""
     with pytest.raises(
-        ValueError, match="No golden test runs found. Run golden tests first to create a baseline."
+        ValueError,
+        match=r"No golden test runs found\. Run golden tests first to create a baseline\.",
     ):
         benchmark_costs.get_run_dir(tmp_path)
 

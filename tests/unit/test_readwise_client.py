@@ -100,9 +100,7 @@ class TestReadwiseClientErrorHandling:
 
     @patch("packages.integrations.readwise.client.subprocess.run")
     def test_rate_limit_429_returns_specific_error(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=1, stdout="", stderr="HTTP 429 Too Many Requests"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="HTTP 429 Too Many Requests")
         client = ReadwiseClient()
         result = client.search_documents("test")
 

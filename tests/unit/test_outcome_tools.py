@@ -21,10 +21,7 @@ def _guard_for(path: Path, access: AccessLevel = AccessLevel.READ_WRITE) -> File
 
 
 def test_slugify_basic():
-    assert (
-        _slugify("Migrate auth service off legacy middleware")
-        == "migrate-auth-service-off-legacy-middleware"
-    )
+    assert _slugify("Migrate auth service off legacy middleware") == "migrate-auth-service-off-legacy-middleware"
 
 
 def test_slugify_caps_at_max_words():
@@ -171,7 +168,7 @@ def test_track_recommendation_truncates_long_what_in_confirmation(tmp_path: Path
 
     assert "..." in result
     # Truncated confirmation is ≤ 80 chars of content + ellipsis; file body is untruncated
-    written_meta, _ = frontmatter.parse(list(tmp_path.iterdir())[0].read_text())
+    written_meta, _ = frontmatter.parse(next(iter(tmp_path.iterdir())).read_text())
     assert written_meta["what"] == long_what
 
 

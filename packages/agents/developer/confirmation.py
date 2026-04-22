@@ -28,10 +28,7 @@ class AutoConfirmationHandler(ConfirmationHandler):
 
     def _is_in_scope(self, file_path: str) -> bool:
         """Check if a file path falls within an allowed directory."""
-        for allowed in self._allowed_dirs:
-            if file_path.startswith(allowed):
-                return True
-        return False
+        return any(file_path.startswith(allowed) for allowed in self._allowed_dirs)
 
     def present_diff(self, diff: VaultDiff) -> None:
         """Log the diff summary but don't block on display."""

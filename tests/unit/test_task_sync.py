@@ -444,9 +444,7 @@ class TestFormatTasksAsMarkdown:
         ]
         markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
 
-        assert (
-            "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
-        )
+        assert "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
 
     def test_format_task_uuid_last_in_metadata(self):
         """Test UUID appears after due date and tags in metadata."""

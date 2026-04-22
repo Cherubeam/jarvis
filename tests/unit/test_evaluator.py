@@ -146,9 +146,7 @@ class TestJudgeEvaluator:
 
     def test_basic_evaluation(self, mock_judge_client):
         """Test basic evaluation flow."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={"accurate": True})
 
@@ -174,13 +172,9 @@ class TestJudgeEvaluator:
 
     def test_forbidden_patterns_detected(self, mock_judge_client):
         """Test forbidden pattern detection."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
-        criteria = EvaluationCriteria(
-            qualities={}, forbidden_patterns=["bad phrase", "terrible words"]
-        )
+        criteria = EvaluationCriteria(qualities={}, forbidden_patterns=["bad phrase", "terrible words"])
 
         result = evaluator.evaluate_response(
             test_name="test",
@@ -202,9 +196,7 @@ class TestJudgeEvaluator:
 
     def test_multiple_forbidden_patterns(self, mock_judge_client):
         """Test detection of multiple forbidden patterns."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={}, forbidden_patterns=["bad", "terrible"])
 
@@ -229,9 +221,7 @@ class TestJudgeEvaluator:
 
     def test_expected_content_check(self, mock_judge_client):
         """Test expected content detection."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={}, expected_content=["Paris", "France"])
 
@@ -254,9 +244,7 @@ class TestJudgeEvaluator:
 
     def test_missing_expected_content(self, mock_judge_client):
         """Test missing expected content."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={}, expected_content=["Paris", "France"])
 
@@ -341,9 +329,7 @@ class TestJudgeEvaluator:
 
     def test_result_to_dict_serialization(self, mock_judge_client):
         """Test EvaluationResult can be serialized to dict."""
-        evaluator = JudgeEvaluator(
-            judge_client=mock_judge_client, config={"quality_threshold": 0.70}
-        )
+        evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
 
         criteria = EvaluationCriteria(qualities={"accurate": True})
 

@@ -19,9 +19,7 @@ def _make_searcher(tmp_path: Path, collection_count: int = 3):
     mock_chroma_module = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = collection_count
-    mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
         from packages.core.rag.searcher import ConversationSearcher

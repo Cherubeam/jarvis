@@ -1,6 +1,5 @@
 """Tests for packages.core.tools.suggest_improvements."""
 
-
 import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
@@ -135,11 +134,7 @@ class TestSuggestImprovements:
             improved_content="new content",
         )
         assert result.startswith("Error: ")
-        assert (
-            "secret/file.md" in result
-            or "not in allowed" in result.lower()
-            or "permission" in result.lower()
-        )
+        assert "secret/file.md" in result or "not in allowed" in result.lower() or "permission" in result.lower()
         assert handler.presented_diff is None
 
     def test_reasoning_displayed(self, tool_and_handler, capsys):

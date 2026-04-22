@@ -84,11 +84,13 @@ def _estimate_cost(
             warnings.warn(
                 f"Pricing unavailable for model {model}; cost omitted.",
                 RuntimeWarning,
+                stacklevel=2,
             )
         if not judge_pricing:
             warnings.warn(
                 f"Pricing unavailable for judge {judge_model}; cost omitted.",
                 RuntimeWarning,
+                stacklevel=2,
             )
         return None
 
@@ -176,7 +178,10 @@ def _build_report_section(runs: list[RunStats]) -> str:
         f"Generated: {generated_at}",
         f"Judge model(s): {', '.join(judge_models)}",
         "",
-        "| Model | Run | Avg score | Pass rate | Avg response latency | Avg judge latency | Response tokens | Judge tokens | Est. total cost |",
+        (
+            "| Model | Run | Avg score | Pass rate | Avg response latency | "
+            "Avg judge latency | Response tokens | Judge tokens | Est. total cost |"
+        ),
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
 
@@ -224,9 +229,7 @@ def _update_marked_section(content: str, replacement: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate benchmark report section for docs/research/models.md."
-    )
+    parser = argparse.ArgumentParser(description="Generate benchmark report section for docs/research/models.md.")
     parser.add_argument(
         "--results-dir",
         default="tests/golden/results",

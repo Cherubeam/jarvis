@@ -238,7 +238,7 @@ class TestSearchNotes:
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Notes", sort_by="modified")
 
-        lines = [l for l in result.strip().split("\n") if l.strip()]
+        lines = [line for line in result.strip().split("\n") if line.strip()]
         assert "new.md" in lines[0]
         assert "mid.md" in lines[1]
         assert "old.md" in lines[2]
@@ -274,7 +274,7 @@ class TestSearchNotes:
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Notes", limit=3)
 
-        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        lines = [line for line in result.split("\n") if line.strip() and not line.startswith("[")]
         assert len(lines) == 3
         assert "Showing 3 of 10" in result
 
@@ -289,7 +289,7 @@ class TestSearchNotes:
         # limit=999 should be clamped to MAX_SEARCH_RESULTS (100), but with only 3 files
         # no overflow message should appear
         result = tool.execute(directory="Notes", limit=999)
-        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        lines = [line for line in result.split("\n") if line.strip() and not line.startswith("[")]
         assert len(lines) == 3
         assert "Showing" not in result
 
@@ -302,7 +302,7 @@ class TestSearchNotes:
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Notes", limit=0)
 
-        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        lines = [line for line in result.split("\n") if line.strip() and not line.startswith("[")]
         assert len(lines) == 1  # clamped to 1
 
     def test_limit_clamped_negative(self, tools):
@@ -315,7 +315,7 @@ class TestSearchNotes:
         tool = _get_tool(tool_list, "search_notes")
         result = tool.execute(directory="Notes", limit=-5)
 
-        lines = [l for l in result.split("\n") if l.strip() and not l.startswith("[")]
+        lines = [line for line in result.split("\n") if line.strip() and not line.startswith("[")]
         assert len(lines) == 1  # clamped to 1
 
     def test_output_is_newline_joined(self, tools):

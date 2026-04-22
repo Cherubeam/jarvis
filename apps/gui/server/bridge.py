@@ -39,7 +39,6 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
       [optional: delegation → another text] → totals → turn_finished
     """
     components = session.components
-    agent = components.active_agent
     agent_name = components.agent_name
     turn_id = f"u-{uuid.uuid4().hex[:8]}"
 
@@ -76,9 +75,7 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     stats.setdefault("ttft", int(getattr(result.metrics, "ttft_ms", 0) or 0))
     stats.setdefault("total", int(getattr(result.metrics, "total_latency_ms", 0) or 0))
     if "tokens" not in stats and getattr(result, "usage", None) is not None:
-        stats["tokens"] = result.usage.total_tokens or (
-            result.usage.prompt_tokens + result.usage.completion_tokens
-        )
+        stats["tokens"] = result.usage.total_tokens or (result.usage.prompt_tokens + result.usage.completion_tokens)
     if "cost" not in stats:
         stats["cost"] = float(result.cost_usd or 0.0)
 
@@ -173,9 +170,7 @@ def _run_one_turn(session: GuiSession, user_text: str):
     )
 
 
-async def _run_delegation(
-    session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result
-) -> None:
+async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], turn_id: str, result) -> None:
     """Single-shot delegation: emit notice, run delegate, emit its text, return."""
     c = session.components
     delegate_id = result.delegate_to
@@ -209,9 +204,7 @@ async def _run_delegation(
         )
     except Exception as e:
         logger.exception("Delegate run failed")
-        queue.put(
-            {"type": "error", "id": turn_id, "message": f"Delegate {delegate_id} failed: {e}"}
-        )
+        queue.put({"type": "error", "id": turn_id, "message": f"Delegate {delegate_id} failed: {e}"})
         return
 
     queue.put({"type": "thinking_end", "agent": delegate_id})

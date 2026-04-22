@@ -78,10 +78,7 @@ class TestAppendToNote:
         result = append_to_note(note, "New summary line", config, handler)
         assert result.success is True
         assert result.action == "appended"
-        assert (
-            result.message
-            == "Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
-        )
+        assert result.message == "Successfully appended to JARVIS callout in Daily Notes/2026-02-09.md"
         assert result.diff is not None
         assert handler.presented_diff is not None
         # Verify file was actually written with exact content structure

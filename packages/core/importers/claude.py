@@ -418,9 +418,7 @@ def import_conversations(
     summary.total = len(conversations)
 
     # Parse filter dates
-    dt_from = (
-        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
-    )
+    dt_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
     dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=UTC) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)

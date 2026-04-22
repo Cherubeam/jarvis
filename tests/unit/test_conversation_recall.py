@@ -68,12 +68,11 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = len(mock_results)
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
-        with patch.dict("sys.modules", {"chromadb": mock_chroma}), patch(
-            "packages.core.rag.searcher.ConversationSearcher.search", return_value=mock_results
+        with (
+            patch.dict("sys.modules", {"chromadb": mock_chroma}),
+            patch("packages.core.rag.searcher.ConversationSearcher.search", return_value=mock_results),
         ):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
@@ -113,9 +112,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -138,9 +135,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -156,9 +151,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -172,9 +165,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 1
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -201,9 +192,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 2
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -211,16 +200,11 @@ class TestRecallToolOutput:
             tool = make_conversation_recall_tool(tmp_path / "db", "test-model")
 
         results = [
-            _make_search_result(
-                conv_id="conv_a", session_date="2026-01-01", user_text="Q1", assistant_text="A1"
-            ),
-            _make_search_result(
-                conv_id="conv_b", session_date="2026-01-02", user_text="Q2", assistant_text="A2"
-            ),
+            _make_search_result(conv_id="conv_a", session_date="2026-01-01", user_text="Q1", assistant_text="A1"),
+            _make_search_result(conv_id="conv_b", session_date="2026-01-02", user_text="Q2", assistant_text="A2"),
         ]
         output = self._call_tool(tool, "test", mock_results=results)
 
-        blocks = output.split("\n\n")
         # Each result has a header + "User: ...\n\nAssistant: ..." => multiple \n\n
         # The two results are separated by \n\n
         assert "--- 2026-01-01 (conv_a) ---" in output
@@ -231,9 +215,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
@@ -269,9 +251,7 @@ class TestRecallToolOutput:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 5
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.conversation_recall import make_conversation_recall_tool

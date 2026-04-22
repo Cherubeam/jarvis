@@ -56,9 +56,7 @@ def _print_usage(label: str, usage):
 
     # Raw dict fallback
     if hasattr(usage, "__dict__"):
-        extras = {
-            k: v for k, v in usage.__dict__.items() if "cache" in k.lower() or "cached" in k.lower()
-        }
+        extras = {k: v for k, v in usage.__dict__.items() if "cache" in k.lower() or "cached" in k.lower()}
         if extras:
             print(f"  (extra cache fields): {extras}")
 
@@ -84,7 +82,6 @@ def test_approach(name: str, call_fn):
         print(f"  Response: {r2.choices[0].message.content[:100]}")
 
         # Verdict
-        cr1 = getattr(r1.usage, "cache_read_input_tokens", 0) or 0
         cr2 = getattr(r2.usage, "cache_read_input_tokens", 0) or 0
         ptd2 = getattr(r2.usage, "prompt_tokens_details", None)
         cached2 = getattr(ptd2, "cached_tokens", 0) if ptd2 else 0
@@ -145,9 +142,7 @@ def main():
             extra_body={"cache_control": {"type": "ephemeral"}},
         )
 
-    results["B: Top-level extra_body"] = test_approach(
-        "B: Top-level cache_control via extra_body", call_b
-    )
+    results["B: Top-level extra_body"] = test_approach("B: Top-level cache_control via extra_body", call_b)
 
     time.sleep(3)
 
@@ -163,9 +158,7 @@ def main():
             cache_control_injection_points=[{"location": "message", "role": "system"}],
         )
 
-    results["C: LiteLLM auto-inject"] = test_approach(
-        "C: LiteLLM cache_control_injection_points", call_c
-    )
+    results["C: LiteLLM auto-inject"] = test_approach("C: LiteLLM cache_control_injection_points", call_c)
 
     # Summary
     print(f"\n{'=' * 60}")

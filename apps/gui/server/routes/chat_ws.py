@@ -26,9 +26,7 @@ async def chat_ws(websocket: WebSocket) -> None:
     await websocket.send_json(
         {
             "type": "system",
-            "text": (
-                f"Session started. {len(session.components.agent_registry)} agents registered."
-            ),
+            "text": (f"Session started. {len(session.components.agent_registry)} agents registered."),
             "time": session.started_at,
         }
     )

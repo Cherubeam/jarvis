@@ -1,6 +1,5 @@
 """Tests for packages.integrations.obsidian.diff module."""
 
-
 from packages.integrations.obsidian.diff import (
     VaultDiff,
     compute_diff,

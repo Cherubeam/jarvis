@@ -238,9 +238,7 @@ class TestConvertContentBlocks:
 
     def test_tool_result_string_nested_content(self):
         """Nested content can be plain strings (not just dicts)."""
-        blocks = [
-            {"type": "tool_result", "name": "t", "content": ["plain text"], "is_error": False}
-        ]
+        blocks = [{"type": "tool_result", "name": "t", "content": ["plain text"], "is_error": False}]
         result = convert_content_blocks(blocks)
         assert result[0]["text"] == "plain text"
 
@@ -455,7 +453,8 @@ class TestConvertConversation:
         with open(FIXTURES_DIR / "claude_sample.json") as f:
             conv = json.load(f)[1]  # Thinking and Attachments conversation
         result = convert_conversation(conv)
-        # 4 messages: human (with attachment) + assistant (thinking+text+file) + human + assistant (tool_use+tool_result+token_budget+text)
+        # 4 messages: human (attachment) + assistant (thinking+text+file)
+        # + human + assistant (tool_use+tool_result+token_budget+text)
         assert len(result["messages"]) == 4
         # First human message should have attachment content
         human_msg = result["messages"][0]
@@ -464,9 +463,7 @@ class TestConvertConversation:
         assistant_msg = result["messages"][1]
         assert any((b.get("metadata") or {}).get("thought") for b in assistant_msg["content"])
         # Should have generated file
-        assert any(
-            (b.get("metadata") or {}).get("generated_file") for b in assistant_msg["content"]
-        )
+        assert any((b.get("metadata") or {}).get("generated_file") for b in assistant_msg["content"])
 
     def test_missing_timestamps(self):
         conv = {
@@ -595,14 +592,12 @@ class TestImportConversations:
         assert summary.skipped_filter == 4
 
     def test_filter_by_date_range(self, sample_source, tmp_path):
-        summary = import_conversations(
-            sample_source, tmp_path, date_from="2025-12-10", date_to="2025-12-10"
-        )
+        summary = import_conversations(sample_source, tmp_path, date_from="2025-12-10", date_to="2025-12-10")
         assert summary.imported == 1
         assert summary.skipped_filter == 4
 
     def test_idempotent_reimport(self, sample_source, tmp_path):
-        summary1 = import_conversations(sample_source, tmp_path)
+        import_conversations(sample_source, tmp_path)
         summary2 = import_conversations(sample_source, tmp_path)
         assert summary2.skipped_existing == 5
         assert summary2.imported == 0

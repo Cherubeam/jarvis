@@ -280,9 +280,7 @@ def handle_daily_summary(
 
     # Strip existing JARVIS callout from note content to avoid duplication
     note_lines = note_content.split("\n")
-    note_without_callout = "\n".join(
-        note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]
-    ).strip()
+    note_without_callout = "\n".join(note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]).strip()
 
     # Load prompt and build LLM messages
     try:
@@ -400,8 +398,7 @@ def handle_model_command(
 
     if new_pricing:
         price_info = (
-            f"${new_pricing.prompt_cost * 1_000_000:.2f}/"
-            f"${new_pricing.completion_cost * 1_000_000:.2f} per 1M tokens"
+            f"${new_pricing.prompt_cost * 1_000_000:.2f}/${new_pricing.completion_cost * 1_000_000:.2f} per 1M tokens"
         )
     else:
         price_info = "pricing unavailable"
@@ -469,9 +466,7 @@ def _run_agent_session(
     # Inject JARVIS's pre-delegation context as a context exchange
     if context:
         session_history.append({"role": "user", "content": f"[Context from JARVIS] {context}"})
-        session_history.append(
-            {"role": "assistant", "content": "Understood, I have this context. How can I help?"}
-        )
+        session_history.append({"role": "assistant", "content": "Understood, I have this context. How can I help?"})
 
     def _process_message(user_input: str) -> None:
         logger.add_message("user", user_input)
@@ -670,16 +665,12 @@ def main(argv: list[str] | None = None):
         sys.exit(1)
 
     jarvis_dir = components.jarvis_dir
-    context_dir = components.context_dir
-    conversations_dir = components.conversations_dir
     model_id = components.model_id
-    api_keys = components.api_keys
     client = components.client
     pricing = components.pricing
     metrics_tracker = components.metrics_tracker
     stream_handler = components.stream_handler
     logger = components.logger
-    conversation_id = components.conversation_id
     system_prompt = components.system_prompt
     context_metadata = components.context_metadata
     agent_registry = components.agent_registry
@@ -688,7 +679,6 @@ def main(argv: list[str] | None = None):
     tool_groups = components.tool_groups
     card_search_tool = components.card_search_tool
     vault_config = components.vault_config
-    fs_guard = components.fs_guard
     active_agent = components.active_agent
     agent_name = components.agent_name
     mcp_manager = components.mcp_manager
@@ -699,7 +689,9 @@ def main(argv: list[str] | None = None):
 
     # Pricing display string for the startup banner.
     if pricing:
-        price_info = f"(${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens)"
+        price_info = (
+            f"(${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens)"
+        )
     else:
         price_info = "(pricing unavailable)"
 
@@ -777,10 +769,7 @@ def main(argv: list[str] | None = None):
                 if command == "/outcomes":
                     outcomes_cfg = config.get("outcomes", {})
                     if not outcomes_cfg.get("enabled", True):
-                        print_system(
-                            "Outcome tracking is disabled. "
-                            "Set outcomes.enabled: true in config to enable."
-                        )
+                        print_system("Outcome tracking is disabled. Set outcomes.enabled: true in config to enable.")
                     else:
                         from apps.cli.review import handle_review_command
 
@@ -890,9 +879,7 @@ def main(argv: list[str] | None = None):
                     shared_tools,
                     tool_groups,
                 )
-                all_delegate_tools.extend(
-                    _make_agent_vault_tools(delegate_meta, config, vault_config)
-                )
+                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta,
                     client,
@@ -915,8 +902,7 @@ def main(argv: list[str] | None = None):
                 last_agent_session = agent_session
                 if agent_session:
                     summary = (
-                        f"[Completed session with {delegate_meta.name} agent"
-                        f" — {len(agent_session)} messages exchanged]"
+                        f"[Completed session with {delegate_meta.name} agent — {len(agent_session)} messages exchanged]"
                     )
                     active_agent.add_to_history("assistant", summary)
 

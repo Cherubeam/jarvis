@@ -329,9 +329,7 @@ class TestImportContext:
 
         # Create profile.md
         profile_path = target_dir / "profile.md"
-        profile_path.write_text(
-            "## Personal Information\n- Name: Marco\n\n## Professional background\n- Consultant"
-        )
+        profile_path.write_text("## Personal Information\n- Name: Marco\n\n## Professional background\n- Consultant")
 
         # Create current_focus.md
         focus_path = target_dir / "current_focus.md"
@@ -477,9 +475,7 @@ class TestImportContext:
         target_dir.mkdir()
 
         focus_path = target_dir / "current_focus.md"
-        focus_path.write_text(
-            "## Active projects\n- Jarvis\n\n## What's top of mind this week\n- Old stuff"
-        )
+        focus_path.write_text("## Active projects\n- Jarvis\n\n## What's top of mind this week\n- Old stuff")
 
         import_context(
             memories_path=memories_path,

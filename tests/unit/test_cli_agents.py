@@ -134,9 +134,7 @@ class TestHandleAgentCommand:
             mock_agent.run.return_value = _make_stream_result()
             mock_factory.return_value = mock_agent
 
-            result = _handle_agent_command(
-                "/write", "some text", Mock(), handler, logger, "model", registry
-            )
+            result = _handle_agent_command("/write", "some text", Mock(), handler, logger, "model", registry)
         assert result is True
 
     def test_shows_usage_when_no_payload(self, capsys):
@@ -175,14 +173,10 @@ class TestHandleAgentCommand:
             mock_agent.run.return_value = stream_result
             mock_factory.return_value = mock_agent
 
-            _handle_agent_command(
-                "/write", "fix this text", client, handler, logger, "test-model", registry
-            )
+            _handle_agent_command("/write", "fix this text", client, handler, logger, "test-model", registry)
 
             # run() was called with payload
-            mock_agent.run.assert_called_once_with(
-                "fix this text", handler, print_chunks=True, messages_override=None
-            )
+            mock_agent.run.assert_called_once_with("fix this text", handler, print_chunks=True, messages_override=None)
 
         # User message logged
         logger.add_message.assert_any_call("user", "/write fix this text")
@@ -336,9 +330,7 @@ class TestRunAgentSession:
     @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
     @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
     @patch("apps.cli.main.prompt_user")
-    def test_multi_turn_conversation(
-        self, mock_prompt, mock_chunk, mock_start, mock_finish, capsys
-    ):
+    def test_multi_turn_conversation(self, mock_prompt, mock_chunk, mock_start, mock_finish, capsys):
         """Multiple turns accumulate history and log messages."""
         mock_prompt.side_effect = ["hello", "follow up", "/exit"]
 

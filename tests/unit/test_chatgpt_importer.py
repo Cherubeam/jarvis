@@ -249,9 +249,7 @@ class TestConvertContentParts:
     def test_thoughts_empty_content_falls_back_to_summary(self):
         content = {
             "content_type": "thoughts",
-            "thoughts": [
-                {"summary": "Brief thought", "content": "", "chunks": [], "finished": True}
-            ],
+            "thoughts": [{"summary": "Brief thought", "content": "", "chunks": [], "finished": True}],
         }
         result = convert_content_parts(content)
         assert result[0]["text"] == "Brief thought"
@@ -687,29 +685,23 @@ class TestImportConversations:
         assert summary.skipped_archived == 0
 
     def test_filter_by_model(self, sample_source, tmp_path):
-        summary = import_conversations(
-            sample_source, tmp_path, model_filter="gpt-4o", include_archived=True
-        )
+        summary = import_conversations(sample_source, tmp_path, model_filter="gpt-4o", include_archived=True)
         assert summary.imported == 1
         assert summary.skipped_filter == 2
 
     def test_filter_by_date_from(self, sample_source, tmp_path):
         # Archived conv is from 2023-11, others from 2024-03
-        summary = import_conversations(
-            sample_source, tmp_path, date_from="2024-01-01", include_archived=True
-        )
+        summary = import_conversations(sample_source, tmp_path, date_from="2024-01-01", include_archived=True)
         assert summary.imported == 2
         assert summary.skipped_filter == 1
 
     def test_filter_by_date_to(self, sample_source, tmp_path):
-        summary = import_conversations(
-            sample_source, tmp_path, date_to="2023-12-31", include_archived=True
-        )
+        summary = import_conversations(sample_source, tmp_path, date_to="2023-12-31", include_archived=True)
         assert summary.imported == 1
         assert summary.skipped_filter == 2
 
     def test_idempotent_reimport(self, sample_source, tmp_path):
-        summary1 = import_conversations(sample_source, tmp_path)
+        import_conversations(sample_source, tmp_path)
         summary2 = import_conversations(sample_source, tmp_path)
         assert summary2.skipped_existing == 2
         assert summary2.imported == 0
@@ -722,9 +714,7 @@ class TestImportConversations:
                 "title": f"Conv {i}",
                 "create_time": 1711580000.0,
                 "update_time": 1711580100.0,
-                "mapping": {
-                    "root": {"id": "root", "message": None, "parent": None, "children": []}
-                },
+                "mapping": {"root": {"id": "root", "message": None, "parent": None, "children": []}},
                 "current_node": "root",
                 "conversation_id": f"id-{i}",
                 "is_archived": False,
@@ -749,9 +739,7 @@ class TestImportConversations:
                 "title": "Good",
                 "create_time": 1711580000.0,
                 "update_time": 1711580100.0,
-                "mapping": {
-                    "root": {"id": "root", "message": None, "parent": None, "children": []}
-                },
+                "mapping": {"root": {"id": "root", "message": None, "parent": None, "children": []}},
                 "current_node": "root",
                 "conversation_id": "good-id",
                 "is_archived": False,

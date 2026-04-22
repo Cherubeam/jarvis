@@ -52,6 +52,4 @@ def parse_relative_date(value: str, now: datetime | None = None) -> date:
         if unit.startswith("year"):
             return today + timedelta(days=365 * n)
 
-    raise ValueError(
-        f"Cannot parse '{value}' as a relative date. Supported forms: {SUPPORTED_FORMS}."
-    )
+    raise ValueError(f"Cannot parse '{value}' as a relative date. Supported forms: {SUPPORTED_FORMS}.")

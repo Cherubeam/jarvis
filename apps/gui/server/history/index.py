@@ -181,14 +181,8 @@ class ConversationIndex:
                 tool_counts[t] = tool_counts.get(t, 0) + 1
 
         return {
-            "agents": [
-                {"id": a, "count": c}
-                for a, c in sorted(agent_counts.items(), key=lambda kv: (-kv[1], kv[0]))
-            ],
-            "tools": [
-                {"id": t, "count": c}
-                for t, c in sorted(tool_counts.items(), key=lambda kv: (-kv[1], kv[0]))
-            ],
+            "agents": [{"id": a, "count": c} for a, c in sorted(agent_counts.items(), key=lambda kv: (-kv[1], kv[0]))],
+            "tools": [{"id": t, "count": c} for t, c in sorted(tool_counts.items(), key=lambda kv: (-kv[1], kv[0]))],
             "total": len(self._cache),
         }
 

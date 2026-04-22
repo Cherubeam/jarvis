@@ -398,10 +398,7 @@ class TestThings3ToolsSchemasCrossPlatform:
         assert "Buy milk" in result
         mock_things.url.assert_called_once()
         _, kwargs = mock_things.url.call_args
-        assert (
-            kwargs.get("title") == "Buy milk"
-            or mock_things.url.call_args[1].get("title") == "Buy milk"
-        )
+        assert kwargs.get("title") == "Buy milk" or mock_things.url.call_args[1].get("title") == "Buy milk"
 
     def test_create_task_with_list_name_in_output(self):
         tools, _ = _make_tools_cross_platform()
@@ -483,9 +480,7 @@ class TestThings3ToolsSchemasCrossPlatform:
             patch("packages.core.tools.things3_tools._open_things_url", return_value=True),
             patch("packages.core.tools.things3_tools.TaskSyncCache"),
         ):
-            tools[2].execute(
-                uuid="X", title="New", notes="N", when="tmrw", deadline="2026-05-01", tags="t"
-            )
+            tools[2].execute(uuid="X", title="New", notes="N", when="tmrw", deadline="2026-05-01", tags="t")
         kwargs = mock_things.url.call_args[1]
         assert kwargs["id"] == "X"
         assert kwargs["title"] == "New"

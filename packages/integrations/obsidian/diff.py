@@ -99,6 +99,12 @@ def compute_diff(
     )
 
 
+_ANSI_GREEN = "\033[32m"
+_ANSI_RED = "\033[31m"
+_ANSI_CYAN = "\033[36m"
+_ANSI_RESET = "\033[0m"
+
+
 def format_diff_for_cli(diff: VaultDiff) -> str:
     """Format a VaultDiff for colored terminal output.
 
@@ -109,18 +115,13 @@ def format_diff_for_cli(diff: VaultDiff) -> str:
 
     lines = [f"  {diff.file_path} ({diff.summary})", ""]
 
-    GREEN = "\033[32m"
-    RED = "\033[31m"
-    CYAN = "\033[36m"
-    RESET = "\033[0m"
-
     for dl in diff.diff_lines:
         if dl.type == "added":
-            lines.append(f"  {GREEN}+ {dl.content}{RESET}")
+            lines.append(f"  {_ANSI_GREEN}+ {dl.content}{_ANSI_RESET}")
         elif dl.type == "removed":
-            lines.append(f"  {RED}- {dl.content}{RESET}")
+            lines.append(f"  {_ANSI_RED}- {dl.content}{_ANSI_RESET}")
         elif dl.content.startswith("@@"):
-            lines.append(f"  {CYAN}{dl.content}{RESET}")
+            lines.append(f"  {_ANSI_CYAN}{dl.content}{_ANSI_RESET}")
         else:
             lines.append(f"    {dl.content}")
 

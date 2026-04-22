@@ -107,9 +107,7 @@ def start_live_stream(thinking: bool = True) -> tuple[Live, list[str]]:
     ``transient=True`` ensures the spinner vanishes when stopped (no stale frames).
     """
     initial = Spinner("dots", text=Text(" Thinking…", style="dim")) if thinking else Text("")
-    live = Live(
-        initial, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop"
-    )
+    live = Live(initial, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
     live.start()
     return live, []
 
@@ -136,9 +134,7 @@ def finish_live_stream(live: Live, full_text: str) -> None:
 def start_waiting_spinner() -> Live:
     """Show a spinner while waiting for a non-streaming response."""
     spinner = Spinner("dots", text=Text(" Waiting…", style="dim"))
-    live = Live(
-        spinner, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop"
-    )
+    live = Live(spinner, console=console, refresh_per_second=8, transient=True, vertical_overflow="crop")
     live.start()
     return live
 
@@ -161,11 +157,7 @@ def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> 
     Args:
         routed_model: If set, the model was changed by routing — show it.
     """
-    ttft_str = (
-        f"TTFT: {result.metrics.ttft_ms:.0f}ms"
-        if result.metrics.ttft_ms > 0
-        else "TTFT: N/A (tool call)"
-    )
+    ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms" if result.metrics.ttft_ms > 0 else "TTFT: N/A (tool call)"
     latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
     if result.cost_usd > 0:
         line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"

@@ -273,8 +273,7 @@ class TestSummarizeHistory:
         summary = result[0]
         assert summary["role"] == "assistant"
         assert summary["content"] == (
-            f"{_SUMMARY_MARKER} Here is a summary of our conversation so far:\n"
-            "Concise summary here."
+            f"{_SUMMARY_MARKER} Here is a summary of our conversation so far:\nConcise summary here."
         )
 
     def test_llm_failure_returns_original(self):

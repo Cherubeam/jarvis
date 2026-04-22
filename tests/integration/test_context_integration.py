@@ -17,9 +17,7 @@ class TestContextIntegration:
 
     def test_context_files_loaded_into_prompt(self, sample_context_all_files: Path):
         """Test that all context files are loaded and included in prompt."""
-        (sample_context_all_files / "soul.md").write_text(
-            "You are Jarvis, a personal AI assistant."
-        )
+        (sample_context_all_files / "soul.md").write_text("You are Jarvis, a personal AI assistant.")
 
         result = build_system_prompt(sample_context_all_files)
 

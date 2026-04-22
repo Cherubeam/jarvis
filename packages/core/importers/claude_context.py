@@ -241,9 +241,7 @@ def _is_starter_project(project: dict) -> bool:
         return True
     if project.get("is_starter"):
         return True
-    if project.get("type") == "starter":
-        return True
-    return False
+    return project.get("type") == "starter"
 
 
 # ==================== Main Entry Point ====================
@@ -378,9 +376,7 @@ def import_context(
 
         # Collect doc filenames
         docs = project.get("docs", [])
-        doc_filenames = [
-            _sanitize_filename(d.get("filename", d.get("title", "untitled"))) for d in docs if d
-        ]
+        doc_filenames = [_sanitize_filename(d.get("filename", d.get("title", "untitled"))) for d in docs if d]
 
         project_content = build_project_file(name, memory, prompt_template, doc_filenames)
         project_path = projects_dir / f"{slug}.md"

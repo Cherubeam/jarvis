@@ -107,9 +107,7 @@ def _load_run_token_totals(run_dir: Path) -> BenchmarkTokenBaseline:
 
 
 def _calculate_cost(tokens: TokenTotals, pricing: ModelPricing) -> float:
-    return (tokens.prompt_tokens * pricing.prompt_cost) + (
-        tokens.completion_tokens * pricing.completion_cost
-    )
+    return (tokens.prompt_tokens * pricing.prompt_cost) + (tokens.completion_tokens * pricing.completion_cost)
 
 
 def estimate_benchmark_costs(
@@ -138,6 +136,7 @@ def estimate_benchmark_costs(
         warnings.warn(
             f"Pricing unavailable for judge model {judge_model}.",
             RuntimeWarning,
+            stacklevel=2,
         )
         return {}, token_baseline
 
@@ -148,6 +147,7 @@ def estimate_benchmark_costs(
             warnings.warn(
                 f"Pricing unavailable for model {model_id}; skipping.",
                 RuntimeWarning,
+                stacklevel=2,
             )
             continue
 

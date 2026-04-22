@@ -56,9 +56,7 @@ def load_config(project_root: Path | None = None) -> dict:
     return config
 
 
-def init_llm_client(
-    config: dict, model_override: str | None = None
-) -> tuple[LLMClient, str, ModelPricing | None]:
+def init_llm_client(config: dict, model_override: str | None = None) -> tuple[LLMClient, str, ModelPricing | None]:
     """Initialize LLM client with model resolution and pricing.
 
     Args:
@@ -70,9 +68,7 @@ def init_llm_client(
     """
     api_keys = collect_api_keys()
     models_config = config.get("models", {})
-    model_source = model_override or models_config.get(
-        "default", "openrouter/anthropic/claude-sonnet-4.6"
-    )
+    model_source = model_override or models_config.get("default", "openrouter/anthropic/claude-sonnet-4.6")
     resolved = resolve_model(model_source, config)
 
     client = LLMClient(api_keys=api_keys, default_model=resolved.model_id)

@@ -82,12 +82,4 @@ class AgentFinished:
 
 
 # Union type for all events
-Event = (
-    TextChunk
-    | ToolCallStarted
-    | ToolResult
-    | UsageReport
-    | DelegationRequested
-    | AgentStarted
-    | AgentFinished
-)
+Event = TextChunk | ToolCallStarted | ToolResult | UsageReport | DelegationRequested | AgentStarted | AgentFinished

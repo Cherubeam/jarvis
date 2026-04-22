@@ -182,8 +182,8 @@ def _import_skill_module(skill_dir: Path):
     parts = skill_dir.absolute().parts
     try:
         pkg_idx = parts.index("packages")
-    except ValueError:
-        raise ImportError(f"Cannot determine module path for {skill_dir}")
+    except ValueError as err:
+        raise ImportError(f"Cannot determine module path for {skill_dir}") from err
 
     module_name = ".".join(parts[pkg_idx:]) + ".skill"
     skill_py = skill_dir / "skill.py"
