@@ -33,7 +33,8 @@ class CortexClient:
         try:
             resp = self._client.post("/search", json=payload)
             resp.raise_for_status()
-            return resp.json()
+            data: dict[str, Any] = resp.json()
+            return data
         except (httpx.HTTPError, httpx.TimeoutException, ValueError) as exc:
             logger.warning("Cortex search failed: %s", exc)
             return None

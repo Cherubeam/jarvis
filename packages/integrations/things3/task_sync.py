@@ -48,7 +48,8 @@ class TaskSyncCache:
             cached_time = datetime.fromisoformat(data["timestamp"])
             if datetime.now() - cached_time < timedelta(seconds=self.cache_ttl_seconds):
                 logger.debug("Using cached task data")
-                return data["tasks"]
+                tasks: dict[str, Any] = data["tasks"]
+                return tasks
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             logger.warning(f"Cache read error: {e}")
 

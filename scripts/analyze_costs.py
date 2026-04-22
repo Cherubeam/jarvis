@@ -63,7 +63,8 @@ def classify_model(conversation: dict[str, Any]) -> str:
     """Extract model ID from conversation."""
     model = conversation.get("model")
     if isinstance(model, dict):
-        return model.get("id", "unknown")
+        model_id: str = model.get("id", "unknown")
+        return model_id
     return "unknown"
 
 

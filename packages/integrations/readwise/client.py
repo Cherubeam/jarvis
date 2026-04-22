@@ -108,6 +108,7 @@ def parse_json_output(raw: str) -> list[dict[str, Any]] | dict[str, Any] | str:
     if raw.startswith("Error:"):
         return raw
     try:
-        return json.loads(raw)
+        parsed: list[dict[str, Any]] | dict[str, Any] = json.loads(raw)
+        return parsed
     except json.JSONDecodeError:
         return raw

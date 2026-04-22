@@ -43,4 +43,5 @@ async def list_agents(request: Request) -> list[dict[str, Any]]:
 @router.get("/session")
 async def get_session(request: Request) -> dict[str, Any]:
     """Current session metadata (model, conversation path, vault, started_at)."""
-    return request.app.state.gui_session.session_meta()
+    meta: dict[str, Any] = request.app.state.gui_session.session_meta()
+    return meta

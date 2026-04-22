@@ -227,4 +227,5 @@ class OutcomeSearcher:
         if self.api_base:
             kwargs["api_base"] = self.api_base
         response = litellm.embedding(**kwargs)
-        return response.data[0]["embedding"]
+        embedding: list[float] = response.data[0]["embedding"]
+        return embedding

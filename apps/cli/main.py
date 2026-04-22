@@ -571,7 +571,8 @@ def _run_with_display(
         finish_live_stream(live, result.text)
     else:
         finish_waiting(live, result.text)
-    return result
+    final: StreamResult = result
+    return final
 
 
 def _handle_agent_command(
