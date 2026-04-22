@@ -27,7 +27,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
-def load_config(project_root: Path | None = None) -> dict:
+def load_config(project_root: Path | None = None) -> dict[str, Any]:
     """Load configuration from YAML files and environment.
 
     Args:
@@ -58,7 +58,9 @@ def load_config(project_root: Path | None = None) -> dict:
     return config
 
 
-def init_llm_client(config: dict, model_override: str | None = None) -> tuple[LLMClient, str, ModelPricing | None]:
+def init_llm_client(
+    config: dict[str, Any], model_override: str | None = None
+) -> tuple[LLMClient, str, ModelPricing | None]:
     """Initialize LLM client with model resolution and pricing.
 
     Args:
@@ -83,7 +85,7 @@ def init_stream_handler(
     client: LLMClient,
     model_id: str,
     pricing: ModelPricing | None,
-    config: dict,
+    config: dict[str, Any],
     on_tool_call: Callable[[str], None] | None = None,
     on_event: Callable[..., None] | None = None,
     instance_id: str = "",
@@ -107,7 +109,7 @@ def init_stream_handler(
     return handler, metrics_tracker
 
 
-def discover_all_agents_and_skills() -> tuple[dict[str, AgentMeta], dict]:
+def discover_all_agents_and_skills() -> tuple[dict[str, AgentMeta], dict[str, Any]]:
     """Discover all registered agents and skills.
 
     Returns:
@@ -120,8 +122,8 @@ def instantiate_agent(
     meta: AgentMeta,
     client: LLMClient,
     model_id: str,
-    extra_tools: list | None = None,
-    skill_registry: dict | None = None,
+    extra_tools: list[Any] | None = None,
+    skill_registry: dict[str, Any] | None = None,
     card_search_tool: Any = None,
 ) -> Any:
     """Create an agent from AgentMeta via agent_from_meta()."""

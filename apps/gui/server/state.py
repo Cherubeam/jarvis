@@ -36,7 +36,7 @@ class GuiSession:
     queue: Queue[dict[str, Any]] | None = None
     confirmation: WebConfirmationHandler | None = None
     cancel_event: threading.Event | None = None
-    last_agent_session: list[dict] | None = None
+    last_agent_session: list[dict[str, Any]] | None = None
     in_flight: bool = False
     in_flight_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     # Set by app.py lifespan after the index is built. Used by the bridge to

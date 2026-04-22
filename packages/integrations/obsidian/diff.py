@@ -7,6 +7,7 @@ Uses only stdlib difflib — no new dependencies.
 
 import difflib
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -128,7 +129,7 @@ def format_diff_for_cli(diff: VaultDiff) -> str:
     return "\n".join(lines)
 
 
-def format_diff_for_api(diff: VaultDiff) -> dict:
+def format_diff_for_api(diff: VaultDiff) -> dict[str, Any]:
     """Format a VaultDiff as a JSON-serializable dictionary for GUI/API use."""
     return {
         "file_path": diff.file_path,

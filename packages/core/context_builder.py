@@ -12,6 +12,7 @@ Project files support YAML frontmatter for selective loading:
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 def _approx_tokens(text: str) -> int:
@@ -49,7 +50,7 @@ def load_context_file(filepath: Path) -> str:
     return ""
 
 
-def parse_frontmatter(text: str) -> tuple[dict, str]:
+def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """Extract YAML frontmatter from markdown. Returns (metadata, content).
 
     Backward-compat re-export of :func:`packages.core.frontmatter.parse`.

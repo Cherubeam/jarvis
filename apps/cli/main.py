@@ -59,11 +59,11 @@ except PackageNotFoundError:
 
 def _assemble_agent_tools(
     meta: AgentMeta,
-    shared_tools: list,
-    tool_groups: dict[str, list],
+    shared_tools: list[Any],
+    tool_groups: dict[str, list[Any]],
     only_tool_groups: set[str] | None = None,
     include_shared: bool = True,
-) -> list:
+) -> list[Any]:
     """Assemble tools for an agent from shared_tools + its declared tool_groups.
 
     Args:
@@ -83,8 +83,8 @@ def _instantiate_agent(
     meta: AgentMeta,
     client: LLMClient,
     model_id: str,
-    extra_tools: list | None = None,
-    skill_registry: dict | None = None,
+    extra_tools: list[Any] | None = None,
+    skill_registry: dict[str, Any] | None = None,
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
@@ -104,7 +104,7 @@ def _instantiate_agent(
     )
 
 
-def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config: Any) -> list:
+def _make_agent_vault_tools(meta: AgentMeta, config: dict[str, Any], vault_config: Any) -> list[Any]:
     """Create vault write tools scoped to an agent's declared vault_writing config section.
 
     Reads meta.vault_writing (e.g. "patterns", "slip_box"), looks up the
@@ -137,7 +137,7 @@ def _make_agent_vault_tools(meta: AgentMeta, config: dict, vault_config: Any) ->
 
 def stream_and_track(
     client: LLMClient,
-    messages: list[dict],
+    messages: list[dict[str, Any]],
     metrics_tracker: MetricsTracker,
     pricing: ModelPricing | None,
     model_id: str,
@@ -177,7 +177,7 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
     print_system("")
 
 
-def _deep_merge(base: dict, override: dict) -> dict:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge override into base.
 
     Semantics:
@@ -197,7 +197,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
-def load_config() -> dict:
+def load_config() -> dict[str, Any]:
     """Load configuration from YAML file and environment."""
     jarvis_dir = get_project_root()
 
@@ -232,7 +232,7 @@ def load_config() -> dict:
 
 
 def handle_daily_summary(
-    config: dict,
+    config: dict[str, Any],
     client: LLMClient,
     logger: ConversationLogger,
     system_prompt: str,
@@ -354,7 +354,7 @@ def handle_daily_summary(
 
 def handle_model_command(
     payload: str,
-    config: dict,
+    config: dict[str, Any],
     client: LLMClient,
     model_id: str,
     stream_handler: StreamHandler,
@@ -442,8 +442,8 @@ def _run_agent_session(
     session: Any,
     initial_message: str | None = None,
     context: str | None = None,
-    prior_session: list[dict] | None = None,
-) -> list[dict]:
+    prior_session: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     """Run a multi-turn agent session until the user types /exit or /back.
 
     Args:
@@ -461,7 +461,7 @@ def _run_agent_session(
     """
     print_system(f"\nEntering {agent_name} session. Type /exit or /back to return to JARVIS.\n")
 
-    session_history: list[dict] = []
+    session_history: list[dict[str, Any]] = []
 
     # Inject prior agent session as conversation context
     if prior_session:
@@ -542,7 +542,7 @@ def _run_with_display(
     agent: Any,
     user_input: str,
     print_chunks: bool = True,
-    messages_override: list[dict] | None = None,
+    messages_override: list[dict[str, Any]] | None = None,
 ) -> StreamResult:
     """Run agent with appropriate display (streaming or spinner)."""
     if stream_handler.streaming:
@@ -581,13 +581,13 @@ def _handle_agent_command(
     stream_handler: StreamHandler,
     logger: ConversationLogger,
     model_id: str,
-    agent_registry: dict,
-    shared_tools: list | None = None,
-    tool_groups: dict[str, list] | None = None,
+    agent_registry: dict[str, Any],
+    shared_tools: list[Any] | None = None,
+    tool_groups: dict[str, list[Any]] | None = None,
     session: Any = None,
-    skill_registry: dict | None = None,
+    skill_registry: dict[str, Any] | None = None,
     card_search_tool: ToolDefinition | None = None,
-    config: dict | None = None,
+    config: dict[str, Any] | None = None,
     vault_config: Any = None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
@@ -694,7 +694,7 @@ def main(argv: list[str] | None = None) -> None:
     mcp_manager = components.mcp_manager
 
     # Helper: bind the CLI confirmation handler into delegate-agent vault tools.
-    def _make_agent_vault_tools(meta: AgentMeta, _config: dict, _vc: Any) -> list:
+    def _make_agent_vault_tools(meta: AgentMeta, _config: dict[str, Any], _vc: Any) -> list[Any]:
         return make_agent_vault_tools(meta, _config, _vc, confirmation_handler)
 
     # Pricing display string for the startup banner.
@@ -724,7 +724,7 @@ def main(argv: list[str] | None = None) -> None:
     session = create_prompt_session(history_file)
 
     # Track last agent session for agent-to-agent handoff
-    last_agent_session: list[dict] | None = None
+    last_agent_session: list[dict[str, Any]] | None = None
 
     # Main chat loop
     try:

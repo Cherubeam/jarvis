@@ -7,6 +7,7 @@ import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
@@ -64,16 +65,16 @@ def _parse_iso(ts: str | None) -> datetime | None:
 
 
 def convert_content_blocks(
-    blocks: list[dict],
-    attachments: list[dict] | None = None,
-    files: list[dict] | None = None,
-) -> list[dict]:
+    blocks: list[dict[str, Any]],
+    attachments: list[dict[str, Any]] | None = None,
+    files: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     """Convert Claude content blocks to Jarvis content blocks.
 
     Handles: text, thinking, tool_use, tool_result, token_budget.
     Also converts attachments (human messages) and files (assistant-generated).
     """
-    result: list[dict] = []
+    result: list[dict[str, Any]] = []
 
     for block in blocks:
         block_type = block.get("type")
@@ -192,7 +193,7 @@ def convert_content_blocks(
     return result
 
 
-def convert_conversation(claude_conv: dict) -> dict:
+def convert_conversation(claude_conv: dict[str, Any]) -> dict[str, Any]:
     """Convert a single Claude conversation to Jarvis schema v1.0.0."""
     claude_id = claude_conv.get("uuid", "")
     name = claude_conv.get("name")
@@ -274,7 +275,7 @@ def convert_conversation(claude_conv: dict) -> dict:
     }
 
 
-def _convert_new_messages(claude_conv: dict, start_index: int) -> list[dict]:
+def _convert_new_messages(claude_conv: dict[str, Any], start_index: int) -> list[dict[str, Any]]:
     """Convert Claude messages starting from start_index to Jarvis format.
 
     Message IDs continue from start_index (1-based).
@@ -312,7 +313,7 @@ def _convert_new_messages(claude_conv: dict, start_index: int) -> list[dict]:
     return messages
 
 
-def update_conversation(existing_path: Path, claude_conv: dict, *, dry_run: bool = False) -> bool:
+def update_conversation(existing_path: Path, claude_conv: dict[str, Any], *, dry_run: bool = False) -> bool:
     """Update an existing JARVIS conversation with new data from Claude.
 
     Syncs title, session_end, and appends new messages. Never removes

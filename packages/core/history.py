@@ -15,7 +15,7 @@ processed them. This module provides two complementary strategies:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from packages.core.llm_client import LLMClient
@@ -30,9 +30,9 @@ _DEFAULT_KEEP_RECENT_FOR_SUMMARY = 10
 
 
 def trim_tool_results(
-    history: list[dict],
+    history: list[dict[str, Any]],
     keep_recent: int = _KEEP_RECENT_MESSAGES,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Trim tool result content from older messages to reduce token usage.
 
     Recent messages (last ``keep_recent``) are preserved intact. For older
@@ -49,7 +49,7 @@ def trim_tool_results(
     if len(history) <= keep_recent:
         return history
 
-    trimmed: list[dict] = []
+    trimmed: list[dict[str, Any]] = []
     cutoff = len(history) - keep_recent
 
     for i, msg in enumerate(history):
@@ -68,12 +68,12 @@ def trim_tool_results(
     return trimmed
 
 
-def _approx_tokens(messages: list[dict]) -> int:
+def _approx_tokens(messages: list[dict[str, Any]]) -> int:
     """Estimate token count using the bytes/4 heuristic."""
     return sum(len(str(m.get("content", "")).encode("utf-8")) for m in messages) // 4
 
 
-def _format_messages_for_summary(messages: list[dict]) -> str:
+def _format_messages_for_summary(messages: list[dict[str, Any]]) -> str:
     """Format messages into a condensed text representation for the summarizer."""
     lines: list[str] = []
     for msg in messages:
@@ -107,12 +107,12 @@ History:
 
 
 def summarize_history(
-    history: list[dict],
+    history: list[dict[str, Any]],
     client: LLMClient,
     model_id: str,
     token_threshold: int = _DEFAULT_TOKEN_THRESHOLD,
     keep_recent: int = _DEFAULT_KEEP_RECENT_FOR_SUMMARY,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Compress old conversation turns into a summary to reduce token costs.
 
     Uses a cheap/fast model to produce the summary. Detects prior summaries

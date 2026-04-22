@@ -4,6 +4,7 @@ Conversation searcher — semantic search over indexed conversations in ChromaDB
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import litellm
 
@@ -91,7 +92,7 @@ class ConversationSearcher:
         fetch_n = n_results * 3 if deduplicate else n_results
 
         # Embed the query
-        embed_kwargs: dict = {
+        embed_kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": [query[:_MAX_EMBED_CHARS]],
             "api_key": self.api_key,
@@ -105,7 +106,7 @@ class ConversationSearcher:
         # Build optional date filter
         where = self._build_where_filter(date_from, date_to)
 
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "query_embeddings": [query_embedding],
             "n_results": min(fetch_n, self._collection.count()),
             "include": ["documents", "metadatas", "distances"],
@@ -155,7 +156,7 @@ class ConversationSearcher:
         self,
         date_from: str | None,
         date_to: str | None,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Build a ChromaDB metadata filter for date range.
 
         Uses session_date_int (YYYYMMDD integer) because ChromaDB's

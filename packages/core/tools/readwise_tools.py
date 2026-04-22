@@ -5,6 +5,7 @@ Uses the Readwise CLI subprocess wrapper for data access.
 """
 
 import logging
+from typing import Any
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.readwise.client import ReadwiseClient, is_cli_available
@@ -12,7 +13,7 @@ from packages.integrations.readwise.client import ReadwiseClient, is_cli_availab
 logger = logging.getLogger(__name__)
 
 
-def make_readwise_tools(config: dict) -> list[ToolDefinition]:
+def make_readwise_tools(config: dict[str, Any]) -> list[ToolDefinition]:
     """Create Readwise tools for reading list search and management.
 
     Args:

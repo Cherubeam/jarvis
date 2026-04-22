@@ -34,7 +34,7 @@ def hash_content(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-def _normalize_content(content: Any) -> list[dict]:
+def _normalize_content(content: Any) -> list[dict[str, Any]]:
     """Wrap string content in typed block array; pass-through if already a list."""
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
@@ -43,7 +43,7 @@ def _normalize_content(content: Any) -> list[dict]:
     return [{"type": "text", "text": str(content)}]
 
 
-def _extract_text_from_content(content: list[dict]) -> str:
+def _extract_text_from_content(content: list[dict[str, Any]]) -> str:
     """Extract plain text from content blocks for API calls."""
     parts = []
     for block in content:
@@ -52,7 +52,7 @@ def _extract_text_from_content(content: list[dict]) -> str:
     return "".join(parts)
 
 
-def migrate_conversation(data: dict) -> dict:
+def migrate_conversation(data: dict[str, Any]) -> dict[str, Any]:
     """Migrate old conversation format to v1.0.0 schema at read time.
 
     Handles three known old formats:
@@ -203,7 +203,7 @@ class SessionMetrics:
         """Average total latency across all requests."""
         return self.total_latency_ms / self.request_count if self.request_count > 0 else 0.0
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         result = {
             "total_prompt_tokens": self.total_prompt_tokens,
             "total_completion_tokens": self.total_completion_tokens,
@@ -228,16 +228,16 @@ class ConversationLogger:
     def __init__(
         self,
         conversations_dir: Path,
-        model_config: dict | None = None,
-        agent_config: dict | None = None,
-        context_snapshot: dict | None = None,
-        environment: dict | None = None,
+        model_config: dict[str, Any] | None = None,
+        agent_config: dict[str, Any] | None = None,
+        context_snapshot: dict[str, Any] | None = None,
+        environment: dict[str, Any] | None = None,
         context_metadata: ContextMetadata | None = None,
         conversation_id: str | None = None,
     ):
         self.conversations_dir = Path(conversations_dir)
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
-        self.current_conversation: list[dict] = []
+        self.current_conversation: list[dict[str, Any]] = []
         self.session_start = datetime.now()
         self.metrics = SessionMetrics()
         self.conversation_id = conversation_id or generate_conversation_id()
@@ -252,9 +252,9 @@ class ConversationLogger:
         self.title: str | None = None
         self.topic: str | None = None
         self.tags: list[str] = []
-        self.feedback: dict | None = None
-        self.metadata: dict = {}
-        self.utilization: list[dict] = []
+        self.feedback: dict[str, Any] | None = None
+        self.metadata: dict[str, Any] = {}
+        self.utilization: list[dict[str, Any]] = []
 
     def set_title(self, title: str) -> None:
         """Set the conversation title."""
@@ -314,7 +314,7 @@ class ConversationLogger:
             "metadata": kwargs,
         }
 
-    def add_tool_messages(self, tool_messages: list[dict], agent_name: str | None = None) -> None:
+    def add_tool_messages(self, tool_messages: list[dict[str, Any]], agent_name: str | None = None) -> None:
         """Store tool-calling messages (assistant with tool_calls + tool results).
 
         Preserves tool_calls and tool_call_id fields so that
@@ -367,8 +367,8 @@ class ConversationLogger:
         thinking_tokens: int = 0,
         stop_reason: str | None = None,
         status: str = "completed",
-        error: dict | None = None,
-        metadata: dict | None = None,
+        error: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         agent_name: str | None = None,
     ) -> None:
         """Add a message to the current conversation with optional token usage, cost, and latency."""
@@ -517,7 +517,7 @@ class ConversationLogger:
                     f"({len(all_utilized)}/{len(all_loaded)} sections referenced in responses)"
                 )
 
-    def get_messages_for_api(self) -> list[dict]:
+    def get_messages_for_api(self) -> list[dict[str, Any]]:
         """Return messages in the format the API expects.
 
         Regular messages get {role, content}. Tool-calling assistant messages
@@ -533,7 +533,7 @@ class ConversationLogger:
             else:
                 text = content
 
-            api_msg: dict = {"role": m["role"], "content": text}
+            api_msg: dict[str, Any] = {"role": m["role"], "content": text}
 
             # Preserve tool_calls on assistant messages
             if "tool_calls" in m:
@@ -550,7 +550,7 @@ class ConversationLogger:
         return result
 
     @staticmethod
-    def load(filepath: str | Path) -> dict:
+    def load(filepath: str | Path) -> dict[str, Any]:
         """Load a conversation file with read-time migration for old formats."""
         filepath = Path(filepath)
         with open(filepath) as f:

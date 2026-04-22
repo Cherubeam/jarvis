@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -46,7 +47,7 @@ class BaseAgent(ABC):
     def __init__(self, config: AgentConfig, llm_client: LLMClient):
         self.config = config
         self.llm_client = llm_client
-        self.conversation_history: list[dict] = []
+        self.conversation_history: list[dict[str, Any]] = []
 
         # Build tool registry from config
         self.tool_registry = ToolRegistry()
@@ -90,7 +91,7 @@ class BaseAgent(ABC):
         return path.read_text(encoding="utf-8")
 
     @abstractmethod
-    def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
+    def process_message(self, message: str, context: dict[str, Any] | None = None) -> StreamingResponse:
         """
         Process a user message and return a streaming response.
 
@@ -108,7 +109,7 @@ class BaseAgent(ABC):
         message: str,
         stream_handler: StreamHandler,
         print_chunks: bool = False,
-        messages_override: list[dict] | None = None,
+        messages_override: list[dict[str, Any]] | None = None,
     ) -> StreamResult:
         """Run the agent on a user message, streaming the response.
 
@@ -139,7 +140,7 @@ class BaseAgent(ABC):
             messages = self.get_messages_for_api()
 
         registry = self.tool_registry if not self.tool_registry.is_empty() else None
-        kwargs: dict = {}
+        kwargs: dict[str, Any] = {}
         if self.config.max_iterations is not None:
             kwargs["max_iterations"] = self.config.max_iterations
         return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
@@ -152,14 +153,14 @@ class BaseAgent(ABC):
         """Clear conversation history."""
         self.conversation_history = []
 
-    def get_messages_for_api(self) -> list[dict]:
+    def get_messages_for_api(self) -> list[dict[str, Any]]:
         """Get messages formatted for API call."""
         return [
             {"role": "system", "content": self.config.system_prompt},
             *self.conversation_history,
         ]
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize agent to dictionary."""
         return {
             "name": self.config.name,
@@ -176,7 +177,7 @@ class DataDrivenAgent(BaseAgent):
     add the user message to history and stream a response.
     """
 
-    def process_message(self, message: str, context: dict | None = None) -> StreamingResponse:
+    def process_message(self, message: str, context: dict[str, Any] | None = None) -> StreamingResponse:
         self.add_to_history("user", message)
         return self.llm_client.chat_stream(self.get_messages_for_api())
 
@@ -185,7 +186,7 @@ class DataDrivenAgent(BaseAgent):
         message: str,
         stream_handler: StreamHandler,
         print_chunks: bool = False,
-        messages_override: list[dict] | None = None,
+        messages_override: list[dict[str, Any]] | None = None,
     ) -> StreamResult:
         """Run the agent, passing max_tokens when configured."""
         # Pass agent-configured max_tokens to the stream handler
@@ -200,7 +201,7 @@ def agent_from_meta(
     llm_client: LLMClient,
     model: str,
     extra_tools: list[ToolDefinition] | None = None,
-    skill_registry: dict | None = None,
+    skill_registry: dict[str, Any] | None = None,
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,

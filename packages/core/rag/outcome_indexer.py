@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import litellm
 
@@ -17,7 +18,7 @@ _EMBED_BATCH_SIZE = 64
 _COLLECTION_NAME = "outcomes"
 
 
-def _build_document(meta: dict, body: str) -> str:
+def _build_document(meta: dict[str, Any], body: str) -> str:
     """Build the text that gets embedded for semantic search."""
     parts = [
         f"What: {meta.get('what', '')}",
@@ -32,12 +33,12 @@ def _build_document(meta: dict, body: str) -> str:
     return "\n".join(parts)
 
 
-def _load_reviewed(outcomes_dir: Path) -> list[tuple[str, dict, str]]:
+def _load_reviewed(outcomes_dir: Path) -> list[tuple[str, dict[str, Any], str]]:
     """Return (outcome_id, meta, body) for every reviewed outcome file.
 
     Malformed files are silently skipped.
     """
-    out: list[tuple[str, dict, str]] = []
+    out: list[tuple[str, dict[str, Any], str]] = []
     if not outcomes_dir.exists():
         return out
     for path in sorted(outcomes_dir.glob("*.md")):
@@ -114,7 +115,7 @@ class OutcomeIndexer:
 
         ids: list[str] = []
         documents: list[str] = []
-        metadatas: list[dict] = []
+        metadatas: list[dict[str, Any]] = []
         for outcome_id, meta, body in to_index:
             ids.append(outcome_id)
             documents.append(_build_document(meta, body))
@@ -153,7 +154,7 @@ class OutcomeIndexer:
         return {m["outcome_id"] for m in result["metadatas"] if m.get("outcome_id")}
 
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": texts,
             "api_key": self.api_key,
@@ -217,7 +218,7 @@ class OutcomeSearcher:
         return results
 
     def _embed(self, text: str) -> list[float]:
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": [text],
             "api_key": self.api_key,

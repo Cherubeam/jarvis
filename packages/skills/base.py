@@ -79,7 +79,7 @@ class BaseSkill:
         message: str,
         stream_handler: StreamHandler,
         print_chunks: bool = False,
-        messages_override: list[dict] | None = None,
+        messages_override: list[dict[str, Any]] | None = None,
     ) -> StreamResult:
         """Run the skill on user input, streaming the response.
 

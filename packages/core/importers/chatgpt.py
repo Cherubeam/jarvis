@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
@@ -16,12 +17,12 @@ logger = logging.getLogger(__name__)
 _ROLE_MAP = {"user": "user", "assistant": "assistant", "system": "system", "tool": "tool"}
 
 
-def linearize_message_tree(mapping: dict, current_node: str) -> list[dict]:
+def linearize_message_tree(mapping: dict[str, Any], current_node: str) -> list[dict[str, Any]]:
     """Walk from current_node to root via parent pointers, return messages in chronological order.
 
     Skips nodes with no message. Detects cycles.
     """
-    chain: list[dict] = []
+    chain: list[dict[str, Any]] = []
     visited: set[str] = set()
     node_id: str | None = current_node
 
@@ -46,7 +47,7 @@ def linearize_message_tree(mapping: dict, current_node: str) -> list[dict]:
     return chain
 
 
-def convert_content_parts(content: dict) -> list[dict]:
+def convert_content_parts(content: dict[str, Any]) -> list[dict[str, Any]]:
     """Convert a ChatGPT message content dict to Jarvis content blocks."""
     content_type = content.get("content_type", "text")
     parts = content.get("parts", [])
@@ -68,7 +69,7 @@ def convert_content_parts(content: dict) -> list[dict]:
 
     if content_type == "thoughts":
         thoughts = content.get("thoughts", [])
-        blocks: list[dict] = []
+        blocks: list[dict[str, Any]] = []
         for thought in thoughts:
             t = thought.get("content", "") or thought.get("summary", "")
             if t:
@@ -114,7 +115,7 @@ def convert_content_parts(content: dict) -> list[dict]:
     return [{"type": "text", "text": text, "metadata": {"original_content_type": content_type}}]
 
 
-def _convert_text_parts(parts: list) -> list[dict]:
+def _convert_text_parts(parts: list[Any]) -> list[dict[str, Any]]:
     texts = []
     for p in parts:
         if isinstance(p, str):
@@ -125,8 +126,8 @@ def _convert_text_parts(parts: list) -> list[dict]:
     return [{"type": "text", "text": combined}]
 
 
-def _convert_multimodal_parts(parts: list) -> list[dict]:
-    blocks: list[dict] = []
+def _convert_multimodal_parts(parts: list[Any]) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = []
     for p in parts:
         if isinstance(p, str):
             if p:
@@ -157,7 +158,7 @@ def _convert_multimodal_parts(parts: list) -> list[dict]:
     return blocks or [{"type": "text", "text": ""}]
 
 
-def _extract_fallback_text(content: dict, parts: list) -> str:
+def _extract_fallback_text(content: dict[str, Any], parts: list[Any]) -> str:
     if parts:
         return "\n".join(str(p) for p in parts if isinstance(p, str))
     return content.get("text", "")
@@ -187,7 +188,7 @@ def _make_filename(create_time: float | None, update_time: float | None) -> str:
     return make_filename(dt)
 
 
-def convert_conversation(chatgpt_conv: dict) -> dict:
+def convert_conversation(chatgpt_conv: dict[str, Any]) -> dict[str, Any]:
     """Convert a single ChatGPT conversation to Jarvis schema v1.0.0."""
     chatgpt_id = chatgpt_conv.get("conversation_id") or chatgpt_conv.get("id", "")
     create_time = chatgpt_conv.get("create_time")
@@ -210,7 +211,7 @@ def convert_conversation(chatgpt_conv: dict) -> dict:
         raw_messages = linearize_message_tree(mapping, current_node)
 
     # Convert messages
-    messages: list[dict] = []
+    messages: list[dict[str, Any]] = []
     for i, raw_msg in enumerate(raw_messages, start=1):
         author = raw_msg.get("author", {})
         role = _ROLE_MAP.get(author.get("role", ""), "system")

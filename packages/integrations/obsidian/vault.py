@@ -9,6 +9,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from packages.core.filesystem_access import FilesystemGuard
 
@@ -25,7 +26,7 @@ class VaultConfig:
     enabled: bool = True
 
 
-def load_vault_config(config: dict, filesystem_guard: FilesystemGuard | None = None) -> VaultConfig | None:
+def load_vault_config(config: dict[str, Any], filesystem_guard: FilesystemGuard | None = None) -> VaultConfig | None:
     """Load vault configuration from config dictionary.
 
     Args:

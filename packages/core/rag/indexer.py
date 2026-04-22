@@ -6,6 +6,7 @@ and upserts new chunks into the "conversations" collection.
 """
 
 from pathlib import Path
+from typing import Any
 
 import litellm
 
@@ -80,7 +81,7 @@ class ConversationIndexer:
         new_count = 0
         all_ids: list[str] = []
         all_documents: list[str] = []
-        all_metadatas: list[dict] = []
+        all_metadatas: list[dict[str, Any]] = []
 
         for filepath in sorted(conversations_dir.rglob("*.json")):
             conversation = self._load_conversation(filepath)
@@ -121,7 +122,7 @@ class ConversationIndexer:
 
         return new_count
 
-    def _load_conversation(self, filepath: Path) -> dict | None:
+    def _load_conversation(self, filepath: Path) -> dict[str, Any] | None:
         """Load and migrate a conversation file. Returns None on error or if empty."""
         try:
             data = ConversationLogger.load(filepath)
@@ -133,7 +134,7 @@ class ConversationIndexer:
 
         return data
 
-    def _extract_pairs(self, conversation: dict, *, conv_id: str | None = None) -> list[dict]:
+    def _extract_pairs(self, conversation: dict[str, Any], *, conv_id: str | None = None) -> list[dict[str, Any]]:
         """Build message-pair chunks from consecutive user+assistant turns."""
         messages = conversation.get("messages", [])
         conv_id = conv_id or conversation.get("id") or ""
@@ -208,7 +209,7 @@ class ConversationIndexer:
 
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts using LiteLLM."""
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": texts,
             "api_key": self.api_key,
@@ -226,7 +227,7 @@ class ConversationIndexer:
 
         result = self._collection.get(include=["metadatas"])
         ids_to_update: list[str] = []
-        metas_to_update: list[dict] = []
+        metas_to_update: list[dict[str, Any]] = []
 
         for doc_id, meta in zip(result["ids"], result["metadatas"], strict=True):
             if meta.get("session_date_int"):

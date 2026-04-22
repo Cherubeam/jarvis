@@ -9,6 +9,7 @@ embedding and ChromaDB interaction.
 """
 
 from pathlib import Path
+from typing import Any
 
 import litellm
 import yaml
@@ -55,7 +56,7 @@ class CardIndexer:
 
         all_ids: list[str] = []
         all_documents: list[str] = []
-        all_metadatas: list[dict] = []
+        all_metadatas: list[dict[str, Any]] = []
 
         for deck_dir in deck_dirs:
             deck_yaml_path = deck_dir / "deck.yaml"
@@ -119,7 +120,7 @@ class CardIndexer:
 
         return len(all_ids)
 
-    def _load_deck_yaml(self, path: Path) -> dict | None:
+    def _load_deck_yaml(self, path: Path) -> dict[str, Any] | None:
         """Load and parse a deck.yaml file. Returns None on error."""
         try:
             with open(path) as f:
@@ -129,7 +130,7 @@ class CardIndexer:
 
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts using LiteLLM."""
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": texts,
             "api_key": self.api_key,
@@ -177,7 +178,7 @@ class CardSearcher:
         query: str,
         n_results: int = 5,
         deck: str | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Embed query and return the top-n most similar cards.
 
         Args:
@@ -193,7 +194,7 @@ class CardSearcher:
             return []
 
         # Embed the query
-        embed_kwargs: dict = {
+        embed_kwargs: dict[str, Any] = {
             "model": self.embedding_model,
             "input": [query],
             "api_key": self.api_key,
@@ -209,7 +210,7 @@ class CardSearcher:
         if deck:
             where = {"deck_dir": deck}
 
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "query_embeddings": [query_embedding],
             "n_results": min(n_results, self._collection.count()),
             "include": ["documents", "metadatas", "distances"],
@@ -219,7 +220,7 @@ class CardSearcher:
 
         result = self._collection.query(**kwargs)
 
-        search_results: list[dict] = []
+        search_results: list[dict[str, Any]] = []
         documents = result.get("documents", [[]])[0]
         metadatas = result.get("metadatas", [[]])[0]
         distances = result.get("distances", [[]])[0]

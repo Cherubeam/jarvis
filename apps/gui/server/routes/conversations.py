@@ -33,7 +33,7 @@ async def list_conversations(
     sort: str = "recent",
     limit: int = Query(200, ge=1, le=500),
     offset: int = Query(0, ge=0),
-) -> dict:
+) -> dict[str, Any]:
     if sort not in _ALLOWED_SORT:
         raise HTTPException(400, f"sort must be one of {sorted(_ALLOWED_SORT)}")
     if date not in _ALLOWED_DATE:
@@ -53,13 +53,13 @@ async def list_conversations(
 
 
 @router.get("/facets")
-async def list_facets(request: Request) -> dict:
+async def list_facets(request: Request) -> dict[str, Any]:
     idx = await _refresh(request)
     return idx.facets()
 
 
 @router.get("/{conv_id}")
-async def get_conversation(request: Request, conv_id: str) -> dict:
+async def get_conversation(request: Request, conv_id: str) -> dict[str, Any]:
     idx = request.app.state.conversation_index
     detail = idx.get(conv_id)
     if detail is None:

@@ -73,7 +73,7 @@ def _extract_intent(body: str) -> str:
     return m.group(1).strip() if m else ""
 
 
-def _clean_wikilinks(text: str | list) -> list[str]:
+def _clean_wikilinks(text: str | list[Any]) -> list[str]:
     """Convert Obsidian wikilinks to plain names.
 
     Accepts a single string or a list of strings (YAML frontmatter may
@@ -771,7 +771,7 @@ class ImageGenerationConfig:
     max_images_per_run: int = 10
 
     @classmethod
-    def from_dict(cls, d: dict) -> ImageGenerationConfig:
+    def from_dict(cls, d: dict[str, Any]) -> ImageGenerationConfig:
         img_cfg = d.get("image_generation", {})
         return cls(
             enabled=img_cfg.get("enabled", False),

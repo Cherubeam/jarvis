@@ -51,7 +51,7 @@ class ModelPricing:
         )
 
 
-def _get_litellm_cost_map() -> dict:
+def _get_litellm_cost_map() -> dict[str, Any]:
     """Return LiteLLM's cost map (loaded at import with remote→local fallback)."""
     return litellm.model_cost
 

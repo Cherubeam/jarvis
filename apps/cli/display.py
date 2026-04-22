@@ -203,7 +203,7 @@ def create_prompt_session(history_file: str | None = None) -> Any:
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
 
-    kwargs: dict = {}
+    kwargs: dict[str, Any] = {}
     if history_file:
         path = Path(history_file)
         path.parent.mkdir(parents=True, exist_ok=True)

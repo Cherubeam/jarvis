@@ -97,7 +97,7 @@ class MCPConnection:
         else:
             raise ValueError(f"Unknown transport: {self.config.transport}")
 
-    async def call_tool(self, name: str, arguments: dict) -> types.CallToolResult:
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> types.CallToolResult:
         """Call a tool on this server."""
         if self.session is None or not self._connected:
             raise RuntimeError(f"MCP server '{self.config.name}' is not connected. Restart JARVIS to reconnect.")
@@ -162,7 +162,7 @@ class MCPManager:
 
         return tool_groups
 
-    def call_tool_sync(self, server_name: str, tool_name: str, arguments: dict) -> str:
+    def call_tool_sync(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> str:
         """Synchronous wrapper: submit async call_tool to the background loop."""
         conn = self._connections.get(server_name)
         if conn is None or not conn.connected:
@@ -212,10 +212,10 @@ class MCPManager:
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result(timeout=120)
 
-    def _make_call_fn(self, server_name: str) -> Callable[[str, dict], str]:
+    def _make_call_fn(self, server_name: str) -> Callable[[str, dict[str, Any]], str]:
         """Create a bound call_fn for a specific server (used by bridge)."""
 
-        def call_fn(tool_name: str, arguments: dict) -> str:
+        def call_fn(tool_name: str, arguments: dict[str, Any]) -> str:
             return self.call_tool_sync(server_name, tool_name, arguments)
 
         return call_fn

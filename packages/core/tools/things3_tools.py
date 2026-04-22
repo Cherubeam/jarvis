@@ -9,6 +9,7 @@ with no confirmation back to the caller.
 import logging
 import subprocess
 import sys
+from typing import Any
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.things3.task_sync import TaskSyncCache
@@ -22,7 +23,7 @@ def _open_things_url(url: str) -> bool:
     return result.returncode == 0
 
 
-def make_things3_tools(config: dict) -> list[ToolDefinition]:
+def make_things3_tools(config: dict[str, Any]) -> list[ToolDefinition]:
     """Create Things 3 write tools.
 
     Args:

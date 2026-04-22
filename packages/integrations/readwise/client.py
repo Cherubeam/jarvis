@@ -9,6 +9,7 @@ import json
 import logging
 import shutil
 import subprocess
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class ReadwiseClient:
             return f"Error: unexpected failure running readwise CLI: {e}"
 
 
-def parse_json_output(raw: str) -> list[dict] | dict | str:
+def parse_json_output(raw: str) -> list[dict[str, Any]] | dict[str, Any] | str:
     """Parse JSON from CLI output. Returns parsed data or the raw string on failure."""
     if raw.startswith("Error:"):
         return raw
