@@ -8,3 +8,12 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy packages apps scripts jarvis_cli.py jarvis_gui.py
+        language: system
+        pass_filenames: false
+        types: [python]
