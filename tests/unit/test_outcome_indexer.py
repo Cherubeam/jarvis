@@ -130,9 +130,7 @@ def _mocked_indexer(already_indexed_ids=None):
         "ids": list(already_indexed_ids or []),
         "metadatas": [{"outcome_id": oid} for oid in (already_indexed_ids or [])],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeIndexer
@@ -228,9 +226,7 @@ def test_searcher_returns_empty_when_collection_empty():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeSearcher
@@ -262,9 +258,7 @@ def test_searcher_builds_results_from_raw():
         ],
         "distances": [[0.25]],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.outcome_indexer import OutcomeSearcher
@@ -310,9 +304,7 @@ def test_recall_tool_returns_message_when_no_results():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.tools.outcome_recall import make_outcome_recall_tool
@@ -344,9 +336,7 @@ def test_recall_tool_formats_results_with_header_and_fields():
         ],
         "distances": [[0.3]],
     }
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     fake_response = MagicMock()
     fake_response.data = [{"embedding": [0.1]}]
@@ -369,9 +359,7 @@ def test_recall_tool_clamps_n_results():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 1
     mock_collection.query.return_value = {"metadatas": [[]], "distances": [[]]}
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     fake_response = MagicMock()
     fake_response.data = [{"embedding": [0.1]}]

@@ -1,6 +1,5 @@
 """Tests for packages.core.filesystem_access module."""
 
-
 import pytest
 
 from packages.core.filesystem_access import (

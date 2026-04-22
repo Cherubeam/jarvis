@@ -1,6 +1,5 @@
 """Tests for packages.core.tools.codebase_tools."""
 
-
 import pytest
 
 from packages.core.tools.codebase_tools import make_codebase_tools
@@ -126,10 +125,7 @@ class TestReadArchitectureMap:
     def test_missing_map(self, tools, project_dir):
         (project_dir / "data" / "codebase_map.md").unlink()
         result = tools["read_architecture_map"].execute()
-        assert (
-            result
-            == "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
-        )
+        assert result == "Error: Codebase map not found. Run scripts/generate_codebase_map.py to generate it."
 
 
 class TestToolFormat:
@@ -255,7 +251,7 @@ class TestAdditionalEdgeCases:
         """Multiple search results are newline-separated."""
         (project_dir / "packages" / "core" / "other.py").write_text("line_one\nline_two\n")
         result = tools["search_code"].execute(pattern="line_")
-        lines = [l for l in result.split("\n") if ":" in l]
+        lines = [line for line in result.split("\n") if ":" in line]
         assert len(lines) == 2
 
     def test_search_no_match_includes_glob_in_message(self, tools):

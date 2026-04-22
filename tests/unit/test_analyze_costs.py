@@ -67,9 +67,7 @@ class TestClassifySource:
         assert classify_source(_make_conversation(tags=[])) == "native"
 
     def test_imported_chatgpt(self):
-        assert (
-            classify_source(_make_conversation(tags=["imported", "chatgpt"])) == "imported/chatgpt"
-        )
+        assert classify_source(_make_conversation(tags=["imported", "chatgpt"])) == "imported/chatgpt"
 
     def test_imported_claude(self):
         assert classify_source(_make_conversation(tags=["imported", "claude"])) == "imported/claude"

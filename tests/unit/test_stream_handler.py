@@ -88,9 +88,7 @@ class TestStreamHandler:
         client.chat_stream.return_value = _make_streaming_response(["ok"])
         tracker = MetricsTracker()
 
-        with patch(
-            "packages.core.stream_handler.calculate_cost_from_litellm", return_value=0.005
-        ) as mock_calc:
+        with patch("packages.core.stream_handler.calculate_cost_from_litellm", return_value=0.005) as mock_calc:
             handler = StreamHandler(client, tracker, None, "test-model")
             result = handler.stream([{"role": "user", "content": "hi"}])
 
@@ -317,12 +315,8 @@ class TestStreamHandlerAgenticLoop:
         registry.register(tool)
 
         # First call: tool call detected via streaming; second: content response
-        tool_call = _make_tool_call_obj(
-            "tc1", "fetch_url", json.dumps({"url": "https://example.com"})
-        )
-        final_stream = _make_streaming_response(
-            ["The article says: content of https://example.com"]
-        )
+        tool_call = _make_tool_call_obj("tc1", "fetch_url", json.dumps({"url": "https://example.com"}))
+        final_stream = _make_streaming_response(["The article says: content of https://example.com"])
 
         client = Mock(spec=LLMClient)
         client.stream_with_tool_detection.side_effect = [
@@ -353,12 +347,8 @@ class TestStreamHandlerAgenticLoop:
         """LLM calls tool A, then tool B, then streams final answer."""
         from packages.core.tools.base import ToolDefinition, ToolRegistry
 
-        tool_a = ToolDefinition(
-            name="tool_a", description="a", parameters={}, execute=lambda: "result_a"
-        )
-        tool_b = ToolDefinition(
-            name="tool_b", description="b", parameters={}, execute=lambda: "result_b"
-        )
+        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "result_a")
+        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "result_b")
         registry = ToolRegistry()
         registry.register(tool_a)
         registry.register(tool_b)
@@ -686,9 +676,7 @@ class TestStreamHandlerAgenticLoop:
             call_count += 1
             return "result"
 
-        tool = ToolDefinition(
-            name="list_blog_posts", description="list", parameters={}, execute=_execute
-        )
+        tool = ToolDefinition(name="list_blog_posts", description="list", parameters={}, execute=_execute)
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -720,12 +708,8 @@ class TestStreamHandlerAgenticLoop:
         """Two distinct tools in parallel; both execute."""
         from packages.core.tools.base import ToolDefinition, ToolRegistry
 
-        tool_a = ToolDefinition(
-            name="tool_a", description="a", parameters={}, execute=lambda: "a_result"
-        )
-        tool_b = ToolDefinition(
-            name="tool_b", description="b", parameters={}, execute=lambda: "b_result"
-        )
+        tool_a = ToolDefinition(name="tool_a", description="a", parameters={}, execute=lambda: "a_result")
+        tool_b = ToolDefinition(name="tool_b", description="b", parameters={}, execute=lambda: "b_result")
         registry = ToolRegistry()
         registry.register(tool_a)
         registry.register(tool_b)
@@ -765,9 +749,7 @@ class TestStreamHandlerAgenticLoop:
             results_seen.append(post_id)
             return f"content of {post_id}"
 
-        tool = ToolDefinition(
-            name="read_blog_post", description="read", parameters={}, execute=_read
-        )
+        tool = ToolDefinition(name="read_blog_post", description="read", parameters={}, execute=_read)
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -806,9 +788,7 @@ class TestStreamHandlerAgenticLoop:
 
         max_iter = 3
         client = Mock(spec=LLMClient)
-        client.stream_with_tool_detection.side_effect = [
-            make_tool_iteration() for _ in range(max_iter)
-        ]
+        client.stream_with_tool_detection.side_effect = [make_tool_iteration() for _ in range(max_iter)]
         client.chat_stream.return_value = _make_streaming_response(["forced text"])
 
         handler = self._make_handler(client)
@@ -894,9 +874,7 @@ class TestStreamHandlerAgenticLoop:
         """When model returns content (no tools), the streaming response is used directly."""
         from packages.core.tools.base import ToolDefinition, ToolRegistry
 
-        tool = ToolDefinition(
-            name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok"
-        )
+        tool = ToolDefinition(name="my_tool", description="t", parameters={"type": "object"}, execute=lambda: "ok")
         registry = ToolRegistry()
         registry.register(tool)
 
@@ -1018,9 +996,7 @@ class TestCreditFallback:
 
         # The third chat_stream call should have been made with reduced tokens
         third_call = client.chat_stream.call_args_list[2]
-        assert (
-            third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612
-        )
+        assert third_call.kwargs.get("max_tokens") == 8612 or third_call[1].get("max_tokens") == 8612
 
 
 def _make_complete_response(content="", tool_calls=None, prompt_tokens=10, completion_tokens=5):
@@ -1263,9 +1239,7 @@ class TestStreamHandlerNonStreaming:
         handler.stream([{"role": "user", "content": "hi"}])
 
         call_kwargs = client.complete.call_args
-        assert (
-            call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
-        )
+        assert call_kwargs.kwargs.get("max_tokens") == 4096 or call_kwargs[1].get("max_tokens") == 4096
 
     def test_nonstreaming_events_include_instance_id(self):
         """Non-streaming TextChunk and UsageReport events carry instance_id."""

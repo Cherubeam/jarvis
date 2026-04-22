@@ -1,6 +1,5 @@
 """Tests for packages.integrations.obsidian.callout module."""
 
-
 from packages.integrations.obsidian.callout import (
     CalloutBlock,
     CalloutNotFound,

@@ -439,8 +439,6 @@ class ConversationLogger:
         context = self.context_snapshot
         if context and self.context_metadata:
             context = {**context}
-            # Add approx_tokens to each file entry
-            section_tokens = {s.name: s.approx_tokens for s in self.context_metadata.sections}
             context["system_prompt_approx_tokens"] = self.context_metadata.total_approx_tokens
             context["section_breakdown"] = [
                 {"name": s.name, "approx_tokens": s.approx_tokens, "size_bytes": s.size_bytes}
@@ -499,8 +497,7 @@ class ConversationLogger:
                 if pcts:
                     parts = [f"{name}: {pct:.0f}%" for name, pct in pcts.items()]
                     print(
-                        f"  System prompt: ~{self.context_metadata.total_approx_tokens:,} tokens "
-                        f"({', '.join(parts)})"
+                        f"  System prompt: ~{self.context_metadata.total_approx_tokens:,} tokens ({', '.join(parts)})"
                     )
 
                 # Print history growth if tracked

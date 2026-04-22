@@ -11,7 +11,6 @@ import pytest
 try:
     from packages.core.pricing import (
         ModelPricing,
-        _get_litellm_cost_map,
         calculate_cost_from_litellm,
         format_cost,
         get_model_pricing,
@@ -48,18 +47,14 @@ class TestModelPricing:
 
     def test_model_pricing_zero_tokens(self):
         """Test that zero tokens returns zero cost."""
-        pricing = ModelPricing(
-            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
-        )
+        pricing = ModelPricing(prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model")
 
         cost = pricing.calculate_cost(0, 0)
         assert cost == 0.0
 
     def test_model_pricing_large_numbers(self):
         """Test handling of large token counts."""
-        pricing = ModelPricing(
-            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
-        )
+        pricing = ModelPricing(prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model")
 
         # 1 million prompt tokens, 500k completion tokens
         cost = pricing.calculate_cost(1_000_000, 500_000)

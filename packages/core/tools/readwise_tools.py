@@ -162,8 +162,7 @@ def make_readwise_tools(config: dict) -> list[ToolDefinition]:
         ToolDefinition(
             name="tag_readwise_document",
             description=(  # pragma: no mutate
-                "Add tags to a Readwise Reader document. "
-                "Tags are comma-separated (e.g. 'ai,research,to-review')."
+                "Add tags to a Readwise Reader document. Tags are comma-separated (e.g. 'ai,research,to-review')."
             ),
             parameters={
                 "type": "object",

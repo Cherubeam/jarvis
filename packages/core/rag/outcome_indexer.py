@@ -200,7 +200,7 @@ class OutcomeSearcher:
         )
 
         results: list[OutcomeResult] = []
-        for meta, distance in zip(raw["metadatas"][0], raw["distances"][0]):
+        for meta, distance in zip(raw["metadatas"][0], raw["distances"][0], strict=True):
             results.append(
                 OutcomeResult(
                     outcome_id=meta.get("outcome_id", ""),

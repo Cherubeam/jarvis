@@ -242,9 +242,7 @@ class TestCreateBlogPost:
     def test_creates_new_file(self, tools):
         tool_list, blog_dir, *_ = tools
         tool = _get_tool(tool_list, "create_blog_post")
-        result = tool.execute(
-            filename="new-post.md", content="# My Post\n\nGreat content.", use_template=False
-        )
+        result = tool.execute(filename="new-post.md", content="# My Post\n\nGreat content.", use_template=False)
 
         assert "Successfully" in result
         assert (blog_dir / "new-post.md").exists()
@@ -252,7 +250,7 @@ class TestCreateBlogPost:
     def test_creates_with_template(self, tools):
         tool_list, blog_dir, *_ = tools
         tool = _get_tool(tool_list, "create_blog_post")
-        result = tool.execute(filename="templated.md", content="# My Post", use_template=True)
+        tool.execute(filename="templated.md", content="# My Post", use_template=True)
 
         content = (blog_dir / "templated.md").read_text(encoding="utf-8")
         assert "title" in content  # from template
@@ -270,7 +268,7 @@ class TestCreateBlogPost:
         tool_list, blog_dir, *_ = tools
         tool = _get_tool(tool_list, "create_blog_post")
         # Call WITHOUT use_template — should default to True
-        result = tool.execute(filename="default-template.md", content="# Default Post")
+        tool.execute(filename="default-template.md", content="# Default Post")
         content = (blog_dir / "default-template.md").read_text(encoding="utf-8")
         assert "title" in content  # template was prepended
 
@@ -298,7 +296,7 @@ class TestCreateBlogPost:
         tool_list, blog_dir, template, *_ = tools
         tool = _get_tool(tool_list, "create_blog_post")
         # use_template=False should skip template even if file exists
-        result = tool.execute(filename="no-template.md", content="# Plain Post", use_template=False)
+        tool.execute(filename="no-template.md", content="# Plain Post", use_template=False)
         content = (blog_dir / "no-template.md").read_text(encoding="utf-8")
         assert "title" not in content  # template NOT prepended
         assert content == "# Plain Post"
@@ -364,9 +362,7 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         with patch(
             "packages.core.tools.blog_tools.write_note",
-            wraps=__import__(
-                "packages.integrations.obsidian.writer", fromlist=["write_note"]
-            ).write_note,
+            wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note,
         ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/reason-test.md",
@@ -375,8 +371,7 @@ class TestEditBlogPost:
             )
             mock_write.assert_called_once()
             assert mock_write.call_args.kwargs.get("reasoning") == "Improved clarity" or (
-                len(mock_write.call_args.args) > 4
-                and mock_write.call_args.args[4] == "Improved clarity"
+                len(mock_write.call_args.args) > 4 and mock_write.call_args.args[4] == "Improved clarity"
             )
 
     def test_reasoning_default_is_empty(self, blog_vault):
@@ -395,9 +390,7 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         with patch(
             "packages.core.tools.blog_tools.write_note",
-            wraps=__import__(
-                "packages.integrations.obsidian.writer", fromlist=["write_note"]
-            ).write_note,
+            wraps=__import__("packages.integrations.obsidian.writer", fromlist=["write_note"]).write_note,
         ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/no-reason.md",
@@ -414,10 +407,7 @@ class TestEditBlogPost:
             path="03 – Areas/02 – Substack/ghost.md",
             new_content="content",
         )
-        assert (
-            result
-            == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
-        )
+        assert result == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
 
     def test_rejects_template_edit(self, tools):
         """Template dir has read-only access — edits are blocked by validate_write."""

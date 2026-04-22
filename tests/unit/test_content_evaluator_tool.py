@@ -108,9 +108,7 @@ class TestContentEvaluatorTool:
         """skill.py SKILL_CONFIG temperature overrides the default 0.8."""
         mock_module = MagicMock()
         mock_module.SKILL_CONFIG = {"temperature": 0.9}
-        with patch(
-            "packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module
-        ):
+        with patch("packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module):
             tool = make_content_evaluator_tool(skill_dir_with_py, mock_client, "test-model")
         tool.execute(content="test")
 

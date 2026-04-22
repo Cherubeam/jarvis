@@ -20,9 +20,7 @@ from packages.core.rag.indexer import (
 # ---------------------------------------------------------------------------
 
 
-def _make_v1_conversation(
-    conv_id: str, messages: list[dict], session_start: str = "2026-02-20T10:00:00"
-) -> dict:
+def _make_v1_conversation(conv_id: str, messages: list[dict], session_start: str = "2026-02-20T10:00:00") -> dict:
     """Return a minimal schema-v1.0.0 conversation dict."""
     return {
         "schema_version": "1.0.0",
@@ -101,7 +99,7 @@ class TestChunkDocument:
         step = _MAX_EMBED_CHARS - _CHUNK_OVERLAP_CHARS
         for idx, chunk in enumerate(chunks):
             start = idx * step
-            for j, ch in enumerate(chunk):
+            for j, _ch in enumerate(chunk):
                 covered.add(start + j)
         assert all(i in covered for i in range(len(doc)))
 
@@ -118,9 +116,7 @@ class TestExtractPairs:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.rag.indexer import ConversationIndexer
@@ -337,9 +333,7 @@ class TestIndexNew:
             for cid in (already_indexed_ids or [])
         ]
         mock_collection.get.return_value = {"ids": existing_ids, "metadatas": existing_metas}
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer
@@ -368,7 +362,6 @@ class TestIndexNew:
         )
         self._write_conv(tmp_path, "2026-02-20_10-00-00.json", conv)
 
-        fake_embedding = [[0.1, 0.2, 0.3]]
         with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
             mock_embed.return_value = MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]}])
             n_new = indexer.index_new(tmp_path)
@@ -392,9 +385,7 @@ class TestIndexNew:
             n = len(kwargs["input"])
             return MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]} for _ in range(n)])
 
-        with patch(
-            "packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed
-        ) as mock_embed:
+        with patch("packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed) as mock_embed:
             n_new = indexer.index_new(tmp_path)
 
         assert n_new == 1
@@ -422,9 +413,7 @@ class TestIndexNew:
             n = len(kwargs["input"])
             return MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]} for _ in range(n)])
 
-        with patch(
-            "packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed
-        ) as mock_embed:
+        with patch("packages.core.rag.indexer.litellm.embedding", side_effect=_fake_embed):
             n_new = indexer.index_new(tmp_path)
 
         assert n_new == 2
@@ -483,9 +472,7 @@ class TestIndexNew:
                 {"conv_id": "conv_b", "session_date": "2026-01-15"},
             ],
         }
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer
@@ -512,9 +499,7 @@ class TestIndexNew:
                 {"conv_id": "conv_a", "session_date": "2026-02-20", "session_date_int": 20260220},
             ],
         }
-        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma_module}):
             from packages.core.rag.indexer import ConversationIndexer

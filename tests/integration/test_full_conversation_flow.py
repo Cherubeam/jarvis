@@ -20,9 +20,7 @@ from packages.core.pricing import ModelPricing
 class TestFullConversationFlow:
     """Integration tests for complete conversation flows."""
 
-    def test_single_turn_conversation(
-        self, temp_conversations_dir: Path, sample_context_all_files: Path
-    ):
+    def test_single_turn_conversation(self, temp_conversations_dir: Path, sample_context_all_files: Path):
         """Test a single user→assistant conversation turn."""
         # Setup
         client = LLMClient(
@@ -138,9 +136,7 @@ class TestFullConversationFlow:
             assert logger.metrics.request_count == 3
             assert logger.metrics.total_tokens == 120 + 145 + 175
 
-    def test_context_included_in_request(
-        self, temp_conversations_dir: Path, sample_context_all_files: Path
-    ):
+    def test_context_included_in_request(self, temp_conversations_dir: Path, sample_context_all_files: Path):
         """Test that system prompt with context is sent to LLM."""
         client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
         logger = ConversationLogger(temp_conversations_dir)
@@ -215,9 +211,7 @@ class TestFullConversationFlow:
         logger = ConversationLogger(temp_conversations_dir)
 
         # Mock pricing
-        pricing = ModelPricing(
-            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
-        )
+        pricing = ModelPricing(prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model")
 
         with patch("litellm.completion") as mock_completion:
             content_chunk = Mock()

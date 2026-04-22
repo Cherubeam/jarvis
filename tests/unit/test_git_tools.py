@@ -12,9 +12,7 @@ from packages.core.tools.git_tools import _run_git, make_git_tools
 def git_dir(tmp_path):
     """Create a temporary git repo."""
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
     (tmp_path / "README.md").write_text("# Test\n")
     subprocess.run(["git", "add", "README.md"], cwd=tmp_path, capture_output=True)
@@ -118,7 +116,7 @@ class TestGitLog:
 
     def test_respects_n_limit(self, tools):
         result = tools["git_log"].execute(n=1)
-        lines = [l for l in result.strip().split("\n") if l]
+        lines = [line for line in result.strip().split("\n") if line]
         assert len(lines) == 1
 
 
@@ -203,10 +201,7 @@ class TestExactOutputs:
 
     def test_invalid_branch_exact(self, tools):
         result = tools["git_branch"].execute(name="bad-name")
-        assert (
-            result
-            == "Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: bad-name"
-        )
+        assert result == "Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: bad-name"
 
     def test_empty_paths_exact(self, tools):
         result = tools["git_add"].execute(paths=[])

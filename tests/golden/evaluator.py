@@ -160,13 +160,11 @@ def evaluate_tool_calls(
 
     # Check expected_tool_calls (ordered list)
     expected_calls = assertions.get("expected_tool_calls", [])
-    for i, expected in enumerate(expected_calls):
+    for _i, expected in enumerate(expected_calls):
         expected_name = expected["tool_name"]
 
         # Find matching tool call by name (search all, not by index)
-        matching = [
-            tc for tc in actual_tool_calls if tc.get("function", {}).get("name") == expected_name
-        ]
+        matching = [tc for tc in actual_tool_calls if tc.get("function", {}).get("name") == expected_name]
 
         if not matching:
             details.append(f"Expected tool call '{expected_name}' not found")
@@ -196,10 +194,7 @@ def evaluate_tool_calls(
                     if actual_str.lower() == str(expected_value).lower():
                         details.append(f"  Arg '{arg_name}' matches: {expected_value}")
                     else:
-                        details.append(
-                            f"  Arg '{arg_name}' mismatch: expected '{expected_value}', "
-                            f"got '{actual_str}'"
-                        )
+                        details.append(f"  Arg '{arg_name}' mismatch: expected '{expected_value}', got '{actual_str}'")
                         score_cap = min(score_cap, 0.3)
                 else:
                     # Substring match (default for free-text args)
@@ -207,21 +202,17 @@ def evaluate_tool_calls(
                     if str(expected_value).lower() in actual_str:
                         details.append(f"  Arg '{arg_name}' contains '{expected_value}'")
                     else:
-                        details.append(
-                            f"  Arg '{arg_name}' missing substring '{expected_value}' "
-                            f"in '{actual_str}'"
-                        )
+                        details.append(f"  Arg '{arg_name}' missing substring '{expected_value}' in '{actual_str}'")
                         score_cap = min(score_cap, 0.5)
 
     # Check expects_final_text
-    if assertions.get("expects_final_text", True):
-        if not final_text or not final_text.strip():
-            # Only penalize if we weren't expecting no tool calls (termination test
-            # with no tools still needs text, but terminal tool tests don't)
-            has_terminal = any(tc.get("_terminal", False) for tc in actual_tool_calls)
-            if not has_terminal:
-                details.append("Expected final text response, but none produced")
-                score_cap = min(score_cap, 0.4)
+    if assertions.get("expects_final_text", True) and (not final_text or not final_text.strip()):
+        # Only penalize if we weren't expecting no tool calls (termination test
+        # with no tools still needs text, but terminal tool tests don't)
+        has_terminal = any(tc.get("_terminal", False) for tc in actual_tool_calls)
+        if not has_terminal:
+            details.append("Expected final text response, but none produced")
+            score_cap = min(score_cap, 0.4)
 
     passed = score_cap >= 0.7
     return ToolCallCheckResult(
@@ -353,8 +344,7 @@ class JudgeEvaluator:
             quality_threshold=self.quality_threshold,
             response_cost_usd=response_metrics.get("cost_usd", 0.0),
             judge_cost_usd=judge_evaluation.get("cost_usd", 0.0),
-            total_cost_usd=response_metrics.get("cost_usd", 0.0)
-            + judge_evaluation.get("cost_usd", 0.0),
+            total_cost_usd=response_metrics.get("cost_usd", 0.0) + judge_evaluation.get("cost_usd", 0.0),
             response_latency_ms=response_metrics.get("latency_ms", 0.0),
             judge_latency_ms=judge_latency_ms,
             response_tokens=response_metrics.get("tokens", {}),
@@ -401,7 +391,6 @@ class JudgeEvaluator:
 
         # Get usage and calculate cost
         usage = stream.usage
-        raw_response = stream.raw_response
 
         # Calculate cost using model pricing (same approach as production)
         if self.judge_pricing:
@@ -484,9 +473,7 @@ class JudgeEvaluator:
             "failed_criteria": [],
         }
 
-    def _fallback_evaluation(
-        self, actual_response: str, criteria: EvaluationCriteria, error: str
-    ) -> dict:
+    def _fallback_evaluation(self, actual_response: str, criteria: EvaluationCriteria, error: str) -> dict:
         """
         Provide basic evaluation when judge fails.
 
@@ -574,9 +561,7 @@ class JudgeEvaluator:
             reasoning += f"\n\nExpected content missing: {basic_checks.get('content_found', [])}"
 
         if not basic_checks["length_ok"]:
-            reasoning += (
-                f"\n\nLength constraint violated (length: {basic_checks['response_length']})"
-            )
+            reasoning += f"\n\nLength constraint violated (length: {basic_checks['response_length']})"
 
         return EvaluationScore(
             overall_score=overall_score,

@@ -14,7 +14,6 @@ from freezegun import freeze_time
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.memory import (
-        SCHEMA_VERSION,
         ConversationLogger,
         SessionMetrics,
         _extract_text_from_content,
@@ -144,9 +143,7 @@ class TestSessionMetrics:
         """Test that add_usage accumulates tokens and cost correctly."""
         metrics = SessionMetrics()
 
-        metrics.add_usage(
-            prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.0045
-        )
+        metrics.add_usage(prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.0045)
 
         assert metrics.total_prompt_tokens == 100
         assert metrics.total_completion_tokens == 50
@@ -366,7 +363,7 @@ class TestConversationLogger:
         new_dir = tmp_path / "new_conversations"
         assert not new_dir.exists()
 
-        logger = ConversationLogger(new_dir)
+        ConversationLogger(new_dir)
 
         assert new_dir.exists()
         assert new_dir.is_dir()
@@ -443,9 +440,7 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "First")
-        logger.add_message(
-            "assistant", "Second", total_tokens=10, prompt_tokens=5, completion_tokens=5
-        )
+        logger.add_message("assistant", "Second", total_tokens=10, prompt_tokens=5, completion_tokens=5)
         logger.add_message("user", "Third")
 
         assert logger.current_conversation[0]["id"] == "msg_001"
@@ -518,9 +513,7 @@ class TestConversationLogger:
         logger = ConversationLogger(temp_conversations_dir)
 
         logger.add_message("user", "Hello")
-        logger.add_message(
-            "assistant", "Hi there", prompt_tokens=10, completion_tokens=5, total_tokens=15
-        )
+        logger.add_message("assistant", "Hi there", prompt_tokens=10, completion_tokens=5, total_tokens=15)
 
         api_messages = logger.get_messages_for_api()
 
@@ -599,9 +592,7 @@ class TestConversationLogger:
 
         assert len(api_msgs) == 4
         # Assistant tool_calls message
-        assert api_msgs[1]["tool_calls"] == [
-            {"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}
-        ]
+        assert api_msgs[1]["tool_calls"] == [{"id": "tc1", "function": {"name": "fetch", "arguments": "{}"}}]
         assert api_msgs[1]["content"] is None
         # Tool result message
         assert api_msgs[2]["role"] == "tool"
@@ -989,9 +980,7 @@ class TestMigrateConversationMutationTargets:
 
     def test_migrate_message_id_format(self):
         """Message IDs start at 1 and use 3-digit zero-padded format."""
-        old = {
-            "messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]
-        }
+        old = {"messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]}
         result = migrate_conversation(old)
         assert result["messages"][0]["id"] == "msg_001"
         assert result["messages"][1]["id"] == "msg_002"
@@ -1415,9 +1404,7 @@ class TestConversationLoggerUtilization:
             context_metadata=metadata,
         )
         logger.add_message("user", "Hello")
-        logger.add_message(
-            "assistant", "Hi!", prompt_tokens=50, completion_tokens=5, total_tokens=55
-        )
+        logger.add_message("assistant", "Hi!", prompt_tokens=50, completion_tokens=5, total_tokens=55)
 
         logger.save()
 

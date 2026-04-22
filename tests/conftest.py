@@ -98,9 +98,7 @@ def sample_preferences(temp_context_dir: Path) -> Path:
     """Create a sample preferences.md file."""
     prefs_path = temp_context_dir / "preferences.md"
     prefs_path.write_text(
-        "- Be concise and technical\n"
-        "- Avoid unnecessary pleasantries\n"
-        "- Use technical jargon appropriately"
+        "- Be concise and technical\n- Avoid unnecessary pleasantries\n- Use technical jargon appropriately"
     )
     return prefs_path
 

@@ -97,14 +97,8 @@ class TestParsePattern:
         assert p.category == "Reasoning & Planning"
         assert p.intent == "Make AI reasoning visible by forcing it to show its work."
         assert p.context == "A language model is asked a question requiring multiple steps."
-        assert (
-            p.problem
-            == "Models jump to plausible-sounding answers, skipping intermediate reasoning."
-        )
-        assert (
-            p.solution
-            == "Instruct the model to reason step by step before producing its final answer."
-        )
+        assert p.problem == "Models jump to plausible-sounding answers, skipping intermediate reasoning."
+        assert p.solution == "Instruct the model to reason step by step before producing its final answer."
         assert "auditable" in p.consequences
         assert p.related_patterns == ["ReAct", "Reflection"]
         assert p.status == "draft"
@@ -591,10 +585,13 @@ class TestGeneratePatternImage:
 class TestRenderCardToPng:
     def test_missing_system_libs_raises_helpful_error(self):
         """Missing WeasyPrint libs should produce an actionable error message."""
-        with patch(
-            "packages.core.card_renderer._get_weasyprint_html",
-            side_effect=RuntimeError("brew install pango"),
-        ), pytest.raises(RuntimeError, match="brew install pango"):
+        with (
+            patch(
+                "packages.core.card_renderer._get_weasyprint_html",
+                side_effect=RuntimeError("brew install pango"),
+            ),
+            pytest.raises(RuntimeError, match="brew install pango"),
+        ):
             render_card_to_png("<html></html>", Path("/tmp/test.png"))
 
     def test_renders_png_via_pdf_and_pymupdf(self, tmp_path):
@@ -633,10 +630,13 @@ class TestRenderCardToPng:
 class TestRenderCardToPdf:
     def test_missing_system_libs_raises_helpful_error(self):
         """Missing WeasyPrint libs should produce an actionable error message."""
-        with patch(
-            "packages.core.card_renderer._get_weasyprint_html",
-            side_effect=RuntimeError("brew install pango"),
-        ), pytest.raises(RuntimeError, match="brew install pango"):
+        with (
+            patch(
+                "packages.core.card_renderer._get_weasyprint_html",
+                side_effect=RuntimeError("brew install pango"),
+            ),
+            pytest.raises(RuntimeError, match="brew install pango"),
+        ):
             render_card_to_pdf("<html></html>", Path("/tmp/test.pdf"))
 
 

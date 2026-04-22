@@ -51,8 +51,7 @@ def _parse_server(name: str, server: dict) -> MCPServerConfig:
     """Parse and validate a single server entry."""
     if "__" in name:
         raise ValueError(
-            f"MCP server name '{name}' must not contain '__' "
-            "(reserved as namespace separator in tool names)."
+            f"MCP server name '{name}' must not contain '__' (reserved as namespace separator in tool names)."
         )
 
     transport = server.get("transport", "")

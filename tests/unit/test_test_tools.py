@@ -42,7 +42,7 @@ class TestRunTests:
     def test_with_path(self, tool):
         with patch("packages.core.tools.test_tools.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="1 passed\n", stderr="", returncode=0)
-            result = tool.execute(path="tests/unit/test_foo.py")
+            tool.execute(path="tests/unit/test_foo.py")
             # Verify the path was passed to subprocess
             call_args = mock_run.call_args[0][0]
             assert "tests/unit/test_foo.py" in call_args

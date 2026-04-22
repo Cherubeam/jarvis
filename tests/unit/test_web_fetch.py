@@ -53,9 +53,7 @@ class TestFetchUrlTool:
         assert "Raw HTML content" in result
 
     def test_timeout_returns_error_string(self):
-        with patch(
-            "packages.core.tools.web_fetch.httpx.get", side_effect=httpx.TimeoutException("timeout")
-        ):
+        with patch("packages.core.tools.web_fetch.httpx.get", side_effect=httpx.TimeoutException("timeout")):
             result = _fetch_url("https://example.com")
 
         assert result == "Error: Request to https://example.com timed out after 10s."

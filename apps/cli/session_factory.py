@@ -192,14 +192,11 @@ def build_session(
 
     if not get_api_key(resolved.provider, api_keys):
         raise RuntimeError(
-            f"No API key for provider '{resolved.provider}'. "
-            f"Set {resolved.provider.upper()}_API_KEY in your .env file."
+            f"No API key for provider '{resolved.provider}'. Set {resolved.provider.upper()}_API_KEY in your .env file."
         )
 
     context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
-    conversations_dir = jarvis_dir / config.get("paths", {}).get(
-        "conversations_dir", "data/conversations"
-    )
+    conversations_dir = jarvis_dir / config.get("paths", {}).get("conversations_dir", "data/conversations")
 
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
@@ -224,9 +221,7 @@ def build_session(
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
             db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-            embedding_model = rag_cfg.get(
-                "embedding_model", "openrouter/openai/text-embedding-3-small"
-            )
+            embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
             rag_api_key = get_api_key("openrouter", api_keys) or ""
 
             indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
@@ -234,28 +229,20 @@ def build_session(
             if n_new:
                 print_system(f"[RAG] Indexed {n_new} new conversation(s).")
 
-            shared_tools.append(
-                make_conversation_recall_tool(db_path, embedding_model, rag_api_key)
-            )
+            shared_tools.append(make_conversation_recall_tool(db_path, embedding_model, rag_api_key))
 
             outcomes_cfg_for_index = config.get("outcomes", {})
             if outcomes_cfg_for_index.get("enabled", True):
                 from packages.core.rag.outcome_indexer import OutcomeIndexer
 
-                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get(
-                    "dir", "data/outcomes"
-                )
+                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get("dir", "data/outcomes")
                 outcome_indexer = OutcomeIndexer(db_path, embedding_model, rag_api_key)
                 n_outcomes = outcome_indexer.index_new(outcomes_dir_for_index)
                 if n_outcomes:
                     print_system(f"[RAG] Indexed {n_outcomes} new outcome(s).")
 
             if rag_cfg.get("index_cards", True):
-                deck_dirs = [
-                    meta.path
-                    for meta in skill_registry.values()
-                    if (meta.path / "deck.yaml").is_file()
-                ]
+                deck_dirs = [meta.path for meta in skill_registry.values() if (meta.path / "deck.yaml").is_file()]
                 if deck_dirs:
                     from packages.core.rag.card_indexer import CardIndexer
                     from packages.core.tools.card_search import make_card_search_tool
@@ -357,9 +344,7 @@ def build_session(
         try:
             from packages.core.tools.content_evaluator import make_content_evaluator_tool
 
-            tool_groups["content_evaluator"] = [
-                make_content_evaluator_tool(skill_dir, client, model_id)
-            ]
+            tool_groups["content_evaluator"] = [make_content_evaluator_tool(skill_dir, client, model_id)]
             print_system("[Tools] Content evaluator loaded.")
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
@@ -413,9 +398,7 @@ def build_session(
         try:
             from packages.core.tools.suggest_improvements import make_suggest_improvements_tool
 
-            tool_groups["suggest_improvements"] = [
-                make_suggest_improvements_tool(vault_config, confirmation_handler)
-            ]
+            tool_groups["suggest_improvements"] = [make_suggest_improvements_tool(vault_config, confirmation_handler)]
             print_system("[Tools] Suggest improvements loaded.")
         except Exception as e:
             print_system(f"[Tools] Suggest improvements failed: {e}")
@@ -471,9 +454,7 @@ def build_session(
                 )
                 tool_groups["card_generator"] = card_gen_tools
                 img_status = "enabled" if img_config.enabled else "prompts only"
-                print_system(
-                    f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status})."
-                )
+                print_system(f"[Cards] {len(card_gen_tools)} card generator tools loaded (images: {img_status}).")
             except Exception as e:
                 print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
 
@@ -500,9 +481,7 @@ def build_session(
             raise RuntimeError(f"Unknown agent '{requested_agent}'. Available: {available}")
         meta = agent_registry[requested_agent]
         all_agent_tools = assemble_agent_tools(meta, shared_tools, tool_groups)
-        all_agent_tools.extend(
-            make_agent_vault_tools(meta, config, vault_config, confirmation_handler)
-        )
+        all_agent_tools.extend(make_agent_vault_tools(meta, config, vault_config, confirmation_handler))
         active_agent = instantiate_agent(
             meta,
             client,
@@ -513,9 +492,7 @@ def build_session(
         )
         agent_name = meta.name
     else:
-        available_agents = [
-            {"name": meta.name, "description": meta.description} for meta in agent_registry.values()
-        ]
+        available_agents = [{"name": meta.name, "description": meta.description} for meta in agent_registry.values()]
         jarvis_tools = (
             list(shared_tools)
             + tool_groups.get("web_tools", [])

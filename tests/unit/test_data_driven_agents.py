@@ -128,9 +128,7 @@ class TestDataDrivenAgentsSkillBinding:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         (agent_dir / "meta.yaml").write_text(
-            yaml.dump(
-                {"name": "test", "description": "test", "command": "/test", "skills": ["my-skill"]}
-            )
+            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["my-skill"]})
         )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
@@ -139,9 +137,7 @@ class TestDataDrivenAgentsSkillBinding:
         # Create skill
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()
-        (skill_dir / "SKILL.md").write_text(
-            "---\nname: my-skill\n---\n\n# My Skill\n\nExpertise content here."
-        )
+        (skill_dir / "SKILL.md").write_text("---\nname: my-skill\n---\n\n# My Skill\n\nExpertise content here.")
 
         skill_registry = {
             "my-skill": SkillMeta(
@@ -168,9 +164,7 @@ class TestDataDrivenAgentsSkillBinding:
         """meta.yaml without skills: field behaves as before."""
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
-        (agent_dir / "meta.yaml").write_text(
-            yaml.dump({"name": "test", "description": "test", "command": "/test"})
-        )
+        (agent_dir / "meta.yaml").write_text(yaml.dump({"name": "test", "description": "test", "command": "/test"}))
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
         base_prompt = "You are a test agent." * 5
@@ -186,9 +180,7 @@ class TestDataDrivenAgentsSkillBinding:
         agent_dir = tmp_path / "test_agent"
         agent_dir.mkdir()
         (agent_dir / "meta.yaml").write_text(
-            yaml.dump(
-                {"name": "test", "description": "test", "command": "/test", "skills": ["missing"]}
-            )
+            yaml.dump({"name": "test", "description": "test", "command": "/test", "skills": ["missing"]})
         )
         prompts_dir = agent_dir / "prompts"
         prompts_dir.mkdir()
@@ -385,9 +377,7 @@ class TestMaxIterations:
             text="ok",
             usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
             cost_usd=0.0,
-            metrics=ResponseMetrics(
-                ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1
-            ),
+            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
         )
 
         agent.run("hello", handler)
@@ -422,9 +412,7 @@ class TestMaxIterations:
             text="ok",
             usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
             cost_usd=0.0,
-            metrics=ResponseMetrics(
-                ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1
-            ),
+            metrics=ResponseMetrics(ttft_ms=10, total_latency_ms=100, prompt_tokens=1, completion_tokens=1),
         )
 
         agent.run("hello", handler)

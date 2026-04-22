@@ -24,9 +24,7 @@ def _date_str_to_int(date_str: str) -> int:
         return 0
 
 
-def _chunk_document(
-    text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS
-) -> list[str]:
+def _chunk_document(text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS) -> list[str]:
     """Split *text* into overlapping windows of at most *max_chars* characters.
 
     Short documents (≤ max_chars) are returned as-is in a single-element list.
@@ -230,7 +228,7 @@ class ConversationIndexer:
         ids_to_update: list[str] = []
         metas_to_update: list[dict] = []
 
-        for doc_id, meta in zip(result["ids"], result["metadatas"]):
+        for doc_id, meta in zip(result["ids"], result["metadatas"], strict=True):
             if meta.get("session_date_int"):
                 continue
             session_date = meta.get("session_date", "")

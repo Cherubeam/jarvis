@@ -13,9 +13,7 @@ from packages.core.importers.claude import import_conversations
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Import Claude conversations into Jarvis schema v1.0.0."
-    )
+    parser = argparse.ArgumentParser(description="Import Claude conversations into Jarvis schema v1.0.0.")
     parser.add_argument(
         "source",
         type=Path,

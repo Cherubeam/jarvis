@@ -18,7 +18,6 @@ try:
         TokenUsage,
         _apply_cache_control,
         _extract_cache_tokens,
-        _parse_credit_error,
     )
 except ImportError:
     from llm_client import LLMClient, StreamingResponse, TokenUsage
@@ -188,9 +187,7 @@ class TestLLMClient:
             mock_usage_chunk.usage = Mock(prompt_tokens=100, completion_tokens=50, total_tokens=150)
 
             mock_stream_obj = Mock()
-            mock_stream_obj.__iter__ = Mock(
-                return_value=iter([mock_content_chunk, mock_usage_chunk])
-            )
+            mock_stream_obj.__iter__ = Mock(return_value=iter([mock_content_chunk, mock_usage_chunk]))
 
             mock_completion.return_value = mock_stream_obj
 
@@ -399,10 +396,9 @@ class TestCreditErrorParsing:
             model="test/test-model",
         )
 
-        with patch("litellm.completion", side_effect=error):
-            with pytest.raises(litellm.APIError):
-                stream = client.chat_stream([{"role": "user", "content": "hi"}])
-                list(stream)  # Consume to trigger the generator
+        with patch("litellm.completion", side_effect=error), pytest.raises(litellm.APIError):
+            stream = client.chat_stream([{"role": "user", "content": "hi"}])
+            list(stream)  # Consume to trigger the generator
 
 
 @pytest.mark.unit

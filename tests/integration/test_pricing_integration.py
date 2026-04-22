@@ -67,9 +67,7 @@ class TestPricingIntegration:
     def test_pricing_display_format(self):
         """Test cost display formatting in various scenarios."""
         # Create a pricing object
-        pricing = ModelPricing(
-            prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model"
-        )
+        pricing = ModelPricing(prompt_cost=0.000003, completion_cost=0.000015, model_id="test-model")
 
         # Test various token counts and their formatted costs
         # Format rules: <0.0001=6 decimals, <0.01=4 decimals, >=0.01=2 decimals

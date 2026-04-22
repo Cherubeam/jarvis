@@ -25,9 +25,7 @@ class VaultConfig:
     enabled: bool = True
 
 
-def load_vault_config(
-    config: dict, filesystem_guard: FilesystemGuard | None = None
-) -> VaultConfig | None:
+def load_vault_config(config: dict, filesystem_guard: FilesystemGuard | None = None) -> VaultConfig | None:
     """Load vault configuration from config dictionary.
 
     Args:

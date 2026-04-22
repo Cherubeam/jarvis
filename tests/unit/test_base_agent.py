@@ -84,7 +84,7 @@ class TestBaseAgentRun:
         handler = Mock(spec=StreamHandler)
         handler.stream.return_value = _make_stream_result()
 
-        result = agent.run("hello", handler)
+        agent.run("hello", handler)
 
         # Should add to internal history and use it
         call_args = handler.stream.call_args

@@ -91,9 +91,7 @@ def make_git_tools(project_root: Path) -> list[ToolDefinition]:
 
     def _git_branch(name: str) -> str:
         if not _BRANCH_PREFIX_RE.match(name):
-            return (
-                f"Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: {name}"
-            )
+            return f"Error: Branch name must start with 'feat/jarvis-' or 'fix/jarvis-'. Got: {name}"
         return _run_git(["switch", "-c", name], root)
 
     tools.append(

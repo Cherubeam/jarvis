@@ -158,7 +158,7 @@ class TestCreateNote:
     def test_creates_with_template(self, tools_with_target):
         tools, target, *_ = tools_with_target
         tool = _get_tool(tools, "create_note")
-        result = tool.execute(path="Templated.md", content="# Pattern Body", use_template=True)
+        tool.execute(path="Templated.md", content="# Pattern Body", use_template=True)
 
         content = (target / "Templated.md").read_text(encoding="utf-8")
         assert "type: pattern" in content  # from template

@@ -79,9 +79,7 @@ def _run_evaluations(models: list[str], judge_model: str, fail_fast: bool) -> No
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Estimate benchmark costs and optionally run evaluations."
-    )
+    parser = argparse.ArgumentParser(description="Estimate benchmark costs and optionally run evaluations.")
     parser.add_argument(
         "--models",
         nargs="*",

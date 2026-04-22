@@ -9,7 +9,10 @@ from packages.core.tools.base import ToolDefinition, ToolRegistry
 
 def _make_tool(name: str = "my_tool", fn=None) -> ToolDefinition:
     if fn is None:
-        fn = lambda x: f"result:{x}"
+
+        def fn(x):
+            return f"result:{x}"
+
     return ToolDefinition(
         name=name,
         description=f"A test tool called {name}",

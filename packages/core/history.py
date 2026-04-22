@@ -175,13 +175,11 @@ def summarize_history(
         )
         summary_text = response.choices[0].message.content
     except Exception:
-        logger.warning(
-            "History summarization failed; returning original history", exc_info=True
-        )  # pragma: no mutate
+        logger.warning("History summarization failed; returning original history", exc_info=True)  # pragma: no mutate
         return history
 
     summary_msg = {
         "role": "assistant",
         "content": f"{_SUMMARY_MARKER} Here is a summary of our conversation so far:\n{summary_text}",
     }
-    return [summary_msg] + recent_messages
+    return [summary_msg, *recent_messages]

@@ -5,7 +5,6 @@ Tests the full flow: config → read → parse → diff → confirm → write.
 Uses temporary vaults with real filesystem operations.
 """
 
-
 import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard

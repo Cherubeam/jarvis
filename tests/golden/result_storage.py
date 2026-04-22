@@ -193,9 +193,7 @@ class ResultStorage:
                 all_dimensions[dim] += score
                 dimension_counts[dim] += 1
 
-        average_dimension_scores = {
-            dim: all_dimensions[dim] / dimension_counts[dim] for dim in all_dimensions
-        }
+        average_dimension_scores = {dim: all_dimensions[dim] / dimension_counts[dim] for dim in all_dimensions}
 
         # Costs
         total_cost = sum(r.total_cost_usd for r in results)
@@ -326,33 +324,20 @@ class ResultStorage:
             # Cost Analysis
             f.write("## Cost Analysis\n\n")
             response_pct = (
-                (summary.total_response_cost_usd / summary.total_cost_usd * 100)
-                if summary.total_cost_usd > 0
-                else 0
+                (summary.total_response_cost_usd / summary.total_cost_usd * 100) if summary.total_cost_usd > 0 else 0
             )
-            f.write(
-                f"**Response Generation**: ${summary.total_response_cost_usd:.3f} "
-                f"({response_pct:.0f}%)\n"
-            )
-            f.write(
-                f"- Average per test: ${summary.total_response_cost_usd / summary.total_tests:.3f}\n"
-            )
+            f.write(f"**Response Generation**: ${summary.total_response_cost_usd:.3f} ({response_pct:.0f}%)\n")
+            f.write(f"- Average per test: ${summary.total_response_cost_usd / summary.total_tests:.3f}\n")
             f.write(
                 f"- Token usage: {summary.total_response_tokens:,} total "
                 f"({summary.total_response_tokens // summary.total_tests:,} avg per test)\n\n"
             )
 
             judge_pct = (
-                (summary.total_judge_cost_usd / summary.total_cost_usd * 100)
-                if summary.total_cost_usd > 0
-                else 0
+                (summary.total_judge_cost_usd / summary.total_cost_usd * 100) if summary.total_cost_usd > 0 else 0
             )
-            f.write(
-                f"**Judge Evaluation**: ${summary.total_judge_cost_usd:.3f} ({judge_pct:.0f}%)\n"
-            )
-            f.write(
-                f"- Average per test: ${summary.total_judge_cost_usd / summary.total_tests:.3f}\n"
-            )
+            f.write(f"**Judge Evaluation**: ${summary.total_judge_cost_usd:.3f} ({judge_pct:.0f}%)\n")
+            f.write(f"- Average per test: ${summary.total_judge_cost_usd / summary.total_tests:.3f}\n")
             f.write(
                 f"- Token usage: {summary.total_judge_tokens:,} total "
                 f"({summary.total_judge_tokens // summary.total_tests:,} avg per test)\n\n"
@@ -391,9 +376,7 @@ class ResultStorage:
                 else 0
             )
             if judge_cost_ratio > 1.5:
-                savings = (
-                    summary.total_judge_cost_usd * 0.6
-                )  # Estimate 60% savings with cheaper judge
+                savings = summary.total_judge_cost_usd * 0.6  # Estimate 60% savings with cheaper judge
                 f.write(
                     f"3. **Cost Optimization**: Consider using Sonnet 4 as judge for ~${savings:.2f} savings per run\n"
                 )

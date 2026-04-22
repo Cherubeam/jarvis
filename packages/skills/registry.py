@@ -93,9 +93,7 @@ def discover_skills(skills_dir: Path | None = None) -> dict[str, SkillMeta]:
     return skills
 
 
-def get_skill_by_command(
-    command: str, skills: dict[str, SkillMeta] | None = None
-) -> SkillMeta | None:
+def get_skill_by_command(command: str, skills: dict[str, SkillMeta] | None = None) -> SkillMeta | None:
     """Look up a skill by its slash command.
 
     Args:

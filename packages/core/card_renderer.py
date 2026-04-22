@@ -512,7 +512,7 @@ def render_card_to_png(html: str, output_path: Path) -> Path:
     """
     import fitz  # PyMuPDF
 
-    HTML = _get_weasyprint_html()
+    HTML = _get_weasyprint_html()  # noqa: N806 — class binding, PascalCase is correct
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     pdf_bytes = HTML(string=html).write_pdf()
@@ -528,7 +528,7 @@ def render_card_to_png(html: str, output_path: Path) -> Path:
 
 def render_card_to_pdf(html: str, output_path: Path) -> Path:
     """Render an HTML card string to a PDF file using WeasyPrint."""
-    HTML = _get_weasyprint_html()
+    HTML = _get_weasyprint_html()  # noqa: N806 — class binding, PascalCase is correct
     output_path.parent.mkdir(parents=True, exist_ok=True)
     HTML(string=html).write_pdf(str(output_path))
     return output_path
@@ -584,9 +584,7 @@ def generate_card_files(
     html_path.write_text(html_content, encoding="utf-8")
 
     # WeasyPrint render uses absolute paths for reliable image loading
-    png_html = (
-        render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
-    )
+    png_html = render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
     png_path = cards_dir / f"{slug}.png"
     render_card_to_png(png_html, png_path)
 

@@ -89,9 +89,7 @@ def convert_content_parts(content: dict) -> list[dict]:
         text = content.get("text", "")
         domain = content.get("domain", "")
         url = content.get("url", "")
-        return [
-            {"type": "text", "text": text, "metadata": {"quote_source": domain, "quote_url": url}}
-        ]
+        return [{"type": "text", "text": text, "metadata": {"quote_source": domain, "quote_url": url}}]
 
     if content_type == "reasoning_recap":
         text = content.get("content", "")
@@ -297,9 +295,7 @@ def import_conversations(
     summary.total = len(conversations)
 
     # Parse filter dates
-    dt_from = (
-        datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
-    )
+    dt_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=UTC) if date_from else None
     dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=UTC) if date_to else None
     if dt_to:
         dt_to = dt_to.replace(hour=23, minute=59, second=59)
@@ -355,9 +351,7 @@ def import_conversations(
             # Generate filename
             update_time = conv.get("update_time")
             ts = create_time or update_time
-            ts_dt = (
-                datetime.fromtimestamp(ts, tz=UTC) if ts else datetime.now(tz=UTC)
-            )
+            ts_dt = datetime.fromtimestamp(ts, tz=UTC) if ts else datetime.now(tz=UTC)
             filename = make_filename(ts_dt)
 
             # Handle collisions

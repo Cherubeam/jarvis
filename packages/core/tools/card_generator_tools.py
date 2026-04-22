@@ -74,10 +74,7 @@ def make_card_generator_tools(
         try:
             files = generate_card_files(match, output_dir, images_dir=images_dir)
             slug = _slugify(match.name)
-            has_image = any(
-                (images_dir / f"{slug}{ext}").is_file()
-                for ext in (".png", ".jpg", ".jpeg", ".webp")
-            )
+            has_image = any((images_dir / f"{slug}{ext}").is_file() for ext in (".png", ".jpg", ".jpeg", ".webp"))
             image_status = "with image" if has_image else "without image (placeholder used)"
             return (
                 f"Generated card for '{match.name}' ({match.category}) {image_status}:\n"
@@ -133,10 +130,7 @@ def make_card_generator_tools(
                     break
                 slug = _slugify(p.name)
                 # Skip if image already exists
-                if any(
-                    (images_dir / f"{slug}{ext}").is_file()
-                    for ext in (".png", ".jpg", ".jpeg", ".webp")
-                ):
+                if any((images_dir / f"{slug}{ext}").is_file() for ext in (".png", ".jpg", ".jpeg", ".webp")):
                     continue
                 try:
                     generate_pattern_image(p, images_dir, img_cfg)

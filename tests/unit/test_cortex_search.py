@@ -169,8 +169,7 @@ class TestCortexSearchTool:
         long_content = "x" * 3000
         mock_client.search.return_value = {
             "results": [
-                {"path": f"Note{i}.md", "heading": "", "score": 0.9, "content": long_content}
-                for i in range(5)
+                {"path": f"Note{i}.md", "heading": "", "score": 0.9, "content": long_content} for i in range(5)
             ],
             "count": 5,
         }
@@ -186,8 +185,7 @@ class TestCortexSearchTool:
         long_content = "y" * 4000
         mock_client.search.return_value = {
             "results": [
-                {"path": f"Note{i}.md", "heading": "", "score": 0.9, "content": long_content}
-                for i in range(5)
+                {"path": f"Note{i}.md", "heading": "", "score": 0.9, "content": long_content} for i in range(5)
             ],
             "count": 5,
         }

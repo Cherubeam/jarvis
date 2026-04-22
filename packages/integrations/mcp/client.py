@@ -48,9 +48,7 @@ class MCPConnection:
             transport = await self._open_transport()
             read_stream, write_stream, *_ = transport
 
-            session = await self._exit_stack.enter_async_context(
-                ClientSession(read_stream, write_stream)
-            )
+            session = await self._exit_stack.enter_async_context(ClientSession(read_stream, write_stream))
             await session.initialize()
 
             result = await session.list_tools()
@@ -97,9 +95,7 @@ class MCPConnection:
     async def call_tool(self, name: str, arguments: dict) -> types.CallToolResult:
         """Call a tool on this server."""
         if self.session is None or not self._connected:
-            raise RuntimeError(
-                f"MCP server '{self.config.name}' is not connected. Restart JARVIS to reconnect."
-            )
+            raise RuntimeError(f"MCP server '{self.config.name}' is not connected. Restart JARVIS to reconnect.")
         return await self.session.call_tool(
             name,
             arguments=arguments,
@@ -165,9 +161,7 @@ class MCPManager:
         """Synchronous wrapper: submit async call_tool to the background loop."""
         conn = self._connections.get(server_name)
         if conn is None or not conn.connected:
-            return (
-                f"Error: MCP server '{server_name}' is not connected. Restart JARVIS to reconnect."
-            )
+            return f"Error: MCP server '{server_name}' is not connected. Restart JARVIS to reconnect."
         try:
             result = self._run_async(conn.call_tool(tool_name, arguments))
             return format_call_result(result)

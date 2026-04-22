@@ -72,8 +72,7 @@ def resolve_skills(
         tools.append(card_search_tool)
     elif deck_names and card_search_tool is None:
         logger.warning(
-            "Deck-skills bound (%s) but no card_search_tool available — "
-            "card search will not be available.",
+            "Deck-skills bound (%s) but no card_search_tool available — card search will not be available.",
             ", ".join(deck_names),
         )
 

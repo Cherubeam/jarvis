@@ -35,30 +35,26 @@ from packages.integrations.obsidian.writer import (
 )
 
 __all__ = [
-    # vault
-    "VaultConfig",
-    "load_vault_config",
-    "validate_read",
-    "validate_write",
-    "read_note",
-    "list_notes",
-    "get_daily_note_path",
-    # callout
+    "CLIConfirmationHandler",
     "CalloutBlock",
     "CalloutNotFound",
-    "find_jarvis_callout",
-    "build_updated_content",
-    "format_callout_entry",
-    # diff
-    "DiffLine",
-    "VaultDiff",
-    "compute_diff",
-    "format_diff_for_cli",
-    "format_diff_for_api",
-    # writer
     "ConfirmationHandler",
-    "CLIConfirmationHandler",
+    "DiffLine",
+    "VaultConfig",
+    "VaultDiff",
     "WriteResult",
     "append_to_daily_note",
     "append_to_note",
+    "build_updated_content",
+    "compute_diff",
+    "find_jarvis_callout",
+    "format_callout_entry",
+    "format_diff_for_api",
+    "format_diff_for_cli",
+    "get_daily_note_path",
+    "list_notes",
+    "load_vault_config",
+    "read_note",
+    "validate_read",
+    "validate_write",
 ]

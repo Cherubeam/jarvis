@@ -9,12 +9,10 @@ import pytest
 from packages.skills.registry import SkillMeta, discover_skills, get_skill_by_command
 
 _SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
-_REAL_SKILLS_PRESENT = (
-    _SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md"
-).exists() and (_SKILLS_ROOT / "content-evaluator" / "SKILL.md").exists()
-_REAL_SKILLS_SKIP_REASON = (
-    "Real skill files are user-local symlinks not tracked in git; skipped on CI"
-)
+_REAL_SKILLS_PRESENT = (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists() and (
+    _SKILLS_ROOT / "content-evaluator" / "SKILL.md"
+).exists()
+_REAL_SKILLS_SKIP_REASON = "Real skill files are user-local symlinks not tracked in git; skipped on CI"
 
 
 @pytest.mark.unit
@@ -48,10 +46,7 @@ class TestDiscoverRealSkills:
 
     def test_commands_derived_from_name(self):
         skills = discover_skills()
-        assert (
-            skills["technical-humanist-image-architect"].command
-            == "/technical-humanist-image-architect"
-        )
+        assert skills["technical-humanist-image-architect"].command == "/technical-humanist-image-architect"
         assert skills["content-evaluator"].command == "/content-evaluator"
 
     def test_descriptions_from_frontmatter(self):

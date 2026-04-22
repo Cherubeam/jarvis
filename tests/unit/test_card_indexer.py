@@ -15,9 +15,7 @@ from packages.core.rag import card_indexer as _card_indexer_mod  # noqa: F401
 # ---------------------------------------------------------------------------
 
 
-def _make_deck_dir(
-    tmp_path: Path, deck_name: str, cards: list[dict], card_contents: dict[str, str]
-) -> Path:
+def _make_deck_dir(tmp_path: Path, deck_name: str, cards: list[dict], card_contents: dict[str, str]) -> Path:
     """Create a deck directory with deck.yaml and card markdown files."""
     deck_dir = tmp_path / deck_name
     deck_dir.mkdir()
@@ -47,9 +45,7 @@ def _make_card_indexer():
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
     mock_collection.get.return_value = {"ids": []}
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.card_indexer import CardIndexer
@@ -70,9 +66,7 @@ def _make_card_searcher():
     mock_chroma = MagicMock()
     mock_collection = MagicMock()
     mock_collection.count.return_value = 0
-    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-        mock_collection
-    )
+    mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
     with patch.dict("sys.modules", {"chromadb": mock_chroma}):
         from packages.core.rag.card_indexer import CardSearcher
@@ -438,9 +432,7 @@ class TestMakeCardSearchTool:
         mock_chroma = MagicMock()
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
         with patch.dict("sys.modules", {"chromadb": mock_chroma}):
             from packages.core.tools.card_search import make_card_search_tool
@@ -471,18 +463,18 @@ class TestMakeCardSearchTool:
             ],
             "distances": [[0.1]],
         }
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
-        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
-            with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
-                mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
-                from packages.core.tools.card_search import make_card_search_tool
+        with (
+            patch.dict("sys.modules", {"chromadb": mock_chroma}),
+            patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed,
+        ):
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            from packages.core.tools.card_search import make_card_search_tool
 
-                tool = make_card_search_tool("/tmp/fake", "test-model")
-                # Request 100, should be clamped to 15
-                result = tool.execute(query="test", n_results=100)
+            tool = make_card_search_tool("/tmp/fake", "test-model")
+            # Request 100, should be clamped to 15
+            result = tool.execute(query="test", n_results=100)
 
         assert "Card content" in result
 
@@ -517,17 +509,17 @@ class TestMakeCardSearchTool:
             ],
             "distances": [[0.1, 0.2]],
         }
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
-        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
-            with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
-                mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
-                from packages.core.tools.card_search import make_card_search_tool
+        with (
+            patch.dict("sys.modules", {"chromadb": mock_chroma}),
+            patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed,
+        ):
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            from packages.core.tools.card_search import make_card_search_tool
 
-                tool = make_card_search_tool("/tmp/fake", "test-model")
-                result = tool.execute(query="test")
+            tool = make_card_search_tool("/tmp/fake", "test-model")
+            result = tool.execute(query="test")
 
         # Verify header format
         assert "--- Hero Arc (Storyteller) [category: Structure] ---" in result
@@ -549,32 +541,32 @@ class TestMakeCardSearchTool:
             "metadatas": [[]],
             "distances": [[]],
         }
-        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = (
-            mock_collection
-        )
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
-        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
-            with patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed:
-                mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
-                from packages.core.tools.card_search import make_card_search_tool
+        with (
+            patch.dict("sys.modules", {"chromadb": mock_chroma}),
+            patch("packages.core.rag.card_indexer.litellm.embedding") as mock_embed,
+        ):
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            from packages.core.tools.card_search import make_card_search_tool
 
-                tool = make_card_search_tool("/tmp/fake", "test-model")
+            tool = make_card_search_tool("/tmp/fake", "test-model")
 
-                # Find the searcher in the closure to check the clamped value
-                searcher = None
-                for cell in tool.execute.__closure__ or []:
-                    try:
-                        obj = cell.cell_contents
-                        if hasattr(obj, "search"):
-                            searcher = obj
-                            break
-                    except ValueError:
-                        pass
+            # Find the searcher in the closure to check the clamped value
+            searcher = None
+            for cell in tool.execute.__closure__ or []:
+                try:
+                    obj = cell.cell_contents
+                    if hasattr(obj, "search"):
+                        searcher = obj
+                        break
+                except ValueError:
+                    pass
 
-                if searcher:
-                    with patch.object(searcher, "search", return_value=[]) as mock_search:
-                        tool.execute(query="test", n_results=0)
-                        assert mock_search.call_args[1]["n_results"] == 1
+            if searcher:
+                with patch.object(searcher, "search", return_value=[]) as mock_search:
+                    tool.execute(query="test", n_results=0)
+                    assert mock_search.call_args[1]["n_results"] == 1
 
-                        tool.execute(query="test", n_results=16)
-                        assert mock_search.call_args[1]["n_results"] == 15
+                    tool.execute(query="test", n_results=16)
+                    assert mock_search.call_args[1]["n_results"] == 15
