@@ -109,8 +109,7 @@ def test_filters_by_agent_and_sorts_recent_first():
 
 def test_respects_limit():
     entries = [
-        {"id": f"2026-04-{d:02d}_10-00-00", "agents": ["writer"], "date": f"2026-04-{d:02d}"}
-        for d in range(10, 20)
+        {"id": f"2026-04-{d:02d}_10-00-00", "agents": ["writer"], "date": f"2026-04-{d:02d}"} for d in range(10, 20)
     ]
     out = recent_sessions_for_agent(_fake_index(entries), "writer", limit=3)
     assert len(out) == 3
@@ -137,8 +136,7 @@ def test_tolerates_missing_agents_key():
 
 def test_default_limit_is_six():
     entries = [
-        {"id": f"2026-04-{d:02d}_10-00-00", "agents": ["writer"], "date": f"2026-04-{d:02d}"}
-        for d in range(1, 15)
+        {"id": f"2026-04-{d:02d}_10-00-00", "agents": ["writer"], "date": f"2026-04-{d:02d}"} for d in range(1, 15)
     ]
     out = recent_sessions_for_agent(_fake_index(entries), "writer")
     assert len(out) == 6
