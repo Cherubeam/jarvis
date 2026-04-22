@@ -82,6 +82,35 @@ uv run jarvis
 mypy packages/ apps/
 ```
 
+### Linting & Formatting
+
+Ruff handles both linting and formatting. The configuration lives in
+`[tool.ruff]` in `pyproject.toml` (rules: E, W, F, I, B, UP, N, SIM, RUF;
+line-length 120; py313).
+
+```bash
+# Install dev tools (one-time)
+uv sync --extra dev
+
+# Install pre-commit hooks (one-time, runs ruff on every commit)
+uv run pre-commit install
+
+# Lint
+uv run ruff check
+
+# Lint with auto-fix
+uv run ruff check --fix
+
+# Format
+uv run ruff format
+
+# Check format without rewriting (CI mode)
+uv run ruff format --check
+```
+
+CI runs `ruff check` and `ruff format --check` on every push/PR via
+`.github/workflows/test.yml`.
+
 ### Testing
 
 ```bash
