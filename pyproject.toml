@@ -96,6 +96,10 @@ ignore = ["RUF001", "RUF002", "SIM108"]
 
 [tool.mypy]
 python_version = "3.13"
+# Pin to linux so sys.platform-narrowing is consistent between macOS dev
+# machines and Linux CI. macOS-only branches (things3, weasyprint dlopen
+# fallback) need # type: ignore[unreachable] under this setting.
+platform = "linux"
 check_untyped_defs = true
 warn_unused_configs = true
 warn_unused_ignores = true

@@ -484,7 +484,7 @@ def _ensure_homebrew_lib_path() -> None:
         return
 
     # Apple Silicon: /opt/homebrew/lib  |  Intel: /usr/local/lib
-    candidates = [Path("/opt/homebrew/lib"), Path("/usr/local/lib")]
+    candidates = [Path("/opt/homebrew/lib"), Path("/usr/local/lib")]  # type: ignore[unreachable]
     existing = [str(p) for p in candidates if p.is_dir()]
     if not existing:
         return
