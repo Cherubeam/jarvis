@@ -285,7 +285,7 @@ class LLMClient:
 
         try:
             response = litellm.completion(**kwargs)
-        except litellm.APIError as e:
+        except litellm.APIError as e:  # type: ignore[attr-defined]
             credit_err = _parse_credit_error(e, kwargs.get("max_tokens"))
             if credit_err:
                 raise credit_err from e
@@ -390,7 +390,7 @@ class LLMClient:
 
         try:
             response = litellm.completion(**kwargs)
-        except litellm.APIError as e:
+        except litellm.APIError as e:  # type: ignore[attr-defined]
             credit_err = _parse_credit_error(e, kwargs.get("max_tokens"))
             if credit_err:
                 raise credit_err from e

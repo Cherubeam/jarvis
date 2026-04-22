@@ -161,7 +161,8 @@ def _convert_multimodal_parts(parts: list[Any]) -> list[dict[str, Any]]:
 def _extract_fallback_text(content: dict[str, Any], parts: list[Any]) -> str:
     if parts:
         return "\n".join(str(p) for p in parts if isinstance(p, str))
-    return content.get("text", "")
+    text: str = content.get("text", "")
+    return text
 
 
 def _unix_to_iso(ts: float | None) -> str | None:

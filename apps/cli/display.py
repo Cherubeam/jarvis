@@ -220,4 +220,5 @@ def prompt_user(session: Any) -> str:
     """
     from prompt_toolkit.formatted_text import HTML
 
-    return session.prompt(HTML("<ansigreen><b>You: </b></ansigreen>")).strip()
+    text: str = session.prompt(HTML("<ansigreen><b>You: </b></ansigreen>")).strip()
+    return text

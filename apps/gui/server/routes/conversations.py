@@ -55,7 +55,8 @@ async def list_conversations(
 @router.get("/facets")
 async def list_facets(request: Request) -> dict[str, Any]:
     idx = await _refresh(request)
-    return idx.facets()
+    facets: dict[str, Any] = idx.facets()
+    return facets
 
 
 @router.get("/{conv_id}")
@@ -64,4 +65,5 @@ async def get_conversation(request: Request, conv_id: str) -> dict[str, Any]:
     detail = idx.get(conv_id)
     if detail is None:
         raise HTTPException(404, f"conversation not found: {conv_id}")
-    return detail.to_dict()
+    result: dict[str, Any] = detail.to_dict()
+    return result

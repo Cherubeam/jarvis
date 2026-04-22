@@ -100,13 +100,7 @@ python_version = "3.13"
 # machines and Linux CI. macOS-only branches (things3, weasyprint dlopen
 # fallback) need # type: ignore[unreachable] under this setting.
 platform = "linux"
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-warn_unused_configs = true
-warn_unused_ignores = true
+strict = true
 warn_unreachable = true
 # Skills are loaded dynamically (external symlinks under packages/skills/),
 # each defining its own top-level `skill.py`. Without these flags mypy

@@ -142,7 +142,8 @@ def _safe_parse_json(raw: str) -> dict[str, Any]:
     if not raw:
         return {}
     try:
-        return json.loads(raw)
+        parsed: dict[str, Any] = json.loads(raw)
+        return parsed
     except json.JSONDecodeError:
         return {"_raw": raw}
 
