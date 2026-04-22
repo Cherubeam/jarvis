@@ -78,6 +78,9 @@ class SessionComponents:
     agent_name: str = "JARVIS"
     mcp_manager: Any = None
     client_label: str = "cli"
+    # Set by the GUI session to route per-turn confirmation prompts back to
+    # the WS client. Unused by the CLI.
+    _deferred_handler: Any = None
 
 
 def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None:
@@ -144,6 +147,8 @@ def instantiate_agent(
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
 ):
+    if meta.meta_path is None:
+        raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
     return agent_from_meta(
         meta.meta_path,
         client,
@@ -373,6 +378,7 @@ def build_session(
             dev_tools: list = []
             dev_tools.extend(make_codebase_tools(jarvis_dir))
             dev_tools.extend(make_git_tools(jarvis_dir))
+            dev_confirmation: ConfirmationHandler
             if auto_confirm:
                 from packages.agents.developer.confirmation import AutoConfirmationHandler
 

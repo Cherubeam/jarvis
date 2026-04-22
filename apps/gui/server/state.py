@@ -20,6 +20,8 @@ from typing import Any
 from apps.cli.main import load_config
 from apps.cli.session_factory import SessionComponents, build_session
 from apps.gui.server.confirmation import WebConfirmationHandler
+from packages.integrations.obsidian.diff import VaultDiff
+from packages.integrations.obsidian.writer import ConfirmationHandler
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ def build_gui_session() -> GuiSession:
     return GuiSession(components=components, started_at=started)
 
 
-class _DeferredConfirmationHandler:
+class _DeferredConfirmationHandler(ConfirmationHandler):
     """Routes present_diff/get_confirmation calls to the *current* turn's
     WebConfirmationHandler. The GUI session swaps this on every submit.
 
@@ -120,7 +122,7 @@ class _DeferredConfirmationHandler:
     def unbind(self) -> None:
         self._target = None
 
-    def present_diff(self, diff) -> None:
+    def present_diff(self, diff: VaultDiff) -> None:
         if self._target is None:
             logger.warning("present_diff with no bound GUI handler; write will be rejected")
             return

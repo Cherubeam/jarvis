@@ -61,6 +61,7 @@ def _find_latest_run_dir(results_dir: Path) -> Path | None:
 def get_run_dir(results_dir: Path | str, run_id: str | None = None) -> Path:
     """Resolve the golden test run directory to use as a baseline."""
     results_path = Path(results_dir)
+    run_dir: Path | None
     if run_id:
         run_dir = results_path / "runs" / run_id
     else:

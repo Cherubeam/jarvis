@@ -123,6 +123,8 @@ def instantiate_agent(
     card_search_tool=None,
 ):
     """Create an agent from AgentMeta via agent_from_meta()."""
+    if meta.meta_path is None:
+        raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
     return agent_from_meta(
         meta.meta_path,
         client,

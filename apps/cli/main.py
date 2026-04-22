@@ -88,6 +88,8 @@ def _instantiate_agent(
     prompt_includes_override: dict[str, str] | None = None,
 ):
     """Create an agent from AgentMeta via agent_from_meta()."""
+    if meta.meta_path is None:
+        raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
     return agent_from_meta(
         meta.meta_path,
         client,
@@ -337,8 +339,8 @@ def handle_daily_summary(
     )
 
     # Write to vault with diff + confirmation
-    handler = CLIConfirmationHandler()
-    write_result = append_to_daily_note(result.text, vault_config, handler, date=target_date)
+    confirmation = CLIConfirmationHandler()
+    write_result = append_to_daily_note(result.text, vault_config, confirmation, date=target_date)
 
     if write_result.success:
         print(f"\n{write_result.message}\n")

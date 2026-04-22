@@ -91,7 +91,9 @@ class WebStreamHandler:
                     "args_raw": event.arguments,
                 }
             elif isinstance(event, ToolResult):
-                started = self._tool_started_at.pop(event.tool_call_id, None)
+                # Sentinel 0.0 means "no recorded start"; a real start_time
+                # is set via time.monotonic() and is always > 0.
+                started = self._tool_started_at.pop(event.tool_call_id, 0.0)
                 elapsed_ms = int((time.monotonic() - started) * 1000) if started else 0
                 pending = self._pending.pop(event.tool_call_id, {})
                 self._put(

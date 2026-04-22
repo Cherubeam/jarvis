@@ -4,6 +4,7 @@ Unit tests for agent-related CLI functionality.
 Tests parse_args, _handle_agent_command, and --agent flag behavior.
 """
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -121,7 +122,7 @@ class TestHandleAgentCommand:
                 name="writer",
                 description="desc",
                 command="/write",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
             )
         }
 
@@ -143,7 +144,7 @@ class TestHandleAgentCommand:
                 name="writer",
                 description="Refined prose",
                 command="/write",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
             )
         }
 
@@ -159,7 +160,7 @@ class TestHandleAgentCommand:
                 name="writer",
                 description="desc",
                 command="/write",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
             )
         }
 
@@ -209,7 +210,7 @@ class TestHandleAgentCommand:
                 name="tactics",
                 description="desc",
                 command="/tactics",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
                 tool_groups=("card_search",),
             )
         }
@@ -247,7 +248,7 @@ class TestHandleAgentCommand:
                 name="tactics",
                 description="desc",
                 command="/tactics",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
             )
         }
 
@@ -277,7 +278,7 @@ class TestHandleAgentCommand:
                 name="tactics",
                 description="Pip Decks coaching",
                 command="/tactics",
-                meta_path=None,
+                meta_path=Path("/fake/meta.yaml"),
             )
         }
 

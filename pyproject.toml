@@ -44,8 +44,11 @@ rag = [
     "chromadb>=0.6.0",
 ]
 dev = [
+    "mypy>=1.13.0",
     "pre-commit>=4.0.0",
     "ruff>=0.7.0",
+    "types-pyyaml>=6.0.12.20260408",
+    "types-requests>=2.33.0.20260408",
 ]
 
 [project.scripts]
@@ -90,6 +93,50 @@ ignore = ["RUF001", "RUF002", "SIM108"]
 # Tool definitions contain long LLM-facing description strings that lose
 # readability when split across lines.
 "packages/core/tools/**" = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+check_untyped_defs = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_unreachable = true
+# Skills are loaded dynamically (external symlinks under packages/skills/),
+# each defining its own top-level `skill.py`. Without these flags mypy
+# refuses to check anything because multiple files share a module name.
+namespace_packages = true
+explicit_package_bases = true
+exclude = ["packages/skills/.*/skill\\.py$"]
+# Intentionally not strict=true on day 1 — JARVIS has heavy `dict[str, Any]`
+# usage from yaml.safe_load and litellm responses that would surface
+# 800-2000 errors. Ratchet rule-by-rule (disallow_untyped_defs →
+# disallow_incomplete_defs → disallow_any_generics → strict) in follow-ups.
+
+# Third-party deps that ship without type stubs, or whose stubs are
+# strict enough to require a separate refactor before they're useful here.
+# chromadb's stubs treat list[float] embeddings and dict[str, str] metadata
+# as type errors; reconciling with our actual call sites is out of scope
+# for the initial mypy gate.
+[[tool.mypy.overrides]]
+module = [
+    "ddgs",
+    "ddgs.*",
+    "fitz",
+    "litellm",
+    "litellm.*",
+    "things",
+    "trafilatura",
+    "trafilatura.*",
+    "weasyprint",
+]
+ignore_missing_imports = true
+
+# chromadb does ship types, but they're stricter than our usage (treat
+# list[float] embeddings and dict[str, str] metadata as errors). Skip
+# following its imports so its types resolve to Any here. Reconciling
+# with the strict stubs is out of scope for the initial mypy gate.
+[[tool.mypy.overrides]]
+module = ["chromadb"]
+follow_imports = "skip"
 
 [tool.mutmut]
 paths_to_mutate = ["packages/core/"]
