@@ -8,8 +8,10 @@ exposing synchronous call_tool_sync() for JARVIS's ToolDefinition.execute.
 import asyncio
 import logging
 import threading
+from collections.abc import Callable
 from contextlib import AsyncExitStack
 from datetime import timedelta
+from typing import Any
 
 from mcp import ClientSession, types
 from mcp.client.sse import sse_client
@@ -65,7 +67,7 @@ class MCPConnection:
             await self._exit_stack.aclose()
             raise
 
-    async def _open_transport(self):
+    async def _open_transport(self) -> Any:
         """Open the appropriate transport based on config."""
         if self.config.transport == "stdio":
             assert self.config.command is not None, "stdio transport requires `command`"
@@ -118,7 +120,7 @@ class MCPManager:
     This is the single public entry point used by main.py.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._connections: dict[str, MCPConnection] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
@@ -203,14 +205,14 @@ class MCPManager:
         )
         self._thread.start()
 
-    def _run_async(self, coro):
+    def _run_async(self, coro: Any) -> Any:
         """Submit a coroutine to the background loop and block until complete."""
         if self._loop is None:
             raise RuntimeError("MCP event loop is not running.")
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result(timeout=120)
 
-    def _make_call_fn(self, server_name: str):
+    def _make_call_fn(self, server_name: str) -> Callable[[str, dict], str]:
         """Create a bound call_fn for a specific server (used by bridge)."""
 
         def call_fn(tool_name: str, arguments: dict) -> str:

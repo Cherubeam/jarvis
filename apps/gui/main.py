@@ -29,7 +29,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _open_browser_when_ready(url: str, delay_s: float = 0.8) -> None:
     """Wait briefly for uvicorn to start listening, then open the URL."""
 
-    def _go():
+    def _go() -> None:
         time.sleep(delay_s)
         try:
             webbrowser.open(url)

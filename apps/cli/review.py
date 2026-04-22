@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from packages.core import frontmatter
 
@@ -93,7 +93,7 @@ def _apply_review(
 
 def handle_review_command(
     outcomes_dir: Path,
-    console,
+    console: Any,
     session: _PromptSessionLike,
     *,
     today: date | None = None,

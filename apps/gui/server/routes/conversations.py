@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
 router = APIRouter(prefix="/api/conversations")
@@ -15,7 +17,7 @@ _ALLOWED_SORT = {"recent", "cost", "messages"}
 _ALLOWED_DATE = {"all", "today", "7d", "30d"}
 
 
-async def _refresh(request: Request):
+async def _refresh(request: Request) -> Any:
     idx = request.app.state.conversation_index
     await idx.refresh()
     return idx

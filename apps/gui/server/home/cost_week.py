@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from typing import Any
 
 
-def cost_week_rollup(index, today: date | None = None) -> dict[str, Any]:
+def cost_week_rollup(index: Any, today: date | None = None) -> dict[str, Any]:
     """Return 7-day cost breakdown ending today.
 
     Returns:

@@ -20,6 +20,7 @@ import importlib.util
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from packages.core.context_builder import parse_frontmatter
 from packages.core.llm_client import LLMClient
@@ -170,7 +171,7 @@ class BaseSkill:
         return cls(config, llm_client)
 
 
-def _import_skill_module(skill_dir: Path):
+def _import_skill_module(skill_dir: Path) -> Any:
     """Import a skill's skill.py module by path.
 
     Uses absolute() instead of resolve() so symlinked skill directories

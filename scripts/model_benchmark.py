@@ -32,7 +32,7 @@ def _print_estimates(
     estimates: dict,
     judge_model: str,
     run_dir: Path,
-):
+) -> None:
     print("\nBenchmark Cost Estimate")
     print(f"Baseline run: {run_dir.name}")
     print(f"Judge model: {judge_model}")

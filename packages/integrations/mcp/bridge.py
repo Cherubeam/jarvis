@@ -6,6 +6,7 @@ instances and formats MCP CallToolResult into plain strings.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 from mcp import types
 
@@ -50,7 +51,7 @@ def _make_execute_fn(
 ) -> Callable[..., str]:
     """Create an execute closure for a single MCP tool."""
 
-    def execute(**kwargs) -> str:
+    def execute(**kwargs: Any) -> str:
         return call_fn(tool_name, kwargs)
 
     return execute

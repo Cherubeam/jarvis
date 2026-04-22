@@ -144,11 +144,11 @@ class BaseAgent(ABC):
             kwargs["max_iterations"] = self.config.max_iterations
         return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
 
-    def add_to_history(self, role: str, content: str):
+    def add_to_history(self, role: str, content: str) -> None:
         """Add a message to conversation history."""
         self.conversation_history.append({"role": role, "content": content})
 
-    def clear_history(self):
+    def clear_history(self) -> None:
         """Clear conversation history."""
         self.conversation_history = []
 

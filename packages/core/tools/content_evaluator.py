@@ -6,13 +6,14 @@ system prompt and configured temperature.
 """
 
 from pathlib import Path
+from typing import Any
 
 from packages.core.context_builder import parse_frontmatter
 from packages.core.llm_client import LLMClient
 from packages.core.tools.base import ToolDefinition
 
 
-def _import_skill_module(skill_dir: Path):
+def _import_skill_module(skill_dir: Path) -> Any:
     """Import a skill's skill.py module by path (reuses base.py logic)."""
     import importlib.util
 

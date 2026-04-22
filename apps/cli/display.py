@@ -9,6 +9,7 @@ prompt_toolkit for robust multi-line paste support.
 import re
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 from rich.live import Live
@@ -194,7 +195,7 @@ def print_system(message: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def create_prompt_session(history_file: str | None = None):
+def create_prompt_session(history_file: str | None = None) -> Any:
     """Create a prompt_toolkit PromptSession with optional file history.
 
     Returns a PromptSession configured for robust paste handling.
@@ -211,7 +212,7 @@ def create_prompt_session(history_file: str | None = None):
     return PromptSession(**kwargs)
 
 
-def prompt_user(session) -> str:
+def prompt_user(session: Any) -> str:
     """Prompt the user for input using prompt_toolkit.
 
     Returns the stripped user input.

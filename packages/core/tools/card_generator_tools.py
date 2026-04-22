@@ -6,6 +6,7 @@ from Obsidian vault notes. Uses the closure pattern to capture config.
 """
 
 from pathlib import Path
+from typing import Any
 
 from packages.core.card_renderer import (
     ImageGenerationConfig,
@@ -39,7 +40,7 @@ def make_card_generator_tools(
     images_dir = output_dir / "images"
     img_cfg = image_config or ImageGenerationConfig()
 
-    def _find_pattern(pattern_name: str):
+    def _find_pattern(pattern_name: str) -> tuple[Any, str | None]:
         """Find a pattern by name (case-insensitive). Returns (pattern, error_msg)."""
         patterns = list_vault_patterns(vault_config.vault_path, patterns_dir)
         for p in patterns:
