@@ -5,10 +5,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from apps.cli.review import (
-    _apply_review,
-    _load_pending_due,
-    _PendingItem,
+    PendingItem,
+    apply_review,
     handle_review_command,
+    load_pending_due,
+    pending_item_to_wire,
 )
 from packages.core import frontmatter
 
@@ -39,23 +40,23 @@ def _write_outcome(
     return path
 
 
-# --- _load_pending_due ---
+# --- load_pending_due ---
 
 
 def test_load_pending_due_returns_empty_when_dir_missing(tmp_path: Path):
-    result = _load_pending_due(tmp_path / "does-not-exist", today=TODAY)
+    result = load_pending_due(tmp_path / "does-not-exist", today=TODAY)
     assert result == []
 
 
 def test_load_pending_due_returns_empty_when_no_files(tmp_path: Path):
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert result == []
 
 
 def test_load_pending_due_filters_reviewed_items(tmp_path: Path):
     _write_outcome(tmp_path, "reviewed.md", status="reviewed", revisit_at="2026-05-10")
     _write_outcome(tmp_path, "pending.md", status="pending", revisit_at="2026-05-10")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert len(result) == 1
     assert result[0].path.name == "pending.md"
 
@@ -63,14 +64,14 @@ def test_load_pending_due_filters_reviewed_items(tmp_path: Path):
 def test_load_pending_due_filters_future_revisits(tmp_path: Path):
     _write_outcome(tmp_path, "future.md", revisit_at="2026-06-01")
     _write_outcome(tmp_path, "due.md", revisit_at="2026-05-10")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert len(result) == 1
     assert result[0].path.name == "due.md"
 
 
 def test_load_pending_due_includes_exactly_today(tmp_path: Path):
     _write_outcome(tmp_path, "today.md", revisit_at="2026-05-18")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert len(result) == 1
 
 
@@ -78,14 +79,14 @@ def test_load_pending_due_sorts_by_revisit_date_ascending(tmp_path: Path):
     _write_outcome(tmp_path, "c.md", revisit_at="2026-05-15")
     _write_outcome(tmp_path, "a.md", revisit_at="2026-05-10")
     _write_outcome(tmp_path, "b.md", revisit_at="2026-05-12")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert [i.path.name for i in result] == ["a.md", "b.md", "c.md"]
 
 
 def test_load_pending_due_skips_malformed_without_crashing(tmp_path: Path):
     (tmp_path / "bad.md").write_text("---\nnot: valid: yaml: here\n---\nbody", encoding="utf-8")
     _write_outcome(tmp_path, "good.md", revisit_at="2026-05-10")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert len(result) == 1
     assert result[0].path.name == "good.md"
 
@@ -96,7 +97,7 @@ def test_load_pending_due_skips_missing_revisit_at(tmp_path: Path):
         encoding="utf-8",
     )
     _write_outcome(tmp_path, "has-date.md", revisit_at="2026-05-10")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert [i.path.name for i in result] == ["has-date.md"]
 
 
@@ -106,19 +107,19 @@ def test_load_pending_due_skips_invalid_revisit_at(tmp_path: Path):
         encoding="utf-8",
     )
     _write_outcome(tmp_path, "good.md", revisit_at="2026-05-10")
-    result = _load_pending_due(tmp_path, today=TODAY)
+    result = load_pending_due(tmp_path, today=TODAY)
     assert [i.path.name for i in result] == ["good.md"]
 
 
-# --- _apply_review ---
+# --- apply_review ---
 
 
 def test_apply_review_updates_frontmatter_keys(tmp_path: Path):
     path = _write_outcome(tmp_path, "x.md")
     meta, body = frontmatter.parse(path.read_text())
-    item = _PendingItem(path=path, meta=meta, body=body)
+    item = PendingItem(path=path, meta=meta, body=body)
 
-    _apply_review(item, outcome="happened", quality=4, note="went well", now=NOW)
+    apply_review(item, outcome="happened", quality=4, note="went well", now=NOW)
 
     updated_meta, updated_body = frontmatter.parse(path.read_text())
     assert updated_meta["status"] == "reviewed"
@@ -131,14 +132,60 @@ def test_apply_review_updates_frontmatter_keys(tmp_path: Path):
 def test_apply_review_preserves_original_keys(tmp_path: Path):
     path = _write_outcome(tmp_path, "x.md", what="keep me", why="and me")
     meta, body = frontmatter.parse(path.read_text())
-    item = _PendingItem(path=path, meta=meta, body=body)
+    item = PendingItem(path=path, meta=meta, body=body)
 
-    _apply_review(item, outcome="didnt", quality=1, note="", now=NOW)
+    apply_review(item, outcome="didnt", quality=1, note="", now=NOW)
 
     updated_meta, _ = frontmatter.parse(path.read_text())
     assert updated_meta["what"] == "keep me"
     assert updated_meta["why"] == "and me"
     assert updated_meta["conversation_id"] == "c1"
+
+
+# --- pending_item_to_wire ---
+
+
+def test_pending_item_to_wire_full_fields(tmp_path: Path):
+    path = _write_outcome(
+        tmp_path,
+        "2026-04-18-do-the-thing.md",
+        what="Do the thing",
+        why="Because reasons",
+        revisit_at="2026-05-10",
+        success_looks_like="Thing is done",
+    )
+    meta, body = frontmatter.parse(path.read_text())
+    item = PendingItem(path=path, meta=meta, body=body)
+
+    wire = pending_item_to_wire(item)
+
+    assert wire["file_id"] == "2026-04-18-do-the-thing"
+    assert wire["what"] == "Do the thing"
+    assert wire["why"] == "Because reasons"
+    assert wire["created_at"] == "2026-04-18T14:32:00"
+    assert wire["revisit_at"] == "2026-05-10"
+    assert wire["success_looks_like"] == "Thing is done"
+
+
+def test_pending_item_to_wire_empty_success_maps_to_none(tmp_path: Path):
+    path = _write_outcome(tmp_path, "x.md", success_looks_like="")
+    meta, body = frontmatter.parse(path.read_text())
+    item = PendingItem(path=path, meta=meta, body=body)
+
+    wire = pending_item_to_wire(item)
+
+    assert wire["success_looks_like"] is None
+
+
+def test_pending_item_to_wire_file_id_is_stem(tmp_path: Path):
+    path = _write_outcome(tmp_path, "some-file.md")
+    meta, body = frontmatter.parse(path.read_text())
+    item = PendingItem(path=path, meta=meta, body=body)
+
+    wire = pending_item_to_wire(item)
+
+    assert wire["file_id"] == "some-file"
+    assert ".md" not in wire["file_id"]
 
 
 # --- handle_review_command ---
