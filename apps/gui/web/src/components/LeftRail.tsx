@@ -4,12 +4,20 @@ import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 // Top-level rail keys. 'agent' (detail, singular) is a sub-view of 'agents' and
 // has no rail slot — App.tsx maps it back to 'agents' before passing to LeftRail
 // so the Agents button stays highlighted on the detail page.
-export type ViewKey = 'chat' | 'home' | 'agents' | 'agent' | 'history' | 'settings'
+export type ViewKey =
+  | 'chat'
+  | 'home'
+  | 'agents'
+  | 'agent'
+  | 'outcomes'
+  | 'history'
+  | 'settings'
 
 const ITEMS: { key: ViewKey; label: string; icon: string }[] = [
   { key: 'home', label: 'Home', icon: 'sparkle' },
   { key: 'chat', label: 'Chat', icon: 'terminal' },
   { key: 'agents', label: 'Agents', icon: 'tool' },
+  { key: 'outcomes', label: 'Outcomes', icon: 'check' },
   { key: 'history', label: 'History', icon: 'history' },
 ]
 
