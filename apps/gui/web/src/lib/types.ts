@@ -214,3 +214,23 @@ export type HomeData = {
   recent: ConversationSummary[]
   quick_start: QuickStartEntry[]
 }
+
+// -- Outcomes (Phase 7) -----------------------------------------------------
+
+export type OutcomeVerdict = 'happened' | 'didnt' | 'partial'
+
+export type PendingOutcome = {
+  file_id: string
+  what: string | null
+  why: string | null
+  created_at: string | null
+  revisit_at: string
+  success_looks_like: string | null
+}
+
+export type ReviewOutcomeResult = {
+  file_id: string
+  reviewed_at: string
+  outcome: OutcomeVerdict
+  quality: number
+}

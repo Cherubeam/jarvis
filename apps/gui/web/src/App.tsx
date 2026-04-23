@@ -6,6 +6,7 @@ import { AgentsView } from './views/AgentsView'
 import { ChatView } from './views/ChatView'
 import { HistoryView } from './views/HistoryView'
 import { HomeView } from './views/HomeView'
+import { OutcomesView } from './views/OutcomesView'
 import { Stub } from './views/Stub'
 import { DEFAULT_TWEAKS, type Tweaks } from './components/TweaksPanel'
 import {
@@ -34,7 +35,7 @@ function loadView(): ViewKey {
   const v = localStorage.getItem(VIEW_STORAGE_KEY) as ViewKey | null
   // 'agent' (detail) is NOT persisted — a refresh on the detail page lands on
   // 'agents' (the overview grid) because `selectedAgentId` doesn't survive reloads.
-  return v && ['chat', 'home', 'agents', 'history', 'settings'].includes(v) ? v : 'chat'
+  return v && ['chat', 'home', 'agents', 'outcomes', 'history', 'settings'].includes(v) ? v : 'chat'
 }
 
 export default function App() {
@@ -166,6 +167,13 @@ export default function App() {
             setSelectedAgentId(null)
             onStartChat(cmd ? cmd + ' ' : null)
           }}
+        />
+      )}
+      {view === 'outcomes' && (
+        <OutcomesView
+          theme={theme}
+          accent={accent}
+          refreshToken={historyRefreshToken}
         />
       )}
       {view === 'history' && (
