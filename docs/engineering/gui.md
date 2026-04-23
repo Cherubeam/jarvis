@@ -151,8 +151,68 @@ Layout:
 ### Known limitations (Phase 5)
 
 - **`last_used` caps at 500 conversations.** Agents whose most recent session is older than the 500th most recent conversation show as `unused`. Acceptable for localhost.
-- **No tabs bar beyond Overview.** Placeholder row is visual-only — Prompt / Versions / Stats / Context are not yet clickable. They land with the Prompt Editor phase.
 - **No per-agent search on the grid.** 16 agents × 3 columns = ~6 rows; a search bar would be noise. v6 doesn't have one either.
+
+## Agent Prompt Editor (Phase 6)
+
+Activates the tab row that Phase 5 shipped as a placeholder. Five tabs on the Agent Detail page: **Overview · Prompt · Versions · Stats · Context**. Tab state is local to `AgentDetailView` (`useState<TabKey>`) — no URL routing, no persistence across navigation.
+
+### Endpoints
+
+All under `/api/agents/{agent_id}/prompt*`. JARVIS is read-only — writes 403. Path-traversal in `agent_id` returns 404 via `_guard_agent_id`.
+
+- `GET /prompt` — current `system.md` content + bytes + `last_modified_iso` + `editable` + optional `explanation` (for JARVIS).
+- `PUT /prompt` — body `{content, note?}`. Snapshot-on-save: writes `pre_first_save` on the very first ever save (idempotent), then a `save` snapshot of the *prior* content, then atomic-writes the new content via `frontmatter.write_atomic()`. Serialised per-agent by `app.state.prompt_write_locks[agent_id]` (an `asyncio.Lock`).
+- `GET /prompt/snapshots` — newest-first list. Empty for JARVIS.
+- `GET /prompt/snapshots/{id}` — one snapshot's full content + metadata.
+- `POST /prompt/restore` — body `{snapshot_id}`. Snapshots the current state as `pre_restore`, then writes the snapshot content over `system.md`.
+- `GET /prompt/stats` — char/line counts, byte-based token estimate (`len(text.encode("utf-8")) // 4`, matching `context_builder._approx_tokens`), snapshot count, and a `prompt_includes` table with resolution status per placeholder.
+- `GET /prompt/resolved` — `{placeholder}`-expanded system prompt as the LLM sees it. For data-driven agents: calls `resolve_system_prompt(agent_dir, prompt_includes)` (pure helper extracted from `agent_from_meta`). For JARVIS: returns `session.components.active_agent.config.system_prompt` — the prompt *already assembled at session boot* from `data/context/` via `build_system_prompt()`. No re-read.
+
+### Snapshot store
+
+`<jarvis_dir>/<paths.prompt_history_dir>/<agent_id>/` — defaults to `data/prompt-history/` (configurable in `config/default.yaml`, mirrors `context_dir`).
+
+```
+data/prompt-history/writer/
+  20260423T091530_412880Z.md   # pre_first_save — original content
+  20260423T091647_833125Z.md   # save — what was on disk when v2 was saved
+  20260423T091701_201998Z.md   # save — what was on disk when v3 was saved
+  20260423T091715_007742Z.md   # pre_restore — what was on disk just before restore
+  index.json                   # [{id, timestamp, bytes, kind, note?}, ...] newest-first
+```
+
+Filenames use `%Y%m%dT%H%M%S_%fZ.md` — microsecond resolution — so rapid consecutive saves never collide.
+
+**`index.json` is a cache, not the source of truth.** `list_snapshots()` reads it first, but falls back to a directory glob when it's missing or corrupt. The rebuilt list loses `kind` and `note` (everything defaults to `kind: save`) but the IDs, timestamps, and byte counts are all recoverable from the `.md` files.
+
+### Frontend
+
+`AgentDetailView` hosts the tab router. Overview body was lifted into `AgentOverviewPanel.tsx` as a pure refactor; the other four panels live alongside it under `components/agents/`:
+
+- `AgentPromptPanel` — `<textarea>` with local `original` + `content` state; `dirty = content !== original`. Save (PUT) disables until dirty; Revert (visible only when dirty) is `setContent(original)` — no network call. Save bumps a parent `promptRefreshToken` that scopes to Versions / Stats / Context only. The outer `/api/agents/{id}` fetch doesn't refire, so the active tab doesn't blur.
+- `AgentVersionsPanel` — two-column layout: newest-first snapshot list on the left, preview `<pre>` on the right. Click a row to preview; a "restore" button appears on the active row. Confirm-before-restore via `window.confirm()`. `kind` tags are colour-coded: `save` = agent hue, `pre_first_save` = dim, `pre_restore` = error.
+- `AgentStatsPanel` — key/value grid plus a `prompt_includes` table. Example-fallback and missing-include statuses render in the error colour so they read as warnings.
+- `AgentContextPanel` — copy-to-clipboard button over the resolved prompt. 1.5 s "copied ✓" confirmation.
+
+### JARVIS read-only
+
+JARVIS's prompt isn't backed by a single file — `context_builder.build_system_prompt()` assembles it at session boot from `data/context/*.md`. So:
+
+- `GET /prompt` for JARVIS returns `editable: false` + an explanation + the assembled prompt.
+- `PUT /prompt` and `POST /prompt/restore` return 403.
+- `GET /prompt/snapshots` returns `[]`.
+- `GET /prompt/stats` runs against the live assembled text (char/line/token counts reflect reality; `snapshot_count` is always 0; `prompt_includes` is empty).
+- `GET /prompt/resolved` returns the already-assembled text — cheaper than re-reading and guaranteed in sync with the running session.
+
+The frontend detects `editable: false` and renders a read-only notice + scrollable preview instead of a textarea.
+
+### Known limitations (Phase 6)
+
+- **No diff view between snapshots.** Preview is all-or-nothing; restore overwrites. A visual diff could land in a follow-up.
+- **No keyboard shortcut for Save.** Click-only. Trivial to add (`⌘S` listener on the panel) if we miss it.
+- **No editing of `prompt_includes` files.** Phase 6 only edits `system.md`. Shared includes (`voice-profile.md`, `anti-patterns.md`, etc.) still require editing on disk.
+- **Tab state resets on navigation.** Leaving the agent page and coming back lands on Overview. Acceptable for a localhost tool.
 
 ## Sidebar Timeline mode (Phase 4)
 
