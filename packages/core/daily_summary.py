@@ -100,8 +100,7 @@ def build_daily_summary_request(
         return DailySummaryFailure(
             error=DailySummaryError.NOTE_NOT_FOUND,
             message=(
-                f"Daily note not found: {note_path.name}. "
-                "Create the note with a > [!JARVIS] callout block first."
+                f"Daily note not found: {note_path.name}. Create the note with a > [!JARVIS] callout block first."
             ),
         )
     except PermissionError as e:
@@ -121,9 +120,7 @@ def build_daily_summary_request(
         )
 
     note_lines = note_content.split("\n")
-    note_without_callout = "\n".join(
-        note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]
-    ).strip()
+    note_without_callout = "\n".join(note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]).strip()
 
     date_label = target_date if target_date else "today"
     user_content = (

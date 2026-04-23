@@ -18,6 +18,7 @@ from apps.gui.server.routes.api import router as api_router
 from apps.gui.server.routes.chat_ws import router as ws_router
 from apps.gui.server.routes.conversations import router as conversations_router
 from apps.gui.server.routes.home import router as home_router
+from apps.gui.server.routes.outcomes import router as outcomes_router
 from apps.gui.server.state import build_gui_session
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(agents_router)
     app.include_router(conversations_router)
     app.include_router(home_router)
+    app.include_router(outcomes_router)
     app.include_router(ws_router)
 
     if WEB_DIST.is_dir():
