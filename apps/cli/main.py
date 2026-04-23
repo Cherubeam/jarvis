@@ -36,6 +36,10 @@ from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, validate_agent_includes
 from packages.agents.registry import AgentMeta, get_by_command
+from packages.core.daily_summary import (
+    DailySummaryFailure,
+    build_daily_summary_request,
+)
 from packages.core.filesystem_access import load_filesystem_guard
 from packages.core.history import summarize_history, trim_tool_results
 from packages.core.llm_client import LLMClient
@@ -45,8 +49,7 @@ from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.callout import CalloutNotFound, find_jarvis_callout
-from packages.integrations.obsidian.vault import get_daily_note_path, load_vault_config, read_note
+from packages.integrations.obsidian.vault import load_vault_config
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.telemetry.metrics import MetricsTracker
 
@@ -258,60 +261,24 @@ def handle_daily_summary(
 
     fs_guard = load_filesystem_guard(config)
     vault_config = load_vault_config(config, filesystem_guard=fs_guard)
-    if vault_config is None:
-        print_system("\nObsidian integration is not configured or disabled.")
-        print_system("Set obsidian.enabled=true and obsidian.vault_path in config/local.yaml\n")
-        return
 
-    # Get daily note (today or target date)
-    note_path = get_daily_note_path(vault_config, target_date=target_date)
-    try:
-        note_content = read_note(note_path, vault_config)
-    except FileNotFoundError:
-        print_error(f"\nDaily note not found: {note_path.name}")
-        print_system("Create the note with a > [!JARVIS] callout block first.\n")
-        return
-    except PermissionError as e:
-        print_error(f"\n{e}\n")
-        return
-
-    # Check for JARVIS callout
-    callout = find_jarvis_callout(note_content)
-    if isinstance(callout, CalloutNotFound):
-        print_error(f"\nNo > [!JARVIS] callout block found in {note_path.name}")
-        print_system("Add a '> [!JARVIS]' line to your daily note first.\n")
-        return
-
-    # Strip existing JARVIS callout from note content to avoid duplication
-    note_lines = note_content.split("\n")
-    note_without_callout = "\n".join(note_lines[: callout.start_line] + note_lines[callout.end_line + 1 :]).strip()
-
-    # Load prompt and build LLM messages
     try:
         daily_prompt = JarvisAgent.get_daily_note_instructions()
     except FileNotFoundError:
         print("\nDaily note prompt file not found.\n")
         return
 
-    date_label = target_date if target_date else "today"
-    user_content = (
-        f"Generate my daily note summary for {date_label}.\n\n"
-        f"---\n\n"
-        f"**Daily note ({note_path.name}):**\n\n"
-        f"{note_without_callout}"
+    request = build_daily_summary_request(
+        vault_config=vault_config,
+        system_prompt=system_prompt,
+        history=logger.get_messages_for_api(),
+        daily_prompt=daily_prompt,
+        target_date=target_date,
     )
-    if callout.existing_content.strip():
-        user_content += (
-            f"\n\n---\n\n"
-            f"**Existing JARVIS callout entries (DO NOT repeat these):**\n\n"
-            f"{callout.existing_content.strip()}"
-        )
-
-    messages = [
-        {"role": "system", "content": f"{system_prompt}\n\n{daily_prompt}"},
-        *logger.get_messages_for_api(),
-        {"role": "user", "content": user_content},
-    ]
+    if isinstance(request, DailySummaryFailure):
+        print_error(f"\n{request.message}\n")
+        return
+    assert vault_config is not None  # narrowed: builder returns Failure when None
 
     # Stream LLM response with activity spinner
     print_assistant_prefix("JARVIS")
@@ -320,7 +287,7 @@ def handle_daily_summary(
     handler = StreamHandler(client, metrics_tracker, pricing, model_id)
     handler.max_tokens = 4096
     handler.on_chunk = make_live_chunk_handler(live, buf)
-    result = handler.stream(messages, print_chunks=True)
+    result = handler.stream(request.messages, print_chunks=True)
 
     finish_live_stream(live, result.text)
 

@@ -1,4 +1,13 @@
-"""Interactive /review command for scoring pending outcome items."""
+"""Interactive /review command for scoring pending outcome items.
+
+The module has two layers:
+
+- **Data layer** — ``PendingItem``, ``load_pending_due``, ``apply_review``,
+  ``pending_item_to_wire``. Side-effect-bounded (read-only FS + logger).
+  Reused by the GUI outcomes route.
+- **CLI layer** — ``handle_review_command``. Blocking interactive loop using
+  ``console.print`` + ``session.prompt``. CLI-only.
+"""
 
 from __future__ import annotations
 
@@ -21,19 +30,21 @@ class _PromptSessionLike(Protocol):
 
 
 @dataclass
-class _PendingItem:
+class PendingItem:
+    """A pending outcome file waiting for review."""
+
     path: Path
     meta: dict[str, Any]
     body: str
 
 
-def _load_pending_due(outcomes_dir: Path, today: date) -> list[_PendingItem]:
+def load_pending_due(outcomes_dir: Path, today: date) -> list[PendingItem]:
     """Return pending items whose revisit_at date is today or earlier.
 
     Files with malformed frontmatter are logged and skipped — they do not
     abort the review loop.
     """
-    items: list[_PendingItem] = []
+    items: list[PendingItem] = []
     if not outcomes_dir.exists():
         return items
 
@@ -55,27 +66,14 @@ def _load_pending_due(outcomes_dir: Path, today: date) -> list[_PendingItem]:
             logger.warning(f"Skipping {path.name}: invalid revisit_at '{revisit_raw}'")
             continue
         if revisit <= today:
-            items.append(_PendingItem(path=path, meta=meta, body=body))
+            items.append(PendingItem(path=path, meta=meta, body=body))
 
     items.sort(key=lambda i: str(i.meta.get("revisit_at", "")))
     return items
 
 
-def _prompt_choice(
-    session: _PromptSessionLike,
-    question: str,
-    valid: set[str] | tuple[str, ...],
-) -> str:
-    """Prompt until the user types a value in the valid set."""
-    valid_set = set(valid)
-    while True:
-        answer = session.prompt(question).strip().lower()
-        if answer in valid_set:
-            return answer
-
-
-def _apply_review(
-    item: _PendingItem,
+def apply_review(
+    item: PendingItem,
     outcome: str,
     quality: int,
     note: str,
@@ -89,6 +87,36 @@ def _apply_review(
     new_meta["quality"] = quality
     content = frontmatter.dump(new_meta, note)
     frontmatter.write_atomic(item.path, content)
+
+
+def pending_item_to_wire(item: PendingItem) -> dict[str, Any]:
+    """Convert a ``PendingItem`` to a JSON-serialisable dict for the GUI.
+
+    ``file_id`` is the filename stem — it's the stable id the GUI uses to
+    address the item in ``POST /api/outcomes/{file_id}/review``.
+    """
+    meta = item.meta
+    return {
+        "file_id": item.path.stem,
+        "what": meta.get("what"),
+        "why": meta.get("why"),
+        "created_at": meta.get("created_at"),
+        "revisit_at": str(meta.get("revisit_at", "")),
+        "success_looks_like": meta.get("success_looks_like") or None,
+    }
+
+
+def _prompt_choice(
+    session: _PromptSessionLike,
+    question: str,
+    valid: set[str] | tuple[str, ...],
+) -> str:
+    """Prompt until the user types a value in the valid set."""
+    valid_set = set(valid)
+    while True:
+        answer = session.prompt(question).strip().lower()
+        if answer in valid_set:
+            return answer
 
 
 def handle_review_command(
@@ -106,7 +134,7 @@ def handle_review_command(
     today = today or date.today()
     now = now or datetime.now()
 
-    pending = _load_pending_due(outcomes_dir, today)
+    pending = load_pending_due(outcomes_dir, today)
     if not pending:
         console.print("No items due for review.")
         return 0
@@ -136,7 +164,7 @@ def handle_review_command(
             )
             note = session.prompt("Retrospective note (what actually happened, why): ").strip()
 
-            _apply_review(item, outcome, int(quality_str), note, now)
+            apply_review(item, outcome, int(quality_str), note, now)
             reviewed_count += 1
             console.print("  ✓ saved\n")
         except KeyboardInterrupt:
