@@ -1,17 +1,27 @@
-// AgentDetailView — Overview tab of the Agent Detail page.
-// Ported from JARVIS GUI v6 line 1866 (AgentDetail). Dropped the expandable
-// system-prompt viewer and context-file list; those land with the Prompt
-// Editor phase.
+// AgentDetailView — hosts the 5 tab panels (Overview / Prompt / Versions / Stats / Context).
+// Phase 5 shipped the Overview tab; Phase 6 activates the rest.
 
 import { useEffect, useState } from 'react'
 
-import { Cost14dSparkline } from '../components/agents/Cost14dSparkline'
+import { AgentContextPanel } from '../components/agents/AgentContextPanel'
+import { AgentOverviewPanel } from '../components/agents/AgentOverviewPanel'
+import { AgentPromptPanel } from '../components/agents/AgentPromptPanel'
+import { AgentStatsPanel } from '../components/agents/AgentStatsPanel'
+import { AgentVersionsPanel } from '../components/agents/AgentVersionsPanel'
 import { hueFor } from '../lib/agentHues'
 import { speakerLabel } from '../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 import type { AgentDetail } from '../lib/types'
 
-const PLACEHOLDER_TABS = ['Overview', 'Prompt', 'Versions', 'Stats', 'Context']
+type TabKey = 'overview' | 'prompt' | 'versions' | 'stats' | 'context'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'prompt', label: 'Prompt' },
+  { key: 'versions', label: 'Versions' },
+  { key: 'stats', label: 'Stats' },
+  { key: 'context', label: 'Context' },
+]
 
 export function AgentDetailView({
   theme,
@@ -31,6 +41,9 @@ export function AgentDetailView({
   const [detail, setDetail] = useState<AgentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  // Bumped after Save/Restore so Versions/Stats/Context tabs refetch.
+  const [promptRefreshToken, setPromptRefreshToken] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -57,25 +70,7 @@ export function AgentDetailView({
 
   const hue = hueFor(agentId, accent)
 
-  const sectionHeader = (label: string) => (
-    <div
-      style={{
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 10,
-        letterSpacing: 1.4,
-        color: theme.textDisabled,
-        textTransform: 'uppercase',
-        marginBottom: 10,
-        marginTop: 24,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ flex: 1, height: 1, background: theme.border }} />
-    </div>
-  )
+  const bumpPromptRefresh = () => setPromptRefreshToken((t) => t + 1)
 
   return (
     <div style={{ flex: 1, overflow: 'auto', minWidth: 0, background: theme.surface0 }}>
@@ -208,7 +203,6 @@ export function AgentDetailView({
               {detail.description}
             </div>
 
-            {/* Placeholder tab row — sets expectation for the Prompt Editor phase. */}
             <div
               style={{
                 display: 'flex',
@@ -218,165 +212,66 @@ export function AgentDetailView({
                 paddingBottom: 8,
               }}
             >
-              {PLACEHOLDER_TABS.map((tab, i) => (
-                <div
-                  key={tab}
-                  style={{
-                    fontFamily: JARVIS_FONTS.mono,
-                    fontSize: 11,
-                    color: i === 0 ? theme.textPrimary : theme.textDisabled,
-                    borderBottom: i === 0 ? `2px solid ${hue}` : 'none',
-                    paddingBottom: 6,
-                    marginBottom: -9,
-                    fontWeight: i === 0 ? 600 : 400,
-                  }}
-                >
-                  {tab}
-                </div>
-              ))}
-            </div>
-
-            {sectionHeader('Tools')}
-            {detail.tools.length === 0 ? (
-              <div
-                style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 12,
-                  color: theme.textDisabled,
-                }}
-              >
-                no tools · pure reasoning agent
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {detail.tools.map((t) => (
-                  <span
-                    key={t}
+              {TABS.map((tab) => {
+                const active = tab.key === activeTab
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
                     style={{
+                      all: 'unset',
+                      cursor: 'pointer',
                       fontFamily: JARVIS_FONTS.mono,
                       fontSize: 11,
-                      padding: '4px 9px',
-                      borderRadius: 4,
-                      background: theme.surface2,
-                      color: theme.textSecondary,
-                      border: `1px solid ${theme.border}`,
+                      color: active ? theme.textPrimary : theme.textSecondary,
+                      borderBottom: active ? `2px solid ${hue}` : 'none',
+                      paddingBottom: 6,
+                      marginBottom: -9,
+                      fontWeight: active ? 600 : 400,
                     }}
                   >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {sectionHeader('Recent sessions')}
-            {detail.recent_sessions.length === 0 ? (
-              <div
-                style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 12,
-                  color: theme.textDisabled,
-                }}
-              >
-                no sessions yet · start one above
-              </div>
-            ) : (
-              <div
-                style={{
-                  background: theme.surface1,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: 6,
-                  overflow: 'hidden',
-                }}
-              >
-                {detail.recent_sessions.map((s, i) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '92px 1fr 70px 70px',
-                      gap: 12,
-                      alignItems: 'center',
-                      padding: '10px 14px',
-                      borderTop: i === 0 ? 'none' : `1px solid ${theme.border}`,
-                      fontFamily: JARVIS_FONTS.mono,
-                      fontSize: 11.5,
-                    }}
-                  >
-                    <span style={{ color: theme.textDisabled }}>{s.date}</span>
-                    <span
-                      style={{
-                        color: theme.textPrimary,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {s.title}
-                    </span>
-                    <span style={{ color: theme.textSecondary, textAlign: 'right' }}>
-                      {s.messages} msg
-                    </span>
-                    <span style={{ color: theme.cost, textAlign: 'right' }}>
-                      ${s.cost.toFixed(4)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {sectionHeader('Cost · last 14 days')}
-            <Cost14dSparkline
-              theme={theme}
-              hue={hue}
-              days={detail.cost_14d}
-              total={detail.cost_14d_total}
-            />
-
-            {sectionHeader('Configuration')}
-            <div
-              style={{
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 12,
-                color: theme.textSecondary,
-                lineHeight: 1.7,
-              }}
-            >
-              <div>
-                model ·{' '}
-                <span style={{ color: theme.textDisabled }}>(inherits from session)</span>
-              </div>
-              <div>
-                prompt ·{' '}
-                <span style={{ color: theme.textPrimary }}>
-                  {detail.prompt_path ?? '(assembled from ~/.jarvis/context/)'}
-                </span>
-              </div>
-              <div>
-                prompt includes ·{' '}
-                <span style={{ color: theme.textPrimary }}>
-                  {detail.prompt_includes_count} file
-                  {detail.prompt_includes_count === 1 ? '' : 's'}
-                </span>
-              </div>
-              {detail.temperature !== null && (
-                <div>
-                  temperature ·{' '}
-                  <span style={{ color: theme.textPrimary }}>{detail.temperature}</span>
-                </div>
-              )}
-              {detail.max_iterations !== null && (
-                <div>
-                  max iterations ·{' '}
-                  <span style={{ color: theme.textPrimary }}>{detail.max_iterations}</span>
-                </div>
-              )}
-              {detail.skills.length > 0 && (
-                <div>
-                  skills ·{' '}
-                  <span style={{ color: theme.textPrimary }}>{detail.skills.join(', ')}</span>
-                </div>
-              )}
+                    {tab.label}
+                  </button>
+                )
+              })}
             </div>
+
+            {activeTab === 'overview' && (
+              <AgentOverviewPanel theme={theme} hue={hue} agentId={agentId} detail={detail} />
+            )}
+            {activeTab === 'prompt' && (
+              <AgentPromptPanel
+                theme={theme}
+                hue={hue}
+                agentId={agentId}
+                onSaved={bumpPromptRefresh}
+              />
+            )}
+            {activeTab === 'versions' && (
+              <AgentVersionsPanel
+                theme={theme}
+                hue={hue}
+                agentId={agentId}
+                refreshToken={promptRefreshToken}
+                onRestored={bumpPromptRefresh}
+              />
+            )}
+            {activeTab === 'stats' && (
+              <AgentStatsPanel
+                theme={theme}
+                hue={hue}
+                agentId={agentId}
+                refreshToken={promptRefreshToken}
+              />
+            )}
+            {activeTab === 'context' && (
+              <AgentContextPanel
+                theme={theme}
+                hue={hue}
+                agentId={agentId}
+                refreshToken={promptRefreshToken}
+              />
+            )}
           </>
         )}
       </div>

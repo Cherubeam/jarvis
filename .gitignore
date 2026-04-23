@@ -22,6 +22,7 @@ data/context/
 data/conversations/
 data/outcomes/
 data/pattern-cards/
+data/prompt-history/
 data/rag/
 data/.cli_history
 
