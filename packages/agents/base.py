@@ -196,6 +196,48 @@ class DataDrivenAgent(BaseAgent):
         return super().run(message, stream_handler, print_chunks, messages_override)
 
 
+def resolve_system_prompt(
+    agent_dir: Path,
+    prompt_includes: dict[str, str] | None = None,
+    prompt_includes_override: dict[str, str] | None = None,
+) -> str:
+    """Read ``prompts/system.md`` and expand ``{placeholder}`` tokens.
+
+    Pure helper — reused by :func:`agent_from_meta` at session build time and
+    by the GUI's Context tab to show users the exact assembled prompt.
+
+    Args:
+        agent_dir: Agent root directory (contains ``prompts/system.md``).
+        prompt_includes: Mapping of placeholder name to include filename
+            (without ``.md`` extension), typically ``meta.yaml`` contents.
+        prompt_includes_override: Overrides applied before normal expansion.
+            ``""`` blanks the placeholder and skips its file; any other value
+            replaces the filename for that placeholder.
+
+    Returns:
+        The assembled system prompt text. Unresolvable placeholders render
+        as empty strings (startup validation surfaces those as warnings).
+    """
+    system_prompt_path = agent_dir / "prompts" / "system.md"
+    system_prompt = system_prompt_path.read_text(encoding="utf-8")
+
+    includes = dict(prompt_includes or {})
+    if prompt_includes_override:
+        for placeholder, value in prompt_includes_override.items():
+            if value == "":
+                system_prompt = system_prompt.replace(f"{{{placeholder}}}", "")
+                includes.pop(placeholder, None)
+            else:
+                includes[placeholder] = value
+
+    for placeholder, filename in includes.items():
+        resolution = resolve_include(agent_dir, filename)
+        include_text = resolution.path.read_text(encoding="utf-8") if resolution.path is not None else ""
+        system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
+
+    return system_prompt
+
+
 def agent_from_meta(
     meta_path: Path,
     llm_client: LLMClient,
@@ -227,27 +269,11 @@ def agent_from_meta(
         meta = yaml.safe_load(f)
 
     agent_dir = meta_path.parent
-    system_prompt_path = agent_dir / "prompts" / "system.md"
-    system_prompt = system_prompt_path.read_text(encoding="utf-8")
-
-    # Resolve prompt_includes: apply overrides before normal expansion
-    prompt_includes = dict(meta.get("prompt_includes", {}))
-    if prompt_includes_override:
-        for placeholder, value in prompt_includes_override.items():
-            if value == "":
-                system_prompt = system_prompt.replace(f"{{{placeholder}}}", "")
-                prompt_includes.pop(placeholder, None)
-            else:
-                prompt_includes[placeholder] = value
-
-    # Resolve each include via the shared lookup order (agent-local .md →
-    # shared .md → agent-local .md.example → shared .md.example). Missing
-    # files render as empty rather than crashing mid-stream; startup
-    # validation (apps.cli.main) surfaces them as warnings.
-    for placeholder, filename in prompt_includes.items():
-        resolution = resolve_include(agent_dir, filename)
-        include_text = resolution.path.read_text(encoding="utf-8") if resolution.path is not None else ""
-        system_prompt = system_prompt.replace(f"{{{placeholder}}}", include_text)
+    system_prompt = resolve_system_prompt(
+        agent_dir,
+        prompt_includes=meta.get("prompt_includes", {}),
+        prompt_includes_override=prompt_includes_override,
+    )
 
     tools = list(extra_tools) if extra_tools else []
 
