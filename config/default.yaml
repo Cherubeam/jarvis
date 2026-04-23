@@ -20,6 +20,7 @@ paths:
   context_dir: "data/context"
   conversations_dir: "data/conversations"
   learned_facts: "data/learned_facts.md"
+  prompt_history_dir: "data/prompt-history"
 
 # Things 3 integration
 things3:
