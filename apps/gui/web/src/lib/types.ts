@@ -82,6 +82,59 @@ export type AgentDetail = {
   cost_14d_total: number
 }
 
+// -- Agent prompt editor (Phase 6) ------------------------------------------
+
+export type PromptResponse = {
+  content: string
+  path: string | null              // null for JARVIS
+  bytes: number
+  last_modified_iso: string | null
+  editable: boolean
+  explanation: string | null       // present for JARVIS read-only notice
+}
+
+export type PromptSnapshotKind = 'save' | 'pre_first_save' | 'pre_restore'
+
+export type PromptSnapshot = {
+  id: string
+  timestamp: string
+  bytes: number
+  kind: PromptSnapshotKind
+  note?: string
+}
+
+export type PromptSnapshotDetail = PromptSnapshot & { content: string }
+
+export type PromptSaveResult = {
+  bytes: number
+  last_modified_iso: string
+  snapshot_id: string
+}
+
+export type PromptIncludeRow = {
+  placeholder: string
+  filename: string
+  status:
+    | 'found_local'
+    | 'found_shared'
+    | 'found_local_example'
+    | 'found_shared_example'
+    | 'missing'
+  path: string | null
+}
+
+export type PromptStats = {
+  char_count: number
+  line_count: number
+  token_estimate: number
+  token_estimate_method: string
+  last_modified_iso: string | null
+  snapshot_count: number
+  prompt_includes: PromptIncludeRow[]
+}
+
+export type PromptResolved = { resolved_content: string }
+
 // -- Conversations (Phase 2) ------------------------------------------------
 
 export type ConversationSummary = {
