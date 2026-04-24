@@ -11,7 +11,8 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+
+from packages.core.settings import FilesystemSettings
 
 logger = logging.getLogger(__name__)
 
@@ -72,30 +73,16 @@ class FilesystemGuard:
         return access in (AccessLevel.WRITE, AccessLevel.READ_WRITE)
 
 
-def load_filesystem_guard(config: dict[str, Any]) -> FilesystemGuard:
-    """Build a FilesystemGuard from config dictionary.
+def load_filesystem_guard(filesystem: FilesystemSettings) -> FilesystemGuard:
+    """Build a FilesystemGuard from validated FilesystemSettings.
 
-    Expected config shape:
-        filesystem:
-          access_rules:
-            - path: "~/some/path"
-              access: read
+    Path expansion (``~`` → home, ``..`` resolution) happens here at the
+    runtime boundary so the YAML schema stays portable. Access values
+    were already constrained by ``AccessRuleSettings.access`` (Literal),
+    so a plain ``AccessLevel(...)`` lookup is safe.
     """
-    fs_config = config.get("filesystem", {})
-    raw_rules = fs_config.get("access_rules", [])
-
     rules: list[AccessRule] = []
-    for entry in raw_rules:
-        raw_path = entry.get("path", "")
-        raw_access = entry.get("access", "deny")
-
-        path = Path(raw_path).expanduser().resolve()
-        try:
-            access = AccessLevel(raw_access)
-        except ValueError:
-            logger.warning(f"Unknown access level '{raw_access}' for {raw_path}, defaulting to deny")
-            access = AccessLevel.DENY
-
-        rules.append(AccessRule(path=path, access=access))
-
+    for entry in filesystem.access_rules:
+        path = Path(entry.path).expanduser().resolve()
+        rules.append(AccessRule(path=path, access=AccessLevel(entry.access)))
     return FilesystemGuard(rules)

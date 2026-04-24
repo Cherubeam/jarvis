@@ -46,7 +46,12 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import ObsidianSettings, Settings, load_typed_config
+from packages.core.settings import (
+    FilesystemSettings,
+    ObsidianSettings,
+    Settings,
+    load_typed_config,
+)
 from packages.core.settings import deep_merge as _settings_deep_merge
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
@@ -224,7 +229,8 @@ def handle_daily_summary(
             print_error(f"\nInvalid date format: '{target_date}'. Use YYYY-MM-DD.\n")
             return
 
-    fs_guard = load_filesystem_guard(config)
+    filesystem_settings = FilesystemSettings.model_validate(config.get("filesystem", {}))
+    fs_guard = load_filesystem_guard(filesystem_settings)
     obsidian_settings = ObsidianSettings.model_validate(config.get("obsidian", {}))
     vault_config = load_vault_config(obsidian_settings, filesystem_guard=fs_guard)
 
