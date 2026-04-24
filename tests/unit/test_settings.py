@@ -13,6 +13,10 @@ from packages.core.settings import (
     EvaluationSettings,
     ModelPresets,
     ModelsSettings,
+    ObsidianDailyNotesSettings,
+    ObsidianSettings,
+    ObsidianWritingSettings,
+    ObsidianWritingTargetSettings,
     OutcomesSettings,
     PathsSettings,
     RagSettings,
@@ -180,6 +184,57 @@ class TestSummarizationSettings:
         assert s.keep_recent == 10
 
 
+class TestObsidianSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        o = ObsidianSettings()
+        assert o.enabled is False
+        assert o.vault_path == ""
+        assert o.daily_notes.path_format == "Daily Notes/%Y-%m-%d"
+        assert o.writing.blog_dir == ""
+        assert o.writing.template_path == ""
+        assert o.writing.patterns.target_dir == ""
+        assert o.writing.patterns.template_path == ""
+        assert o.writing.slip_box.target_dir == ""
+        assert o.writing.slip_box.template_path == ""
+        assert o.prompts_dir == "data/prompts/obsidian"
+
+    def test_local_yaml_shape(self) -> None:
+        o = ObsidianSettings(
+            enabled=True,
+            vault_path="/Users/me/Vault",
+            daily_notes=ObsidianDailyNotesSettings(path_format="06/%Y/%Y-%m-%d"),
+            writing=ObsidianWritingSettings(
+                blog_dir="03/02 Substack",
+                template_path="99/00/(TEMPLATE) Blog Post.md",
+                patterns=ObsidianWritingTargetSettings(target_dir="04/06 Patterns"),
+                slip_box=ObsidianWritingTargetSettings(
+                    target_dir="05 Slip-Box",
+                    template_path="99/00/(TEMPLATE) Permanent Note",
+                ),
+            ),
+        )
+        assert o.enabled is True
+        assert o.vault_path == "/Users/me/Vault"
+        assert o.daily_notes.path_format == "06/%Y/%Y-%m-%d"
+        assert o.writing.patterns.target_dir == "04/06 Patterns"
+        assert o.writing.slip_box.template_path == "99/00/(TEMPLATE) Permanent Note"
+
+    def test_nested_dict_construction(self) -> None:
+        o = ObsidianSettings.model_validate(
+            {
+                "enabled": True,
+                "vault_path": "/v",
+                "writing": {
+                    "patterns": {"target_dir": "p"},
+                    "slip_box": {"target_dir": "s"},
+                },
+            }
+        )
+        assert o.writing.patterns.target_dir == "p"
+        assert o.writing.slip_box.target_dir == "s"
+        assert o.writing.blog_dir == ""
+
+
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
@@ -192,6 +247,7 @@ class TestSettingsAggregator:
         assert settings.rag.enabled is True
         assert settings.routing.enabled is False
         assert settings.summarization.enabled is False
+        assert settings.obsidian.enabled is False
         assert settings.developer.enabled is True
 
     def test_partial_section_override_via_dict(self) -> None:
