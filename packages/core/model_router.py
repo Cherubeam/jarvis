@@ -8,10 +8,9 @@ to cheap/fast models and complex queries to high-quality models.
 
 import re
 from dataclasses import dataclass
-from typing import Any
 
 from packages.core.model_resolver import ResolvedModel, resolve_model
-from packages.core.settings import ModelsSettings
+from packages.core.settings import Settings
 
 
 @dataclass
@@ -35,7 +34,7 @@ _NUMBERED_LIST_RE = re.compile(r"^\s*\d+\.\s", re.MULTILINE)
 
 def classify_query(
     query: str,
-    config: dict[str, Any],
+    settings: Settings,
     agent_name: str | None = None,
 ) -> tuple[str, str, float]:
     """Classify query complexity and return (preset, reason, confidence).
@@ -43,9 +42,8 @@ def classify_query(
     Returns:
         Tuple of (preset_name, reason, confidence)
     """
-    routing_cfg = config.get("routing", {})
-    simple_threshold = routing_cfg.get("simple_threshold", 200)
-    complex_threshold = routing_cfg.get("complex_threshold", 800)
+    simple_threshold = settings.routing.simple_threshold
+    complex_threshold = settings.routing.complex_threshold
 
     # Agent-specific overrides
     if agent_name and agent_name in _QUALITY_AGENTS:
@@ -75,22 +73,21 @@ def classify_query(
 
 def route_query(
     query: str,
-    config: dict[str, Any],
+    settings: Settings,
     agent_name: str | None = None,
 ) -> RoutingDecision:
     """Route a query to the appropriate model based on complexity.
 
     Args:
         query: The user's input text.
-        config: Full application config (must contain models.presets).
+        settings: Typed JARVIS settings.
         agent_name: Optional agent name for agent-specific routing.
 
     Returns:
         RoutingDecision with the selected preset and resolved model.
     """
-    preset, reason, confidence = classify_query(query, config, agent_name)
-    models = ModelsSettings.model_validate(config.get("models", {}))
-    resolved = resolve_model(preset, models)
+    preset, reason, confidence = classify_query(query, settings, agent_name)
+    resolved = resolve_model(preset, settings.models)
     return RoutingDecision(
         preset=preset,
         resolved=resolved,

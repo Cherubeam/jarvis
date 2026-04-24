@@ -304,6 +304,7 @@ async def test_non_daily_summary_text_falls_through(tmp_path: Path):
     session.components.agent_registry = {}
     session.components.client = MagicMock()
     session.components.config = {"summarization": {"enabled": False}, "_paths": {"jarvis_dir": tmp_path}}
+    session.components.settings = SimpleNamespace(summarization=SimpleNamespace(enabled=False))
 
     with patch("apps.gui.server.bridge.build_daily_summary_request") as mock_build:
         await run_turn(session, "hello there", q)

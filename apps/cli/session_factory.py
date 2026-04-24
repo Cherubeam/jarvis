@@ -349,8 +349,7 @@ def build_session(
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
 
-    dev_cfg = config.get("developer", {})
-    if dev_cfg.get("enabled", True):
+    if settings.developer.enabled:
         try:
             from packages.core.tools.codebase_tools import make_codebase_tools
             from packages.core.tools.git_tools import make_git_tools
@@ -358,17 +357,8 @@ def build_session(
             from packages.core.tools.project_write_tools import make_project_write_tools
             from packages.core.tools.test_tools import make_test_runner_tool
 
-            dev_scope = dev_cfg.get(
-                "scope",
-                [
-                    "packages/agents/",
-                    "packages/skills/",
-                    "data/context/",
-                    "data/prompts/",
-                    "config/",
-                ],
-            )
-            dev_extensions = dev_cfg.get("allowed_extensions", [".md", ".yaml", ".yml"])
+            dev_scope = settings.developer.scope
+            dev_extensions = settings.developer.allowed_extensions
 
             dev_tools: list[Any] = []
             dev_tools.extend(make_codebase_tools(jarvis_dir))
