@@ -46,7 +46,7 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import Settings, load_typed_config
+from packages.core.settings import ObsidianSettings, Settings, load_typed_config
 from packages.core.settings import deep_merge as _settings_deep_merge
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
@@ -108,22 +108,20 @@ def _instantiate_agent(
     )
 
 
-def _make_agent_vault_tools(meta: AgentMeta, config: dict[str, Any], vault_config: Any) -> list[Any]:
+def _make_agent_vault_tools(meta: AgentMeta, settings: Settings, vault_config: Any) -> list[Any]:
     """Create vault write tools scoped to an agent's declared vault_writing config section.
 
     Reads meta.vault_writing (e.g. "patterns", "slip_box"), looks up the
-    corresponding obsidian.writing.<key> config, and calls make_vault_write_tools()
-    with the right target_dir and template_path.
+    corresponding obsidian.writing.<key> typed setting, and calls
+    make_vault_write_tools() with the right target_dir and template_path.
 
-    Returns [] if the agent doesn't declare vault_writing or the config section is empty.
+    Returns [] if the agent doesn't declare vault_writing or the section is empty.
     """
     if vault_config is None or not meta.vault_writing:
         return []
 
-    section = config.get("obsidian", {}).get("writing", {}).get(meta.vault_writing, {})
-    target_dir = section.get("target_dir", "")
-    template_path = section.get("template_path", "")
-    if not target_dir:
+    section = getattr(settings.obsidian.writing, meta.vault_writing, None)
+    if section is None or not section.target_dir:
         return []
 
     try:
@@ -132,8 +130,8 @@ def _make_agent_vault_tools(meta: AgentMeta, config: dict[str, Any], vault_confi
         return make_vault_write_tools(
             vault_config,
             CLIConfirmationHandler(),
-            target_dir=target_dir,
-            template_path=template_path,
+            target_dir=section.target_dir,
+            template_path=section.template_path,
         )
     except Exception:
         return []
@@ -227,7 +225,8 @@ def handle_daily_summary(
             return
 
     fs_guard = load_filesystem_guard(config)
-    vault_config = load_vault_config(config, filesystem_guard=fs_guard)
+    obsidian_settings = ObsidianSettings.model_validate(config.get("obsidian", {}))
+    vault_config = load_vault_config(obsidian_settings, filesystem_guard=fs_guard)
 
     try:
         daily_prompt = JarvisAgent.get_daily_note_instructions()
@@ -521,7 +520,7 @@ def _handle_agent_command(
     session: Any = None,
     skill_registry: dict[str, Any] | None = None,
     card_search_tool: ToolDefinition | None = None,
-    config: dict[str, Any] | None = None,
+    settings: Settings | None = None,
     vault_config: Any = None,
 ) -> bool:
     """Route a slash command to the matching agent. Returns True if handled."""
@@ -537,8 +536,8 @@ def _handle_agent_command(
 
     # Assemble tools: shared + per-agent tool_groups + vault write tools
     all_tools = _assemble_agent_tools(meta, shared_tools or [], tool_groups or {})
-    if config is not None:
-        all_tools.extend(_make_agent_vault_tools(meta, config, vault_config))
+    if settings is not None:
+        all_tools.extend(_make_agent_vault_tools(meta, settings, vault_config))
 
     agent = _instantiate_agent(
         meta,
@@ -630,8 +629,8 @@ def main(argv: list[str] | None = None) -> None:
     mcp_manager = components.mcp_manager
 
     # Helper: bind the CLI confirmation handler into delegate-agent vault tools.
-    def _make_agent_vault_tools(meta: AgentMeta, _config: dict[str, Any], _vc: Any) -> list[Any]:
-        return make_agent_vault_tools(meta, _config, _vc, confirmation_handler)
+    def _make_agent_vault_tools(meta: AgentMeta, _settings: Settings, _vc: Any) -> list[Any]:
+        return make_agent_vault_tools(meta, _settings, _vc, confirmation_handler)
 
     # Pricing display string for the startup banner.
     if pricing:
@@ -737,7 +736,7 @@ def main(argv: list[str] | None = None) -> None:
                     session=session,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
-                    config=config,
+                    settings=settings,
                     vault_config=vault_config,
                 ):
                     continue
@@ -825,7 +824,7 @@ def main(argv: list[str] | None = None) -> None:
                     shared_tools,
                     tool_groups,
                 )
-                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, config, vault_config))
+                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, settings, vault_config))
                 delegate_agent = _instantiate_agent(
                     delegate_meta,
                     client,

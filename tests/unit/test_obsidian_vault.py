@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
+from packages.core.settings import ObsidianDailyNotesSettings, ObsidianSettings
 from packages.integrations.obsidian.vault import (
     VaultConfig,
     get_daily_note_path,
@@ -48,58 +49,44 @@ class TestVaultConfig:
 
 class TestLoadVaultConfig:
     def test_disabled_returns_none(self):
-        config = {"obsidian": {"enabled": False, "vault_path": "/some/path"}}
-        assert load_vault_config(config) is None
+        obsidian = ObsidianSettings(enabled=False, vault_path="/some/path")
+        assert load_vault_config(obsidian) is None
 
-    def test_missing_obsidian_key_returns_none(self):
-        assert load_vault_config({}) is None
+    def test_default_obsidian_returns_none(self):
+        assert load_vault_config(ObsidianSettings()) is None
 
     def test_empty_vault_path_returns_none(self):
-        config = {"obsidian": {"enabled": True, "vault_path": ""}}
-        assert load_vault_config(config) is None
+        obsidian = ObsidianSettings(enabled=True, vault_path="")
+        assert load_vault_config(obsidian) is None
 
     def test_nonexistent_vault_path_returns_none(self):
-        config = {"obsidian": {"enabled": True, "vault_path": "/nonexistent/path"}}
-        assert load_vault_config(config) is None
+        obsidian = ObsidianSettings(enabled=True, vault_path="/nonexistent/path")
+        assert load_vault_config(obsidian) is None
 
     def test_valid_config(self, tmp_path):
         daily_dir = tmp_path / "Daily Notes"
         daily_dir.mkdir()
         guard = _guard((daily_dir, AccessLevel.READ_WRITE))
-        config = {
-            "obsidian": {
-                "enabled": True,
-                "vault_path": str(tmp_path),
-                "daily_notes": {
-                    "path_format": "Daily Notes/%Y-%m-%d",
-                },
-            }
-        }
-        result = load_vault_config(config, filesystem_guard=guard)
+        obsidian = ObsidianSettings(
+            enabled=True,
+            vault_path=str(tmp_path),
+            daily_notes=ObsidianDailyNotesSettings(path_format="Daily Notes/%Y-%m-%d"),
+        )
+        result = load_vault_config(obsidian, filesystem_guard=guard)
         assert result is not None
         assert result.vault_path == tmp_path.resolve()
         assert result.enabled is True
         assert result.daily_note_path_format == "Daily Notes/%Y-%m-%d"
 
     def test_defaults_for_missing_daily_notes_section(self, tmp_path):
-        config = {
-            "obsidian": {
-                "enabled": True,
-                "vault_path": str(tmp_path),
-            }
-        }
-        result = load_vault_config(config)
+        obsidian = ObsidianSettings(enabled=True, vault_path=str(tmp_path))
+        result = load_vault_config(obsidian)
         assert result is not None
         assert result.daily_note_path_format == "Daily Notes/%Y-%m-%d"
 
     def test_none_guard_creates_empty_guard(self, tmp_path):
-        config = {
-            "obsidian": {
-                "enabled": True,
-                "vault_path": str(tmp_path),
-            }
-        }
-        result = load_vault_config(config, filesystem_guard=None)
+        obsidian = ObsidianSettings(enabled=True, vault_path=str(tmp_path))
+        result = load_vault_config(obsidian, filesystem_guard=None)
         assert result is not None
         # Empty guard denies everything
         assert result.filesystem_guard.check_read(tmp_path / "file.md") is False

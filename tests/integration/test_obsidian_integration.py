@@ -8,6 +8,7 @@ Uses temporary vaults with real filesystem operations.
 import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
+from packages.core.settings import ObsidianDailyNotesSettings, ObsidianSettings
 from packages.integrations.obsidian.callout import (
     CalloutBlock,
     build_updated_content,
@@ -119,16 +120,12 @@ class TestConfigToVaultFlow:
                 AccessRule(path=daily_dir.resolve(), access=AccessLevel.READ_WRITE),
             ]
         )
-        config_dict = {
-            "obsidian": {
-                "enabled": True,
-                "vault_path": str(temp_vault),
-                "daily_notes": {
-                    "path_format": "Daily Notes/%Y-%m-%d",
-                },
-            }
-        }
-        vault_config = load_vault_config(config_dict, filesystem_guard=guard)
+        obsidian = ObsidianSettings(
+            enabled=True,
+            vault_path=str(temp_vault),
+            daily_notes=ObsidianDailyNotesSettings(path_format="Daily Notes/%Y-%m-%d"),
+        )
+        vault_config = load_vault_config(obsidian, filesystem_guard=guard)
         assert vault_config is not None
 
         content = read_note(note, vault_config)

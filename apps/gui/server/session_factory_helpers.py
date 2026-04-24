@@ -24,7 +24,7 @@ def build_delegate_agent(
 ) -> Any:
     """Build a delegate agent at runtime (mirrors apps/cli/main.py:1247-1255)."""
     all_tools = assemble_agent_tools(delegate_meta, c.shared_tools, c.tool_groups)
-    all_tools.extend(make_agent_vault_tools(delegate_meta, c.config, c.vault_config, confirmation_handler))
+    all_tools.extend(make_agent_vault_tools(delegate_meta, c.settings, c.vault_config, confirmation_handler))
     return instantiate_agent(
         delegate_meta,
         c.client,
