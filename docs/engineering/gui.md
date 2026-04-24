@@ -214,6 +214,44 @@ The frontend detects `editable: false` and renders a read-only notice + scrollab
 - **No editing of `prompt_includes` files.** Phase 6 only edits `system.md`. Shared includes (`voice-profile.md`, `anti-patterns.md`, etc.) still require editing on disk.
 - **Tab state resets on navigation.** Leaving the agent page and coming back lands on Overview. Acceptable for a localhost tool.
 
+## Settings view (Phase 8b)
+
+The Settings tab is a form-based editor for every field in `packages.core.settings.Settings`. Saves land in `config/local.yaml` as a diff against `Settings()` defaults.
+
+### Endpoints
+
+- `GET /api/settings` — returns `settings` (current state from `components.settings`), `defaults` (`Settings().model_dump()`), `overrides` (the diff drawn by `diff_from_defaults`), `local_yaml_has_managed_header` (sentinel for the overwrite guard), and `paths.local_yaml` / `paths.default_yaml`.
+- `GET /api/settings/schema` — returns `Settings.model_json_schema()` with every `$ref` inlined by `dereferenced_schema()`. Lets the frontend read field descriptions, Literal enum choices, and numeric bounds without a client-side resolver.
+- `PUT /api/settings` — body `{ settings, accept_overwrite }`. Validates with `Settings.model_validate`, computes `diff_from_defaults`, atomic-writes `config/local.yaml` under a lazy `asyncio.Lock` at `app.state.settings_write_lock`. Responds `{ overrides, bytes, restart_required: true }`.
+
+### Write path guards
+
+1. **Managed-header guard.** If `config/local.yaml` exists and its first non-blank line is not `# Managed by JARVIS Settings — regenerate via Settings view.`, PUT returns `409 Conflict` unless the body carries `accept_overwrite: true`. The GUI surfaces an explicit overwrite dialog before re-submitting with the flag set. Rationale: `local.yaml` can contain user-maintained YAML outside the Settings schema (historical comments, experimental keys, plain-text credentials per ADR-032); first-save would otherwise wipe those silently.
+2. **Atomic write.** `packages/core/frontmatter.py:write_atomic` writes to a sibling tmp file then `os.replace`s. A mid-write disk failure leaves the previous file intact.
+3. **Validation error normalisation.** `_normalize_validation_errors` walks the dereferenced schema alongside each `loc` tuple from the `ValidationError` and adds `card_loc` + `kind ∈ {"field", "model_validator"}`. Model-validator errors (e.g. `MCPServerSettings` missing `command` on stdio, server name containing `__`) stop at model boundaries — `loc` doesn't point at a field — so the GUI renders them at the enclosing card header instead of inline.
+
+### Frontend architecture
+
+2-pane layout: left nav (`SettingsNav.tsx`) + right panel + sticky footer (`SettingsShell.tsx` → `SettingsFooter` + `OverwriteDialog`). Not a 16-wide tab bar — flat tabs at this scale are a known UX anti-pattern.
+
+- **`SettingsView.tsx`** — fetches both endpoints on mount via `AbortController`, holds `original` (server state) + `working` (user edits) + `errors: SettingsValidationError[]`. `isDirty` is a deep-equality check. Save does `doSave(working, false)`; 409 pops the overwrite dialog; 422 populates errors and auto-scrolls the first erroring section into view.
+- **`SettingField.tsx`** — single generic row: label + hover-tooltip (description from schema) + input appropriate for the scalar type. Bool → toggle. Enum → segmented control (from `enumChoices`). Int/float → `<input type="number">`. Lists → one-per-line textarea (trim + drop blanks). String / unknown → `<input type="text">`.
+- **`SectionCardError.tsx`** — red banner shown above any panel with `kind: "model_validator"` errors attached at its `card_loc`. Used on `McpServersPanel`'s per-server cards.
+- **`ScalarPanel.tsx`** — drives 12 of the 16 sections from a `FieldSpec[]` list declared in `scalarSections.ts`. Paths tab is the only scalar panel with a `PanelWarning` banner (editing paths while JARVIS is running can leave data inconsistent).
+- **Custom panels:** `ObsidianPanel` (nested daily_notes + writing with pattern/slip_box sub-sections), `PatternCardsPanel` (nested image_generation), `McpServersPanel` (dict editor with transport-switched field sets, inline rename, DictField for env/headers, "add server" form forcing a transport pick), `FilesystemPanel` (access-rules table + `deny|read|write|read-write` dropdown).
+- **`helpers.ts`** — immutable `setAt / getAt / deleteAt` for path-based state updates, `pathsEqual / pathStartsWith / deepEqual`, `fieldErrorAt / cardErrorsAt / sectionHasErrors` for error dispatch, and `schemaAt / fieldType / fieldDescription / enumChoices` for walking the dereferenced JSON schema (including `additionalProperties` for dict-keyed dynamic sections).
+
+### No in-process rebind
+
+Deliberate. `build_session()` captures settings values into `LLMClient`, tool closures, `FilesystemGuard`, `CortexClient`, and MCP subprocesses at startup. Only three code paths re-read `components.settings.*` per request: `outcomes.*`, `summarization.*` (in `bridge.py`), and `paths.prompt_history_dir` (in `agents.py`). Rebinding `components.settings` after PUT would give a false impression of hot-apply for ~95% of fields. Instead PUT always returns `restart_required: true` and the footer banner says so. Per-field hot-apply gating is a follow-up once real usage identifies which toggles users flip most.
+
+### Known limitations (Phase 8b)
+
+- **No file-watching / hot-reload** of external `config/local.yaml` edits. The managed-header guard on PUT helps — a user who hand-edits sees a 409 on their next save — but a GET/PUT cycle in the GUI won't pick up disk-side changes until restart.
+- **`evaluation.category_thresholds` (a `dict[str, float]`) is not rendered** — skipped from the scalar-section field list because it's a rare-edit open-keyed map. Edit directly in `config/local.yaml` for now.
+- **No diff view before save.** The footer says "unsaved changes" but doesn't list which fields changed. Low priority while the working set is small.
+- **No field-level restart-vs-hot-apply classification.** The banner always says "restart required." A follow-up can rebuild specific tool closures for the handful of known hot-applicable fields.
+
 ## Sidebar Timeline mode (Phase 4)
 
 The Chat-view sidebar has two render variants, toggled from the Tweaks panel:
