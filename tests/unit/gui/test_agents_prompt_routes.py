@@ -63,10 +63,13 @@ def _build_app(tmp_path: Path, agents: dict[str, AgentMeta] | None = None) -> Fa
         "_paths": {"jarvis_dir": tmp_path},
         "paths": {"prompt_history_dir": "data/prompt-history"},
     }
+    settings = SimpleNamespace(paths=SimpleNamespace(prompt_history_dir="data/prompt-history"))
     active_jarvis = SimpleNamespace(config=SimpleNamespace(system_prompt="JARVIS assembled prompt here.\nSecond line."))
     components = SimpleNamespace(
         agent_registry=agents or {},
         config=config,
+        settings=settings,
+        jarvis_dir=tmp_path,
         active_agent=active_jarvis,
     )
     app = FastAPI()

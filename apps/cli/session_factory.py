@@ -202,8 +202,8 @@ def build_session(
             f"No API key for provider '{resolved.provider}'. Set {resolved.provider.upper()}_API_KEY in your .env file."
         )
 
-    context_dir = jarvis_dir / config.get("paths", {}).get("context_dir", "data/context")
-    conversations_dir = jarvis_dir / config.get("paths", {}).get("conversations_dir", "data/conversations")
+    context_dir = jarvis_dir / settings.paths.context_dir
+    conversations_dir = jarvis_dir / settings.paths.conversations_dir
 
     sync_tasks_to_file(context_dir / "tasks.md", config)
 
