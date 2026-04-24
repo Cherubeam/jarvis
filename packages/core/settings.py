@@ -553,3 +553,75 @@ def load_config(project_root: Path | None = None) -> Settings:
     settings = Settings.model_validate(merged)
     settings.jarvis_dir = root
     return settings
+
+
+def diff_from_defaults(settings: Settings) -> dict[str, Any]:
+    """Return the minimal dict that, deep-merged onto ``Settings()`` defaults, reproduces ``settings``.
+
+    Used by the Settings GUI to write a compact ``config/local.yaml`` — only the
+    user-customised fields appear on disk. Round-trip parity with
+    :func:`read_yaml_layers` + ``Settings.model_validate`` is pinned by tests.
+
+    Semantics:
+    - Scalars / None: kept iff ``current != default``.
+    - Nested dicts: recurse; empty subtrees drop out.
+    - Lists: replace wholesale (matches ``deep_merge``). One item added → whole list kept.
+    - Keys present in ``current`` but absent from ``defaults`` (dynamic-keyed
+      dicts like ``mcp.servers["n8n"]``) are kept wholesale.
+    """
+    current = settings.model_dump()
+    defaults = Settings().model_dump()
+    return _diff_dict(current, defaults)
+
+
+def _diff_dict(current: dict[str, Any], defaults: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in current.items():
+        if key not in defaults:
+            result[key] = value
+            continue
+        default_value = defaults[key]
+        if isinstance(value, dict) and isinstance(default_value, dict):
+            sub = _diff_dict(value, default_value)
+            if sub:
+                result[key] = sub
+        elif value != default_value:
+            result[key] = value
+    return result
+
+
+def dereferenced_schema() -> dict[str, Any]:
+    """Return ``Settings.model_json_schema()`` with every ``$ref`` inlined.
+
+    The GUI consumes this schema to render field descriptions, enum choices,
+    and numeric bounds. Keeping the schema ``$ref``-free means the frontend
+    doesn't need a JSON-Schema resolver.
+    """
+    raw = Settings.model_json_schema()
+    defs = raw.pop("$defs", {}) or {}
+    inlined = _inline_refs(raw, defs)
+    assert isinstance(inlined, dict)
+    return inlined
+
+
+def _inline_refs(node: Any, defs: dict[str, Any], seen: frozenset[str] = frozenset()) -> Any:
+    """Recursively replace ``{"$ref": "#/$defs/X"}`` with ``defs["X"]``.
+
+    Cycles (a model recursively referencing itself) are broken by returning
+    the ref unchanged — Settings has no self-referential models today, but
+    the guard keeps this helper safe against future additions.
+    """
+    if isinstance(node, dict):
+        if "$ref" in node and isinstance(node["$ref"], str):
+            ref = node["$ref"]
+            if ref.startswith("#/$defs/"):
+                name = ref[len("#/$defs/") :]
+                if name in seen:
+                    return dict(node)
+                target = defs.get(name)
+                if target is not None:
+                    return _inline_refs(target, defs, seen | {name})
+        return {key: _inline_refs(value, defs, seen) for key, value in node.items()}
+    if isinstance(node, list):
+        return [_inline_refs(item, defs, seen) for item in node]
+    return node
