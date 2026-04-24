@@ -5,10 +5,53 @@ Loaded from ``config/default.yaml`` deep-merged with ``config/local.yaml``.
 See ADR-032 in ``docs/product/decisions.md``.
 """
 
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
+import yaml
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings
+
+
+def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge ``override`` into ``base``.
+
+    Semantics (unchanged from ``apps.cli.main._deep_merge``):
+    - Nested dicts merge key-by-key.
+    - Lists replace wholesale (not concatenated) — matches user expectation
+      for keys like ``mcp.servers`` or ``developer.scope``.
+    - Any non-dict override replaces the base value at that key.
+
+    Returns a new dict; inputs are not mutated.
+    """
+    result = dict(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def read_yaml_layers(default_path: Path, local_path: Path | None = None) -> dict[str, Any]:
+    """Read ``default.yaml`` and optionally deep-merge ``local.yaml`` on top.
+
+    Missing files are treated as empty dicts. Returns the merged dict the
+    ``Settings`` model will consume. Keeps filesystem I/O isolated from
+    model construction so callers can supply their own dicts in tests.
+    """
+    if default_path.exists():
+        with default_path.open() as f:
+            merged = yaml.safe_load(f) or {}
+    else:
+        merged = {}
+
+    if local_path and local_path.exists():
+        with local_path.open() as f:
+            local = yaml.safe_load(f) or {}
+        merged = deep_merge(merged, local)
+
+    return merged
 
 
 class ModelPresets(BaseModel):

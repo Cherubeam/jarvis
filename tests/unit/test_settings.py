@@ -4,6 +4,8 @@ Covers each section's model independently. End-to-end YAML-loading
 parity is covered later in PR-8a (commit 8 wires the YAML source loader).
 """
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -32,6 +34,8 @@ from packages.core.settings import (
     Settings,
     SummarizationSettings,
     Things3Settings,
+    deep_merge,
+    read_yaml_layers,
 )
 
 
@@ -384,6 +388,80 @@ class TestPatternCardsSettings:
         )
         assert p.image_generation.enabled is True
         assert p.image_generation.max_images_per_run == 5
+
+
+class TestDeepMerge:
+    def test_flat_override(self) -> None:
+        merged = deep_merge({"a": 1, "b": 2}, {"b": 20})
+        assert merged == {"a": 1, "b": 20}
+
+    def test_nested_merge(self) -> None:
+        merged = deep_merge({"a": {"x": 1, "y": 2}}, {"a": {"y": 20, "z": 30}})
+        assert merged == {"a": {"x": 1, "y": 20, "z": 30}}
+
+    def test_lists_replace_wholesale(self) -> None:
+        merged = deep_merge({"items": [1, 2, 3]}, {"items": [9]})
+        assert merged == {"items": [9]}
+
+    def test_input_not_mutated(self) -> None:
+        base = {"a": {"x": 1}}
+        deep_merge(base, {"a": {"y": 2}})
+        assert base == {"a": {"x": 1}}
+
+    def test_empty_override(self) -> None:
+        merged = deep_merge({"a": 1}, {})
+        assert merged == {"a": 1}
+
+    def test_new_key_added(self) -> None:
+        merged = deep_merge({"a": 1}, {"b": 2})
+        assert merged == {"a": 1, "b": 2}
+
+    def test_dict_replaces_scalar(self) -> None:
+        merged = deep_merge({"a": 1}, {"a": {"nested": True}})
+        assert merged == {"a": {"nested": True}}
+
+    def test_scalar_replaces_dict(self) -> None:
+        merged = deep_merge({"a": {"nested": True}}, {"a": 1})
+        assert merged == {"a": 1}
+
+
+class TestReadYamlLayers:
+    def test_missing_default_returns_empty(self, tmp_path: Path) -> None:
+        merged = read_yaml_layers(tmp_path / "missing.yaml")
+        assert merged == {}
+
+    def test_default_only(self, tmp_path: Path) -> None:
+        default = tmp_path / "default.yaml"
+        default.write_text("models:\n  default: a\n")
+        merged = read_yaml_layers(default)
+        assert merged == {"models": {"default": "a"}}
+
+    def test_local_deep_merges(self, tmp_path: Path) -> None:
+        default = tmp_path / "default.yaml"
+        local = tmp_path / "local.yaml"
+        default.write_text("obsidian:\n  enabled: false\n  vault_path: ''\n  prompts_dir: default\n")
+        local.write_text("obsidian:\n  enabled: true\n  vault_path: /v\n")
+        merged = read_yaml_layers(default, local)
+        assert merged == {
+            "obsidian": {"enabled": True, "vault_path": "/v", "prompts_dir": "default"},
+        }
+
+    def test_empty_yaml_safe(self, tmp_path: Path) -> None:
+        default = tmp_path / "default.yaml"
+        local = tmp_path / "local.yaml"
+        default.write_text("")
+        local.write_text("")
+        merged = read_yaml_layers(default, local)
+        assert merged == {}
+
+    def test_real_config_files_validate_against_settings(self) -> None:
+        repo_root = Path(__file__).parent.parent.parent
+        default = repo_root / "config" / "default.yaml"
+        local = repo_root / "config" / "local.yaml"
+        merged = read_yaml_layers(default, local if local.exists() else None)
+        settings = Settings.model_validate(merged)
+        assert settings.models.default.startswith("openrouter/")
+        assert settings.outcomes.dir == "data/outcomes"
 
 
 class TestSettingsAggregator:
