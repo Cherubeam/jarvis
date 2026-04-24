@@ -202,6 +202,71 @@ class SummarizationSettings(BaseModel):
     )
 
 
+class ObsidianDailyNotesSettings(BaseModel):
+    """Daily-notes path conventions inside the vault."""
+
+    path_format: str = Field(
+        default="Daily Notes/%Y-%m-%d",
+        description="strftime template (relative to vault_path) used for daily notes.",
+    )
+
+
+class ObsidianWritingTargetSettings(BaseModel):
+    """Per-writing-mode target directory + template within the vault."""
+
+    target_dir: str = Field(
+        default="",
+        description="Vault-relative directory where this writing mode saves new notes.",
+    )
+    template_path: str = Field(
+        default="",
+        description="Vault-relative path to the markdown template seeded into new notes.",
+    )
+
+
+class ObsidianWritingSettings(BaseModel):
+    """Writing-mode targets for blog, patterns, and slip-box."""
+
+    blog_dir: str = Field(
+        default="",
+        description="Vault-relative directory where blog drafts are written.",
+    )
+    template_path: str = Field(
+        default="",
+        description="Vault-relative path to the blog post template.",
+    )
+    patterns: ObsidianWritingTargetSettings = Field(
+        default_factory=ObsidianWritingTargetSettings,
+        description="Pattern-card writing target inside the vault.",
+    )
+    slip_box: ObsidianWritingTargetSettings = Field(
+        default_factory=ObsidianWritingTargetSettings,
+        description="Permanent-note (slip-box) writing target inside the vault.",
+    )
+
+
+class ObsidianSettings(BaseModel):
+    """Obsidian vault integration."""
+
+    enabled: bool = Field(default=False, description="Enable Obsidian vault read/write tools.")
+    vault_path: str = Field(
+        default="",
+        description="Absolute filesystem path to the user's Obsidian vault.",
+    )
+    daily_notes: ObsidianDailyNotesSettings = Field(
+        default_factory=ObsidianDailyNotesSettings,
+        description="Daily-notes path conventions.",
+    )
+    writing: ObsidianWritingSettings = Field(
+        default_factory=ObsidianWritingSettings,
+        description="Per-mode writing targets within the vault.",
+    )
+    prompts_dir: str = Field(
+        default="data/prompts/obsidian",
+        description="Project-relative directory storing per-vault editable prompt overrides.",
+    )
+
+
 class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
@@ -241,4 +306,5 @@ class Settings(BaseSettings):
     rag: RagSettings = Field(default_factory=RagSettings)
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
+    obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
