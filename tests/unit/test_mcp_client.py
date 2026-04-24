@@ -5,33 +5,31 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from mcp import types
 
+from packages.core.settings import MCPServerSettings
 from packages.integrations.mcp.client import MCPConnection, MCPManager
-from packages.integrations.mcp.config import MCPServerConfig
 
 
-def _make_stdio_config(name: str = "testserver", **overrides) -> MCPServerConfig:
+def _make_stdio_settings(**overrides) -> MCPServerSettings:
     defaults = dict(
-        name=name,
         transport="stdio",
-        tool_group=name,
+        tool_group="",
         timeout_seconds=30.0,
         command="echo",
         args=["hello"],
     )
     defaults.update(overrides)
-    return MCPServerConfig(**defaults)
+    return MCPServerSettings(**defaults)
 
 
-def _make_sse_config(name: str = "testsse", **overrides) -> MCPServerConfig:
+def _make_sse_settings(**overrides) -> MCPServerSettings:
     defaults = dict(
-        name=name,
         transport="sse",
-        tool_group=name,
+        tool_group="",
         timeout_seconds=30.0,
         url="http://localhost:3000/sse",
     )
     defaults.update(overrides)
-    return MCPServerConfig(**defaults)
+    return MCPServerSettings(**defaults)
 
 
 def _make_mock_session(tools: list[types.Tool] | None = None):
@@ -65,8 +63,8 @@ class TestMCPConnection:
 
     @pytest.mark.asyncio
     async def test_connect_stdio_populates_tools(self):
-        config = _make_stdio_config()
-        conn = MCPConnection(config)
+        settings = _make_stdio_settings()
+        conn = MCPConnection("testserver", settings)
 
         mock_session = _make_mock_session()
         mock_read = MagicMock()
@@ -98,8 +96,8 @@ class TestMCPConnection:
 
     @pytest.mark.asyncio
     async def test_connect_failure_cleans_up(self):
-        config = _make_stdio_config()
-        conn = MCPConnection(config)
+        settings = _make_stdio_settings()
+        conn = MCPConnection("testserver", settings)
 
         with patch(
             "packages.integrations.mcp.client.stdio_client",
@@ -114,16 +112,16 @@ class TestMCPConnection:
 
     @pytest.mark.asyncio
     async def test_call_tool_when_not_connected(self):
-        config = _make_stdio_config()
-        conn = MCPConnection(config)
+        settings = _make_stdio_settings()
+        conn = MCPConnection("testserver", settings)
 
         with pytest.raises(RuntimeError, match="is not connected"):
             await conn.call_tool("echo", {"text": "hello"})
 
     @pytest.mark.asyncio
     async def test_disconnect_resets_state(self):
-        config = _make_stdio_config()
-        conn = MCPConnection(config)
+        settings = _make_stdio_settings()
+        conn = MCPConnection("testserver", settings)
 
         # Simulate connected state
         conn._connected = True
@@ -148,7 +146,7 @@ class TestMCPManager:
 
     def test_call_tool_sync_disconnected_server(self):
         manager = MCPManager()
-        conn = MCPConnection(_make_stdio_config())
+        conn = MCPConnection("testserver", _make_stdio_settings())
         conn._connected = False
         manager._connections["testserver"] = conn
 
@@ -158,40 +156,20 @@ class TestMCPManager:
 
     def test_start_with_failing_server_returns_partial(self):
         """If one server fails to connect, others still work."""
-        good_config = _make_stdio_config(name="good", tool_group="good_tools")
-        bad_config = _make_stdio_config(name="bad", tool_group="bad_tools")
+        servers = {
+            "good": _make_stdio_settings(tool_group="good_tools"),
+            "bad": _make_stdio_settings(tool_group="bad_tools"),
+        }
 
         manager = MCPManager()
 
-        good_conn = MCPConnection(good_config)
-        good_conn._connected = True
-        good_conn._tools = [
-            types.Tool(
-                name="tool_a",
-                description="Tool A",
-                inputSchema={"type": "object", "properties": {}},
-            ),
-        ]
+        with patch(
+            "packages.integrations.mcp.client.MCPConnection",
+        ) as MockConn:
 
-        async def _good_connect():
-            pass
-
-        async def _bad_connect():
-            raise ConnectionError("down")
-
-        with (
-            patch.object(MCPConnection, "__init__", return_value=None),
-            patch(
-                "packages.integrations.mcp.client.MCPConnection",
-            ) as MockConn,
-        ):
-            call_count = 0
-
-            def side_effect(cfg):
-                nonlocal call_count
-                call_count += 1
-                if cfg.name == "good":
-                    conn = MagicMock()
+            def side_effect(name, settings):
+                conn = MagicMock()
+                if name == "good":
                     conn.connect = AsyncMock()
                     conn.tools = [
                         types.Tool(
@@ -201,17 +179,15 @@ class TestMCPManager:
                         ),
                     ]
                     conn.connected = True
-                    conn.config = cfg
-                    return conn
                 else:
-                    conn = MagicMock()
                     conn.connect = AsyncMock(side_effect=ConnectionError("down"))
-                    conn.config = cfg
-                    return conn
+                conn.name = name
+                conn.settings = settings
+                return conn
 
             MockConn.side_effect = side_effect
 
-            result = manager.start([good_config, bad_config])
+            result = manager.start(servers)
 
         assert "good_tools" in result
         assert "bad_tools" not in result

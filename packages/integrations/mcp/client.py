@@ -18,9 +18,9 @@ from mcp.client.sse import sse_client
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
+from packages.core.settings import MCPServerSettings
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.mcp.bridge import format_call_result, mcp_tools_to_tool_definitions
-from packages.integrations.mcp.config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 class MCPConnection:
     """Manages a single MCP server connection and its async resources."""
 
-    def __init__(self, config: MCPServerConfig):
-        self.config = config
+    def __init__(self, name: str, settings: MCPServerSettings):
+        self.name = name
+        self.settings = settings
         self.session: ClientSession | None = None
         self._tools: list[types.Tool] = []
         self._connected: bool = False
@@ -60,7 +61,7 @@ class MCPConnection:
 
             logger.info(
                 "MCP server '%s' connected — %d tool(s) discovered.",
-                self.config.name,
+                self.name,
                 len(self._tools),
             )
         except Exception:
@@ -68,43 +69,44 @@ class MCPConnection:
             raise
 
     async def _open_transport(self) -> Any:
-        """Open the appropriate transport based on config."""
-        if self.config.transport == "stdio":
-            assert self.config.command is not None, "stdio transport requires `command`"
+        """Open the appropriate transport based on settings."""
+        s = self.settings
+        if s.transport == "stdio":
+            assert s.command is not None, "stdio transport requires `command`"
             params = StdioServerParameters(
-                command=self.config.command,
-                args=self.config.args,
-                env=self.config.env,
-                cwd=self.config.cwd,
+                command=s.command,
+                args=s.args,
+                env=s.env,
+                cwd=s.cwd,
             )
             return await self._exit_stack.enter_async_context(stdio_client(params))
-        elif self.config.transport == "sse":
-            assert self.config.url is not None, "sse transport requires `url`"
+        elif s.transport == "sse":
+            assert s.url is not None, "sse transport requires `url`"
             return await self._exit_stack.enter_async_context(
                 sse_client(
-                    url=self.config.url,
-                    headers=self.config.headers,
+                    url=s.url,
+                    headers=s.headers,
                 )
             )
-        elif self.config.transport == "streamable_http":
-            assert self.config.url is not None, "streamable_http transport requires `url`"
+        elif s.transport == "streamable_http":
+            assert s.url is not None, "streamable_http transport requires `url`"
             return await self._exit_stack.enter_async_context(
                 streamablehttp_client(
-                    url=self.config.url,
-                    headers=self.config.headers,
+                    url=s.url,
+                    headers=s.headers,
                 )
             )
         else:
-            raise ValueError(f"Unknown transport: {self.config.transport}")
+            raise ValueError(f"Unknown transport: {s.transport}")
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> types.CallToolResult:
         """Call a tool on this server."""
         if self.session is None or not self._connected:
-            raise RuntimeError(f"MCP server '{self.config.name}' is not connected. Restart JARVIS to reconnect.")
+            raise RuntimeError(f"MCP server '{self.name}' is not connected. Restart JARVIS to reconnect.")
         return await self.session.call_tool(
             name,
             arguments=arguments,
-            read_timeout_seconds=timedelta(seconds=self.config.timeout_seconds),
+            read_timeout_seconds=timedelta(seconds=self.settings.timeout_seconds),
         )
 
     async def disconnect(self) -> None:
@@ -125,7 +127,7 @@ class MCPManager:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
 
-    def start(self, configs: list[MCPServerConfig]) -> dict[str, list[ToolDefinition]]:
+    def start(self, servers: dict[str, MCPServerSettings]) -> dict[str, list[ToolDefinition]]:
         """Start the background event loop, connect to all servers, return tool groups.
 
         Returns a dict of {tool_group_name: [ToolDefinition, ...]} ready to
@@ -137,26 +139,27 @@ class MCPManager:
 
         tool_groups: dict[str, list[ToolDefinition]] = {}
 
-        for cfg in configs:
-            conn = MCPConnection(cfg)
+        for name, server in servers.items():
+            conn = MCPConnection(name, server)
             try:
                 self._run_async(conn.connect())
-                self._connections[cfg.name] = conn
+                self._connections[name] = conn
 
                 # Bridge MCP tools → ToolDefinition
-                call_fn = self._make_call_fn(cfg.name)
+                call_fn = self._make_call_fn(name)
                 definitions = mcp_tools_to_tool_definitions(
-                    cfg.name,
+                    name,
                     conn.tools,
                     call_fn,
                 )
                 if definitions:
-                    tool_groups[cfg.tool_group] = definitions
+                    tool_group_name = server.tool_group or name
+                    tool_groups[tool_group_name] = definitions
 
             except Exception as e:
                 logger.warning(
                     "MCP server '%s' failed to connect: %s",
-                    cfg.name,
+                    name,
                     e,
                 )
 
