@@ -249,6 +249,8 @@ export type PutSettingsResult = {
   overrides: Record<string, unknown>
   bytes: number
   restart_required: boolean
+  hot_applied_fields: string[]
+  restart_required_fields: string[]
 }
 
 export type SettingsValidationError = {

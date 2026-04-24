@@ -129,7 +129,12 @@ export function SettingsView({
             }
           : prev,
       )
-      setStatus({ kind: 'saved' })
+      setStatus({
+        kind: 'saved',
+        restart_required: result.restart_required,
+        hot_applied_fields: result.hot_applied_fields,
+        restart_required_fields: result.restart_required_fields,
+      })
     } catch (e) {
       setStatus({ kind: 'error', message: (e as Error).message || String(e) })
     }

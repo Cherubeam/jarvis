@@ -5,9 +5,34 @@ import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 export type SaveStatus =
   | { kind: 'idle' }
   | { kind: 'saving' }
-  | { kind: 'saved' }
+  | {
+      kind: 'saved'
+      restart_required: boolean
+      hot_applied_fields: string[]
+      restart_required_fields: string[]
+    }
   | { kind: 'needs_overwrite' }
   | { kind: 'error'; message: string }
+
+function savedMessage(status: Extract<SaveStatus, { kind: 'saved' }>): string {
+  const { hot_applied_fields, restart_required_fields } = status
+  if (hot_applied_fields.length === 0 && restart_required_fields.length === 0) {
+    return 'saved to config/local.yaml · no changes'
+  }
+  if (restart_required_fields.length === 0) {
+    const suffix = hot_applied_fields.length === 1 ? '' : 's'
+    return `saved · ${hot_applied_fields.length} change${suffix} applied live`
+  }
+  if (hot_applied_fields.length === 0) {
+    const suffix = restart_required_fields.length === 1 ? '' : 's'
+    return `saved · restart JARVIS for ${restart_required_fields.length} change${suffix} to take effect`
+  }
+  const restartSuffix = restart_required_fields.length === 1 ? '' : 's'
+  return (
+    `saved · ${hot_applied_fields.length} applied live · ` +
+    `restart for ${restart_required_fields.length} more change${restartSuffix}`
+  )
+}
 
 export function SettingsFooter({
   theme,
@@ -54,8 +79,7 @@ export function SettingsFooter({
       >
         {status.kind === 'idle' && isDirty && 'unsaved changes'}
         {status.kind === 'saving' && 'saving…'}
-        {status.kind === 'saved' &&
-          'saved to config/local.yaml · restart JARVIS for changes to take effect'}
+        {status.kind === 'saved' && savedMessage(status)}
         {status.kind === 'error' && `error: ${status.message}`}
         {status.kind === 'needs_overwrite' && 'config/local.yaml was hand-edited — confirm to overwrite'}
       </div>
