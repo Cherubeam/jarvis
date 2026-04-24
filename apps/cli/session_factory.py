@@ -100,16 +100,18 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
 
 def make_agent_vault_tools(
     meta: AgentMeta,
-    config: dict[str, Any],
+    settings: Settings,
     vault_config: Any,
     confirmation_handler: ConfirmationHandler,
 ) -> list[Any]:
     """Create vault write tools scoped to an agent's `vault_writing` config section."""
     if vault_config is None or not meta.vault_writing:
         return []
-    section = config.get("obsidian", {}).get("writing", {}).get(meta.vault_writing, {})
-    target_dir = section.get("target_dir", "")
-    template_path = section.get("template_path", "")
+    section = getattr(settings.obsidian.writing, meta.vault_writing, None)
+    if section is None:
+        return []
+    target_dir = section.target_dir
+    template_path = section.template_path
     if not target_dir:
         return []
     try:
@@ -266,7 +268,7 @@ def build_session(
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
     fs_guard = load_filesystem_guard(config)
-    vault_config = load_vault_config(config, filesystem_guard=fs_guard)
+    vault_config = load_vault_config(settings.obsidian, filesystem_guard=fs_guard)
 
     if vault_config is not None:
         try:
@@ -330,10 +332,8 @@ def build_session(
         try:
             from packages.core.tools.blog_tools import make_blog_tools
 
-            obsidian_cfg = config.get("obsidian", {})
-            writing_cfg = obsidian_cfg.get("writing", {})
-            blog_dir = writing_cfg.get("blog_dir", "")
-            template_path = writing_cfg.get("template_path", "")
+            blog_dir = settings.obsidian.writing.blog_dir
+            template_path = settings.obsidian.writing.template_path
             if blog_dir:
                 blog_tools = make_blog_tools(
                     vault_config,
@@ -441,10 +441,7 @@ def build_session(
             print_system(f"[Tools] Readwise tools failed: {e}")
 
     if vault_config is not None:
-        obsidian_cfg = config.get("obsidian", {})
-        writing_cfg = obsidian_cfg.get("writing", {})
-        patterns_cfg = writing_cfg.get("patterns", {})
-        patterns_dir = patterns_cfg.get("target_dir", "")
+        patterns_dir = settings.obsidian.writing.patterns.target_dir
         if patterns_dir:
             try:
                 from packages.core.card_renderer import ImageGenerationConfig
@@ -488,7 +485,7 @@ def build_session(
             raise RuntimeError(f"Unknown agent '{requested_agent}'. Available: {available}")
         meta = agent_registry[requested_agent]
         all_agent_tools = assemble_agent_tools(meta, shared_tools, tool_groups)
-        all_agent_tools.extend(make_agent_vault_tools(meta, config, vault_config, confirmation_handler))
+        all_agent_tools.extend(make_agent_vault_tools(meta, settings, vault_config, confirmation_handler))
         active_agent = instantiate_agent(
             meta,
             client,

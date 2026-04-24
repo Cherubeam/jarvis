@@ -9,9 +9,9 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 from packages.core.filesystem_access import FilesystemGuard
+from packages.core.settings import ObsidianSettings
 
 logger = logging.getLogger(__name__)
 
@@ -26,26 +26,21 @@ class VaultConfig:
     enabled: bool = True
 
 
-def load_vault_config(config: dict[str, Any], filesystem_guard: FilesystemGuard | None = None) -> VaultConfig | None:
-    """Load vault configuration from config dictionary.
+def load_vault_config(
+    obsidian: ObsidianSettings, filesystem_guard: FilesystemGuard | None = None
+) -> VaultConfig | None:
+    """Build runtime VaultConfig from ObsidianSettings.
 
-    Args:
-        config: Full application config dictionary.
-        filesystem_guard: Pre-built guard. If None, a guard with no rules is used.
-
-    Returns None if obsidian is disabled or not configured.
+    Returns None if obsidian is disabled or vault_path doesn't resolve.
     """
-    obsidian_config = config.get("obsidian", {})
-
-    if not obsidian_config.get("enabled", False):
+    if not obsidian.enabled:
         return None
 
-    vault_path_str = obsidian_config.get("vault_path", "")
-    if not vault_path_str:
+    if not obsidian.vault_path:
         logger.warning("Obsidian enabled but vault_path not set")
         return None
 
-    vault_path = Path(vault_path_str).expanduser().resolve()
+    vault_path = Path(obsidian.vault_path).expanduser().resolve()
     if not vault_path.is_dir():
         logger.warning(f"Vault path does not exist: {vault_path}")
         return None
@@ -53,13 +48,10 @@ def load_vault_config(config: dict[str, Any], filesystem_guard: FilesystemGuard 
     if filesystem_guard is None:
         filesystem_guard = FilesystemGuard([])
 
-    daily_notes = obsidian_config.get("daily_notes", {})
-    path_format = daily_notes.get("path_format", "Daily Notes/%Y-%m-%d")
-
     return VaultConfig(
         vault_path=vault_path,
         filesystem_guard=filesystem_guard,
-        daily_note_path_format=path_format,
+        daily_note_path_format=obsidian.daily_notes.path_format,
         enabled=True,
     )
 

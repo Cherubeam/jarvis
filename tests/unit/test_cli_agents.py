@@ -20,6 +20,12 @@ from apps.cli.main import (
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.memory import ConversationLogger
+from packages.core.settings import (
+    ObsidianSettings,
+    ObsidianWritingSettings,
+    ObsidianWritingTargetSettings,
+    Settings,
+)
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.telemetry.metrics import ResponseMetrics
@@ -630,44 +636,43 @@ class TestMakeAgentVaultTools:
 
     def test_returns_empty_when_no_vault_config(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
-        result = _make_agent_vault_tools(meta, {}, None)
+        result = _make_agent_vault_tools(meta, Settings(), None)
         assert result == []
 
     def test_returns_empty_when_no_vault_writing(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing=None)
-        result = _make_agent_vault_tools(meta, {}, Mock())
+        result = _make_agent_vault_tools(meta, Settings(), Mock())
         assert result == []
 
     def test_returns_empty_when_target_dir_empty(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
-        config = {"obsidian": {"writing": {"patterns": {"target_dir": "", "template_path": ""}}}}
-        result = _make_agent_vault_tools(meta, config, Mock())
+        # ObsidianSettings defaults have empty target_dir for patterns
+        result = _make_agent_vault_tools(meta, Settings(), Mock())
         assert result == []
 
     def test_returns_empty_when_config_section_missing(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="nonexistent")
-        config = {"obsidian": {"writing": {}}}
-        result = _make_agent_vault_tools(meta, config, Mock())
+        result = _make_agent_vault_tools(meta, Settings(), Mock())
         assert result == []
 
     @patch("packages.core.tools.vault_write_tools.make_vault_write_tools")
     def test_calls_factory_with_correct_args(self, mock_factory):
-        """Calls make_vault_write_tools with target_dir and template_path from config."""
+        """Calls make_vault_write_tools with target_dir and template_path from settings."""
         mock_factory.return_value = [Mock()]
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="slip_box")
-        config = {
-            "obsidian": {
-                "writing": {
-                    "slip_box": {
-                        "target_dir": "04 – Slip Box",
-                        "template_path": "Templates/Permanent Note.md",
-                    }
-                }
-            }
-        }
+        settings = Settings(
+            obsidian=ObsidianSettings(
+                writing=ObsidianWritingSettings(
+                    slip_box=ObsidianWritingTargetSettings(
+                        target_dir="04 – Slip Box",
+                        template_path="Templates/Permanent Note.md",
+                    )
+                )
+            )
+        )
         vault_config = Mock()
 
-        result = _make_agent_vault_tools(meta, config, vault_config)
+        result = _make_agent_vault_tools(meta, settings, vault_config)
 
         assert len(result) == 1
         mock_factory.assert_called_once()
@@ -680,17 +685,17 @@ class TestMakeAgentVaultTools:
         """vault_writing='patterns' reads obsidian.writing.patterns section."""
         mock_factory.return_value = [Mock(), Mock()]
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
-        config = {
-            "obsidian": {
-                "writing": {
-                    "patterns": {
-                        "target_dir": "02 – Areas/02 – Patterns",
-                        "template_path": "Templates/Permanent Note.md",
-                    }
-                }
-            }
-        }
-        result = _make_agent_vault_tools(meta, config, Mock())
+        settings = Settings(
+            obsidian=ObsidianSettings(
+                writing=ObsidianWritingSettings(
+                    patterns=ObsidianWritingTargetSettings(
+                        target_dir="02 – Areas/02 – Patterns",
+                        template_path="Templates/Permanent Note.md",
+                    )
+                )
+            )
+        )
+        result = _make_agent_vault_tools(meta, settings, Mock())
         assert len(result) == 2
         assert mock_factory.call_args[1]["target_dir"] == "02 – Areas/02 – Patterns"
 
