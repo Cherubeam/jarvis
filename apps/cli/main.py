@@ -658,8 +658,7 @@ def main(argv: list[str] | None = None) -> None:
     print_startup(agent_name, model_id, price_info, commands)
 
     # Create prompt_toolkit session for robust input handling
-    cli_cfg = config.get("cli", {})
-    history_file = cli_cfg.get("history_file", "data/.cli_history")
+    history_file = settings.cli.history_file
     if history_file:
         history_file = str(jarvis_dir / history_file)
     session = create_prompt_session(history_file)
@@ -758,15 +757,14 @@ def main(argv: list[str] | None = None) -> None:
             logger.metrics.record_history_tokens(history_bytes // 4)
 
             # History summarization (opt-in via config)
-            summ_config = config.get("summarization", {})
-            if summ_config.get("enabled", False):
+            if settings.summarization.enabled:
                 fast_model = resolve_model("fast", settings.models).model_id
                 history = summarize_history(
                     history,
                     client,
                     model_id=fast_model,
-                    token_threshold=summ_config.get("token_threshold", 40000),
-                    keep_recent=summ_config.get("keep_recent", 10),
+                    token_threshold=settings.summarization.token_threshold,
+                    keep_recent=settings.summarization.keep_recent,
                 )
 
             logger.add_message("user", user_input)
@@ -774,8 +772,8 @@ def main(argv: list[str] | None = None) -> None:
             # Intelligent model routing (opt-in via config)
             routed_model_id = None
             routed_display: str | None = None
-            if config.get("routing", {}).get("enabled", False):
-                decision = route_query(user_input, config, agent_name=agent_name)
+            if settings.routing.enabled:
+                decision = route_query(user_input, settings, agent_name=agent_name)
                 if decision.resolved.model_id != model_id:
                     routed_model_id = model_id  # save original to restore
                     routed_display = decision.resolved.display_name

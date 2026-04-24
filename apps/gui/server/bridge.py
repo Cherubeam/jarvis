@@ -163,15 +163,14 @@ def _run_one_turn(session: GuiSession, user_text: str) -> Any:
     history_bytes = sum(len(str(m.get("content", "")).encode("utf-8")) for m in history)
     c.logger.metrics.record_history_tokens(history_bytes // 4)
 
-    summ_config = c.config.get("summarization", {})
-    if summ_config.get("enabled", False):
+    if c.settings.summarization.enabled:
         fast_model = resolve_model("fast", c.settings.models).model_id
         history = summarize_history(
             history,
             c.client,
             model_id=fast_model,
-            token_threshold=summ_config.get("token_threshold", 40000),
-            keep_recent=summ_config.get("keep_recent", 10),
+            token_threshold=c.settings.summarization.token_threshold,
+            keep_recent=c.settings.summarization.keep_recent,
         )
 
     c.logger.add_message("user", user_text)
