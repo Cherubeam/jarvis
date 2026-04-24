@@ -11,7 +11,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from packages.core.card_renderer import ImageGenerationConfig, PatternData
+from packages.core.card_renderer import PatternData
+from packages.core.settings import PatternCardImageGenerationSettings as ImageGenerationConfig
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.card_generator_tools import make_card_generator_tools
 from packages.integrations.obsidian.vault import VaultConfig

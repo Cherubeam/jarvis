@@ -22,6 +22,7 @@ from typing import Any
 from jinja2 import Template
 
 from packages.core.context_builder import parse_frontmatter
+from packages.core.settings import PatternCardImageGenerationSettings
 
 logger = logging.getLogger(__name__)
 
@@ -761,30 +762,10 @@ def export_image_prompts(
 # ---------------------------------------------------------------------------
 
 
-@dataclass
-class ImageGenerationConfig:
-    """Configuration for API-based image generation."""
-
-    enabled: bool = False
-    model: str = "gemini/imagen-4.0-generate-001"
-    size: str = "1536x640"
-    max_images_per_run: int = 10
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ImageGenerationConfig:
-        img_cfg = d.get("image_generation", {})
-        return cls(
-            enabled=img_cfg.get("enabled", False),
-            model=img_cfg.get("model", "gemini/imagen-4.0-generate-001"),
-            size=img_cfg.get("size", "1536x640"),
-            max_images_per_run=img_cfg.get("max_images_per_run", 10),
-        )
-
-
 def generate_pattern_image(
     pattern: PatternData,
     images_dir: Path,
-    config: ImageGenerationConfig,
+    config: PatternCardImageGenerationSettings,
     force: bool = False,
 ) -> Path:
     """Generate an image for a pattern using the litellm image generation API.
