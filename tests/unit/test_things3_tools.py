@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.core.settings import Things3Settings
 from packages.core.tools.base import ToolDefinition
 
 _NOT_DARWIN_REASON = (
@@ -17,7 +18,7 @@ _NOT_DARWIN_REASON = (
 )
 
 
-def _make_tools_cross_platform(config=None):
+def _make_tools_cross_platform(things3=None):
     """Create Things 3 tools on any platform by mocking things + sys.platform."""
     mock_things = MagicMock()
     mock_things.url.return_value = "things:///add?title=test"
@@ -28,7 +29,7 @@ def _make_tools_cross_platform(config=None):
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        return make_things3_tools(config or {}), mock_things
+        return make_things3_tools(things3 or Things3Settings()), mock_things
 
 
 @pytest.mark.unit
@@ -41,7 +42,7 @@ class TestMakeThings3ToolsNonDarwin:
         mock_sys.platform = "linux"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        result = make_things3_tools({})
+        result = make_things3_tools(Things3Settings())
         assert result == []
 
 
@@ -56,7 +57,7 @@ class TestMakeThings3Tools:
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        tools = make_things3_tools({})
+        tools = make_things3_tools(Things3Settings())
         assert len(tools) == 3
 
     @patch("packages.core.tools.things3_tools.sys")
@@ -65,7 +66,7 @@ class TestMakeThings3Tools:
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        tools = make_things3_tools({})
+        tools = make_things3_tools(Things3Settings())
         names = [t.name for t in tools]
         assert names == ["create_task", "complete_task", "update_task"]
 
@@ -75,7 +76,7 @@ class TestMakeThings3Tools:
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        tools = make_things3_tools({})
+        tools = make_things3_tools(Things3Settings())
         for tool in tools:
             assert isinstance(tool, ToolDefinition)
 
@@ -85,7 +86,7 @@ class TestMakeThings3Tools:
         mock_sys.platform = "darwin"
         from packages.core.tools.things3_tools import make_things3_tools
 
-        tools = make_things3_tools({})
+        tools = make_things3_tools(Things3Settings())
         for tool in tools:
             assert "best-effort" in tool.description
 
@@ -100,7 +101,7 @@ class TestCreateTask:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
 
-            tools = make_things3_tools({})
+            tools = make_things3_tools(Things3Settings())
         return tools[0]
 
     @patch("packages.core.tools.things3_tools._open_things_url", return_value=True)
@@ -184,7 +185,7 @@ class TestCompleteTask:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
 
-            tools = make_things3_tools({})
+            tools = make_things3_tools(Things3Settings())
         return tools[1]
 
     @patch("packages.core.tools.things3_tools._open_things_url", return_value=True)
@@ -260,7 +261,7 @@ class TestUpdateTask:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
 
-            tools = make_things3_tools({})
+            tools = make_things3_tools(Things3Settings())
         return tools[2]
 
     @patch("packages.core.tools.things3_tools._open_things_url", return_value=True)
@@ -498,7 +499,7 @@ class TestThings3ToolsSchemasCrossPlatform:
         assert "notes" not in kwargs
 
     def test_cache_ttl_from_config(self):
-        """Cache TTL is read from config dict."""
+        """Cache TTL is read from Things3Settings."""
         with (
             patch.dict("sys.modules", {"things": MagicMock()}),
             patch("packages.core.tools.things3_tools.sys") as mock_sys,
@@ -507,11 +508,11 @@ class TestThings3ToolsSchemasCrossPlatform:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
 
-            make_things3_tools({"cache_ttl_seconds": 600})
+            make_things3_tools(Things3Settings(cache_ttl_seconds=600))
         mock_cache.assert_called_once_with(cache_ttl_seconds=600)
 
     def test_cache_ttl_default(self):
-        """Cache TTL defaults to 300 when not in config."""
+        """Cache TTL defaults to 300 when settings use the default."""
         with (
             patch.dict("sys.modules", {"things": MagicMock()}),
             patch("packages.core.tools.things3_tools.sys") as mock_sys,
@@ -520,5 +521,5 @@ class TestThings3ToolsSchemasCrossPlatform:
             mock_sys.platform = "darwin"
             from packages.core.tools.things3_tools import make_things3_tools
 
-            make_things3_tools({})
+            make_things3_tools(Things3Settings())
         mock_cache.assert_called_once_with(cache_ttl_seconds=300)

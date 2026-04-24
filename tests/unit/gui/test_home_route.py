@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from apps.gui.server.history.index import ConversationIndex
 from apps.gui.server.routes.home import router as home_router
+from packages.core.settings import Things3Settings
 from packages.integrations.things3.task_sync import Task
 
 
@@ -33,16 +34,15 @@ def _write(path, messages=None, cost=0.01, tokens=100):
 
 
 def _fake_session(things3_enabled=True):
-    """Stand-in for GuiSession — the route only reads session.components.config."""
-    components = SimpleNamespace(
-        config={
-            "things3": {
-                "enabled": things3_enabled,
-                "cache_ttl_seconds": 300,
-                "lists_to_include": ["Today", "Upcoming"],
-            }
-        }
+    """Stand-in for GuiSession — the route reads session.components.settings.things3."""
+    settings = SimpleNamespace(
+        things3=Things3Settings(
+            enabled=things3_enabled,
+            cache_ttl_seconds=300,
+            lists_to_include=["Today", "Upcoming"],
+        )
     )
+    components = SimpleNamespace(config={}, settings=settings)
     return SimpleNamespace(components=components)
 
 

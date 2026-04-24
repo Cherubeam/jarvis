@@ -205,7 +205,7 @@ def build_session(
     context_dir = jarvis_dir / settings.paths.context_dir
     conversations_dir = jarvis_dir / settings.paths.conversations_dir
 
-    sync_tasks_to_file(context_dir / "tasks.md", config)
+    sync_tasks_to_file(context_dir / "tasks.md", settings.things3)
 
     system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
 
@@ -417,12 +417,11 @@ def build_session(
     tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
     print_system("[Tools] Web search + fetch loaded.")
 
-    things3_cfg = config.get("things3", {})
-    if things3_cfg.get("enabled", False):
+    if settings.things3.enabled:
         try:
             from packages.core.tools.things3_tools import make_things3_tools
 
-            things3_tools = make_things3_tools(things3_cfg)
+            things3_tools = make_things3_tools(settings.things3)
             if things3_tools:
                 tool_groups["things3_tools"] = things3_tools
                 print_system(f"[Tools] {len(things3_tools)} Things 3 tools loaded.")

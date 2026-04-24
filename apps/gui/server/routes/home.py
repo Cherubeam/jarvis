@@ -85,11 +85,10 @@ async def get_home(request: Request) -> dict[str, Any]:
 
     # -- tasks --------------------------------------------------------------
     tasks: list[dict[str, Any]] = []
-    config = session.components.config
-    things3_cfg = config.get("things3", {}) or {}
-    if things3_cfg.get("enabled", False):
+    things3_settings = session.components.settings.things3
+    if things3_settings.enabled:
         try:
-            by_list = fetch_tasks(things3_cfg, use_cache=True)
+            by_list = fetch_tasks(things3_settings, use_cache=True)
             tasks = _flatten_tasks(by_list)
         except Exception as e:
             logger.debug("home: things3 fetch failed, returning empty tasks: %s", e)

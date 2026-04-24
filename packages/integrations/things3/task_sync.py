@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from packages.core.settings import Things3Settings
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -88,18 +90,18 @@ def _to_task(t: dict[str, Any]) -> Task:
     )
 
 
-def fetch_tasks(config: dict[str, Any], use_cache: bool = True) -> dict[str, list[Task]]:
+def fetch_tasks(things3: Things3Settings, use_cache: bool = True) -> dict[str, list[Task]]:
     """
     Fetch tasks from Things 3 via SQLite (things.py).
 
     Args:
-        config: Configuration dictionary with Things 3 settings
-        use_cache: Whether to use cached data if available
+        things3: Things 3 settings.
+        use_cache: Whether to use cached data if available.
 
     Returns:
         Dictionary with task lists (inbox, today, upcoming)
     """
-    cache = TaskSyncCache(cache_ttl_seconds=config.get("cache_ttl_seconds", 300))
+    cache = TaskSyncCache(cache_ttl_seconds=things3.cache_ttl_seconds)
 
     # Check cache first
     if use_cache:
@@ -114,7 +116,7 @@ def fetch_tasks(config: dict[str, Any], use_cache: bool = True) -> dict[str, lis
     import things
 
     tasks_data: dict[str, list[Task]] = {"inbox": [], "today": [], "upcoming": []}
-    lists_to_include = config.get("lists_to_include", [])
+    lists_to_include = things3.lists_to_include
 
     try:
         if "Inbox" in lists_to_include:
@@ -259,37 +261,35 @@ def format_tasks_as_markdown(
     return "\n".join(sections)
 
 
-def sync_tasks_to_file(output_path: Path, config: dict[str, Any]) -> bool:
+def sync_tasks_to_file(output_path: Path, things3: Things3Settings) -> bool:
     """
     Synchronize tasks from Things 3 to markdown file.
 
     Args:
-        output_path: Path to write tasks.md file
-        config: Configuration dictionary with Things 3 settings
+        output_path: Path to write tasks.md file.
+        things3: Things 3 settings.
 
     Returns:
-        True if sync successful, False otherwise
+        True if sync successful, False otherwise.
     """
-    # Check if Things 3 integration is enabled
-    if not config.get("things3", {}).get("enabled", False):
+    if not things3.enabled:
         logger.debug("Things 3 integration disabled")
         return False
 
-    # Check if sync on startup is enabled
-    if not config.get("things3", {}).get("sync_on_startup", True):
+    if not things3.sync_on_startup:
         logger.debug("Sync on startup disabled")
         return False
 
     try:
         # Fetch tasks (uses cache if available)
-        tasks_data = fetch_tasks(config.get("things3", {}))
+        tasks_data = fetch_tasks(things3)
 
         # Format as markdown
         markdown = format_tasks_as_markdown(
             inbox_tasks=tasks_data.get("inbox", []),
             today_tasks=tasks_data.get("today", []),
             upcoming_tasks=tasks_data.get("upcoming", []),
-            max_tasks=config.get("things3", {}).get("max_tasks_per_list", 50),
+            max_tasks=things3.max_tasks_per_list,
         )
 
         # Write to file

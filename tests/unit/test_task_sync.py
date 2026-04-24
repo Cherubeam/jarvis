@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.core.settings import Things3Settings
 from packages.integrations.things3.task_sync import (
     Task,
     TaskSyncCache,
@@ -262,10 +263,7 @@ class TestFetchTasks:
 
     def test_fetch_uses_cache(self):
         """Test that fetch uses cache when available."""
-        config = {
-            "cache_ttl_seconds": 300,
-            "lists_to_include": ["Inbox"],
-        }
+        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Inbox"])
 
         cache_data = {
             "inbox": [
@@ -288,7 +286,7 @@ class TestFetchTasks:
             mock_cache_instance.get.return_value = cache_data
             mock_cache_class.return_value = mock_cache_instance
 
-            result = fetch_tasks(config, use_cache=True)
+            result = fetch_tasks(things3, use_cache=True)
 
             assert len(result["inbox"]) == 1
             assert result["inbox"][0].title == "Cached Task"
@@ -296,10 +294,7 @@ class TestFetchTasks:
 
     def test_fetch_from_things_py(self):
         """Test fetch reads from things.py when cache misses."""
-        config = {
-            "cache_ttl_seconds": 300,
-            "lists_to_include": ["Inbox", "Today"],
-        }
+        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Inbox", "Today"])
 
         mock_things = MagicMock()
         mock_things.inbox.return_value = [
@@ -331,7 +326,7 @@ class TestFetchTasks:
             mock_cache_class.return_value = mock_cache_instance
 
             with patch.dict("sys.modules", {"things": mock_things}):
-                result = fetch_tasks(config, use_cache=False)
+                result = fetch_tasks(things3, use_cache=False)
 
             assert len(result["inbox"]) == 1
             assert result["inbox"][0].title == "Inbox item"
@@ -342,10 +337,7 @@ class TestFetchTasks:
 
     def test_fetch_skips_unlisted(self):
         """Test that lists not in lists_to_include are skipped."""
-        config = {
-            "cache_ttl_seconds": 300,
-            "lists_to_include": ["Today"],
-        }
+        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Today"])
 
         mock_things = MagicMock()
         mock_things.today.return_value = []
@@ -356,7 +348,7 @@ class TestFetchTasks:
             mock_cache_class.return_value = mock_cache_instance
 
             with patch.dict("sys.modules", {"things": mock_things}):
-                result = fetch_tasks(config, use_cache=False)
+                result = fetch_tasks(things3, use_cache=False)
 
             assert result["inbox"] == []
             assert result["upcoming"] == []
@@ -498,20 +490,20 @@ class TestSyncTasksToFile:
 
     def test_sync_disabled(self, tmp_path):
         """Test sync does nothing when disabled."""
-        config = {"things3": {"enabled": False}}
+        things3 = Things3Settings(enabled=False)
         output_path = tmp_path / "tasks.md"
 
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
         assert not output_path.exists()
 
     def test_sync_startup_disabled(self, tmp_path):
         """Test sync respects sync_on_startup setting."""
-        config = {"things3": {"enabled": True, "sync_on_startup": False}}
+        things3 = Things3Settings(enabled=True, sync_on_startup=False)
         output_path = tmp_path / "tasks.md"
 
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
         assert not output_path.exists()
@@ -519,13 +511,7 @@ class TestSyncTasksToFile:
     @patch("packages.integrations.things3.task_sync.fetch_tasks")
     def test_sync_success(self, mock_fetch, tmp_path):
         """Test successful sync writes markdown file."""
-        config = {
-            "things3": {
-                "enabled": True,
-                "sync_on_startup": True,
-                "max_tasks_per_list": 50,
-            }
-        }
+        things3 = Things3Settings(enabled=True, sync_on_startup=True, max_tasks_per_list=50)
         output_path = tmp_path / "tasks.md"
 
         mock_fetch.return_value = {
@@ -534,7 +520,7 @@ class TestSyncTasksToFile:
             "upcoming": [],
         }
 
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is True
         assert output_path.exists()
@@ -546,12 +532,12 @@ class TestSyncTasksToFile:
     @patch("packages.integrations.things3.task_sync.fetch_tasks")
     def test_sync_handles_errors(self, mock_fetch, tmp_path):
         """Test sync handles errors gracefully."""
-        config = {"things3": {"enabled": True, "sync_on_startup": True}}
+        things3 = Things3Settings(enabled=True, sync_on_startup=True)
         output_path = tmp_path / "tasks.md"
 
         mock_fetch.side_effect = Exception("Connection failed")
 
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
         assert not output_path.exists()
