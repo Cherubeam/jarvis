@@ -373,6 +373,72 @@ class FilesystemSettings(BaseModel):
     )
 
 
+class CortexSettings(BaseModel):
+    """Cortex — shared semantic vault search service."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Route semantic vault searches to a running Cortex service.",
+    )
+    base_url: str = Field(
+        default="http://127.0.0.1:8100",
+        description="HTTP endpoint where the Cortex service is listening.",
+    )
+    timeout_seconds: int = Field(
+        default=10,
+        description="Per-request timeout when calling the Cortex service.",
+    )
+
+
+class ReadwiseSettings(BaseModel):
+    """Readwise integration — reading list, highlights, and persona."""
+
+    enabled: bool = Field(default=False, description="Enable Readwise tools and persona ingestion.")
+    cache_ttl_seconds: int = Field(
+        default=300,
+        description="How long Readwise CLI tool results stay cached.",
+    )
+
+
+class PatternCardImageGenerationSettings(BaseModel):
+    """API-based image generation settings for the pattern card generator.
+
+    Mirrors ``packages.core.card_renderer.ImageGenerationConfig``. The
+    runtime dataclass will be removed in a later commit once the renderer
+    consumes this typed model directly.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Generate pattern card images via the LiteLLM image API instead of placeholders.",
+    )
+    model: str = Field(
+        default="gemini/imagen-4.0-generate-001",
+        description="LiteLLM-routable image model id.",
+    )
+    size: str = Field(
+        default="1536x640",
+        description="Output image dimensions as 'WIDTHxHEIGHT'.",
+    )
+    max_images_per_run: int = Field(
+        default=10,
+        description="Cap on images generated per invocation to bound cost.",
+    )
+
+
+class PatternCardsSettings(BaseModel):
+    """Pattern card generator output + image-generation knobs."""
+
+    output_dir: str = Field(
+        default="data/pattern-cards",
+        description="Directory where rendered pattern cards are written.",
+    )
+    image_generation: PatternCardImageGenerationSettings = Field(
+        default_factory=PatternCardImageGenerationSettings,
+        description="API image-generation knobs for pattern cards.",
+    )
+
+
 class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
@@ -415,4 +481,7 @@ class Settings(BaseSettings):
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
+    cortex: CortexSettings = Field(default_factory=CortexSettings)
+    readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
+    pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
