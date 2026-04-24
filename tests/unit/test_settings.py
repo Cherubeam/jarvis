@@ -502,6 +502,21 @@ class TestLoadConfigFunction:
         dumped = settings.model_dump()
         assert "jarvis_dir" not in dumped
 
+    def test_load_config_applies_local_overrides(self, tmp_path: Path) -> None:
+        """load_config must read local.yaml and let it override default.yaml.
+
+        Guards against a regression where load_config calls read_yaml_layers
+        without the local_path argument (or with the wrong filename) — those
+        mutations would silently fall back to defaults and never be caught
+        without an end-to-end override assertion at this layer.
+        """
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "default.yaml").write_text('models:\n  default: "openrouter/original/model"\n')
+        (config_dir / "local.yaml").write_text('models:\n  default: "openrouter/overridden/model"\n')
+        settings = load_config(tmp_path)
+        assert settings.models.default == "openrouter/overridden/model"
+
 
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
