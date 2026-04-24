@@ -46,16 +46,20 @@ paths:
         assert "_paths" in config
 
     def test_load_config_missing_yaml(self, tmp_path: Path, monkeypatch):
-        """Test that missing config.yaml falls back to empty config gracefully."""
+        """Missing config files fall back to typed defaults (PR-8a behavior change).
+
+        Previously the dict only contained sections present in YAML; now every
+        section is always populated by the typed Settings defaults so callers
+        never have to special-case absence.
+        """
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
         monkeypatch.setattr("apps.cli.main.get_project_root", lambda: tmp_path)
 
         config = load_config()
 
-        # Should still have _paths
         assert "_paths" in config
-        # No models section since no config file exists
-        assert "models" not in config
+        assert config["models"]["default"] == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert config["outcomes"]["enabled"] is True
 
     def test_load_config_paths_resolved(self, tmp_path: Path, monkeypatch):
         """Test that paths are resolved correctly."""

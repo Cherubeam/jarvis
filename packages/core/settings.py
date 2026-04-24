@@ -528,3 +528,28 @@ class Settings(BaseSettings):
     readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
     pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
+
+    jarvis_dir: Path = Field(
+        default_factory=Path.cwd,
+        exclude=True,
+        description=("Project root directory. Runtime-injected by load_typed_config; never loaded from YAML."),
+    )
+
+
+def get_project_root() -> Path:
+    """Project root inferred from this module's location."""
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def load_typed_config(project_root: Path | None = None) -> Settings:
+    """Load default.yaml + local.yaml from ``<project_root>/config/`` into Settings.
+
+    The runtime-only ``jarvis_dir`` field is injected after construction so the
+    pydantic schema stays purely YAML-shaped.
+    """
+    root = project_root if project_root is not None else get_project_root()
+    config_dir = root / "config"
+    merged = read_yaml_layers(config_dir / "default.yaml", config_dir / "local.yaml")
+    settings = Settings.model_validate(merged)
+    settings.jarvis_dir = root
+    return settings

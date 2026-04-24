@@ -9,7 +9,6 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
-import yaml
 from dotenv import load_dotenv
 from rich.spinner import Spinner
 from rich.text import Text
@@ -47,6 +46,8 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
+from packages.core.settings import deep_merge as _settings_deep_merge
+from packages.core.settings import load_typed_config
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -180,57 +181,23 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
     print_system("")
 
 
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """Recursively merge override into base.
-
-    Semantics:
-    - Nested dicts are merged key-by-key.
-    - Lists are replaced wholesale (not concatenated). This matches user
-      expectation for keys like mcp.servers or developer.scope.
-    - Any non-dict value in override replaces the base value at that key.
-
-    Returns a new dict; inputs are not mutated.
-    """
-    result = dict(base)
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
+_deep_merge = _settings_deep_merge
 
 
 def load_config() -> dict[str, Any]:
-    """Load configuration from YAML file and environment."""
+    """Load configuration via the typed Settings model and dump back to dict.
+
+    Thin parity wrapper around ``load_typed_config`` (see PR-8a). Existing
+    callers continue to consume a ``dict[str, Any]`` while we incrementally
+    migrate them to ``Settings`` attribute access. Behavior change vs. the
+    previous YAML-only loader: every section is now always present with
+    typed defaults, even when missing from YAML.
+    """
     jarvis_dir = get_project_root()
-
-    # Load .env from jarvis root
     load_dotenv(jarvis_dir / ".env")
-
-    # Load config from config/ directory (default.yaml with local.yaml override)
-    default_config_path = jarvis_dir / "config" / "default.yaml"
-    local_config_path = jarvis_dir / "config" / "local.yaml"
-
-    # Start with default config
-    if default_config_path.exists():
-        with open(default_config_path) as f:
-            config = yaml.safe_load(f) or {}
-    else:
-        config = {}
-
-    # Override with local config if exists (deep-merged so partial overrides
-    # don't clobber sibling defaults, e.g. obsidian.vault_path wiping other
-    # obsidian.* keys).
-    if local_config_path.exists():
-        with open(local_config_path) as f:
-            local_config = yaml.safe_load(f) or {}
-        config = _deep_merge(config, local_config)
-
-    # Store paths for later use
-    config["_paths"] = {
-        "jarvis_dir": jarvis_dir,
-    }
-
+    settings = load_typed_config(jarvis_dir)
+    config = settings.model_dump()
+    config["_paths"] = {"jarvis_dir": jarvis_dir}
     return config
 
 
