@@ -8,9 +8,11 @@ import pytest
 from pydantic import ValidationError
 
 from packages.core.settings import (
+    AccessRuleSettings,
     CliSettings,
     DeveloperSettings,
     EvaluationSettings,
+    FilesystemSettings,
     MCPServerSettings,
     MCPSettings,
     ModelPresets,
@@ -317,6 +319,37 @@ class TestMCPSettings:
         assert n8n.env == {"N8N_API_URL": "https://x", "N8N_API_KEY": "abc"}
 
 
+class TestFilesystemSettings:
+    def test_default_rules_empty(self) -> None:
+        f = FilesystemSettings()
+        assert f.access_rules == []
+
+    def test_default_yaml_shape(self) -> None:
+        f = FilesystemSettings.model_validate({"access_rules": [{"path": "data/outcomes", "access": "read-write"}]})
+        assert len(f.access_rules) == 1
+        assert f.access_rules[0].path == "data/outcomes"
+        assert f.access_rules[0].access == "read-write"
+
+    def test_local_yaml_shape(self) -> None:
+        f = FilesystemSettings.model_validate(
+            {
+                "access_rules": [
+                    {"path": "/Users/me/Vault", "access": "read"},
+                    {"path": "/Users/me/Vault/06 – Journals", "access": "read-write"},
+                ]
+            }
+        )
+        assert [r.access for r in f.access_rules] == ["read", "read-write"]
+
+    def test_invalid_access_level_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            AccessRuleSettings(path="/x", access="execute")  # type: ignore[arg-type]
+
+    def test_path_required(self) -> None:
+        with pytest.raises(ValidationError):
+            AccessRuleSettings(access="read")  # type: ignore[call-arg]
+
+
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
@@ -331,6 +364,7 @@ class TestSettingsAggregator:
         assert settings.summarization.enabled is False
         assert settings.obsidian.enabled is False
         assert settings.mcp.enabled is False
+        assert settings.filesystem.access_rules == []
         assert settings.developer.enabled is True
 
     def test_partial_section_override_via_dict(self) -> None:
