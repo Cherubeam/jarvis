@@ -346,6 +346,33 @@ class MCPSettings(BaseModel):
         return self
 
 
+class AccessRuleSettings(BaseModel):
+    """One filesystem access rule.
+
+    Pure-YAML half of ``packages.core.filesystem_access.AccessRule``.
+    The ``FilesystemGuard`` runtime wrapper consumes a list of these and
+    enforces most-specific-path-wins resolution at call time. Path
+    expansion / resolution stays in the runtime wrapper to keep this
+    schema portable.
+    """
+
+    path: str = Field(
+        description="Filesystem path (~ allowed) the rule applies to.",
+    )
+    access: Literal["deny", "read", "write", "read-write"] = Field(
+        description="Permission level granted to subpaths of 'path'.",
+    )
+
+
+class FilesystemSettings(BaseModel):
+    """Per-path filesystem access rules consumed by FilesystemGuard."""
+
+    access_rules: list[AccessRuleSettings] = Field(
+        default_factory=list,
+        description=("List of path/access rules. Most-specific path wins; missing paths default to deny."),
+    )
+
+
 class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
@@ -387,4 +414,5 @@ class Settings(BaseSettings):
     summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
+    filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
