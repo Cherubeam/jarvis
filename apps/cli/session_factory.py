@@ -223,14 +223,13 @@ def build_session(
     tool_groups: dict[str, list[Any]] = {}
     card_search_tool = None
 
-    rag_cfg = config.get("rag", {})
-    if rag_cfg.get("enabled", False):
+    if settings.rag.enabled:
         try:
             from packages.core.rag.indexer import ConversationIndexer
             from packages.core.tools.conversation_recall import make_conversation_recall_tool
 
-            db_path = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-            embedding_model = rag_cfg.get("embedding_model", "openrouter/openai/text-embedding-3-small")
+            db_path = jarvis_dir / settings.rag.db_path
+            embedding_model = settings.rag.embedding_model
             rag_api_key = get_api_key("openrouter", api_keys) or ""
 
             indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
@@ -240,17 +239,16 @@ def build_session(
 
             shared_tools.append(make_conversation_recall_tool(db_path, embedding_model, rag_api_key))
 
-            outcomes_cfg_for_index = config.get("outcomes", {})
-            if outcomes_cfg_for_index.get("enabled", True):
+            if settings.outcomes.enabled:
                 from packages.core.rag.outcome_indexer import OutcomeIndexer
 
-                outcomes_dir_for_index = jarvis_dir / outcomes_cfg_for_index.get("dir", "data/outcomes")
+                outcomes_dir_for_index = jarvis_dir / settings.outcomes.dir
                 outcome_indexer = OutcomeIndexer(db_path, embedding_model, rag_api_key)
                 n_outcomes = outcome_indexer.index_new(outcomes_dir_for_index)
                 if n_outcomes:
                     print_system(f"[RAG] Indexed {n_outcomes} new outcome(s).")
 
-            if rag_cfg.get("index_cards", True):
+            if settings.rag.index_cards:
                 deck_dirs = [meta.path for meta in skill_registry.values() if (meta.path / "deck.yaml").is_file()]
                 if deck_dirs:
                     from packages.core.rag.card_indexer import CardIndexer
@@ -280,15 +278,14 @@ def build_session(
         except Exception as e:
             print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
 
-    cortex_cfg = config.get("cortex", {})
-    if cortex_cfg.get("enabled", False):
+    if settings.cortex.enabled:
         try:
             from packages.core.tools.cortex_search import make_cortex_search_tool
             from packages.integrations.cortex.client import CortexClient
 
             cortex_client = CortexClient(
-                base_url=cortex_cfg.get("base_url", "http://127.0.0.1:8100"),
-                timeout=cortex_cfg.get("timeout_seconds", 10),
+                base_url=settings.cortex.base_url,
+                timeout=settings.cortex.timeout_seconds,
             )
             shared_tools.append(make_cortex_search_tool(cortex_client))
             if cortex_client.is_available():
@@ -298,30 +295,26 @@ def build_session(
         except Exception as e:
             print_system(f"[Cortex] Startup failed — semantic search disabled. ({e})")
 
-    outcomes_cfg = config.get("outcomes", {})
-    if outcomes_cfg.get("enabled", True):
+    if settings.outcomes.enabled:
         try:
             from packages.core.tools.outcome_tools import make_outcome_tools
 
-            outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
+            outcomes_dir = jarvis_dir / settings.outcomes.dir
             outcomes_dir.mkdir(parents=True, exist_ok=True)
             shared_tools.extend(make_outcome_tools(outcomes_dir, fs_guard, conversation_id))
         except Exception as e:
             print_system(f"[Outcomes] Startup failed — track_recommendation disabled. ({e})")
 
-        if rag_cfg.get("enabled", False):
+        if settings.rag.enabled:
             try:
                 from packages.core.tools.outcome_recall import make_outcome_recall_tool
 
-                db_path_for_outcomes = jarvis_dir / rag_cfg.get("db_path", "data/rag/chroma")
-                embedding_model_for_outcomes = rag_cfg.get(
-                    "embedding_model", "openrouter/openai/text-embedding-3-small"
-                )
+                db_path_for_outcomes = jarvis_dir / settings.rag.db_path
                 outcomes_api_key = get_api_key("openrouter", api_keys) or ""
                 shared_tools.append(
                     make_outcome_recall_tool(
                         db_path_for_outcomes,
-                        embedding_model_for_outcomes,
+                        settings.rag.embedding_model,
                         outcomes_api_key,
                     )
                 )
@@ -428,12 +421,11 @@ def build_session(
         except Exception as e:
             print_system(f"[Tools] Things 3 tools failed: {e}")
 
-    readwise_cfg = config.get("readwise", {})
-    if readwise_cfg.get("enabled", False):
+    if settings.readwise.enabled:
         try:
             from packages.core.tools.readwise_tools import make_readwise_tools
 
-            readwise_tools = make_readwise_tools(readwise_cfg)
+            readwise_tools = make_readwise_tools(settings.readwise)
             if readwise_tools:
                 tool_groups["readwise_tools"] = readwise_tools
                 print_system(f"[Tools] {len(readwise_tools)} Readwise tools loaded.")

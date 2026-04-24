@@ -718,13 +718,12 @@ def main(argv: list[str] | None = None) -> None:
                     continue
 
                 if command == "/outcomes":
-                    outcomes_cfg = config.get("outcomes", {})
-                    if not outcomes_cfg.get("enabled", True):
+                    if not settings.outcomes.enabled:
                         print_system("Outcome tracking is disabled. Set outcomes.enabled: true in config to enable.")
                     else:
                         from apps.cli.review import handle_review_command
 
-                        outcomes_dir = jarvis_dir / outcomes_cfg.get("dir", "data/outcomes")
+                        outcomes_dir = jarvis_dir / settings.outcomes.dir
                         handle_review_command(outcomes_dir, console, session)
                     continue
 

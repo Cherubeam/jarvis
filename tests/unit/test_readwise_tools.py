@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.core.settings import ReadwiseSettings
 from packages.core.tools.base import ToolDefinition
 
 
@@ -18,7 +19,7 @@ class TestMakeReadwiseToolsGuard:
         mock_avail.return_value = False
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        result = make_readwise_tools({})
+        result = make_readwise_tools(ReadwiseSettings())
         assert result == []
 
     @patch("packages.core.tools.readwise_tools.is_cli_available")
@@ -27,7 +28,7 @@ class TestMakeReadwiseToolsGuard:
         mock_avail.return_value = True
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         assert len(tools) == 6
         assert all(isinstance(t, ToolDefinition) for t in tools)
 
@@ -37,7 +38,7 @@ class TestMakeReadwiseToolsGuard:
         mock_avail.return_value = True
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         names = {t.name for t in tools}
         assert names == {
             "search_reading_list",
@@ -59,7 +60,7 @@ class TestReadwiseToolSchemas:
         mock_avail.return_value = True
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         search_tool = next(t for t in tools if t.name == "search_reading_list")
 
         params = search_tool.parameters
@@ -75,7 +76,7 @@ class TestReadwiseToolSchemas:
         mock_avail.return_value = True
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         tool = next(t for t in tools if t.name == "search_highlights")
 
         assert tool.parameters["required"] == ["query"]
@@ -86,7 +87,7 @@ class TestReadwiseToolSchemas:
         mock_avail.return_value = True
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         tool = next(t for t in tools if t.name == "save_to_reader")
 
         assert tool.parameters["required"] == ["url"]
@@ -106,7 +107,7 @@ class TestReadwiseToolExecution:
 
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         search_tool = next(t for t in tools if t.name == "search_reading_list")
 
         result = search_tool.execute(query="ai agents")
@@ -127,7 +128,7 @@ class TestReadwiseToolExecution:
 
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         tool = next(t for t in tools if t.name == "search_highlights")
 
         result = tool.execute(query="systems thinking")
@@ -144,7 +145,7 @@ class TestReadwiseToolExecution:
 
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         tool = next(t for t in tools if t.name == "save_to_reader")
 
         result = tool.execute(url="https://example.com")
@@ -161,7 +162,7 @@ class TestReadwiseToolExecution:
 
         from packages.core.tools.readwise_tools import make_readwise_tools
 
-        tools = make_readwise_tools({})
+        tools = make_readwise_tools(ReadwiseSettings())
         search_tool = next(t for t in tools if t.name == "search_reading_list")
 
         search_tool.execute(query="test", location="inbox", category="article")

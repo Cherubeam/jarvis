@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from apps.gui.server.routes.outcomes import router as outcomes_router
 from packages.core import frontmatter
+from packages.core.settings import OutcomesSettings
 
 
 def _write_outcome(
@@ -39,12 +40,14 @@ def _write_outcome(
 
 
 def _build_app(jarvis_dir: Path, outcomes_enabled: bool = True) -> FastAPI:
-    config = {
-        "_paths": {"jarvis_dir": jarvis_dir},
-        "outcomes": {"enabled": outcomes_enabled, "dir": "data/outcomes"},
-    }
+    settings = SimpleNamespace(outcomes=OutcomesSettings(enabled=outcomes_enabled, dir="data/outcomes"))
+    components = SimpleNamespace(
+        config={"_paths": {"jarvis_dir": jarvis_dir}},
+        settings=settings,
+        jarvis_dir=jarvis_dir,
+    )
     app = FastAPI()
-    app.state.gui_session = SimpleNamespace(components=SimpleNamespace(config=config))
+    app.state.gui_session = SimpleNamespace(components=components)
     app.include_router(outcomes_router)
     return app
 
