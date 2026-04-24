@@ -46,13 +46,7 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import (
-    FilesystemSettings,
-    ObsidianSettings,
-    Settings,
-    load_typed_config,
-)
-from packages.core.settings import deep_merge as _settings_deep_merge
+from packages.core.settings import Settings, load_config
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -184,28 +178,8 @@ def _warn_on_prompt_include_issues(agent_registry: dict[str, AgentMeta]) -> None
     print_system("")
 
 
-_deep_merge = _settings_deep_merge
-
-
-def load_config() -> dict[str, Any]:
-    """Load configuration via the typed Settings model and dump back to dict.
-
-    Thin parity wrapper around ``load_typed_config`` (see PR-8a). Existing
-    callers continue to consume a ``dict[str, Any]`` while we incrementally
-    migrate them to ``Settings`` attribute access. Behavior change vs. the
-    previous YAML-only loader: every section is now always present with
-    typed defaults, even when missing from YAML.
-    """
-    jarvis_dir = get_project_root()
-    load_dotenv(jarvis_dir / ".env")
-    settings = load_typed_config(jarvis_dir)
-    config = settings.model_dump()
-    config["_paths"] = {"jarvis_dir": jarvis_dir}
-    return config
-
-
 def handle_daily_summary(
-    config: dict[str, Any],
+    settings: Settings,
     client: LLMClient,
     logger: ConversationLogger,
     system_prompt: str,
@@ -229,10 +203,8 @@ def handle_daily_summary(
             print_error(f"\nInvalid date format: '{target_date}'. Use YYYY-MM-DD.\n")
             return
 
-    filesystem_settings = FilesystemSettings.model_validate(config.get("filesystem", {}))
-    fs_guard = load_filesystem_guard(filesystem_settings)
-    obsidian_settings = ObsidianSettings.model_validate(config.get("obsidian", {}))
-    vault_config = load_vault_config(obsidian_settings, filesystem_guard=fs_guard)
+    fs_guard = load_filesystem_guard(settings.filesystem)
+    vault_config = load_vault_config(settings.obsidian, filesystem_guard=fs_guard)
 
     try:
         daily_prompt = JarvisAgent.get_daily_note_instructions()
@@ -584,8 +556,9 @@ def _handle_agent_command(
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    config = load_config()
-    settings = load_typed_config(get_project_root())
+    jarvis_dir = get_project_root()
+    load_dotenv(jarvis_dir / ".env")
+    settings = load_config(jarvis_dir)
 
     # All session-component wiring lives in apps/cli/session_factory.build_session.
     # The CLI passes its own ConfirmationHandler + tool-feedback printer.
@@ -604,7 +577,6 @@ def main(argv: list[str] | None = None) -> None:
     try:
         components = build_session(
             args,
-            config,
             settings,
             confirmation_handler,
             on_tool_call=print_tool_feedback,
@@ -689,7 +661,7 @@ def main(argv: list[str] | None = None) -> None:
 
                 if command == "/daily-summary":
                     handle_daily_summary(
-                        config,
+                        settings,
                         client,
                         logger,
                         system_prompt,
