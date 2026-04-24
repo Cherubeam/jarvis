@@ -234,3 +234,29 @@ export type ReviewOutcomeResult = {
   outcome: OutcomeVerdict
   quality: number
 }
+
+// -- Settings (Phase 8 / PR-8b) ---------------------------------------------
+
+export type SettingsResponse = {
+  settings: Record<string, unknown>
+  defaults: Record<string, unknown>
+  overrides: Record<string, unknown>
+  local_yaml_has_managed_header: boolean
+  paths: { default_yaml: string; local_yaml: string }
+}
+
+export type PutSettingsResult = {
+  overrides: Record<string, unknown>
+  bytes: number
+  restart_required: boolean
+}
+
+export type SettingsValidationError = {
+  loc: Array<string | number>
+  card_loc: Array<string | number>
+  msg: string
+  type: string
+  kind: 'field' | 'model_validator'
+}
+
+export type JsonSchemaNode = Record<string, unknown>

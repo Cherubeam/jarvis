@@ -7,7 +7,7 @@ import { ChatView } from './views/ChatView'
 import { HistoryView } from './views/HistoryView'
 import { HomeView } from './views/HomeView'
 import { OutcomesView } from './views/OutcomesView'
-import { Stub } from './views/Stub'
+import { SettingsView } from './views/SettingsView'
 import { DEFAULT_TWEAKS, type Tweaks } from './components/TweaksPanel'
 import {
   ACCENT_HUES,
@@ -186,7 +186,7 @@ export default function App() {
           goToChat={() => setView('chat')}
         />
       )}
-      {view === 'settings' && <Stub theme={theme} name="Settings" />}
+      {view === 'settings' && <SettingsView theme={theme} accent={accent} />}
     </div>
   )
 }
