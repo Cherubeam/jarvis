@@ -31,6 +31,7 @@ from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
 from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model
 from packages.core.pricing import ModelPricing, get_model_pricing
+from packages.core.settings import Settings
 from packages.core.stream_handler import StreamHandler
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -54,6 +55,7 @@ class SessionComponents:
     """
 
     config: dict[str, Any]
+    settings: Settings
     args: Any  # argparse.Namespace or a GUI-shim equivalent
     jarvis_dir: Path
     context_dir: Path
@@ -166,6 +168,7 @@ def instantiate_agent(
 def build_session(
     args: Any,
     config: dict[str, Any],
+    settings: Settings,
     confirmation_handler: ConfirmationHandler,
     *,
     on_tool_call: Callable[[str], None] | None = None,
@@ -190,11 +193,8 @@ def build_session(
     jarvis_dir = config["_paths"]["jarvis_dir"]
     api_keys = collect_api_keys()
 
-    models_config = config.get("models", {})
-    model_source = getattr(args, "model", None) or models_config.get(
-        "default", "openrouter/anthropic/claude-sonnet-4.6"
-    )
-    resolved = resolve_model(model_source, config)
+    model_source = getattr(args, "model", None) or settings.models.default
+    resolved = resolve_model(model_source, settings.models)
     model_id = resolved.model_id
 
     if not get_api_key(resolved.provider, api_keys):
@@ -583,19 +583,19 @@ def build_session(
 
     pricing = get_model_pricing(model_id)
 
-    streaming_enabled = config.get("models", {}).get("streaming", True)
     stream_handler = StreamHandler(
         client,
         metrics_tracker,
         pricing,
         model_id,
         on_tool_call=on_tool_call,
-        max_tokens=config.get("models", {}).get("default_max_tokens"),
-        streaming=streaming_enabled,
+        max_tokens=settings.models.default_max_tokens,
+        streaming=settings.models.streaming,
     )
 
     return SessionComponents(
         config=config,
+        settings=settings,
         args=args,
         jarvis_dir=jarvis_dir,
         context_dir=context_dir,

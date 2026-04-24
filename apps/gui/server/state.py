@@ -20,6 +20,7 @@ from typing import Any
 from apps.cli.main import load_config
 from apps.cli.session_factory import SessionComponents, build_session
 from apps.gui.server.confirmation import WebConfirmationHandler
+from packages.core.settings import load_typed_config
 from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import ConfirmationHandler
 
@@ -86,6 +87,7 @@ def build_gui_session() -> GuiSession:
     that defers to whatever turn-specific handler is bound on `session.confirmation`.
     """
     config = load_config()
+    settings = load_typed_config(config["_paths"]["jarvis_dir"])
 
     # Create a deferred handler — the queue comes later (per turn).
     deferred = _DeferredConfirmationHandler()
@@ -94,6 +96,7 @@ def build_gui_session() -> GuiSession:
     components = build_session(
         args,
         config,
+        settings,
         deferred,
         on_tool_call=None,
         client_label="gui",

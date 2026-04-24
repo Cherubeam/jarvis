@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from packages.core.model_resolver import ResolvedModel, resolve_model
+from packages.core.settings import ModelsSettings
 
 
 @dataclass
@@ -88,7 +89,8 @@ def route_query(
         RoutingDecision with the selected preset and resolved model.
     """
     preset, reason, confidence = classify_query(query, config, agent_name)
-    resolved = resolve_model(preset, config)
+    models = ModelsSettings.model_validate(config.get("models", {}))
+    resolved = resolve_model(preset, models)
     return RoutingDecision(
         preset=preset,
         resolved=resolved,

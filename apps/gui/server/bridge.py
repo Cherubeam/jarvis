@@ -165,7 +165,7 @@ def _run_one_turn(session: GuiSession, user_text: str) -> Any:
 
     summ_config = c.config.get("summarization", {})
     if summ_config.get("enabled", False):
-        fast_model = resolve_model("fast", c.config).model_id
+        fast_model = resolve_model("fast", c.settings.models).model_id
         history = summarize_history(
             history,
             c.client,

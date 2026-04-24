@@ -15,6 +15,7 @@ from packages.core.model_resolver import (
     infer_provider,
     resolve_model,
 )
+from packages.core.settings import ModelPresets, ModelsSettings
 
 
 @pytest.mark.unit
@@ -46,43 +47,44 @@ class TestResolveModel:
     """Tests for resolve_model()."""
 
     def test_preset_resolution(self):
-        config = {
-            "models": {
-                "default": "openrouter/anthropic/claude-sonnet-4.6",
-                "presets": {
-                    "fast": "openrouter/google/gemini-2.5-flash",
-                    "quality": "openrouter/anthropic/claude-opus-4.6",
-                },
-            }
-        }
-        result = resolve_model("fast", config)
+        models = ModelsSettings(
+            default="openrouter/anthropic/claude-sonnet-4.6",
+            presets=ModelPresets(
+                fast="openrouter/google/gemini-2.5-flash",
+                quality="openrouter/anthropic/claude-opus-4.6",
+            ),
+        )
+        result = resolve_model("fast", models)
         assert result.model_id == "openrouter/google/gemini-2.5-flash"
         assert result.provider == "openrouter"
         assert "gemini-2.5-flash" in result.display_name
 
     def test_literal_model_id_passthrough(self):
-        config = {"models": {"presets": {}}}
-        result = resolve_model("anthropic/claude-sonnet-4.6", config)
+        models = ModelsSettings()
+        result = resolve_model("anthropic/claude-sonnet-4.6", models)
         assert result.model_id == "anthropic/claude-sonnet-4.6"
         assert result.provider == "anthropic"
 
     def test_unknown_preset_treated_as_literal(self):
-        config = {"models": {"presets": {"fast": "some/model"}}}
-        result = resolve_model("openai/gpt-4o", config)
+        models = ModelsSettings(presets=ModelPresets(fast="some/model"))
+        result = resolve_model("openai/gpt-4o", models)
         assert result.model_id == "openai/gpt-4o"
         assert result.provider == "openai"
 
-    def test_empty_config(self):
-        result = resolve_model("openrouter/anthropic/claude-sonnet-4.6", {})
+    def test_empty_models_uses_default_presets_for_passthrough(self):
+        models = ModelsSettings()
+        result = resolve_model("openrouter/anthropic/claude-sonnet-4.6", models)
         assert result.model_id == "openrouter/anthropic/claude-sonnet-4.6"
         assert result.provider == "openrouter"
 
     def test_display_name_format(self):
-        result = resolve_model("openrouter/anthropic/claude-sonnet-4.6", {})
+        models = ModelsSettings()
+        result = resolve_model("openrouter/anthropic/claude-sonnet-4.6", models)
         assert result.display_name == "anthropic/claude-sonnet-4.6 via openrouter"
 
     def test_bare_model_display_name(self):
-        result = resolve_model("gpt-4o", {})
+        models = ModelsSettings()
+        result = resolve_model("gpt-4o", models)
         assert result.display_name == "gpt-4o via openai"
 
 
