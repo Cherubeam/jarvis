@@ -267,7 +267,7 @@ def build_session(
         except Exception as e:
             print_system(f"[RAG] Startup failed — recall disabled. ({e})")
 
-    fs_guard = load_filesystem_guard(config)
+    fs_guard = load_filesystem_guard(settings.filesystem)
     vault_config = load_vault_config(settings.obsidian, filesystem_guard=fs_guard)
 
     if vault_config is not None:

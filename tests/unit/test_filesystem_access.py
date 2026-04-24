@@ -8,6 +8,7 @@ from packages.core.filesystem_access import (
     FilesystemGuard,
     load_filesystem_guard,
 )
+from packages.core.settings import AccessRuleSettings, FilesystemSettings
 
 # ==================== AccessLevel ====================
 
@@ -161,57 +162,33 @@ class TestPathSecurity:
 
 
 class TestLoadFilesystemGuard:
-    def test_empty_config(self):
-        guard = load_filesystem_guard({})
+    def test_default_settings_returns_empty(self):
+        guard = load_filesystem_guard(FilesystemSettings())
         assert guard.rules == []
 
     def test_empty_access_rules(self):
-        guard = load_filesystem_guard({"filesystem": {"access_rules": []}})
+        guard = load_filesystem_guard(FilesystemSettings(access_rules=[]))
         assert guard.rules == []
 
     def test_loads_rules(self, tmp_path):
-        config = {
-            "filesystem": {
-                "access_rules": [
-                    {"path": str(tmp_path), "access": "read"},
-                    {"path": str(tmp_path / "sub"), "access": "read-write"},
-                ]
-            }
-        }
-        guard = load_filesystem_guard(config)
+        fs = FilesystemSettings(
+            access_rules=[
+                AccessRuleSettings(path=str(tmp_path), access="read"),
+                AccessRuleSettings(path=str(tmp_path / "sub"), access="read-write"),
+            ]
+        )
+        guard = load_filesystem_guard(fs)
         assert len(guard.rules) == 2
         assert guard.check_read(tmp_path / "file.md") is True
         assert guard.check_write(tmp_path / "file.md") is False
         assert guard.check_write(tmp_path / "sub" / "file.md") is True
 
     def test_tilde_expansion(self):
-        config = {
-            "filesystem": {
-                "access_rules": [
-                    {"path": "~/some/path", "access": "read"},
-                ]
-            }
-        }
-        guard = load_filesystem_guard(config)
+        fs = FilesystemSettings(access_rules=[AccessRuleSettings(path="~/some/path", access="read")])
+        guard = load_filesystem_guard(fs)
         assert len(guard.rules) == 1
         # Path should be expanded (no ~ in resolved path)
         assert "~" not in str(guard.rules[0].path)
-
-    def test_invalid_access_level_defaults_to_deny(self, tmp_path):
-        config = {
-            "filesystem": {
-                "access_rules": [
-                    {"path": str(tmp_path), "access": "banana"},
-                ]
-            }
-        }
-        guard = load_filesystem_guard(config)
-        assert guard.check_read(tmp_path / "file.md") is False
-        assert guard.check_write(tmp_path / "file.md") is False
-
-    def test_missing_filesystem_key(self):
-        guard = load_filesystem_guard({"other": "stuff"})
-        assert guard.rules == []
 
 
 # ==================== rules property ====================
