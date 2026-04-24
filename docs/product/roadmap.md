@@ -293,7 +293,7 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 - [x] Define event dataclasses in `packages/core/events.py` (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`, `DelegationRequested`)
 - [x] `StreamHandler.stream()` emits typed events via `on_event` callback (backward compatible -- existing `on_chunk`/`on_tool_call` unchanged)
-- [x] Extract shared bootstrapping from `main.py` -> `packages/core/app.py`
+- [x] Extract shared bootstrapping from `main.py` -> `apps/cli/session_factory.build_session` (CLI + GUI reuse)
 - [x] Keep CLI working exactly as before (thin adapter consuming events)
 - [ ] Move print statements from `StreamHandler` into CLI adapter (deferred -- backward compat maintained via dual callback approach)
 

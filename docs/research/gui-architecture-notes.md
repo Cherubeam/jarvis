@@ -121,7 +121,7 @@ packages/
   telemetry/            → unchanged
 ```
 
-The key addition is something like `packages/core/app.py` (or `bootstrap.py`, or `service.py`) that both `apps/cli/main.py` and a future `apps/web/main.py` can import to get a fully configured agent + logger + tools without duplicating 100 lines of setup code.
+The key addition is `apps/cli/session_factory.build_session()` — both `apps/cli/main.py` and `apps/gui/server/state.py` import it to get a fully configured agent + logger + tools without duplicating 100 lines of setup code. (Configuration loading itself lives in `packages/core/settings.py:load_config()` and returns a typed `Settings` model.)
 
 ### Other best practices
 

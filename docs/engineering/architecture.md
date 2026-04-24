@@ -315,12 +315,12 @@ cortex:
 **Location**: `packages/integrations/mcp/`
 
 **Responsibilities:**
-- Configuration parsing and validation (`config.py`)
 - Async connection lifecycle with background event loop thread (`client.py`)
 - MCP Tool → ToolDefinition conversion with namespacing (`bridge.py`)
+- Server schema lives in `packages.core.settings.MCPServerSettings` (PR-8a consolidated the hand-rolled config layer)
 
 **Key Classes:**
-- `MCPServerConfig`: Frozen dataclass for validated server config
+- `MCPServerSettings` (in `packages/core/settings.py`): Validated pydantic model for server config
 - `MCPConnection`: Manages one server connection using `AsyncExitStack`
 - `MCPManager`: Manages all connections, background event loop, and sync/async bridge
 - `mcp_tools_to_tool_definitions()`: Converts MCP tools to namespaced `ToolDefinition` instances
@@ -606,9 +606,8 @@ skills:
    ├─ make_cortex_search_tool() → shared_tools
    └─ Health check: print connected/unreachable status
    ↓
-7d. MCP client initialization (if mcp.enabled: true)
-   ├─ parse_mcp_config() → list[MCPServerConfig]
-   ├─ MCPManager.start() → connect to servers, discover tools
+7d. MCP client initialization (if settings.mcp.enabled)
+   ├─ MCPManager.start(settings.mcp.servers) → connect to servers, discover tools
    └─ MCP tool groups → tool_groups dict
    ↓
 8. Agent discovery (meta.yaml registry)
@@ -840,7 +839,7 @@ jarvis/
 Phase 6A (Event Decoupling) is implemented:
 
 - **Events**: Typed event dataclasses (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`, `DelegationRequested`) for decoupled streaming output
-- **Shared bootstrap**: `packages/core/app.py` extracts config/init logic reusable by CLI, Web UI, and future worker processes
+- **Typed config**: `packages/core/settings.py` (`load_config() -> Settings`) is the canonical loader for both CLI and GUI; PR-8a deleted the dict-based wrapper.
 
 See `docs/engineering/multi-agent-architecture.md` for the full multi-agent architecture vision (Scenarios A/B/C).
 

@@ -329,7 +329,7 @@ jarvis/
 │   │   ├── stream_handler.py           # Streaming response handler with agentic loop
 │   │   ├── memory.py                   # Conversation logging (schema v1.0.0)
 │   │   ├── pricing.py                  # Cost calculation and tracking
-│   │   ├── app.py                      # Shared bootstrap (load_config, init_llm_client, etc.)
+│   │   ├── settings.py                 # Typed pydantic-settings model + load_config()
 │   │   ├── events.py                   # Typed event dataclasses for streaming decoupling
 │   │   ├── filesystem_access.py        # Filesystem access control (FilesystemGuard)
 │   │   ├── card_renderer.py             # Pattern card rendering (HTML/PNG via WeasyPrint)
@@ -485,7 +485,7 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 
 **Phase 6A: Event Decoupling (Partially Complete)**
 - [x] Event decoupling (typed events, StreamHandler emission)
-- [x] Shared bootstrap extraction (`packages/core/app.py`)
+- [x] Typed configuration (`packages/core/settings.py`)
 - [ ] Move print statements from StreamHandler into CLI adapter
 
 **Future Phases:**

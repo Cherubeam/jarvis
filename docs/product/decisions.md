@@ -2163,7 +2163,7 @@ Use **mutmut** as the mutation testing tool, integrated as a dev dependency and 
 ## ADR-032: Adopt pydantic-settings for Typed Configuration
 
 **Date**: 2026-04-24
-**Status**: ✅ Accepted (scope decided; implementation tracked as GUI Phase 8)
+**Status**: ✅ Accepted and implemented (PR-8a, branch `feat/jarvis-gui-phase-8-pydantic`, 2026-04-24)
 
 ### Context
 
