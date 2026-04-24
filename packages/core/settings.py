@@ -5,7 +5,9 @@ Loaded from ``config/default.yaml`` deep-merged with ``config/local.yaml``.
 See ADR-032 in ``docs/product/decisions.md``.
 """
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -267,6 +269,83 @@ class ObsidianSettings(BaseModel):
     )
 
 
+class MCPServerSettings(BaseModel):
+    """One MCP (Model Context Protocol) server entry.
+
+    Mirrors the validation that ``packages.integrations.mcp.config.MCPServerConfig``
+    used to perform: transport must be a known value, stdio requires a
+    ``command``, sse/streamable_http require a ``url``. Server names must
+    not contain ``__`` because that's the namespace separator inside tool
+    names exposed to agents.
+    """
+
+    transport: Literal["stdio", "sse", "streamable_http"] = Field(
+        description="Wire protocol used to talk to this server.",
+    )
+    tool_group: str = Field(
+        default="",
+        description=("Tool group name agents reference in meta.yaml. Defaults to the server name when empty."),
+    )
+    timeout_seconds: float = Field(
+        default=30.0,
+        description="Per-request timeout for this server.",
+    )
+    command: str | None = Field(
+        default=None,
+        description="Executable for stdio transport (required when transport=stdio).",
+    )
+    args: list[str] = Field(
+        default_factory=list,
+        description="Command-line arguments passed to the stdio command.",
+    )
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Environment variables injected into the stdio process.",
+    )
+    cwd: str | None = Field(
+        default=None,
+        description="Working directory for the stdio process.",
+    )
+    url: str | None = Field(
+        default=None,
+        description="HTTP endpoint for sse / streamable_http transports.",
+    )
+    headers: dict[str, str] | None = Field(
+        default=None,
+        description="HTTP headers sent on every request to sse / streamable_http servers.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_transport_fields(self) -> "MCPServerSettings":
+        if self.transport == "stdio" and not self.command:
+            raise ValueError("stdio transport requires 'command'.")
+        if self.transport in ("sse", "streamable_http") and not self.url:
+            raise ValueError(f"{self.transport} transport requires 'url'.")
+        return self
+
+
+class MCPSettings(BaseModel):
+    """MCP integration — connect to external MCP tool servers."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Master switch for the MCP subsystem.",
+    )
+    servers: dict[str, MCPServerSettings] = Field(
+        default_factory=dict,
+        description="Server name -> server config. Names must not contain '__'.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_server_names(self) -> "MCPSettings":
+        for name in self.servers:
+            if "__" in name:
+                raise ValueError(
+                    f"MCP server name '{name}' must not contain '__' (reserved as namespace separator in tool names)."
+                )
+        return self
+
+
 class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
@@ -307,4 +386,5 @@ class Settings(BaseSettings):
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)

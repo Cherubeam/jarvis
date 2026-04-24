@@ -11,6 +11,8 @@ from packages.core.settings import (
     CliSettings,
     DeveloperSettings,
     EvaluationSettings,
+    MCPServerSettings,
+    MCPSettings,
     ModelPresets,
     ModelsSettings,
     ObsidianDailyNotesSettings,
@@ -235,6 +237,86 @@ class TestObsidianSettings:
         assert o.writing.blog_dir == ""
 
 
+class TestMCPServerSettings:
+    def test_stdio_requires_command(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            MCPServerSettings(transport="stdio")
+        assert "stdio transport requires 'command'" in str(exc.value)
+
+    def test_stdio_with_command_ok(self) -> None:
+        s = MCPServerSettings(transport="stdio", command="npx", args=["-y", "thing"])
+        assert s.command == "npx"
+        assert s.args == ["-y", "thing"]
+        assert s.timeout_seconds == 30.0
+        assert s.url is None
+
+    def test_sse_requires_url(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            MCPServerSettings(transport="sse")
+        assert "sse transport requires 'url'" in str(exc.value)
+
+    def test_streamable_http_requires_url(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            MCPServerSettings(transport="streamable_http")
+        assert "streamable_http transport requires 'url'" in str(exc.value)
+
+    def test_sse_with_url_ok(self) -> None:
+        s = MCPServerSettings(transport="sse", url="https://x")
+        assert s.url == "https://x"
+        assert s.command is None
+
+    def test_invalid_transport_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            MCPServerSettings(transport="grpc")  # type: ignore[arg-type]
+
+    def test_env_and_headers_optional(self) -> None:
+        s = MCPServerSettings(
+            transport="stdio",
+            command="npx",
+            env={"TOKEN": "abc"},
+        )
+        assert s.env == {"TOKEN": "abc"}
+        assert s.headers is None
+
+
+class TestMCPSettings:
+    def test_defaults(self) -> None:
+        m = MCPSettings()
+        assert m.enabled is False
+        assert m.servers == {}
+
+    def test_double_underscore_in_name_raises(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            MCPSettings(
+                enabled=True,
+                servers={"foo__bar": MCPServerSettings(transport="stdio", command="x")},
+            )
+        assert "must not contain '__'" in str(exc.value)
+
+    def test_local_yaml_shape(self) -> None:
+        m = MCPSettings.model_validate(
+            {
+                "enabled": True,
+                "servers": {
+                    "n8n": {
+                        "transport": "stdio",
+                        "tool_group": "n8n",
+                        "timeout_seconds": 30,
+                        "command": "npx",
+                        "args": ["-y", "n8n-mcp"],
+                        "env": {"N8N_API_URL": "https://x", "N8N_API_KEY": "abc"},
+                    }
+                },
+            }
+        )
+        assert m.enabled is True
+        n8n = m.servers["n8n"]
+        assert n8n.transport == "stdio"
+        assert n8n.tool_group == "n8n"
+        assert n8n.command == "npx"
+        assert n8n.env == {"N8N_API_URL": "https://x", "N8N_API_KEY": "abc"}
+
+
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
@@ -248,6 +330,7 @@ class TestSettingsAggregator:
         assert settings.routing.enabled is False
         assert settings.summarization.enabled is False
         assert settings.obsidian.enabled is False
+        assert settings.mcp.enabled is False
         assert settings.developer.enabled is True
 
     def test_partial_section_override_via_dict(self) -> None:
