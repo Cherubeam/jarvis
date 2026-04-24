@@ -140,7 +140,7 @@ uv run jarvis --agent tactics_coach
 uv run jarvis --agent developer
 ```
 
-### GUI (Phases 1–6)
+### GUI (Phases 1–8)
 
 A graphical peer to the CLI, sharing the same agents, tools, conversation
 files, and approval flow:
@@ -157,10 +157,15 @@ diffs, command palette, Tweaks panel, light/dark + accent swap), **Home**
 **History** (two-pane filterable conversation browser), **Sidebar Timeline
 mode** (togglable day-axis variant), **Agents** (categorized grid +
 per-agent detail with tools, recent sessions, 14-day cost sparkline, and
-"start session →" launcher), and the **Agent Prompt Editor** (Prompt /
+"start session →" launcher), the **Agent Prompt Editor** (Prompt /
 Versions / Stats / Context tabs on each agent — edit `system.md`,
-snapshot-on-save history with restore, resolved-prompt preview). Settings
-is stubbed and lands in a later phase. See
+snapshot-on-save history with restore, resolved-prompt preview),
+**Outcomes** (score pending recommendations — happened / didn't / partial
++ quality 1-5 + note), and **Settings** (every field in the typed
+`Settings` model editable across 16 sections with inline descriptions,
+customized-dot overrides, model-validator error display, and a managed-
+header guard that prevents first-save from overwriting a hand-edited
+`config/local.yaml`). See
 [docs/engineering/gui.md](docs/engineering/gui.md) for architecture +
 rebuild instructions.
 

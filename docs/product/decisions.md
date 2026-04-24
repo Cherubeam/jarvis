@@ -2163,7 +2163,9 @@ Use **mutmut** as the mutation testing tool, integrated as a dev dependency and 
 ## ADR-032: Adopt pydantic-settings for Typed Configuration
 
 **Date**: 2026-04-24
-**Status**: ✅ Accepted and implemented (PR-8a, branch `feat/jarvis-gui-phase-8-pydantic`, 2026-04-24)
+**Status**: ✅ Accepted and fully implemented
+- PR-8a (runtime migration): branch `feat/jarvis-gui-phase-8-pydantic`, merged 2026-04-24
+- PR-8b (Settings GUI consumer): branch `feat/jarvis-gui-phase-8-settings`, 2026-04-24 — `GET /api/settings/schema` returns the dereferenced JSON schema, `PUT /api/settings` writes a `diff_from_defaults` overlay to `config/local.yaml` with a managed-header guard
 
 ### Context
 
@@ -2225,3 +2227,11 @@ Adopt `pydantic-settings` as the typed schema for all JARVIS configuration. Migr
 ### Related ADRs
 - Relates to: ADR-003 (LiteLLM — the `models.*` config becomes typed under this ADR)
 - Relates to: ADR-031 (Mutation testing — mutmut runs at PR-8a completion to harden the new Settings tests)
+
+### Addendum — PR-8b consumer design (2026-04-24)
+
+Two decisions that only matter once the Settings GUI is shipping.
+
+**No in-process rebind on save.** `build_session()` captures settings values into `LLMClient`, tool closures, `FilesystemGuard`, `CortexClient`, and MCP subprocesses at startup. Only three code paths re-read `components.settings.*` per request (`outcomes.*`, `summarization.*`, `paths.prompt_history_dir`). A bare rebind after PUT would give users the false impression of hot-apply for ~95% of fields. Instead, PUT returns `restart_required: true` unconditionally and the GUI shows a restart banner. Per-field hot-apply gating is a follow-up once real usage identifies which toggles users flip most.
+
+**Managed-header guard.** `PUT /api/settings` refuses to overwrite `config/local.yaml` when the file lacks the `# Managed by JARVIS Settings` sentinel as its first non-blank line, returning `409 Conflict`. The GUI surfaces an explicit overwrite dialog; only on user confirmation does `accept_overwrite: true` re-submit. Rationale: `local.yaml` historically contains hand-crafted YAML (including plain-text credentials per this ADR's no-masking decision). A naive first PUT would silently wipe any keys not represented in the Settings schema. The sentinel makes "this file was last written by the GUI" a machine-checkable property.
