@@ -40,12 +40,11 @@ All events carry an `instance_id` field (defaults to `""`) for future multi-inst
 - `stream()` emits typed events alongside existing `on_chunk`/`on_tool_call` callbacks
 - **Backward compatible**: existing code that doesn't pass `on_event` works unchanged
 
-**`packages/core/app.py`** — Shared bootstrap extracted from `apps/cli/main.py`:
-- `load_config()` — YAML config + `.env` loading
-- `init_llm_client()` — Model resolution and pricing
-- `init_stream_handler()` — Create `StreamHandler` + `MetricsTracker` pair (accepts `on_event` and `instance_id`)
-- `discover_all_agents_and_skills()` — Agent + skill registry
-- `instantiate_agent()` — Create agent from `AgentMeta`
+**`packages/core/settings.py`** — Typed configuration loader (PR-8a, supersedes the deleted `packages/core/app.py`):
+- `load_config(project_root) -> Settings` — reads `default.yaml` + `local.yaml`, deep-merges, validates via pydantic-settings
+- All sections (`models`, `paths`, `cli`, `outcomes`, `things3`, `evaluation`, `rag`, `routing`, `summarization`, `obsidian`, `mcp`, `filesystem`, `cortex`, `readwise`, `pattern_cards`, `developer`) are typed sub-models with `Field(description=...)` documentation suitable for the Settings GUI
+
+Other shared bootstrap helpers (`build_session`, agent/skill discovery, LLM client init) live in `apps/cli/session_factory.py` and are reused by both the CLI and the GUI.
 
 ### What Remains
 
@@ -57,7 +56,7 @@ All events carry an `instance_id` field (defaults to `""`) for future multi-inst
 |------|--------|-------------|
 | `packages/core/events.py` | New | Typed event dataclasses |
 | `packages/core/stream_handler.py` | Modified | `on_event` + `instance_id` added |
-| `packages/core/app.py` | New | Shared bootstrap |
+| `packages/core/settings.py` | New (PR-8a) | Typed pydantic-settings loader |
 | `tests/unit/test_events.py` | New | Event dataclass tests |
 | `tests/unit/test_stream_handler_events.py` | New | Event emission tests |
 

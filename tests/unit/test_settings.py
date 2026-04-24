@@ -35,6 +35,8 @@ from packages.core.settings import (
     SummarizationSettings,
     Things3Settings,
     deep_merge,
+    get_project_root,
+    load_config,
     read_yaml_layers,
 )
 
@@ -462,6 +464,43 @@ class TestReadYamlLayers:
         settings = Settings.model_validate(merged)
         assert settings.models.default.startswith("openrouter/")
         assert settings.outcomes.dir == "data/outcomes"
+
+
+class TestGetProjectRoot:
+    def test_resolves_to_repo_root(self) -> None:
+        """get_project_root() returns three parents up from packages/core/settings.py."""
+        root = get_project_root()
+        assert (root / "pyproject.toml").is_file()
+        assert (root / "packages" / "core" / "settings.py").is_file()
+
+
+class TestLoadConfigFunction:
+    def test_loads_real_repo_config(self) -> None:
+        """Default invocation loads default.yaml + local.yaml from project root."""
+        settings = load_config()
+        assert isinstance(settings, Settings)
+        assert settings.jarvis_dir == get_project_root()
+        assert settings.models.default.startswith("openrouter/")
+
+    def test_explicit_project_root_overrides_inference(self, tmp_path: Path) -> None:
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "default.yaml").write_text('models:\n  default: "test/model"\n')
+        settings = load_config(tmp_path)
+        assert settings.models.default == "test/model"
+        assert settings.jarvis_dir == tmp_path
+
+    def test_missing_config_dir_returns_defaults(self, tmp_path: Path) -> None:
+        settings = load_config(tmp_path)
+        assert settings.models.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.outcomes.enabled is True
+        assert settings.jarvis_dir == tmp_path
+
+    def test_jarvis_dir_excluded_from_model_dump(self, tmp_path: Path) -> None:
+        """jarvis_dir is runtime-injected and must not leak into model_dump output."""
+        settings = load_config(tmp_path)
+        dumped = settings.model_dump()
+        assert "jarvis_dir" not in dumped
 
 
 class TestSettingsAggregator:

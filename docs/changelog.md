@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **JARVIS Phase 8 PR-8a — pydantic-settings migration**. Replaces `apps.cli.main.load_config() -> dict[str, Any]` with `packages.core.settings.load_config() -> Settings`, a typed `pydantic-settings` model covering all 16 top-level YAML sections. Migration done in 21 rollback-safe commits, each green under `pytest`/`mypy`/`ruff`. See ADR-032.
+  - **New module:** `packages/core/settings.py` — every YAML field carries `Field(description=...)` so the schema doubles as documentation for the upcoming Settings GUI (PR-8b). `read_yaml_layers` + `deep_merge` lift the loader out of `apps/cli/main.py` and into a portable helper.
+  - **Consolidated hand-rolled configs:** `MCPServerConfig` + `parse_mcp_config` deleted (now `MCPServerSettings` + `Settings.mcp.servers`). `ImageGenerationConfig` deleted (now `PatternCardImageGenerationSettings` directly consumed by `card_renderer` and `card_generator_tools`). `FilesystemGuard` and `VaultConfig` retained as runtime wrappers that compose typed settings with behavior.
+  - **63 call sites migrated** across 17 files from `config.get("section", {}).get("field", default)` to `settings.section.field`. Function signatures throughout the codebase now accept narrowly-typed slices (`Things3Settings`, `ReadwiseSettings`, `ModelsSettings`, etc.) where appropriate.
+  - **Dead code removed:** `packages/core/app.py` (139 LOC, zero importers, latent shallow-merge bug) and `packages/integrations/mcp/config.py`.
+  - **Behavior change:** every config section is now always present with typed defaults, even when absent from `default.yaml` / `local.yaml`. Callers no longer need defensive `dict.get(..., {})`.
+  - **Tests:** `tests/unit/test_settings.py` adds 62 unit tests covering each section (defaults, overrides, validation errors, deep-merge, end-to-end real-YAML validation). Existing test suites updated to construct `*Settings` objects instead of dict fixtures. Net: +18 tests vs. previous baseline.
+
 ### Added
 - **JARVIS GUI — Phase 6 (Agent Prompt Editor)** — activates the greyed tab row shipped as a placeholder in Phase 5 (`Overview · Prompt · Versions · Stats · Context`). Edit any data-driven agent's `prompts/system.md`, see every past revision, and preview the placeholder-expanded prompt as the LLM sees it — all from inside the GUI.
   - Backend: seven new endpoints under `/api/agents/{id}/prompt*` (get / put / list-snapshots / get-snapshot / restore / stats / resolved). Snapshots live at `<jarvis_dir>/data/prompt-history/<agent_id>/` with microsecond-resolution filenames (`%Y%m%dT%H%M%S_%fZ.md`) + an `index.json` sidecar. Path configurable via `paths.prompt_history_dir` in `config/default.yaml`, matching the `context_dir` / `conversations_dir` precedent. Per-agent `asyncio.Lock` serialises PUT/restore so the read-snapshot-write sequence can't interleave. Atomic file writes via `frontmatter.write_atomic()`.
