@@ -17,6 +17,8 @@ const PATHS: Record<string, string> = {
   moon: 'M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z',
   slash: 'M10 19L14 5',
   history: 'M3 12a9 9 0 109-9 M3 5v5h5 M12 7v6l4 2',
+  sliders: 'M4 6h4 M12 6h8 M10 4v4 M4 12h6 M14 12h6 M12 10v4 M4 18h10 M18 18h2 M16 16v4',
+  users: 'M12 12a4 4 0 100-8 4 4 0 000 8z M4 20a8 8 0 0116 0',
 }
 
 export function Icon({
