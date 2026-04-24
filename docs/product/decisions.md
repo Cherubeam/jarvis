@@ -2157,3 +2157,71 @@ Use **mutmut** as the mutation testing tool, integrated as a dev dependency and 
 
 ### Related ADRs
 - Relates to: ADR-028 (Developer Agent — mutation tools extend the dev_tools group)
+
+---
+
+## ADR-032: Adopt pydantic-settings for Typed Configuration
+
+**Date**: 2026-04-24
+**Status**: ✅ Accepted (scope decided; implementation tracked as GUI Phase 8)
+
+### Context
+
+JARVIS's configuration is loaded from `config/default.yaml` + `config/local.yaml` into a `dict[str, Any]` via `load_config()`. Across 17 files, 63 call sites access this dict with the defensive pattern `config.get("section", {}).get("field", default)`. Four subsystems already hand-roll the "dataclass + `from_dict` validator + custom error messages" pattern: `MCPServerConfig` (packages/integrations/mcp/config.py), `AccessRule` (packages/core/filesystem_access.py), `VaultConfig` (packages/integrations/obsidian/vault.py), and `ImageGenerationConfig` (packages/core/card_renderer.py).
+
+The forthcoming Settings GUI (GUI Phase 8b) needs:
+1. A machine-readable schema to auto-derive form fields for every config setting.
+2. Validation at write time so the GUI can't corrupt `local.yaml`.
+3. A single source of truth shared between runtime config access and the UI — to prevent drift as new config fields are added.
+
+The schema is also expected to be portable to sibling projects (e.g., `ai-hospitality-prototype`), which favors a library-backed declarative schema over project-specific hand-rolled code.
+
+### Decision
+
+Adopt `pydantic-settings` as the typed schema for all JARVIS configuration. Migrate `load_config()` to return a validated `Settings` model. Migrate all 63 call sites from dict access (`config.get(...)`) to attribute access (`settings.section.field`). Consolidate `MCPServerConfig` and `ImageGenerationConfig` (pure YAML) into the `Settings` model; retain `AccessRule`/`FilesystemGuard` and `VaultConfig` as runtime wrappers that compose validated config with behavior.
+
+### Alternatives Considered
+
+1. **Hand-rolled UI schema + dict runtime (Path A)**
+   - ✅ No call-site migration
+   - ❌ Duplicate schema between UI and runtime — drift guaranteed as new fields are added
+   - ❌ Four existing hand-rolled typed configs stay scattered
+
+2. **Hybrid — pydantic for validation + GUI, dict for runtime (Path C)**
+   - ✅ Ships the Settings GUI without migrating call sites
+   - ❌ Two representations (typed `Settings` + runtime `dict`) indefinitely — drift + cognitive overhead
+   - ❌ Rejected: maintaining two representations invites errors that a typed-first migration avoids
+
+3. **Full pydantic-settings migration (chosen, Path B)**
+   - ✅ Single source of truth
+   - ✅ `Field(description=...)` serves as schema documentation
+   - ✅ mypy-enforced config access
+   - ✅ IDE autocomplete
+   - ✅ Portable to sibling projects
+   - ⚠️ 1–2 days focused work; 63 call-site migrations are error-prone
+   - Mitigations: ~20 rollback-safe commits (one per top-level section); introduce `load_typed_config() -> Settings` alongside old `load_config() -> dict`, migrate progressively, delete old function last; mutation testing (mutmut) at phase end to harden tests
+
+4. **Attrs / dataclasses + jsonschema**
+   - ❌ No built-in YAML source loading
+   - ❌ No `.env` / env-var layering
+   - ❌ Less ecosystem adoption for schema-to-form generation
+
+### Consequences
+
+**Benefits:**
+- ✅ One schema powers runtime, GUI form generation, and validation-on-write
+- ✅ `Field(description=...)` self-documents the schema (replaces comment-heavy `local.yaml`)
+- ✅ Renames become one-shot, mypy-caught
+- ✅ Adding a new integration is one `BaseModel` section, not scattered `.get(...)` calls
+- ✅ Schema portable to `ai-hospitality-prototype` and other sibling projects
+- ✅ Fail-fast on malformed `local.yaml` (named-field error vs downstream crash)
+
+**Drawbacks:**
+- ⚠️ +1 runtime dependency (pydantic-settings, ~5MB installed)
+- ⚠️ +~50ms startup cost for schema build (one-time)
+- ⚠️ Comments in `local.yaml` are stripped on GUI writes — mitigated by `Field(description=...)` as in-code docs and a `# Managed by JARVIS Settings` file header
+- ⚠️ Credentials (e.g., `N8N_API_KEY` in `local.yaml`) remain plain-text on disk and in the GUI — acceptable for single-user, revisit if JARVIS gets distributed
+
+### Related ADRs
+- Relates to: ADR-003 (LiteLLM — the `models.*` config becomes typed under this ADR)
+- Relates to: ADR-031 (Mutation testing — mutmut runs at PR-8a completion to harden the new Settings tests)
