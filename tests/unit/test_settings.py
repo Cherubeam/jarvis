@@ -10,11 +10,16 @@ from pydantic import ValidationError
 from packages.core.settings import (
     CliSettings,
     DeveloperSettings,
+    EvaluationSettings,
     ModelPresets,
     ModelsSettings,
     OutcomesSettings,
     PathsSettings,
+    RagSettings,
+    RoutingSettings,
     Settings,
+    SummarizationSettings,
+    Things3Settings,
 )
 
 
@@ -108,6 +113,73 @@ class TestDeveloperSettings:
         assert dev.scope == ["packages/"]
 
 
+class TestThings3Settings:
+    def test_defaults_match_default_yaml(self) -> None:
+        t = Things3Settings()
+        assert t.enabled is True
+        assert t.sync_on_startup is True
+        assert t.cache_ttl_seconds == 300
+        assert t.lists_to_include == ["Today", "Upcoming", "Inbox"]
+        assert t.max_tasks_per_list == 50
+
+    def test_custom_lists(self) -> None:
+        t = Things3Settings(lists_to_include=["Anytime"])
+        assert t.lists_to_include == ["Anytime"]
+
+
+class TestEvaluationSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        e = EvaluationSettings()
+        assert e.judge_model == "anthropic/claude-opus-4.6"
+        assert e.quality_threshold == 0.70
+        assert e.results_dir == "tests/golden/results"
+        assert e.max_cost_per_run == 1.00
+        assert e.warn_cost_threshold == 0.50
+
+    def test_category_thresholds_defaults(self) -> None:
+        e = EvaluationSettings()
+        assert e.category_thresholds == {
+            "reasoning": 0.75,
+            "context_recall": 0.70,
+            "personalization": 0.70,
+            "edge_cases": 0.65,
+        }
+
+    def test_threshold_must_be_float(self) -> None:
+        with pytest.raises(ValidationError):
+            EvaluationSettings(quality_threshold="high")  # type: ignore[arg-type]
+
+
+class TestRagSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        r = RagSettings()
+        assert r.enabled is True
+        assert r.db_path == "data/rag/chroma"
+        assert r.embedding_model == "openrouter/openai/text-embedding-3-small"
+        assert r.index_cards is True
+
+
+class TestRoutingSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        r = RoutingSettings()
+        assert r.enabled is False
+        assert r.simple_threshold == 200
+        assert r.complex_threshold == 800
+
+    def test_thresholds_overrideable(self) -> None:
+        r = RoutingSettings(simple_threshold=100, complex_threshold=500)
+        assert r.simple_threshold == 100
+        assert r.complex_threshold == 500
+
+
+class TestSummarizationSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        s = SummarizationSettings()
+        assert s.enabled is False
+        assert s.token_threshold == 40000
+        assert s.keep_recent == 10
+
+
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
@@ -115,6 +187,11 @@ class TestSettingsAggregator:
         assert settings.paths.context_dir == "data/context"
         assert settings.cli.colors is True
         assert settings.outcomes.enabled is True
+        assert settings.things3.enabled is True
+        assert settings.evaluation.judge_model == "anthropic/claude-opus-4.6"
+        assert settings.rag.enabled is True
+        assert settings.routing.enabled is False
+        assert settings.summarization.enabled is False
         assert settings.developer.enabled is True
 
     def test_partial_section_override_via_dict(self) -> None:

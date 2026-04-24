@@ -91,6 +91,117 @@ class OutcomesSettings(BaseModel):
     )
 
 
+class Things3Settings(BaseModel):
+    """Things 3 task integration."""
+
+    enabled: bool = Field(default=True, description="Sync Things 3 tasks into JARVIS context.")
+    sync_on_startup: bool = Field(
+        default=True,
+        description="Refresh tasks each time the CLI starts (otherwise only on demand).",
+    )
+    cache_ttl_seconds: int = Field(
+        default=300,
+        description="How long cached task data remains valid before re-sync.",
+    )
+    lists_to_include: list[str] = Field(
+        default_factory=lambda: ["Today", "Upcoming", "Inbox"],
+        description="Things 3 list names to pull into context.",
+    )
+    max_tasks_per_list: int = Field(
+        default=50,
+        description="Cap per list to keep context windows from bloating.",
+    )
+
+
+class EvaluationSettings(BaseModel):
+    """LLM-as-judge evaluation settings."""
+
+    judge_model: str = Field(
+        default="anthropic/claude-opus-4.6",
+        description="LiteLLM-routable model id used for grading golden conversations.",
+    )
+    quality_threshold: float = Field(
+        default=0.70,
+        description="Minimum mean score (0-1) below which a run fails.",
+    )
+    category_thresholds: dict[str, float] = Field(
+        default_factory=lambda: {
+            "reasoning": 0.75,
+            "context_recall": 0.70,
+            "personalization": 0.70,
+            "edge_cases": 0.65,
+        },
+        description="Per-category overrides for quality_threshold.",
+    )
+    results_dir: str = Field(
+        default="tests/golden/results",
+        description="Directory where evaluation runs persist their results.",
+    )
+    max_cost_per_run: float = Field(
+        default=1.00,
+        description="USD ceiling above which an evaluation run aborts mid-flight.",
+    )
+    warn_cost_threshold: float = Field(
+        default=0.50,
+        description="USD threshold that triggers a warning but continues the run.",
+    )
+
+
+class RagSettings(BaseModel):
+    """RAG layer — conversation recall via ChromaDB + LiteLLM embeddings."""
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable retrieval over past conversations and indexed cards.",
+    )
+    db_path: str = Field(
+        default="data/rag/chroma",
+        description="Filesystem path for the ChromaDB persistent store.",
+    )
+    embedding_model: str = Field(
+        default="openrouter/openai/text-embedding-3-small",
+        description="LiteLLM-routable embedding model id used for indexing and queries.",
+    )
+    index_cards: bool = Field(
+        default=True,
+        description="Index deck-skill cards alongside conversations when RAG is enabled.",
+    )
+
+
+class RoutingSettings(BaseModel):
+    """Intelligent model routing — route by query complexity."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Route simple queries to fast models and complex ones to quality models.",
+    )
+    simple_threshold: int = Field(
+        default=200,
+        description="Character count below which a query is classified as simple.",
+    )
+    complex_threshold: int = Field(
+        default=800,
+        description="Character count above which a query is classified as complex.",
+    )
+
+
+class SummarizationSettings(BaseModel):
+    """History summarization — compress old turns to limit token use."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Compress old conversation history once a token threshold is exceeded.",
+    )
+    token_threshold: int = Field(
+        default=40000,
+        description="Approximate token count that triggers summarization.",
+    )
+    keep_recent: int = Field(
+        default=10,
+        description="Number of recent messages preserved verbatim after summarization.",
+    )
+
+
 class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
@@ -125,4 +236,9 @@ class Settings(BaseSettings):
     paths: PathsSettings = Field(default_factory=PathsSettings)
     cli: CliSettings = Field(default_factory=CliSettings)
     outcomes: OutcomesSettings = Field(default_factory=OutcomesSettings)
+    things3: Things3Settings = Field(default_factory=Things3Settings)
+    evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
+    rag: RagSettings = Field(default_factory=RagSettings)
+    routing: RoutingSettings = Field(default_factory=RoutingSettings)
+    summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
