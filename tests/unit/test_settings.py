@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from packages.core.settings import (
     AccessRuleSettings,
     CliSettings,
+    CortexSettings,
     DeveloperSettings,
     EvaluationSettings,
     FilesystemSettings,
@@ -23,7 +24,10 @@ from packages.core.settings import (
     ObsidianWritingTargetSettings,
     OutcomesSettings,
     PathsSettings,
+    PatternCardImageGenerationSettings,
+    PatternCardsSettings,
     RagSettings,
+    ReadwiseSettings,
     RoutingSettings,
     Settings,
     SummarizationSettings,
@@ -350,6 +354,38 @@ class TestFilesystemSettings:
             AccessRuleSettings(access="read")  # type: ignore[call-arg]
 
 
+class TestCortexSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        c = CortexSettings()
+        assert c.enabled is False
+        assert c.base_url == "http://127.0.0.1:8100"
+        assert c.timeout_seconds == 10
+
+
+class TestReadwiseSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        r = ReadwiseSettings()
+        assert r.enabled is False
+        assert r.cache_ttl_seconds == 300
+
+
+class TestPatternCardsSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        p = PatternCardsSettings()
+        assert p.output_dir == "data/pattern-cards"
+        assert p.image_generation.enabled is False
+        assert p.image_generation.model == "gemini/imagen-4.0-generate-001"
+        assert p.image_generation.size == "1536x640"
+        assert p.image_generation.max_images_per_run == 10
+
+    def test_image_generation_overrides(self) -> None:
+        p = PatternCardsSettings(
+            image_generation=PatternCardImageGenerationSettings(enabled=True, max_images_per_run=5)
+        )
+        assert p.image_generation.enabled is True
+        assert p.image_generation.max_images_per_run == 5
+
+
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
@@ -365,6 +401,9 @@ class TestSettingsAggregator:
         assert settings.obsidian.enabled is False
         assert settings.mcp.enabled is False
         assert settings.filesystem.access_rules == []
+        assert settings.cortex.enabled is False
+        assert settings.readwise.enabled is False
+        assert settings.pattern_cards.output_dir == "data/pattern-cards"
         assert settings.developer.enabled is True
 
     def test_partial_section_override_via_dict(self) -> None:
