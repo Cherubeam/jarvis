@@ -9,7 +9,6 @@ import pytest
 from packages.core.card_renderer import (
     CATEGORY_COLORS,
     DEFAULT_COLOR,
-    ImageGenerationConfig,
     PatternData,
     _category_color,
     _clean_wikilinks,
@@ -28,6 +27,7 @@ from packages.core.card_renderer import (
     render_card_to_pdf,
     render_card_to_png,
 )
+from packages.core.settings import PatternCardImageGenerationSettings
 
 # ---------------------------------------------------------------------------
 # Sample pattern markdown
@@ -478,39 +478,9 @@ class TestExportImagePrompts:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2: ImageGenerationConfig
+# Phase 2: PatternCardImageGenerationSettings (defaults asserted in
+# tests/unit/test_settings.py — kept here as integration smoke check)
 # ---------------------------------------------------------------------------
-
-
-class TestImageGenerationConfig:
-    def test_defaults(self):
-        cfg = ImageGenerationConfig()
-        assert cfg.enabled is False
-        assert cfg.model == "gemini/imagen-4.0-generate-001"
-        assert cfg.size == "1536x640"
-        assert cfg.max_images_per_run == 10
-
-    def test_from_dict_empty(self):
-        cfg = ImageGenerationConfig.from_dict({})
-        assert cfg.enabled is False
-        assert cfg.model == "gemini/imagen-4.0-generate-001"
-        assert cfg.size == "1536x640"
-        assert cfg.max_images_per_run == 10
-
-    def test_from_dict_enabled(self):
-        d = {
-            "image_generation": {
-                "enabled": True,
-                "model": "gemini/test-model",
-                "size": "512x512",
-                "max_images_per_run": 5,
-            }
-        }
-        cfg = ImageGenerationConfig.from_dict(d)
-        assert cfg.enabled is True
-        assert cfg.model == "gemini/test-model"
-        assert cfg.size == "512x512"
-        assert cfg.max_images_per_run == 5
 
 
 # ---------------------------------------------------------------------------
@@ -521,13 +491,13 @@ class TestImageGenerationConfig:
 class TestGeneratePatternImage:
     def test_raises_when_disabled(self, tmp_path):
         p = parse_pattern(FULL_PATTERN)
-        cfg = ImageGenerationConfig(enabled=False)
+        cfg = PatternCardImageGenerationSettings(enabled=False)
         with pytest.raises(RuntimeError, match="Image generation is disabled"):
             generate_pattern_image(p, tmp_path, cfg)
 
     def test_skips_when_cached(self, tmp_path):
         p = parse_pattern(FULL_PATTERN)
-        cfg = ImageGenerationConfig(enabled=True)
+        cfg = PatternCardImageGenerationSettings(enabled=True)
         # Pre-create the cached image
         (tmp_path / "chain-of-thought.png").write_bytes(b"fake image")
 
@@ -536,7 +506,7 @@ class TestGeneratePatternImage:
 
     def test_force_regenerates(self, tmp_path):
         p = parse_pattern(FULL_PATTERN)
-        cfg = ImageGenerationConfig(enabled=True)
+        cfg = PatternCardImageGenerationSettings(enabled=True)
         (tmp_path / "chain-of-thought.png").write_bytes(b"old image")
 
         mock_image = MagicMock()
@@ -561,7 +531,7 @@ class TestGeneratePatternImage:
         import base64
 
         p = parse_pattern(FULL_PATTERN)
-        cfg = ImageGenerationConfig(enabled=True)
+        cfg = PatternCardImageGenerationSettings(enabled=True)
 
         fake_b64 = base64.b64encode(b"png image bytes").decode()
         mock_image = MagicMock()

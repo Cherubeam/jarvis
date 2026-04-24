@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.card_renderer import (
-    ImageGenerationConfig,
     _slugify,
     export_image_prompts,
     generate_card_files,
     generate_pattern_image,
     list_vault_patterns,
 )
+from packages.core.settings import PatternCardImageGenerationSettings
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import VaultConfig
 
@@ -24,7 +24,7 @@ def make_card_generator_tools(
     vault_config: VaultConfig,
     patterns_dir: str,
     output_dir: Path,
-    image_config: ImageGenerationConfig | None = None,
+    image_config: PatternCardImageGenerationSettings | None = None,
 ) -> list[ToolDefinition]:
     """Create pattern card generator tools.
 
@@ -38,7 +38,7 @@ def make_card_generator_tools(
         List of 3 ToolDefinitions: generate_card, generate_deck, generate_image_prompts.
     """
     images_dir = output_dir / "images"
-    img_cfg = image_config or ImageGenerationConfig()
+    img_cfg = image_config or PatternCardImageGenerationSettings()
 
     def _find_pattern(pattern_name: str) -> tuple[Any, str | None]:
         """Find a pattern by name (case-insensitive). Returns (pattern, error_msg)."""

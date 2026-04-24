@@ -426,12 +426,10 @@ def build_session(
         patterns_dir = settings.obsidian.writing.patterns.target_dir
         if patterns_dir:
             try:
-                from packages.core.card_renderer import ImageGenerationConfig
                 from packages.core.tools.card_generator_tools import make_card_generator_tools
 
-                card_cfg = config.get("pattern_cards", {})
-                card_output = jarvis_dir / card_cfg.get("output_dir", "data/pattern-cards")
-                img_config = ImageGenerationConfig.from_dict(card_cfg)
+                card_output = jarvis_dir / settings.pattern_cards.output_dir
+                img_config = settings.pattern_cards.image_generation
                 card_gen_tools = make_card_generator_tools(
                     vault_config,
                     patterns_dir,
