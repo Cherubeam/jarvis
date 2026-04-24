@@ -45,14 +45,12 @@ def _guard_file_id(file_id: str) -> None:
 
 
 def _outcomes_dir(session: Any) -> Path:
-    config = session.components.config
-    jarvis_dir = Path(config["_paths"]["jarvis_dir"])
-    subpath = str(config.get("outcomes", {}).get("dir", "data/outcomes"))
-    return jarvis_dir / subpath
+    components = session.components
+    return Path(components.jarvis_dir) / str(components.settings.outcomes.dir)
 
 
 def _outcomes_enabled(session: Any) -> bool:
-    return bool(session.components.config.get("outcomes", {}).get("enabled", True))
+    return bool(session.components.settings.outcomes.enabled)
 
 
 @router.get("/outcomes/pending")

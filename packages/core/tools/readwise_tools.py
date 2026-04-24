@@ -5,19 +5,19 @@ Uses the Readwise CLI subprocess wrapper for data access.
 """
 
 import logging
-from typing import Any
 
+from packages.core.settings import ReadwiseSettings
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.readwise.client import ReadwiseClient, is_cli_available
 
 logger = logging.getLogger(__name__)
 
 
-def make_readwise_tools(config: dict[str, Any]) -> list[ToolDefinition]:
+def make_readwise_tools(readwise: ReadwiseSettings) -> list[ToolDefinition]:
     """Create Readwise tools for reading list search and management.
 
     Args:
-        config: The readwise section of the config dict.
+        readwise: Readwise settings.
 
     Returns:
         List of ToolDefinitions. Empty list if CLI is not installed.
@@ -26,9 +26,7 @@ def make_readwise_tools(config: dict[str, Any]) -> list[ToolDefinition]:
         logger.info("Readwise tools skipped: CLI not installed")  # pragma: no mutate
         return []
 
-    client = ReadwiseClient(
-        cache_ttl_seconds=config.get("cache_ttl_seconds", 300),
-    )
+    client = ReadwiseClient(cache_ttl_seconds=readwise.cache_ttl_seconds)
     tools: list[ToolDefinition] = []
 
     # --- search_reading_list ---
