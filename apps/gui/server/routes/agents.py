@@ -61,11 +61,10 @@ def _guard_agent_id(agent_id: str) -> None:
 
 
 def _history_root(session: Any) -> Path:
-    """Resolve the prompt-history root from session config."""
-    config = session.components.config
-    jarvis_dir = Path(config["_paths"]["jarvis_dir"])
-    subpath = str(config.get("paths", {}).get("prompt_history_dir", "data/prompt-history"))
-    return jarvis_dir / subpath
+    """Resolve the prompt-history root from session settings."""
+    components = session.components
+    subpath = str(components.settings.paths.prompt_history_dir)
+    return Path(components.jarvis_dir) / subpath
 
 
 def _meta_path(agent_id: str, session: Any) -> Path | None:
