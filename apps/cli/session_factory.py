@@ -54,7 +54,6 @@ class SessionComponents:
     every helper. The chat loop reads what it needs.
     """
 
-    config: dict[str, Any]
     settings: Settings
     args: Any  # argparse.Namespace or a GUI-shim equivalent
     jarvis_dir: Path
@@ -169,7 +168,6 @@ def instantiate_agent(
 
 def build_session(
     args: Any,
-    config: dict[str, Any],
     settings: Settings,
     confirmation_handler: ConfirmationHandler,
     *,
@@ -192,7 +190,7 @@ def build_session(
         auto_confirm: If True, developer-tool writes auto-approve (CLI dev
             mode). GUI never sets this.
     """
-    jarvis_dir = config["_paths"]["jarvis_dir"]
+    jarvis_dir = settings.jarvis_dir
     api_keys = collect_api_keys()
 
     model_source = getattr(args, "model", None) or settings.models.default
@@ -567,7 +565,6 @@ def build_session(
     )
 
     return SessionComponents(
-        config=config,
         settings=settings,
         args=args,
         jarvis_dir=jarvis_dir,

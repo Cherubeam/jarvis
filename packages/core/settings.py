@@ -541,7 +541,7 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
-def load_typed_config(project_root: Path | None = None) -> Settings:
+def load_config(project_root: Path | None = None) -> Settings:
     """Load default.yaml + local.yaml from ``<project_root>/config/`` into Settings.
 
     The runtime-only ``jarvis_dir`` field is injected after construction so the

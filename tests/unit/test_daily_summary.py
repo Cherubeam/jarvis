@@ -8,6 +8,7 @@ import pytest
 
 from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
 from packages.core.pricing import ModelPricing
+from packages.core.settings import Settings
 from packages.telemetry.metrics import MetricsTracker
 
 
@@ -83,7 +84,7 @@ class TestDailySummaryMaxTokens:
         )
 
         handle_daily_summary(
-            config={},
+            settings=Settings(),
             client=client,
             logger=logger,
             system_prompt="You are JARVIS.",
@@ -111,7 +112,7 @@ class TestDailySummaryDateArgument:
         from apps.cli.main import handle_daily_summary
 
         handle_daily_summary(
-            config={},
+            settings=Settings(),
             client=Mock(spec=LLMClient),
             logger=Mock(),
             system_prompt="You are JARVIS.",
@@ -173,7 +174,7 @@ class TestDailySummaryDateArgument:
         logger.get_messages_for_api.return_value = []
 
         handle_daily_summary(
-            config={},
+            settings=Settings(),
             client=client,
             logger=logger,
             system_prompt="You are JARVIS.",
@@ -240,7 +241,7 @@ class TestDailySummaryDateArgument:
         logger.get_messages_for_api.return_value = []
 
         handle_daily_summary(
-            config={},
+            settings=Settings(),
             client=client,
             logger=logger,
             system_prompt="You are JARVIS.",
