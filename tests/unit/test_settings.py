@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from packages.core.settings import (
+    HOT_APPLY_PATHS,
     AccessRuleSettings,
     CliSettings,
     CortexSettings,
@@ -34,6 +35,7 @@ from packages.core.settings import (
     Settings,
     SummarizationSettings,
     Things3Settings,
+    classify_changes,
     deep_merge,
     get_project_root,
     load_config,
@@ -547,3 +549,158 @@ class TestSettingsAggregator:
         original = Settings()
         rebuilt = Settings(**original.model_dump())
         assert rebuilt.model_dump() == original.model_dump()
+
+
+class TestClassifyChanges:
+    """Field-level hot-apply gating.
+
+    ``HOT_APPLY_PATHS`` is a curated whitelist of dotted prefixes that the
+    running session re-reads off ``session.components.settings`` per turn.
+    Everything else is captured at startup by ``build_session()`` and needs
+    a restart before the change takes effect.
+    """
+
+    def test_hot_apply_paths_pin(self) -> None:
+        """Pins the exact set so additions get a deliberate review."""
+        expected = frozenset(
+            {
+                "summarization",
+                "paths.prompt_history_dir",
+            }
+        )
+        assert expected == HOT_APPLY_PATHS
+
+    def test_no_change_empty_buckets(self) -> None:
+        current = Settings().model_dump()
+        result = classify_changes(current, current)
+        assert result == {
+            "hot_applied_fields": [],
+            "restart_required_fields": [],
+            "restart_required": False,
+        }
+
+    def test_hot_field_only_does_not_require_restart(self) -> None:
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["summarization"]["token_threshold"] = 99_999
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": ["summarization.token_threshold"],
+            "restart_required_fields": [],
+            "restart_required": False,
+        }
+
+    def test_cold_field_requires_restart(self) -> None:
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["models"]["streaming"] = False
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": [],
+            "restart_required_fields": ["models.streaming"],
+            "restart_required": True,
+        }
+
+    def test_outcomes_changes_require_restart(self) -> None:
+        """``outcomes.*`` is deliberately cold: tool registration happens at startup."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["outcomes"]["enabled"] = False
+        result = classify_changes(current, new)
+        assert result["hot_applied_fields"] == []
+        assert result["restart_required_fields"] == ["outcomes.enabled"]
+        assert result["restart_required"] is True
+
+    def test_prompt_history_dir_is_hot(self) -> None:
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["paths"]["prompt_history_dir"] = "data/prompt-history-alt"
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": ["paths.prompt_history_dir"],
+            "restart_required_fields": [],
+            "restart_required": False,
+        }
+
+    def test_other_paths_fields_are_cold(self) -> None:
+        """Only prompt_history_dir is hot under paths — siblings still need restart."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["paths"]["context_dir"] = "data/context-alt"
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": [],
+            "restart_required_fields": ["paths.context_dir"],
+            "restart_required": True,
+        }
+
+    def test_mixed_change_splits_into_both_buckets(self) -> None:
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["summarization"]["enabled"] = True
+        new["models"]["default"] = "anthropic/claude-haiku-4.5"
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": ["summarization.enabled"],
+            "restart_required_fields": ["models.default"],
+            "restart_required": True,
+        }
+
+    def test_summarization_nested_subtree_all_hot(self) -> None:
+        """Prefix match: every summarization.* field counts as hot."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["summarization"]["enabled"] = True
+        new["summarization"]["token_threshold"] = 10_000
+        new["summarization"]["keep_recent"] = 5
+        result = classify_changes(current, new)
+        assert set(result["hot_applied_fields"]) == {
+            "summarization.enabled",
+            "summarization.token_threshold",
+            "summarization.keep_recent",
+        }
+        assert result["restart_required_fields"] == []
+        assert result["restart_required"] is False
+
+    def test_list_diff_is_single_leaf(self) -> None:
+        """A changed list is one leaf path, not per-index diffs."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["developer"]["scope"] = ["packages/agents/", "packages/skills/"]
+        result = classify_changes(current, new)
+        assert result["restart_required_fields"] == ["developer.scope"]
+
+    def test_fields_sorted_deterministically(self) -> None:
+        """Buckets are sorted so test assertions don't flap by dict ordering."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["models"]["streaming"] = False
+        new["routing"]["enabled"] = True
+        new["cli"]["colors"] = False
+        result = classify_changes(current, new)
+        assert result["restart_required_fields"] == [
+            "cli.colors",
+            "models.streaming",
+            "routing.enabled",
+        ]
+
+    def test_new_dynamic_key_counts_as_change(self) -> None:
+        """Adding ``mcp.servers["n8n"]`` at runtime surfaces the whole server as a leaf."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["mcp"]["servers"]["n8n"] = {
+            "transport": "stdio",
+            "tool_group": "n8n",
+            "timeout_seconds": 30.0,
+            "command": "npx",
+            "args": [],
+            "env": None,
+            "cwd": None,
+            "url": None,
+            "headers": None,
+        }
+        result = classify_changes(current, new)
+        # Not a prefix of HOT_APPLY_PATHS → cold.
+        assert result["restart_required"] is True
+        assert "mcp.servers.n8n" in result["restart_required_fields"]
+        assert result["hot_applied_fields"] == []

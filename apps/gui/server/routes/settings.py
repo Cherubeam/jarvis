@@ -13,10 +13,12 @@ Validation errors are normalised with ``card_loc`` and ``kind`` so the GUI
 can attach field-level errors inline and model-validator errors (e.g. an
 MCP server missing ``command`` on stdio) at the enclosing card header.
 
-No in-process reload on save: downstream tools / LLM clients / MCP
-subprocesses are captured at startup in ``build_session``. This route
-returns ``restart_required: true`` so the GUI shows an unconditional
-restart banner.
+In-process behaviour on save: ``session.components.settings`` is rebound
+to the new ``Settings`` instance. Fields read per request (see
+:data:`packages.core.settings.HOT_APPLY_PATHS`) then take effect
+immediately; other fields were captured at startup by ``build_session``
+into closures and need a restart. The response lists both buckets so the
+GUI footer can say "applied live" vs "restart required" honestly.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from pydantic import BaseModel, Field, ValidationError
 from packages.core.frontmatter import write_atomic
 from packages.core.settings import (
     Settings,
+    classify_changes,
     dereferenced_schema,
     diff_from_defaults,
 )
@@ -217,12 +220,16 @@ async def put_settings(payload: PutSettingsRequest, request: Request) -> dict[st
     - ``500`` on disk write failure. ``local.yaml`` is left unchanged
       thanks to the atomic tmp + rename.
 
-    No in-process rebind. Downstream tools use the old settings until
-    restart; the response carries ``restart_required: true`` so the GUI
-    banner says so.
+    On success the in-memory ``components.settings`` is rebound to the new
+    instance (preserving the runtime-injected ``jarvis_dir``). Fields in
+    :data:`packages.core.settings.HOT_APPLY_PATHS` take effect immediately
+    because the GUI bridge reads them off ``components.settings`` at the
+    top of each turn; other fields stay captured in tool / client closures
+    and need a restart. The response reports both buckets.
     """
     session = request.app.state.gui_session
     local_path = _local_yaml_path(session)
+    current_settings: Settings = session.components.settings
 
     # Managed-header guard — refuse to overwrite a user's hand-crafted file
     # without explicit acknowledgement.
@@ -256,8 +263,19 @@ async def put_settings(payload: PutSettingsRequest, request: Request) -> dict[st
             logger.exception("failed to write %s", local_path)
             raise HTTPException(status_code=500, detail="failed to write config/local.yaml") from exc
 
+        # Classify changes vs the in-memory state captured BEFORE rebind,
+        # then rebind so hot fields take effect on the next turn.
+        classification = classify_changes(
+            current_settings.model_dump(),
+            new_settings.model_dump(),
+        )
+        new_settings.jarvis_dir = current_settings.jarvis_dir
+        session.components.settings = new_settings
+
     return {
         "overrides": diff,
         "bytes": len(content.encode("utf-8")),
-        "restart_required": True,
+        "restart_required": classification["restart_required"],
+        "hot_applied_fields": classification["hot_applied_fields"],
+        "restart_required_fields": classification["restart_required_fields"],
     }

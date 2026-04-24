@@ -142,7 +142,10 @@ def test_put_valid_settings_writes_local_yaml(tmp_path: Path) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["overrides"] == {"routing": {"enabled": True}}
+    # routing.* is captured at startup → restart required.
     assert body["restart_required"] is True
+    assert body["restart_required_fields"] == ["routing.enabled"]
+    assert body["hot_applied_fields"] == []
     assert body["bytes"] > 0
 
     written = (tmp_path / "config" / "local.yaml").read_text()
@@ -151,25 +154,78 @@ def test_put_valid_settings_writes_local_yaml(tmp_path: Path) -> None:
     assert parsed == {"routing": {"enabled": True}}
 
 
-def test_put_does_not_rebind_components_settings(tmp_path: Path) -> None:
-    """PR-8b deliberately does NOT rebind ``components.settings`` after save.
-
-    Downstream tools / LLM clients / MCP subprocesses capture settings at startup,
-    so a bare rebind would give a false impression of hot-apply. The banner says
-    'restart required' because that's the honest story.
+def test_put_rebinds_components_settings_for_hot_apply(tmp_path: Path) -> None:
+    """Field-level hot-apply gating: ``components.settings`` is replaced after save
+    so fields re-read per turn (summarization, paths.prompt_history_dir) take
+    effect immediately. jarvis_dir (runtime-injected) must be preserved.
     """
-    app = _build_app(tmp_path)
+    settings = Settings()
+    settings.jarvis_dir = tmp_path  # matches what build_session does
+    app = _build_app(tmp_path, settings)
     before = app.state.gui_session.components.settings
     client = TestClient(app)
 
     payload = Settings().model_dump()
-    payload["routing"]["enabled"] = True
+    payload["summarization"]["token_threshold"] = 50_000
 
     r = client.put("/api/settings", json={"settings": payload})
     assert r.status_code == 200
 
     after = app.state.gui_session.components.settings
-    assert after is before
+    assert after is not before
+    assert after.summarization.token_threshold == 50_000
+    assert after.jarvis_dir == tmp_path  # preserved across rebind
+
+
+def test_put_hot_apply_only_change_does_not_require_restart(tmp_path: Path) -> None:
+    """Changing only summarization.* → restart_required is False."""
+    client = _client(tmp_path)
+
+    payload = Settings().model_dump()
+    payload["summarization"]["enabled"] = True
+    payload["summarization"]["token_threshold"] = 12_345
+
+    r = client.put("/api/settings", json={"settings": payload})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["restart_required"] is False
+    assert body["restart_required_fields"] == []
+    assert set(body["hot_applied_fields"]) == {
+        "summarization.enabled",
+        "summarization.token_threshold",
+    }
+
+
+def test_put_mixed_change_reports_both_buckets(tmp_path: Path) -> None:
+    """A change that touches both hot and cold fields lists them separately."""
+    client = _client(tmp_path)
+
+    payload = Settings().model_dump()
+    payload["summarization"]["keep_recent"] = 25  # hot
+    payload["paths"]["prompt_history_dir"] = "data/prompt-history-custom"  # hot
+    payload["models"]["streaming"] = False  # cold
+
+    r = client.put("/api/settings", json={"settings": payload})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["restart_required"] is True
+    assert body["restart_required_fields"] == ["models.streaming"]
+    assert set(body["hot_applied_fields"]) == {
+        "summarization.keep_recent",
+        "paths.prompt_history_dir",
+    }
+
+
+def test_put_noop_save_reports_empty_buckets(tmp_path: Path) -> None:
+    """Saving the existing settings unchanged → no fields in either bucket."""
+    client = _client(tmp_path)
+
+    r = client.put("/api/settings", json={"settings": Settings().model_dump()})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["restart_required"] is False
+    assert body["restart_required_fields"] == []
+    assert body["hot_applied_fields"] == []
 
 
 # ---------------------------------------------------------------------------
