@@ -9,8 +9,8 @@ with no confirmation back to the caller.
 import logging
 import subprocess
 import sys
-from typing import Any
 
+from packages.core.settings import Things3Settings
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.things3.task_sync import TaskSyncCache
 
@@ -23,11 +23,11 @@ def _open_things_url(url: str) -> bool:
     return result.returncode == 0
 
 
-def make_things3_tools(config: dict[str, Any]) -> list[ToolDefinition]:
+def make_things3_tools(things3: Things3Settings) -> list[ToolDefinition]:
     """Create Things 3 write tools.
 
     Args:
-        config: The things3 section of the config dict.
+        things3: Things 3 settings.
 
     Returns:
         List of ToolDefinitions. Empty list on non-macOS platforms.
@@ -38,7 +38,7 @@ def make_things3_tools(config: dict[str, Any]) -> list[ToolDefinition]:
 
     import things  # type: ignore[unreachable]
 
-    cache = TaskSyncCache(cache_ttl_seconds=config.get("cache_ttl_seconds", 300))
+    cache = TaskSyncCache(cache_ttl_seconds=things3.cache_ttl_seconds)
     tools: list[ToolDefinition] = []
 
     # --- create_task ---

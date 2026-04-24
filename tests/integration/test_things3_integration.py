@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from packages.core.context_builder import build_system_prompt
+from packages.core.settings import Things3Settings
 from packages.integrations.things3.task_sync import Task, sync_tasks_to_file
 
 
@@ -64,13 +65,7 @@ class TestThings3Integration:
         context_dir = tmp_path / "context"
         context_dir.mkdir()
 
-        config = {
-            "things3": {
-                "enabled": True,
-                "sync_on_startup": True,
-                "max_tasks_per_list": 50,
-            }
-        }
+        things3 = Things3Settings(enabled=True, sync_on_startup=True, max_tasks_per_list=50)
 
         mock_fetch.return_value = {
             "inbox": [Task(title="Inbox task 1"), Task(title="Inbox task 2")],
@@ -79,7 +74,7 @@ class TestThings3Integration:
         }
 
         output_path = context_dir / "tasks.md"
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is True
         assert output_path.exists()
@@ -96,10 +91,10 @@ class TestThings3Integration:
         context_dir = tmp_path / "context"
         context_dir.mkdir()
 
-        config = {"things3": {"enabled": False}}
+        things3 = Things3Settings(enabled=False)
 
         output_path = context_dir / "tasks.md"
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
         assert not output_path.exists()
@@ -110,12 +105,12 @@ class TestThings3Integration:
         context_dir = tmp_path / "context"
         context_dir.mkdir()
 
-        config = {"things3": {"enabled": True, "sync_on_startup": True}}
+        things3 = Things3Settings(enabled=True, sync_on_startup=True)
 
         mock_fetch.side_effect = RuntimeError("Things 3 not running")
 
         output_path = context_dir / "tasks.md"
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
 
@@ -131,13 +126,7 @@ class TestThings3Integration:
 
         many_tasks = [Task(title=f"Task {i}") for i in range(100)]
 
-        config = {
-            "things3": {
-                "enabled": True,
-                "sync_on_startup": True,
-                "max_tasks_per_list": 10,
-            }
-        }
+        things3 = Things3Settings(enabled=True, sync_on_startup=True, max_tasks_per_list=10)
 
         mock_fetch.return_value = {
             "inbox": many_tasks,
@@ -146,7 +135,7 @@ class TestThings3Integration:
         }
 
         output_path = context_dir / "tasks.md"
-        sync_tasks_to_file(output_path, config)
+        sync_tasks_to_file(output_path, things3)
 
         content = output_path.read_text()
 
@@ -162,13 +151,7 @@ class TestThings3Integration:
         context_dir = jarvis_dir / "personal-context" / "context"
         context_dir.mkdir(parents=True)
 
-        config = {
-            "things3": {
-                "enabled": True,
-                "sync_on_startup": True,
-                "max_tasks_per_list": 50,
-            },
-        }
+        things3 = Things3Settings(enabled=True, sync_on_startup=True, max_tasks_per_list=50)
 
         (context_dir / "soul.md").write_text("You are Jarvis.")
         (context_dir / "personal_context.md").write_text("# Marco\nSoftware engineer")
@@ -181,7 +164,7 @@ class TestThings3Integration:
             "upcoming": [],
         }
 
-        sync_tasks_to_file(context_dir / "tasks.md", config)
+        sync_tasks_to_file(context_dir / "tasks.md", things3)
         prompt = build_system_prompt(context_dir)
 
         assert "You are Jarvis" in prompt
@@ -192,14 +175,14 @@ class TestThings3Integration:
         assert "Review integration tests" in prompt
         assert "Implement Things 3 sync" in prompt
 
-    def test_empty_config_section(self, tmp_path):
-        """Test behavior with missing things3 config section."""
+    def test_default_settings_skip_when_disabled(self, tmp_path):
+        """Defaults have enabled=True, sync_on_startup=True; skip when disabled."""
         context_dir = tmp_path / "context"
         context_dir.mkdir()
 
-        config = {}
+        things3 = Things3Settings(enabled=False)
 
         output_path = context_dir / "tasks.md"
-        result = sync_tasks_to_file(output_path, config)
+        result = sync_tasks_to_file(output_path, things3)
 
         assert result is False
