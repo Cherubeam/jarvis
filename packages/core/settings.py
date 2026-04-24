@@ -590,6 +590,95 @@ def _diff_dict(current: dict[str, Any], defaults: dict[str, Any]) -> dict[str, A
     return result
 
 
+# ---------------------------------------------------------------------------
+# Hot-apply classification
+#
+# Most fields are captured at startup by ``build_session()`` into
+# ``LLMClient``, tool closures, ``FilesystemGuard``, ``CortexClient``, and
+# MCP subprocesses — changing them at runtime is a no-op until restart.
+#
+# A small set of fields is re-read per request from ``session.components.settings``
+# (e.g. the GUI bridge reads ``summarization.*`` at the top of each turn;
+# ``/api/agents/*/prompt*`` resolves ``paths.prompt_history_dir`` on every
+# call). Those are "hot-apply" — when the Settings GUI rebinds
+# ``components.settings`` after a save, they take effect immediately.
+#
+# Before adding an entry, grep for the field in ``apps/gui/server``,
+# ``apps/cli/main.py``, and ``packages/core`` to confirm it's read per
+# request (not captured into a closure at ``build_session()`` time).
+#
+# ``outcomes.*`` is deliberately NOT hot: toggling ``outcomes.enabled`` true
+# mid-session doesn't register the ``track_recommendation`` tool (that
+# happens at ``build_session()`` time), so the user-facing change needs a
+# restart even though the /api/outcomes view reads the flag per request.
+
+
+HOT_APPLY_PATHS: frozenset[str] = frozenset(
+    {
+        "summarization",
+        "paths.prompt_history_dir",
+    }
+)
+
+
+def classify_changes(
+    current: dict[str, Any],
+    new: dict[str, Any],
+) -> dict[str, Any]:
+    """Diff ``current`` vs ``new`` and split changed leaves by hot-apply eligibility.
+
+    Returns a dict with three keys:
+
+    - ``hot_applied_fields``: sorted list of dotted paths that take effect
+      immediately once ``components.settings`` is rebound.
+    - ``restart_required_fields``: sorted list of dotted paths that need
+      a JARVIS restart before they take effect.
+    - ``restart_required``: ``True`` iff ``restart_required_fields`` is non-empty.
+
+    Both inputs must be the shape of ``Settings().model_dump()`` — fully
+    materialized nested dicts, no ``$ref``.
+    """
+    changed = sorted(_diff_paths(current, new))
+    hot: list[str] = []
+    cold: list[str] = []
+    for path in changed:
+        if _is_hot_apply(path):
+            hot.append(path)
+        else:
+            cold.append(path)
+    return {
+        "hot_applied_fields": hot,
+        "restart_required_fields": cold,
+        "restart_required": bool(cold),
+    }
+
+
+def _is_hot_apply(path: str) -> bool:
+    """True iff ``path`` matches any ``HOT_APPLY_PATHS`` entry as itself or a prefix."""
+    return any(path == prefix or path.startswith(prefix + ".") for prefix in HOT_APPLY_PATHS)
+
+
+def _diff_paths(current: Any, new: Any, prefix: str = "") -> list[str]:
+    """Return dotted leaf paths where ``current`` and ``new`` differ.
+
+    Nested dicts recurse; everything else (scalars, lists, None) is treated
+    as an atomic leaf — a list replacement is one path, not per-index.
+    Keys present in only one side are still leaves.
+    """
+    if isinstance(current, dict) and isinstance(new, dict):
+        result: list[str] = []
+        for key in set(current) | set(new):
+            sub_prefix = f"{prefix}.{key}" if prefix else key
+            if key not in current or key not in new:
+                result.append(sub_prefix)
+                continue
+            result.extend(_diff_paths(current[key], new[key], sub_prefix))
+        return result
+    if current != new:
+        return [prefix] if prefix else [""]
+    return []
+
+
 def dereferenced_schema() -> dict[str, Any]:
     """Return ``Settings.model_json_schema()`` with every ``$ref`` inlined.
 
