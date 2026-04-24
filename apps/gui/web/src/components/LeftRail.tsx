@@ -16,13 +16,13 @@ export type ViewKey =
 const ITEMS: { key: ViewKey; label: string; icon: string }[] = [
   { key: 'home', label: 'Home', icon: 'sparkle' },
   { key: 'chat', label: 'Chat', icon: 'terminal' },
-  { key: 'agents', label: 'Agents', icon: 'tool' },
+  { key: 'agents', label: 'Agents', icon: 'users' },
   { key: 'outcomes', label: 'Outcomes', icon: 'check' },
   { key: 'history', label: 'History', icon: 'history' },
 ]
 
 const BOTTOM: { key: ViewKey; label: string; icon: string }[] = [
-  { key: 'settings', label: 'Settings', icon: 'note' },
+  { key: 'settings', label: 'Settings', icon: 'sliders' },
 ]
 
 export function LeftRail({
