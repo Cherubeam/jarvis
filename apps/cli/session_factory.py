@@ -463,15 +463,12 @@ def build_session(
                 print_system(f"[Cards] Startup failed — card generator disabled. ({e})")
 
     mcp_manager = None
-    from packages.integrations.mcp.config import parse_mcp_config
-
     try:
-        mcp_configs = parse_mcp_config(config)
-        if mcp_configs:
+        if settings.mcp.enabled and settings.mcp.servers:
             from packages.integrations.mcp import MCPManager
 
             mcp_manager = MCPManager()
-            mcp_tool_groups = mcp_manager.start(mcp_configs)
+            mcp_tool_groups = mcp_manager.start(settings.mcp.servers)
             tool_groups.update(mcp_tool_groups)
             total = sum(len(v) for v in mcp_tool_groups.values())
             print_system(f"[MCP] {total} tool(s) from {len(mcp_tool_groups)} server(s).")
