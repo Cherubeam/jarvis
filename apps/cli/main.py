@@ -46,8 +46,8 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
+from packages.core.settings import Settings, load_typed_config
 from packages.core.settings import deep_merge as _settings_deep_merge
-from packages.core.settings import load_typed_config
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -288,7 +288,7 @@ def handle_daily_summary(
 
 def handle_model_command(
     payload: str,
-    config: dict[str, Any],
+    settings: Settings,
     client: LLMClient,
     model_id: str,
     stream_handler: StreamHandler,
@@ -298,8 +298,7 @@ def handle_model_command(
     Returns (new_model_id, new_pricing) so the caller can update its state.
     """
     api_keys = client.api_keys
-    models_config = config.get("models", {})
-    presets = models_config.get("presets", {})
+    presets = settings.models.presets.model_dump()
 
     if not payload:
         # Show current model + available presets
@@ -314,7 +313,7 @@ def handle_model_command(
         return model_id, pricing
 
     # Resolve the requested model
-    resolved = resolve_model(payload, config)
+    resolved = resolve_model(payload, settings.models)
 
     # Check API key
     key = get_api_key(resolved.provider, api_keys)
@@ -581,6 +580,7 @@ def _handle_agent_command(
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     config = load_config()
+    settings = load_typed_config(get_project_root())
 
     # All session-component wiring lives in apps/cli/session_factory.build_session.
     # The CLI passes its own ConfirmationHandler + tool-feedback printer.
@@ -600,6 +600,7 @@ def main(argv: list[str] | None = None) -> None:
         components = build_session(
             args,
             config,
+            settings,
             confirmation_handler,
             on_tool_call=print_tool_feedback,
             client_label="cli",
@@ -698,7 +699,7 @@ def main(argv: list[str] | None = None) -> None:
                 if command == "/model":
                     model_id, pricing = handle_model_command(
                         payload,
-                        config,
+                        settings,
                         client,
                         model_id,
                         stream_handler,
@@ -755,7 +756,7 @@ def main(argv: list[str] | None = None) -> None:
             # History summarization (opt-in via config)
             summ_config = config.get("summarization", {})
             if summ_config.get("enabled", False):
-                fast_model = resolve_model("fast", config).model_id
+                fast_model = resolve_model("fast", settings.models).model_id
                 history = summarize_history(
                     history,
                     client,

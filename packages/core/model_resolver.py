@@ -7,7 +7,8 @@ Translates user-facing model names (presets like "fast" or literal IDs like
 
 import os
 from dataclasses import dataclass
-from typing import Any
+
+from packages.core.settings import ModelsSettings
 
 
 @dataclass
@@ -42,13 +43,12 @@ def infer_provider(model_id: str) -> str:
     return "openai"
 
 
-def resolve_model(name_or_preset: str, config: dict[str, Any]) -> ResolvedModel:
+def resolve_model(name_or_preset: str, models: ModelsSettings) -> ResolvedModel:
     """Resolve a preset name or literal model ID into a ResolvedModel.
 
     Checks presets first, then treats input as a literal LiteLLM model ID.
     """
-    models_config = config.get("models", {})
-    presets = models_config.get("presets", {})
+    presets = models.presets.model_dump()
 
     # Check if it's a preset name
     model_id = presets.get(name_or_preset, name_or_preset)
