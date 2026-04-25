@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 
 import { AgentContextPanel } from '../components/agents/AgentContextPanel'
+import { AgentIncludesPanel } from '../components/agents/AgentIncludesPanel'
 import { AgentOverviewPanel } from '../components/agents/AgentOverviewPanel'
 import { AgentPromptPanel } from '../components/agents/AgentPromptPanel'
 import { AgentStatsPanel } from '../components/agents/AgentStatsPanel'
@@ -13,11 +14,12 @@ import { speakerLabel } from '../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 import type { AgentDetail } from '../lib/types'
 
-type TabKey = 'overview' | 'prompt' | 'versions' | 'stats' | 'context'
+type TabKey = 'overview' | 'prompt' | 'includes' | 'versions' | 'stats' | 'context'
 
-const TABS: { key: TabKey; label: string }[] = [
+const ALL_TABS: { key: TabKey; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'prompt', label: 'Prompt' },
+  { key: 'includes', label: 'Includes' },
   { key: 'versions', label: 'Versions' },
   { key: 'stats', label: 'Stats' },
   { key: 'context', label: 'Context' },
@@ -212,7 +214,9 @@ export function AgentDetailView({
                 paddingBottom: 8,
               }}
             >
-              {TABS.map((tab) => {
+              {ALL_TABS.filter(
+                (t) => t.key !== 'includes' || (detail.prompt_includes_count ?? 0) > 0,
+              ).map((tab) => {
                 const active = tab.key === activeTab
                 return (
                   <button
@@ -245,6 +249,15 @@ export function AgentDetailView({
                 hue={hue}
                 agentId={agentId}
                 onSaved={bumpPromptRefresh}
+              />
+            )}
+            {activeTab === 'includes' && (
+              <AgentIncludesPanel
+                theme={theme}
+                hue={hue}
+                agentId={agentId}
+                refreshToken={promptRefreshToken}
+                onChanged={bumpPromptRefresh}
               />
             )}
             {activeTab === 'versions' && (
