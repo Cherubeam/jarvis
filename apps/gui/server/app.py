@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from apps.gui.server.history import ConversationIndex
+from apps.gui.server.routes.agent_includes import router as agent_includes_router
 from apps.gui.server.routes.agents import router as agents_router
 from apps.gui.server.routes.api import router as api_router
 from apps.gui.server.routes.chat_ws import router as ws_router
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)
     app.include_router(agents_router)
+    app.include_router(agent_includes_router)
     app.include_router(conversations_router)
     app.include_router(home_router)
     app.include_router(outcomes_router)
