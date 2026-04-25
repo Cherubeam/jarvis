@@ -135,6 +135,34 @@ export type PromptStats = {
 
 export type PromptResolved = { resolved_content: string }
 
+// -- Prompt-include editor (Phase 6 follow-up) ------------------------------
+
+export type IncludeStatus =
+  | 'found_local'
+  | 'found_shared'
+  | 'found_local_example'
+  | 'found_shared_example'
+  | 'missing'
+
+export type IncludeRow = {
+  placeholder: string
+  filename: string
+  status: IncludeStatus
+  path: string | null
+  bytes: number | null
+  last_modified_iso: string | null
+  editable: boolean
+  affects_agents: string[]
+}
+
+export type IncludeDetail = IncludeRow & { content: string }
+
+export type IncludeSaveResult = {
+  bytes: number
+  last_modified_iso: string
+  snapshot_id: string
+}
+
 // -- Conversations (Phase 2) ------------------------------------------------
 
 export type ConversationSummary = {
