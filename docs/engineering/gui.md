@@ -211,7 +211,42 @@ The frontend detects `editable: false` and renders a read-only notice + scrollab
 
 - **No diff view between snapshots.** Preview is all-or-nothing; restore overwrites. A visual diff could land in a follow-up.
 - **No keyboard shortcut for Save.** Click-only. Trivial to add (`⌘S` listener on the panel) if we miss it.
-- **No editing of `prompt_includes` files.** Phase 6 only edits `system.md`. Shared includes (`voice-profile.md`, `anti-patterns.md`, etc.) still require editing on disk.
+- ~~**No editing of `prompt_includes` files.**~~ Shipped — see *Prompt-include editor* below.
+
+## Prompt-include editor (Phase 6 follow-up)
+
+Adds a sixth tab — **Includes** — between *Prompt* and *Versions*, hidden when `prompt_includes_count === 0`. Lets users edit the files behind `{placeholder}` tokens in `system.md` (`voice-profile.md`, `anti-patterns.md`).
+
+### Endpoints
+
+All under `/api/agents/{agent_id}/includes*`. JARVIS returns `[]` on list and 404 on detail/PUT/etc. (it doesn't declare `prompt_includes`).
+
+- `GET /includes` — one row per declared include with `placeholder`, `filename`, `status` (`found_local` / `found_shared` / `found_local_example` / `found_shared_example` / `missing`), `path`, `bytes`, `last_modified_iso`, `editable`, `affects_agents`. The `affects_agents` array lists *other* agents whose own `resolve_include` also lands on the same shared file — agents with their own local override are correctly excluded.
+- `GET /includes/{placeholder}` — same shape + `content`.
+- `PUT /includes/{placeholder}` — body `{content, note?}`. Writes in place (resolved path) for `local` / `shared`. Returns 409 for `example` / `missing` — caller must promote first.
+- `POST /includes/{placeholder}/promote` — forks a `local_example` / `shared_example` / `missing` include into a new `<agent_dir>/prompts/<filename>.md` (seeded from the example content, or empty for `missing`). 409 if a local override already exists.
+- `GET /includes/{placeholder}/snapshots` — newest-first list, same shape as the prompt-editor snapshot list.
+- `POST /includes/{placeholder}/restore` — body `{snapshot_id}`. Writes to the **currently-resolved** file, not the path at snapshot time — so a restore after `promote` lands in the new local file.
+
+### Snapshot store
+
+Reuses `apps/gui/server/agents/prompt_history.py` unchanged. Per-`(agent_id, placeholder)` history is keyed as `f"{agent_id}/_includes/{placeholder}"`, which `Path` composition resolves to `<history_root>/<agent_id>/_includes/<placeholder>/`. The system.md history at `<history_root>/<agent_id>/` coexists in the parent directory; `_rebuild_index_from_disk`'s filename-regex filter silently skips the `_includes` subdirectory when scanning system.md snapshots.
+
+The same per-key `asyncio.Lock` from `app.state.prompt_write_locks` (Phase 6 infra) serves both PUT and `/promote`, keyed on the same slash-encoded string.
+
+### Frontend
+
+`AgentIncludesPanel.tsx` — 2-pane layout: declared-includes list on the left (with `local` / `shared` / `example` / `missing` status badge), editor + last-5 snapshot strip on the right.
+
+- **Local + shared = editable in place.** Save flow mirrors `AgentPromptPanel`. For `shared`, an `affects: …` warning bar appears above the editor *and* an explicit modal confirm fires before PUT — single-click on a shared file would mutate up to 4 agents at once, so the dialog is the friction.
+- **Example + missing = read-only with a `[ promote to local ]` button.** Promote returns the new detail; the editor unlocks immediately.
+- **Snapshot strip** — last 5 entries with `restore` button; for `shared` includes, the strip is labelled `edits made through this agent · other agents may have edited this shared file independently` because per-(agent, placeholder) history can't see writes routed through a sibling agent's panel.
+
+### Known limitations (Phase 6 follow-up)
+
+- **No add/remove of `prompt_includes` keys in `meta.yaml`.** This editor only edits the *files* — the placeholder→filename mapping is still meta.yaml-only.
+- **Per-(agent, placeholder) snapshot history.** A shared edit made through writer's panel doesn't show in content_reviewer's snapshot list (the snapshot strip carries a label flagging this). Cross-agent convergence on a per-file key is a v2 concern.
+- **No central "shared includes library" view.** Editing a shared include from one agent's panel is the only path; there's no `Settings > Includes` page yet.
 - **Tab state resets on navigation.** Leaving the agent page and coming back lands on Overview. Acceptable for a localhost tool.
 
 ## Settings view (Phase 8b)
