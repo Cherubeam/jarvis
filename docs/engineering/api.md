@@ -493,6 +493,96 @@ Model IDs use full LiteLLM-routable format with provider prefix. API keys are re
 
 ---
 
+## Module: `settings` — Typed Configuration
+
+Typed `pydantic-settings` model covering all 16 top-level YAML sections. Replaces the legacy `dict[str, Any]` config (see ADR-032).
+
+### `class Settings(BaseSettings)`
+
+Top-level model holding every section. Each section is a separate `BaseSettings` subclass (`ModelsSettings`, `PathsSettings`, `Things3Settings`, `ObsidianSettings`, `EvaluationSettings`, `RagSettings`, `RoutingSettings`, `SummarizationSettings`, `MCPSettings`, `FilesystemSettings`, `CLISettings`, `OutcomesSettings`, `DeveloperSettings`, `CortexSettings`, `ReadwiseSettings`, `PatternCardsSettings`). Every field carries `Field(description=...)` so the JSON schema doubles as docs for the GUI.
+
+### `load_config(project_root: Path | None = None) -> Settings`
+
+Reads `config/default.yaml`, deep-merges `config/local.yaml`, and validates the result through `Settings`. Raises pydantic `ValidationError` on schema mismatch. Auto-resolves the project root if not passed.
+
+### `diff_from_defaults(settings: Settings) -> dict[str, Any]`
+
+Pure helper that produces the minimal dict which, deep-merged onto `Settings()` defaults, reproduces the given `Settings`. Used by the GUI's `PUT /api/settings` to write a clean overlay to `config/local.yaml`.
+
+- Lists replace wholesale (matches `deep_merge` semantics).
+- Dict-keyed sections like `mcp.servers` preserve user entries wholesale.
+- Resetting a field to its default drops the key from the diff.
+
+### `dereferenced_schema() -> dict[str, Any]`
+
+Inlines every `$ref` in `Settings.model_json_schema()` by recursive walk. The Settings GUI consumes this so it doesn't need a JSON-Schema resolver.
+
+### `classify_changes(current: dict, new: dict) -> tuple[list[str], list[str]]`
+
+Diffs two `Settings.model_dump()` shapes and splits changed leaf paths into `(hot_applied_fields, restart_required_fields)` based on the `HOT_APPLY_PATHS` whitelist.
+
+### `HOT_APPLY_PATHS: frozenset[str]`
+
+Curated set of dotted prefixes that are truly hot — re-read per turn off `session.components.settings`. Currently `{"summarization", "paths.prompt_history_dir"}`. Additions require a comment trail verifying the field isn't captured into a closure at `build_session()` time.
+
+### `read_yaml_layers(*paths: Path) -> list[dict]` / `deep_merge(base: dict, override: dict) -> dict`
+
+YAML layer loader + recursive dict merge. Lists replace wholesale; dicts merge key-by-key.
+
+---
+
+## Module: `frontmatter` — YAML Frontmatter Utilities
+
+### `parse(text: str) -> tuple[dict, str]`
+
+Parse YAML frontmatter from a markdown string. Returns `(metadata, body)`. Tolerates missing or empty frontmatter (returns `({}, text)`).
+
+### `dump(metadata: dict, body: str) -> str`
+
+Serialise metadata + body into frontmatter markdown. Preserves key order from the input dict.
+
+### `write_atomic(path: Path, content: str) -> None`
+
+Write `content` to `path` atomically: writes to a sibling tmp file, then `os.replace`s. A mid-write disk failure leaves the previous file intact.
+
+---
+
+## Module: `date_utils` — Relative Date Parsing
+
+### `parse_relative_date(s: str, *, now: datetime | None = None) -> date`
+
+Parse a flexible date string into an absolute `date`. Accepts:
+
+- ISO dates: `"2026-04-25"`
+- Relative units: `"1 day"`, `"3 weeks"`, `"2 months"` (30-day), `"1 year"` (365-day)
+- Keywords: `"tomorrow"`, `"next week"` (+7d), `"next month"` (+30d)
+
+Used by `track_recommendation` to convert user-supplied `revisit_at` strings into stored ISO dates.
+
+---
+
+## Module: `daily_summary` — Daily-Summary Request Builder
+
+Shared by CLI's `handle_daily_summary` and the GUI bridge's `_run_daily_summary_turn`.
+
+### `class DailySummaryRequest`
+
+Dataclass describing a parsed `/daily-summary` invocation: `target_date: date`, `daily_note_path: Path`, `existing_content: str`, optional `prefix_text: str`.
+
+### `class DailySummaryFailure`
+
+Dataclass describing a parse/build failure: `message: str`, optional `category: str` (e.g. `"invalid_date"`, `"vault_unreachable"`).
+
+### `parse_daily_summary_command(text: str) -> tuple[date | None, str | None]`
+
+Parse a `/daily-summary [YYYY-MM-DD]` slash command. Returns `(date, error_message)` — exactly one is non-None.
+
+### `build_daily_summary_request(target_date: date, settings: Settings, *, vault_root: Path) -> DailySummaryRequest | DailySummaryFailure`
+
+Compose the request payload: resolves the daily-note path via `obsidian.daily_notes.path_format`, reads existing content, and packages prefix text. Pure — no display, no LLM call.
+
+---
+
 ## Module: `benchmark_costs`
 
 ### `class BenchmarkCostEstimate`
@@ -618,10 +708,63 @@ def chat_stream(
 ```
 
 **Benefits:**
-- Static type checking with mypy
+- Static type checking with mypy (`strict=true` since 0.18.0)
 - Better IDE autocomplete
 - Self-documenting code
 
 ---
 
-*Last updated: 2026-03-26*
+## GUI Server (`apps.gui.server`) — REST + WebSocket
+
+The GUI binds to `127.0.0.1:8123` (no auth — never expose). All routes are mounted under `apps/gui/server/routes/`. The full WebSocket protocol is documented in [docs/engineering/gui.md](gui.md); the table below is a route index.
+
+### REST routes
+
+| Route | File | Description | Released |
+|---|---|---|---|
+| `GET /api/session` | `routes/api.py` | Session metadata: `file_id`, `conversation_path`, `models`, agent, totals | 0.17.0 |
+| `GET /api/agents` | `routes/agents.py` | List all registered agents (JARVIS first, then alphabetical) | 0.17.0 / moved 0.19.0 |
+| `GET /api/agents/{id}` | `routes/agents.py` | Agent detail: prompt path, tools, recent sessions, 14-day cost | 0.19.0 |
+| `GET /api/agents/{id}/prompt` | `routes/agents.py` | Current `system.md` content + bytes + `editable` | 0.19.0 |
+| `PUT /api/agents/{id}/prompt` | `routes/agents.py` | Body `{content, note?}`. Snapshot-on-save; 403 for JARVIS | 0.19.0 |
+| `GET /api/agents/{id}/prompt/snapshots` | `routes/agents.py` | Newest-first snapshot list | 0.19.0 |
+| `GET /api/agents/{id}/prompt/snapshots/{sid}` | `routes/agents.py` | One snapshot's content + metadata | 0.19.0 |
+| `POST /api/agents/{id}/prompt/restore` | `routes/agents.py` | Body `{snapshot_id}`. Snapshots current then restores | 0.19.0 |
+| `GET /api/agents/{id}/prompt/stats` | `routes/agents.py` | Char / line / token estimate + includes table | 0.19.0 |
+| `GET /api/agents/{id}/prompt/resolved` | `routes/agents.py` | `{placeholder}`-expanded prompt (LLM-eye view) | 0.19.0 |
+| `GET /api/agents/{id}/includes` | `routes/agent_includes.py` | One row per declared `prompt_include` with status badge | 0.20.0 |
+| `GET /api/agents/{id}/includes/{placeholder}` | `routes/agent_includes.py` | Same shape + `content` | 0.20.0 |
+| `PUT /api/agents/{id}/includes/{placeholder}` | `routes/agent_includes.py` | Body `{content, note?}`. 409 for `example` / `missing` | 0.20.0 |
+| `POST /api/agents/{id}/includes/{placeholder}/promote` | `routes/agent_includes.py` | Forks an example into a new local include | 0.20.0 |
+| `GET /api/agents/{id}/includes/{placeholder}/snapshots` | `routes/agent_includes.py` | Per-`(agent, placeholder)` snapshot list | 0.20.0 |
+| `POST /api/agents/{id}/includes/{placeholder}/restore` | `routes/agent_includes.py` | Restores into the *currently-resolved* file | 0.20.0 |
+| `GET /api/conversations` | `routes/conversations.py` | Filtered list: `q / agent / tool / date / sort / limit / offset` | 0.17.0 |
+| `GET /api/conversations/facets` | `routes/conversations.py` | Unique agents + tools for filter chips | 0.17.0 |
+| `GET /api/conversations/{id}` | `routes/conversations.py` | Full detail + preview | 0.17.0 |
+| `GET /api/home` | `routes/home.py` | Composite Dashboard payload (greeting + tasks + cost-week + resume + recent + quick-start) | 0.17.0 |
+| `GET /api/outcomes/pending` | `routes/outcomes.py` | Pending outcomes past their `revisit_at` date; `[]` when disabled | 0.19.0 |
+| `POST /api/outcomes/{file_id}/review` | `routes/outcomes.py` | Body `{verdict, quality, note}`. 403 when disabled | 0.19.0 |
+| `GET /api/settings` | `routes/settings.py` | `settings`, `defaults`, `overrides`, `local_yaml_has_managed_header` | 0.20.0 |
+| `GET /api/settings/schema` | `routes/settings.py` | Fully-dereferenced JSON schema (no `$ref`) | 0.20.0 |
+| `PUT /api/settings` | `routes/settings.py` | Atomic write to `local.yaml` + managed-header guard + hot-apply rebind | 0.20.0 |
+
+### WebSocket
+
+| Route | File | Description |
+|---|---|---|
+| `WS /ws/chat` | `routes/chat_ws.py` | Bidirectional chat protocol (`submit` / `approval_decision` / `cancel` from client; `chunk` / `tool_call` / `text` / `approval_pending` / `turn_finished` / etc. from server). Mirrored by `protocol.py` TypedDicts and `web/src/lib/types.ts` |
+
+### Helpers
+
+| Helper | Path | Purpose |
+|---|---|---|
+| `WebStreamHandler` | `server/streaming.py` | Subscribes to the typed `Event` bus; maps each event to a WS protocol dict over a bounded `janus.Queue` |
+| `WebConfirmationHandler` | `server/confirmation.py` | Mirrors the `ConfirmationHandler` ABC; `present_diff` buffers, `get_confirmation` blocks the worker thread on a `threading.Event` resolved by the client's `approval_decision` |
+| `Bridge` | `server/bridge.py` | Per-turn orchestration (`agent.run()` in `asyncio.to_thread`) |
+| `GuiSession` | `server/state.py` | `SessionComponents` + per-turn handlers; rebound by `PUT /api/settings` for hot-applicable fields |
+| `ConversationIndex` | `server/history/index.py` | Mtime-keyed in-memory index of `data/conversations/`; refresh runs in `asyncio.to_thread` |
+| `prompt_history` | `server/agents/prompt_history.py` | Microsecond-resolution snapshot store with `index.json` sidecar; per-key `asyncio.Lock` |
+
+---
+
+*Last updated: 2026-04-25*
