@@ -1,8 +1,20 @@
 # JARVIS GUI — engineering notes
 
-Phases 1–5 ship Chat, Conversations (History), Dashboard (Home), Sidebar
-Timeline mode, and Agents overview + detail. The remaining surfaces
-(Settings, Agent Prompt editor) are stubbed and will land in later phases.
+Phases 1–8 (plus follow-ups) are shipped. The GUI provides:
+
+- **Phase 1 — Chat shell** (FastAPI + WebSocket + React; CLI parity)
+- **Phase 2 — Conversations browser** (live Sidebar + two-pane History view)
+- **Phase 3 — Dashboard / Home** (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start)
+- **Phase 4 — Sidebar Timeline mode** (togglable day-axis variant)
+- **Phase 5 — Agents Overview + Detail** (categorized grid, 14-day cost sparkline, "start session →")
+- **Phase 6 — Agent Prompt Editor** (Prompt / Versions / Stats / Context tabs with snapshot history)
+- **Phase 6 follow-up — Prompt-include editor** (Includes tab with shared-write modal confirm)
+- **Phase 7 — `/daily-summary` and `/outcomes` GUI handlers** (Outcomes view + bridge wiring)
+- **Phase 8 — Settings editor** (every typed field across 16 sections with managed-header guard + field-level hot-apply gating)
+
+Per-phase architecture and decision notes live in their own sections
+below. The release-version mapping lives in
+[docs/changelog.md](../changelog.md).
 
 ## Run
 
@@ -285,7 +297,56 @@ Deliberate. `build_session()` captures settings values into `LLMClient`, tool cl
 - **No file-watching / hot-reload** of external `config/local.yaml` edits. The managed-header guard on PUT helps — a user who hand-edits sees a 409 on their next save — but a GET/PUT cycle in the GUI won't pick up disk-side changes until restart.
 - **`evaluation.category_thresholds` (a `dict[str, float]`) is not rendered** — skipped from the scalar-section field list because it's a rare-edit open-keyed map. Edit directly in `config/local.yaml` for now.
 - **No diff view before save.** The footer says "unsaved changes" but doesn't list which fields changed. Low priority while the working set is small.
-- **No field-level restart-vs-hot-apply classification.** The banner always says "restart required." A follow-up can rebuild specific tool closures for the handful of known hot-applicable fields.
+- ~~**No field-level restart-vs-hot-apply classification.**~~ Closed by the field-level hot-apply gating follow-up — see below.
+
+### Field-level hot-apply gating (Phase 8b follow-up)
+
+Closed PR-8b's deliberate punt that returned `restart_required: true` unconditionally. Saves now report which specific fields took effect live and which still need a JARVIS restart.
+
+- **`packages.core.settings.classify_changes(current, new)`** — pure function that diffs two `Settings.model_dump()` shapes and splits changed leaf paths into `hot_applied_fields` and `restart_required_fields`.
+- **`packages.core.settings.HOT_APPLY_PATHS`** — curated frozenset of dotted prefixes that are truly hot. Currently `{"summarization", "paths.prompt_history_dir"}`. `summarization.*` is read every turn in `apps/gui/server/bridge.py`; `paths.prompt_history_dir` is read in every `/api/agents/*/prompt*` call. Whitelist-not-metadata: marking fields "hot" via pydantic `Field` metadata would drift the moment a new `build_session()` closure captures them; a curated whitelist + grep-first comment rule in `settings.py` forces deliberate review. Additions require a comment trail verifying the field isn't captured into a closure.
+- **`outcomes.*` is deliberately cold** despite per-request reads at `/api/outcomes/*` — toggling `outcomes.enabled` true mid-session doesn't register the `track_recommendation` tool (that happens at startup), so the user-visible change still needs a restart.
+- **`PUT /api/settings` rebinds `session.components.settings`** to the validated new instance after a successful write (preserving runtime-injected `jarvis_dir`). Without the rebind, even hot-whitelisted fields would still need a restart — the rebind is what makes "hot-apply" real.
+- **Response shape** gains `hot_applied_fields: list[str]` and `restart_required_fields: list[str]` alongside the existing `restart_required: bool`.
+- **Footer renders four variants** based on the buckets:
+  - no changes → `"saved to config/local.yaml · no changes"`
+  - hot-only → `"saved · N change(s) applied live"`
+  - cold-only → `"saved · restart JARVIS for N change(s) to take effect"`
+  - mixed → `"saved · M applied live · restart for N more change(s)"`
+
+## /daily-summary + /outcomes GUI handlers (Phase 7)
+
+Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands into the GUI by extracting reusable helpers and forking the per-turn bridge.
+
+### Helpers extracted from CLI
+
+- **`packages/core/daily_summary.py`** — `build_daily_summary_request()`, `parse_daily_summary_command()`, `DailySummaryRequest`, `DailySummaryFailure`. Pure helpers — no display dependencies. Both CLI's `handle_daily_summary` and the GUI bridge call into them.
+- **`apps/cli/review.py`** — promoted underscore-private `_PendingItem` / `_load_pending_due` / `_apply_review` to public symbols + added `pending_item_to_wire`. The GUI route imports these to score outcomes through the same code path as the CLI.
+
+### Endpoints
+
+`apps/gui/server/routes/outcomes.py`:
+
+- `GET /api/outcomes/pending` — returns `{ items: [...] }` (or `{ items: [] }` when `outcomes.enabled: false` — matches Phase 6's read-endpoint precedent).
+- `POST /api/outcomes/{file_id}/review` — body `{ verdict, quality, note }`. Atomic-writes the review back into the outcome file; 403 when `outcomes.enabled: false`.
+
+### Bridge integration
+
+`run_turn` forks on `/daily-summary` to a new `_run_daily_summary_turn`:
+
+- Streams via the existing `WebStreamHandler` pipeline so chunks reach `on_event` instead of leaking out.
+- The critical fix caught in Plan-agent review: **`_daily_summary_turn_sync` scopes `max_tokens=4096` and `on_chunk=None`** for the duration of the call (and restores both afterwards). Setting `on_chunk` would intercept events mid-stream and break the GUI's pipeline.
+- Vault writes flow through the bound `WebConfirmationHandler`, reusing the existing `approval_pending` / `approval_resolved` UI.
+- The bare command (`/daily-summary`) is logged to `ConversationLogger`, not the assembled payload — matches CLI semantics so History rows look identical in both surfaces.
+
+### Frontend
+
+`OutcomesView.tsx` — left-rail entry between Agents and History (uses the existing `check` icon). Inline `OutcomeCard` per pending item with verdict segmented control (`happened` / `didnt` / `partial`) + 1–5 quality buttons + note textarea. On save, the row is removed from local state instead of refetching — same pattern as Phase 6's `promptRefreshToken` scoping.
+
+### Known limitations (Phase 7)
+
+- **No retro view of completed outcomes.** Once an outcome is reviewed, it disappears from the pending list. A "history" tab listing scored outcomes is a v2.
+- **`/daily-summary` from the GUI doesn't show a date picker.** Body is the bare command; you can type `/daily-summary 2026-04-20` to override the default date, mirroring the CLI.
 
 ## Sidebar Timeline mode (Phase 4)
 
