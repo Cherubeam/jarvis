@@ -226,7 +226,7 @@ Visual card generator for workshop facilitation — turns Obsidian pattern notes
 
 ### 5K: Outcome Tracking
 
-**Status**: ✅ Complete (v1)
+**Status**: ✅ Complete (v1, released in 0.16.0)
 
 Closed loop on advice JARVIS gives. JARVIS autonomously captures concrete recommendations via `track_recommendation`; the user scores items past their revisit date via `/outcomes`; scored outcomes feed back into RAG so future conversations retrieve relevant past lessons. See ADR for scope decisions.
 
@@ -278,9 +278,14 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 ## Phase 6: Web Interface
 
-**Status**: Not Started
-**Timeline**: Mid 2026
-**Goal**: Add a web UI following the 3-step approach from [gui-architecture-notes.md](../research/gui-architecture-notes.md)
+**Status**: ✅ Phases 1–8 (plus follow-ups) shipped — see [`docs/engineering/gui.md`](../engineering/gui.md).
+**Timeline**: 2026-04-19 → 2026-04-25
+**Goal**: Add a graphical peer to the CLI that shares the same agents, tools, conversation files, and approval flow.
+
+The build was sliced into eight GUI phases (don't confuse with the
+JARVIS-product Phase 6 numbering above — these are sub-phases of the
+Web Interface). Each phase landed on its own feature branch and was
+merged via `gh pr merge --rebase`.
 
 ### Design Foundations
 
@@ -295,22 +300,36 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 - [x] `StreamHandler.stream()` emits typed events via `on_event` callback (backward compatible -- existing `on_chunk`/`on_tool_call` unchanged)
 - [x] Extract shared bootstrapping from `main.py` -> `apps/cli/session_factory.build_session` (CLI + GUI reuse)
 - [x] Keep CLI working exactly as before (thin adapter consuming events)
-- [ ] Move print statements from `StreamHandler` into CLI adapter (deferred -- backward compat maintained via dual callback approach)
+- [x] Typed configuration via `pydantic-settings` (`packages/core/settings.py`) — released in 0.20.0; see ADR-032
+- [ ] Move print statements from `StreamHandler` into CLI adapter (deferred — backward compat maintained via dual callback approach)
 
-### 6B: API Layer
+### 6B: API Layer (FastAPI + WebSocket)
 
-- [ ] FastAPI backend with SSE streaming (`apps/web/`)
-- [ ] Single endpoint streaming events — verify with `curl`
-- [ ] Conversation history API
-- [ ] Session management
+- [x] FastAPI backend under `apps/gui/server/` (released in 0.17.0)
+- [x] WebSocket transport at `/ws/chat` — chosen over SSE for bi-directional approval flow (vault-write confirms must round-trip from server back to client)
+- [x] REST routes:
+  - `GET /api/agents`, `GET /api/agents/{id}` — registry + detail (0.19.0)
+  - `GET /api/agents/{id}/prompt*` (×7) — Prompt Editor (0.19.0)
+  - `GET /api/agents/{id}/includes*` (×6) — prompt-include editor (0.20.0)
+  - `GET /api/conversations*` — Conversations index + detail + facets (0.17.0)
+  - `GET /api/home` — Dashboard composite (0.17.0)
+  - `GET /api/outcomes/pending`, `POST /api/outcomes/{id}/review` — Outcomes (0.19.0)
+  - `GET /api/settings`, `GET /api/settings/schema`, `PUT /api/settings` — Settings (0.20.0)
 
-### 6C: Frontend
+### 6C: Frontend (React 18 + Vite + TypeScript)
 
-- [ ] Chat UI with streaming responses (framework decision deferred to implementation time)
-- [ ] Conversation history browser
-- [ ] Session switching
+- [x] Chat shell with streaming responses, tool-call cards, vault-write approval diffs, command palette, Tweaks panel (0.17.0)
+- [x] Conversations browser (two-pane History view + live Sidebar) (0.17.0)
+- [x] Dashboard / Home (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start) (0.17.0)
+- [x] Sidebar Timeline mode toggle (0.17.0)
+- [x] Agents overview grid + Agent Detail with 14-day cost sparkline (0.19.0)
+- [x] Agent Prompt Editor (Prompt / Versions / Stats / Context tabs) (0.19.0)
+- [x] Outcomes scoring view (0.19.0)
+- [x] Settings editor with 16-section 2-pane layout, customized-dot overrides, model-validator error display, managed-header guard (0.20.0)
+- [x] Prompt-include editor (Includes tab) (0.20.0)
+- [ ] Interactive delegation sub-loops (deferred)
 
-**Design principle**: Keep the core sync. Add async at the web boundary only. See [gui-architecture-notes.md](../research/gui-architecture-notes.md) for rationale.
+**Design principle**: Keep the core sync. Add async at the web boundary only. See [gui-architecture-notes.md](../research/gui-architecture-notes.md) for rationale and [docs/engineering/gui.md](../engineering/gui.md) for architecture + rebuild instructions.
 
 ---
 
@@ -413,5 +432,5 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-25*
 
