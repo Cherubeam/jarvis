@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.20.0] - 2026-04-25
+
+GUI Configuration: typed `pydantic-settings` configuration end-to-end, the in-GUI Settings editor, field-level hot-apply gating, and the prompt-include editor.
+
 ### Added
 - **JARVIS GUI — Prompt-include editor (Phase 6 follow-up).** Closes the gap from Phase 6: today the GUI lets you edit `prompts/system.md` for any data-driven agent, but the `{placeholder}` tokens it references — `{voice_profile}`, `{anti_patterns}` — were opaque. Now there's a new `Includes` tab on the agent detail view that lists every declared `prompt_include`, lets you edit shared and local files in place, and snapshots every save.
   - Backend: new `apps/gui/server/routes/agent_includes.py` with six routes under `/api/agents/{id}/includes*`. List/detail return resolution status (`local` / `shared` / `local_example` / `shared_example` / `missing`), file size, last-modified time, and an `affects_agents` array for shared resolves (computed by re-running `resolve_include` for every other agent that names the same filename — an agent with its own local override is correctly excluded). PUT writes in place for `local` / `shared` and 409s for `example` / `missing`. POST `/promote` forks an example or missing include into a new `<agent_dir>/prompts/<filename>.md` (seeded from the `.md.example` content or empty); 409 if a local override already exists.
@@ -28,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Backend: three new routes in `apps/gui/server/routes/settings.py`.
     - `GET /api/settings` returns `settings`, `defaults`, `overrides`, and a `local_yaml_has_managed_header` sentinel used by the frontend's overwrite dialog.
     - `GET /api/settings/schema` returns a **fully-dereferenced** JSON schema (no `$ref` / `$defs`) so the frontend can read field descriptions, Literal enum choices, and numeric bounds without a schema resolver.
-    - `PUT /api/settings` validates via `Settings.model_validate`, computes `diff_from_defaults`, and atomic-writes `config/local.yaml` with a `# Managed by JARVIS Settings` header. Returns `restart_required: true` (no in-process rebind — downstream tools / LLM client / MCP subprocesses are captured at startup and wouldn't pick up the change).
-  - **Managed-header guard (data-loss prevention):** first PUT over a hand-crafted `local.yaml` (no `# Managed by JARVIS Settings` header) returns `409 Conflict`. The GUI shows an overwrite dialog; only on user confirmation does `accept_overwrite: true` re-submit.
+    - `PUT /api/settings` validates via `Settings.model_validate`, computes `diff_from_defaults`, and atomic-writes `config/local.yaml` with a `# Managed by JARVIS Settings` header.
+  - **Managed-header guard (data-loss prevention):** first PUT over a hand-crafted `local.yaml` (no `# Managed by JARVIS Settings` header) returns `409 Conflict`. The GUI shows an overwrite dialog; only on user confirmation does `accept_overwrite: true` re-submit. Protects plain-text credentials at `mcp.servers.*.env` etc.
   - **Validation error normalisation:** `_normalize_validation_errors` walks pydantic's errors alongside the dereferenced schema and attaches `card_loc` + `kind ∈ {"field", "model_validator"}` to each entry. The frontend maps field errors to inline red text under the offending input, and model-validator errors (e.g. `MCPServerSettings` missing `command` on stdio) to a red banner at the enclosing card header.
   - New `packages.core.settings.diff_from_defaults()`: pure helper that produces the minimal dict which, deep-merged onto `Settings()` defaults, reproduces the given `Settings`. Lists replace wholesale (matches `deep_merge` semantics); dict-keyed sections like `mcp.servers` preserve user entries wholesale; resetting a field to its default drops it from the diff.
   - New `packages.core.settings.dereferenced_schema()`: inlines every `$ref` in `Settings.model_json_schema()` by recursive walk.
@@ -38,17 +44,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Left-rail dots: cyan on sections with active overrides, red on sections with validation errors.
   - **32 new tests** (19 route + 11 diff + 2 existing refactor) across `tests/unit/gui/test_settings_routes.py` and `tests/unit/test_settings_diff.py`, pinning: credential preservation round-trip (seeds `local.yaml` with a real `N8N_API_KEY` shape and verifies byte-identical survival after an unrelated PUT), managed-header guard (409 on unmanaged + accept_overwrite bypass), field vs model_validator error shapes, `mcp.servers` dict-keyed dynamic diff semantics, list-wholesale-replace, atomic-write on disk failure, concurrent-write serialisation via lazy `asyncio.Lock`, GET/PUT round-trip stability, and `$ref`-free schema endpoint. **2162 tests total, all pass.**
   - Verified live in browser: 16 sections render with correct current values, customized-dots on exactly the 7 sections with overrides, MCP panel shows the real n8n server with env credentials, dirty-tracking and discard work end-to-end, zero console errors.
+- **Rail-icon polish**: swapped the `Agents` icon (tool → users) and the `Settings` icon (note → sliders) for clarity.
 
 ### Changed
 - **JARVIS Phase 8 PR-8a — pydantic-settings migration**. Replaces `apps.cli.main.load_config() -> dict[str, Any]` with `packages.core.settings.load_config() -> Settings`, a typed `pydantic-settings` model covering all 16 top-level YAML sections. Migration done in 21 rollback-safe commits, each green under `pytest`/`mypy`/`ruff`. See ADR-032.
   - **New module:** `packages/core/settings.py` — every YAML field carries `Field(description=...)` so the schema doubles as documentation for the upcoming Settings GUI (PR-8b). `read_yaml_layers` + `deep_merge` lift the loader out of `apps/cli/main.py` and into a portable helper.
   - **Consolidated hand-rolled configs:** `MCPServerConfig` + `parse_mcp_config` deleted (now `MCPServerSettings` + `Settings.mcp.servers`). `ImageGenerationConfig` deleted (now `PatternCardImageGenerationSettings` directly consumed by `card_renderer` and `card_generator_tools`). `FilesystemGuard` and `VaultConfig` retained as runtime wrappers that compose typed settings with behavior.
   - **63 call sites migrated** across 17 files from `config.get("section", {}).get("field", default)` to `settings.section.field`. Function signatures throughout the codebase now accept narrowly-typed slices (`Things3Settings`, `ReadwiseSettings`, `ModelsSettings`, etc.) where appropriate.
-  - **Dead code removed:** `packages/core/app.py` (139 LOC, zero importers, latent shallow-merge bug) and `packages/integrations/mcp/config.py`.
   - **Behavior change:** every config section is now always present with typed defaults, even when absent from `default.yaml` / `local.yaml`. Callers no longer need defensive `dict.get(..., {})`.
   - **Tests:** `tests/unit/test_settings.py` adds 62 unit tests covering each section (defaults, overrides, validation errors, deep-merge, end-to-end real-YAML validation). Existing test suites updated to construct `*Settings` objects instead of dict fixtures. Net: +18 tests vs. previous baseline.
 
+### Removed
+- **Dead code:** `packages/core/app.py` (139 LOC, zero importers, latent shallow-merge bug) and `packages/integrations/mcp/config.py`. Both were superseded by the typed Settings module.
+
+---
+
+## [0.19.0] - 2026-04-24
+
+GUI Productivity: agents overview, in-GUI prompt editing with snapshot history, and outcome scoring + daily-summary handlers.
+
 ### Added
+- **JARVIS GUI — Phase 7 (`/daily-summary` + `/outcomes` GUI support)** — completes the slash-command surface inside the GUI by lifting the previously CLI-only commands into reusable shared helpers and wiring them through the WebSocket bridge.
+  - New `packages/core/daily_summary.py` (`build_daily_summary_request` + `parse_daily_summary_command` + `DailySummaryRequest` / `DailySummaryFailure`) — a pure helper that decouples the request-building logic from CLI display.
+  - Promoted `apps/cli/review.py`'s underscore-private helpers (`_PendingItem`, `_load_pending_due`, `_apply_review`) to public symbols + added `pending_item_to_wire` so the GUI can reuse the same review semantics as the CLI.
+  - Backend: new `apps/gui/server/routes/outcomes.py` with `GET /api/outcomes/pending` (returns `[]` when `outcomes.enabled: false` — matches Phase 6's read-endpoint precedent) and `POST /api/outcomes/{file_id}/review` (403 when disabled).
+  - Bridge: `run_turn` now forks on `/daily-summary` to a new `_run_daily_summary_turn` that streams via the existing `WebStreamHandler` pipeline. The critical bridge fix: `_daily_summary_turn_sync` scopes `max_tokens=4096` and `on_chunk=None` for the duration of the call so chunks reach `on_event` instead of leaking out of the GUI's event pipeline. Vault writes flow through the bound `WebConfirmationHandler`, reusing the existing `approval_pending` / `approval_resolved` UI. The bare command (`/daily-summary`) is logged to `ConversationLogger`, not the assembled payload — matches CLI semantics so History rows look the same in both surfaces.
+  - Frontend: new `OutcomesView.tsx` with inline `OutcomeCard` (verdict segmented control + 1–5 quality buttons + note textarea; on save, the row is removed from local state rather than refetching — matches the Phase 6 pattern). LeftRail entry between Agents and History using the existing `check` icon.
+  - **43 new tests** (22 refactor/helpers + 13 outcomes routes + 8 bridge `/daily-summary`). **2066 tests total.**
+
 - **JARVIS GUI — Phase 6 (Agent Prompt Editor)** — activates the greyed tab row shipped as a placeholder in Phase 5 (`Overview · Prompt · Versions · Stats · Context`). Edit any data-driven agent's `prompts/system.md`, see every past revision, and preview the placeholder-expanded prompt as the LLM sees it — all from inside the GUI.
   - Backend: seven new endpoints under `/api/agents/{id}/prompt*` (get / put / list-snapshots / get-snapshot / restore / stats / resolved). Snapshots live at `<jarvis_dir>/data/prompt-history/<agent_id>/` with microsecond-resolution filenames (`%Y%m%dT%H%M%S_%fZ.md`) + an `index.json` sidecar. Path configurable via `paths.prompt_history_dir` in `config/default.yaml`, matching the `context_dir` / `conversations_dir` precedent. Per-agent `asyncio.Lock` serialises PUT/restore so the read-snapshot-write sequence can't interleave. Atomic file writes via `frontmatter.write_atomic()`.
   - Save flow: first-ever save also records a `pre_first_save` snapshot (idempotent — only ever one exists per agent) so the original prompt is never lost. Every subsequent save snapshots the prior on-disk state with `kind: "save"`. Restores snapshot the current state as `kind: "pre_restore"` before overwriting, making every action reversible.
@@ -63,36 +86,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Save and Restore bump a local `promptRefreshToken` scoped to the three prompt-aware panels only — the outer `/api/agents/{id}` fetch doesn't refire, so the active tab stays put across a save.
   - `data/prompt-history/` added to `.gitignore` (snapshots are user-local).
   - **54 new unit tests**: `test_resolve_system_prompt.py` (8), `test_prompt_history.py` (14), `test_prompt_stats.py` (9), `test_agents_prompt_routes.py` (23). **105 GUI tests total; 2031 pass overall** (was 1977 after Phase 5).
+
 - **JARVIS GUI — Phase 5 (Agents Overview + Agent Detail)** — fills the previously stubbed Agents slot in the left rail. Grid of all registered agents grouped by category (Writing / Knowledge / Planning / Analysis / Generation / Engineering), JARVIS featured as orchestrator above. Each card shows speaker-labeled title, mono command, description, tool count, and relative-last-used (`today` / `3d ago` / `unused`). Clicking a card opens the Overview tab of Agent Detail.
   - Backend: new `apps/gui/server/agents/` package (`detail.py` with `cost_14d_rollup` and `recent_sessions_for_agent`, mirroring the `home/cost_week.py` layout) + `apps/gui/server/routes/agents.py` that holds both the list endpoint (moved from `routes/api.py`) and the new detail endpoint. `GET /api/agents/{id}` re-parses `meta.yaml` with `yaml.safe_load` to surface `temperature / max_tokens / max_iterations / prompt_includes` (these fields live on `AgentConfig`, not on the registry's `AgentMeta`). JARVIS is a first-class special case — the registry excludes it via `_SKIP_DIRS`, so the route handles it before the registry lookup and returns `prompt_path: null` (JARVIS's prompt is assembled dynamically from `~/.jarvis/context/` via `build_system_prompt()`). Defensive 404 on `/` or `..` in the path (traversal hygiene). `await idx.refresh()` at the top matches the `home.py:82` pattern.
   - Frontend: two new views (`AgentsView.tsx`, `AgentDetailView.tsx`) + three new components under `components/agents/` (`AgentCard`, `CategorySection`, `Cost14dSparkline`) + two lib helpers (`agentCategories.ts` with `groupByCategory` + `Other` fallback for unknown ids, `agentsRelativeDate.ts`). `last_used` per agent is derived client-side from a single `/api/conversations?limit=500` fetch — no backend list-endpoint change needed. Agent Detail renders a placeholder tab row (`[Overview]` active · `Prompt · Versions · Stats · Context` greyed) to preview the Prompt Editor phase. "start session →" button reuses the existing `onStartChat(cmd)` wiring and submits the agent's command immediately after the WS is ready (same seed path Home's Quick Start uses).
   - Window: **14-day** cost sparkline (not 30) — reads closer to `CostCard`'s 7-day feel and avoids all-zero bars for infrequently-used agents. Agent hue replaces the global `theme.cost` so each agent's card signals "this agent's spend", not overall cost.
   - `ViewKey` union gains `'agent'` (singular). It's a sub-view of `'agents'` — not persisted, and LeftRail receives `view === 'agent' ? 'agents' : view` so the Agents button stays highlighted on the detail page. Refreshing on detail lands on Agents.
   - **23 new unit tests**: `test_agents_detail.py` (13), `test_agents_route.py` (10). **82 GUI tests, 1977 overall pass.** No frontend tests (continuing the Phase 4 precedent).
-- **JARVIS GUI — Phase 4 (Sidebar Timeline mode)** — togglable timeline variant of the Chat sidebar, ported from design prototype v3. Pure frontend change — reuses `/api/conversations?limit=20&sort=recent`.
-  - New `sidebarMode: 'list' | 'timeline'` tweak in `TweaksPanel` (default `list`). Backward-compatible — `loadTweaks` spread over `DEFAULT_TWEAKS` backfills the new key on existing stores.
-  - Timeline layout: 40px day-axis column (weekday + day-number + day-cost sum, rendered only on the first row of each calendar day) + continuous card rail; cards scale in height (48–80px) with a log-bucketed token formula so long conversations don't dominate and heights stay stable across refreshes.
-  - Agent-hue visual: 2px left-border on all cards (hue per dominant agent via `hueFor`), bumped to 3px + full-card hue border + `surface2` background when the row is the active session — three differentiation cues, not one.
-  - New `parseLocalDate()` in `apps/gui/web/src/lib/dateBucket.ts` — parses `"YYYY-MM-DD"` as a local-timezone `Date` so weekday labels don't shift in negative-offset zones.
-  - **No backend changes, no new tests** — all 59 GUI tests still pass. Manual browser verification across list↔timeline toggle, light/dark theme, multi-conv-same-day grouping, and day-cost aggregation.
-- **JARVIS GUI — Phase 3 (Dashboard / Home)** — first screen in the design narrative, reachable from the left-rail's Home slot (previously stubbed). Covers design v1 Home.
-  - Backend: new `apps/gui/server/home/` package (`cost_week.py` 7-day rollup, `task_links.py` heuristic task↔conversation linking) + `apps/gui/server/routes/home.py` composite endpoint `GET /api/home` that returns greeting, today's date, Things 3 tasks (with priority derived from list key — `today` → high, `upcoming` → medium, `inbox` → low), cost-week with 7 zero-filled days, most-recent conversation as `resume`, next 4 as `recent`, and the quick-start button list.
-  - Live Things 3 read via `fetch_tasks()` (no file I/O; 5-minute TTL cache). Imported at module level so tests can patch the symbol without triggering the macOS-only `things` import (which is lazy inside `fetch_tasks` body).
-  - Frontend: new `apps/gui/web/src/views/HomeView.tsx` + six components in `components/home/` (GreetingHeader, TasksPanel, CostCard with inline-SVG sparkline, ResumeCard, RecentCards, QuickStart). Reuses Phase-2 agent hues + speakerLabel + the existing `historyRefreshToken` from App (no second refresh token — Chat's `turn_finished` keeps Home fresh automatically).
-  - Client-side active-session exclusion: if `resume.id === session.file_id`, the frontend promotes `recent[0]` into the resume slot. Server stays stateless about `file_id`.
-  - Quick Start flow: `pendingSeed` lifted to App state. Home's `/write` / `/research` / `/navigator` / `/daily-summary` buttons set the seed and route to Chat. ChatView's new `wsReady` gate (set on `session_start`) submits the seed only after the WS is open, eliminating the mount-before-WS-open race. Palette's own local seed path unchanged.
-  - **18 new unit tests**: `test_home_cost_week.py` (6), `test_home_task_links.py` (6), `test_home_route.py` (6). **59 GUI tests, 1935 overall pass.**
-- **JARVIS GUI — Phase 2 (Conversations browser)** — replaces the Phase-1 placeholder sidebar with live data AND ships the full two-pane History view reachable from the left-rail's History slot. Covers design v4.
-  - Backend: new `apps/gui/server/history/` package (`summary.py` dataclasses, `derive.py` pure extraction helpers, `index.py` mtime-keyed in-memory index). `ConversationIndex.refresh()` runs in `asyncio.to_thread`, is incremental (only changed/new/dirty files re-parsed), calls `migrate_conversation()` on every read so pre-1.0.0 files don't crash, and tolerates corrupt JSON (non-atomic-write race) at DEBUG level.
-  - Routes: `GET /api/conversations?q=&agent=&tool=&date=&sort=&limit=&offset=`, `GET /api/conversations/facets` (unique agents + tools for filter chips), `GET /api/conversations/{id}` (full detail + preview). Sort and date validated (400 on bad input).
-  - Derivation: title from first user message; `handoffs` counted from `tool_calls[].function.name == "delegate_to_agent"`; `tools` union across assistant messages excluding the handoff; `agents_seen` reads top-level `msg["agent"]` (tolerates legacy files where this field is absent).
-  - Frontend: new `apps/gui/web/src/views/HistoryView.tsx` + three ported components in `components/history/` (ConvFilters, ConvList, ConvDetailPane). Agent hues lifted into `lib/agentHues.ts` for reuse (writer=green, researcher=amber, etc., oklch-based so they read correctly on both themes); `lib/dateBucket.ts` groups rows into Today / Yesterday / This week / Last week / Earlier with sticky headers.
-  - Sidebar: replaced the hard-coded fixtures with a live fetch of `/api/conversations?limit=20&sort=recent`. Click-through routes to History view via App-lifted `selectedHistoryId` state. On every `turn_finished` WS event, a shared `historyRefreshToken` is bumped so Sidebar + HistoryView invalidate and re-fetch — no stale sidebar after a turn.
-  - Bridge: calls `ConversationIndex.mark_dirty(file_id)` on turn_finished so the next `/api/conversations` refresh re-parses the active conversation even if mtime is unchanged.
-- **Phase-1 bugfix** rolled into the same PR: `apps/gui/server/state.py`'s `session_meta()` advertised `conversation_path` as `conv_YYYYMMDD_HHMMSS_hex.json`, but `ConversationLogger.save()` writes `YYYY-MM-DD_HH-MM-SS.json`. The path has never existed on disk since Phase 1 merged. Fix: derive the path from `logger.session_start`; add a new `file_id` field matching the filename stem so the Sidebar can highlight the active row in the `/api/conversations` response.
-- **Tests (Python)**: 29 new unit tests (41 GUI total): `test_history_derive.py` (14), `test_history_index.py` (8), `test_conversations_route.py` (7). Full suite: **1917 pass, 31 skipped** (up from 1888 after Phase 1).
 
-### Added (Phase 1 — shipped in v0.15.0-era PR #1)
+### Fixed
+- **CI scope:** `.github/workflows/test.yml` `push` trigger scoped to `main` only so feature-branch pushes stop double-running.
+- **Coverage**: untrack `.coverage` (already in `.gitignore`).
+
+---
+
+## [0.18.0] - 2026-04-22
+
+Dev-tooling hardening: ruff lint+format gate and mypy ratcheted to `strict=true` across four incremental PRs.
+
+### Added
+- **Ruff lint + format gate.** New `[tool.ruff]` config in `pyproject.toml` (rules `E, W, F, I, B, UP, N, SIM, RUF`; line-length 120; `target-version = py313`). CI step in `.github/workflows/test.yml` runs `ruff check` + `ruff format --check` on every push/PR; pre-commit hook runs the same command on every commit. `dev` extra in `pyproject.toml` for one-time setup. AGENTS.md documents the workflow.
+- **Mypy typecheck gate, ratcheted incrementally.** Four PRs landing one constraint each so the surface broke only locally:
+  1. **Add mypy with non-strict config** (PR #7) + fix all surfaced errors. CI typecheck job + pre-commit hook gating every commit. `platform=linux` pinned in mypy config for consistent `sys.platform` narrowing across CI and local.
+  2. **`disallow_untyped_defs` + `disallow_incomplete_defs` + `disallow_untyped_calls`** (PR #8).
+  3. **`disallow_any_generics`** (PR #9).
+  4. **`strict=true`** (PR #10).
+- The full suite (`packages apps scripts jarvis_cli.py jarvis_gui.py`) now type-checks under strict mode in both CI and pre-commit.
+
+---
+
+## [0.17.0] - 2026-04-21
+
+JARVIS GUI Foundation: a graphical peer to the CLI. Phases 1–4 ship Chat, Conversations browser, Dashboard/Home, and the Sidebar Timeline mode toggle.
+
+### Added
 - **JARVIS GUI — Phase 1 (Chat shell)** — local desktop GUI peer to the CLI. Launch with `uv run jarvis-gui` (binds `127.0.0.1:8123`, auto-opens the browser; `--no-browser` to skip). Uses the same agents, tools, vault, conversation JSON, and approval flow as the CLI.
   - **Architecture**: FastAPI + WebSocket backend under `apps/gui/server/`; React 18 + Vite + TypeScript frontend under `apps/gui/web/` (bundle committed under `dist/` so fresh clones don't need Node).
   - **`apps/cli/session_factory.build_session()`**: the pre-loop wiring from `apps/cli/main.py` (config, agents, tool groups, logger, stream handler) lifted into a reusable factory parameterized on `ConfirmationHandler`. CLI now calls it with `CLIConfirmationHandler()`; GUI calls it with a `WebConfirmationHandler` bound per turn. No CLI behavior changes.
@@ -101,8 +128,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Bridge** orchestrates one turn end-to-end — builds history with `trim_tool_results` + `summarize_history`, runs `agent.run()` in `asyncio.to_thread`, emits chunk / tool_call / delegation / text / totals events, persists to `ConversationLogger`, saves the conversation file every turn.
   - **Visual fidelity**: ports JARVIS GUI.html v6 tokens verbatim (dark-first near-black surfaces, cyan default accent, mono-forward typography, 96px speaker-label gutter, CLI-transcript rows with colored left border). Acronym-aware `speakerLabel()` (OKR, MCP, RAG, LLM...). Stats line format exact (`[N tokens | $cost | TTFT: Nms | Total: Nms]`). Cost color brightens above $0.05 in the status bar.
   - **Chat-view features**: streaming text with chunk-level updates, tool-call cards (card/inline/dim variants), delegation notices, vault-write approval with diff + approve/reject, RAG recall cards, thinking indicator, Cmd+K/` `/` command palette over all 16 agents, live-mutating Tweaks panel (7 axes including accent-hue swap).
-  - **Cut from Phase 1** (deferred to later phases): sidebar timeline mode; Dashboard / Agents / Conversations / Settings / Prompt-editor views (stubbed via the left rail); interactive delegation sub-loops; `/daily-summary` and `/outcomes` slash commands (CLI-only for now — GUI emits a "use the CLI" system event).
+  - **Cut from Phase 1** (deferred to later phases): sidebar timeline mode; Dashboard / Agents / Conversations / Settings / Prompt-editor views (stubbed via the left rail); interactive delegation sub-loops; `/daily-summary` and `/outcomes` slash commands (CLI-only at this point — GUI emits a "use the CLI" system event).
   - **Tests**: 12 new unit tests for `WebStreamHandler`, `WebConfirmationHandler`, and the WS protocol; all 1844 pre-existing tests still pass.
+
+- **JARVIS GUI — Phase 2 (Conversations browser)** — replaces the Phase-1 placeholder sidebar with live data AND ships the full two-pane History view reachable from the left-rail's History slot. Covers design v4.
+  - Backend: new `apps/gui/server/history/` package (`summary.py` dataclasses, `derive.py` pure extraction helpers, `index.py` mtime-keyed in-memory index). `ConversationIndex.refresh()` runs in `asyncio.to_thread`, is incremental (only changed/new/dirty files re-parsed), calls `migrate_conversation()` on every read so pre-1.0.0 files don't crash, and tolerates corrupt JSON (non-atomic-write race) at DEBUG level.
+  - Routes: `GET /api/conversations?q=&agent=&tool=&date=&sort=&limit=&offset=`, `GET /api/conversations/facets` (unique agents + tools for filter chips), `GET /api/conversations/{id}` (full detail + preview). Sort and date validated (400 on bad input).
+  - Derivation: title from first user message; `handoffs` counted from `tool_calls[].function.name == "delegate_to_agent"`; `tools` union across assistant messages excluding the handoff; `agents_seen` reads top-level `msg["agent"]` (tolerates legacy files where this field is absent).
+  - Frontend: new `apps/gui/web/src/views/HistoryView.tsx` + three ported components in `components/history/` (ConvFilters, ConvList, ConvDetailPane). Agent hues lifted into `lib/agentHues.ts` for reuse (writer=green, researcher=amber, etc., oklch-based so they read correctly on both themes); `lib/dateBucket.ts` groups rows into Today / Yesterday / This week / Last week / Earlier with sticky headers.
+  - Sidebar: replaced the hard-coded fixtures with a live fetch of `/api/conversations?limit=20&sort=recent`. Click-through routes to History view via App-lifted `selectedHistoryId` state. On every `turn_finished` WS event, a shared `historyRefreshToken` is bumped so Sidebar + HistoryView invalidate and re-fetch — no stale sidebar after a turn.
+  - Bridge: calls `ConversationIndex.mark_dirty(file_id)` on turn_finished so the next `/api/conversations` refresh re-parses the active conversation even if mtime is unchanged.
+  - **Tests:** 29 new unit tests (41 GUI total): `test_history_derive.py` (14), `test_history_index.py` (8), `test_conversations_route.py` (7). Full suite: **1917 pass, 31 skipped** (up from 1888 after Phase 1).
+
+- **JARVIS GUI — Phase 3 (Dashboard / Home)** — first screen in the design narrative, reachable from the left-rail's Home slot (previously stubbed). Covers design v1 Home.
+  - Backend: new `apps/gui/server/home/` package (`cost_week.py` 7-day rollup, `task_links.py` heuristic task↔conversation linking) + `apps/gui/server/routes/home.py` composite endpoint `GET /api/home` that returns greeting, today's date, Things 3 tasks (with priority derived from list key — `today` → high, `upcoming` → medium, `inbox` → low), cost-week with 7 zero-filled days, most-recent conversation as `resume`, next 4 as `recent`, and the quick-start button list.
+  - Live Things 3 read via `fetch_tasks()` (no file I/O; 5-minute TTL cache). Imported at module level so tests can patch the symbol without triggering the macOS-only `things` import (which is lazy inside `fetch_tasks` body).
+  - Frontend: new `apps/gui/web/src/views/HomeView.tsx` + six components in `components/home/` (GreetingHeader, TasksPanel, CostCard with inline-SVG sparkline, ResumeCard, RecentCards, QuickStart). Reuses Phase-2 agent hues + speakerLabel + the existing `historyRefreshToken` from App (no second refresh token — Chat's `turn_finished` keeps Home fresh automatically).
+  - Client-side active-session exclusion: if `resume.id === session.file_id`, the frontend promotes `recent[0]` into the resume slot. Server stays stateless about `file_id`.
+  - Quick Start flow: `pendingSeed` lifted to App state. Home's `/write` / `/research` / `/navigator` / `/daily-summary` buttons set the seed and route to Chat. ChatView's new `wsReady` gate (set on `session_start`) submits the seed only after the WS is open, eliminating the mount-before-WS-open race. Palette's own local seed path unchanged.
+  - **18 new unit tests**: `test_home_cost_week.py` (6), `test_home_task_links.py` (6), `test_home_route.py` (6). **59 GUI tests, 1935 overall pass.**
+
+- **JARVIS GUI — Phase 4 (Sidebar Timeline mode)** — togglable timeline variant of the Chat sidebar, ported from design prototype v3. Pure frontend change — reuses `/api/conversations?limit=20&sort=recent`.
+  - New `sidebarMode: 'list' | 'timeline'` tweak in `TweaksPanel` (default `list`). Backward-compatible — `loadTweaks` spread over `DEFAULT_TWEAKS` backfills the new key on existing stores.
+  - Timeline layout: 40px day-axis column (weekday + day-number + day-cost sum, rendered only on the first row of each calendar day) + continuous card rail; cards scale in height (48–80px) with a log-bucketed token formula so long conversations don't dominate and heights stay stable across refreshes.
+  - Agent-hue visual: 2px left-border on all cards (hue per dominant agent via `hueFor`), bumped to 3px + full-card hue border + `surface2` background when the row is the active session — three differentiation cues, not one.
+  - New `parseLocalDate()` in `apps/gui/web/src/lib/dateBucket.ts` — parses `"YYYY-MM-DD"` as a local-timezone `Date` so weekday labels don't shift in negative-offset zones.
+  - **No backend changes, no new tests** — all 59 GUI tests still pass. Manual browser verification across list↔timeline toggle, light/dark theme, multi-conv-same-day grouping, and day-cost aggregation.
+
+### Changed
+- **PR-merge policy documented:** `gh pr merge <N> --rebase --delete-branch` is the sanctioned merge command. The repo disables `mergeCommitAllowed` server-side; `--rebase` (or `--squash` for noisy branches) is required.
+
+### Fixed
+- **GUI bundle path:** serve built bundle at `/assets`, not `/static`, matching Vite's default output.
+- **Turn totals**: compute from `logger.metrics`, not `current_conversation`, so the status bar reflects the true cost the LLM client just measured.
+- **`last_usage` plumbing:** stop pre-zeroing `ttft` / `total` in `last_usage` so the bridge's `setdefault` actually fills them in. Streaming test updated to match.
+- **Phase-1 file path bugfix:** `apps/gui/server/state.py`'s `session_meta()` advertised `conversation_path` as `conv_YYYYMMDD_HHMMSS_hex.json`, but `ConversationLogger.save()` writes `YYYY-MM-DD_HH-MM-SS.json`. Fix: derive the path from `logger.session_start`; add a new `file_id` field matching the filename stem so the Sidebar can highlight the active row in the `/api/conversations` response.
+
+---
+
+## [0.16.0] - 2026-04-19
+
+Outcome tracking (Phase 5K) closes the loop on advice JARVIS gives, plus the `prompt_includes` resolver lands with `.md.example` fallback.
+
+### Added
 - **Outcome tracking (Phase 5K)** — closed loop on advice JARVIS gives. Adds `track_recommendation` shared tool that captures actionable recommendations as markdown files under `data/outcomes/` with YAML frontmatter (what, why, revisit_at, success_looks_like, conversation_id). Every captured item links back to the originating conversation.
 - **`/outcomes` CLI command** — interactive scoring of pending outcomes past their revisit date. Prompts for outcome (happened/didnt/partial), quality (1–5), and a retrospective note. Atomic writes so interrupted sessions don't corrupt files; Ctrl-C mid-flow preserves earlier files.
 - **`recall_outcomes` shared tool** — semantic search over reviewed outcomes via a new `OutcomeIndexer` and `OutcomeSearcher` (ChromaDB collection `outcomes`). Only reviewed items are indexed — pending advice has no feedback signal.
@@ -110,9 +178,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`packages/core/date_utils.py`** — `parse_relative_date()` accepting `"N day(s)"`, `"N week(s)"`, `"N month(s)"` (30-day), `"N year(s)"` (365-day), `"tomorrow"`, `"next week"`, `"next month"`, and ISO dates.
 - **`outcomes:` config section** in `config/default.yaml` (`enabled: true` default, `dir: data/outcomes`). Ships a default `filesystem.access_rules` entry so the tool works out-of-the-box; breaks the empty-default convention deliberately for a framework-level feature.
 - **JARVIS orchestrator directive** — when `track_recommendation` is wired up, the system prompt gains an "Outcome Tracking" section teaching JARVIS to call the tool only for actionable advice with a timeframe (not opinions, hypotheticals, or lookups).
+- **`prompt_includes` resolver with `.md.example` fallback** — agent prompts can declare `prompt_includes:` in `meta.yaml`, and missing files resolve via a 5-level lookup chain (agent-local → shared → agent-local example → shared example → empty placeholder + warning). Ships `voice-profile.md.example` under `packages/agents/writer/prompts/` as a starter template; CLI startup validates includes and warns when an example is used or a file is missing (`_warn_on_prompt_include_issues`).
+- **CI: pytest workflow** runs on every push and pull_request (`.github/workflows/test.yml`). First CI workflow on the repo.
+
+### Changed
+- **Local-config loader: deep-merge.** `apps/cli/main.load_config()` now deep-merges `config/local.yaml` over `config/default.yaml` instead of shallow-merging — so a partial section override no longer wipes its sibling keys. Side-effects: sync `CLIENT_VERSION`, drop a legacy fallback path that's been dead for several releases.
+- **`docs/changelog.md` testing report:** test count refreshed from 1094 → ~1790 with explanation of the skip source.
+- **`docs/product/roadmap.md`**: added 5J (Readwise / Reading Assistant), explicitly noting it shipped in 0.15.0.
+- **`docs/engineering/agents.md` / `api.md`:** capability matrix rewritten to match the current agent roster; stale signatures for `build_system_prompt`, `agent_from_meta`, and `DataDrivenAgent` corrected.
+
+### Fixed
+- **`.gitignore` cleanups:** removed duplicate `imports/` entry and corrected the stale `voice-profile.md` path so the personal-override copy stays gitignored.
+- **`[tool.pytest]`** removed from `pyproject.toml` — the section was being ignored by pytest anyway, so it was just noise.
 
 ### Test coverage
-- 95 new unit tests: `test_date_utils.py` (21), `test_frontmatter.py` (13), `test_outcome_tools.py` (18), `test_review_command.py` (18), `test_outcome_indexer.py` (19), `test_jarvis_agent.py` (+4).
+- **95 new unit tests** across 6 files: `test_date_utils.py` (21), `test_frontmatter.py` (13), `test_outcome_tools.py` (18), `test_review_command.py` (18), `test_outcome_indexer.py` (19), `test_jarvis_agent.py` (+4).
 
 ---
 
