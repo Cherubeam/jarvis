@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: ~1,790 collected (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git)
+**Tests**: ~2,174 collected as of 0.20.0 (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git). The growth since ~1,790 reflects the GUI, outcome-tracking, and pydantic-settings test suites added in 0.16.0–0.20.0.
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -50,14 +50,29 @@
 ```
 tests/
 ├── unit/              # Fast, isolated (includes evaluator tests)
-├── integration/       # 22 tests - With mocked dependencies
+│   ├── gui/           # GUI-specific tests (added in 0.17.0+)
+│   │   ├── test_conversations_route.py
+│   │   ├── test_history_derive.py / test_history_index.py
+│   │   ├── test_home_*.py
+│   │   ├── test_agents_route.py / test_agents_detail.py
+│   │   ├── test_agents_prompt_routes.py / test_agent_includes_routes.py
+│   │   ├── test_settings_routes.py
+│   │   └── test_outcomes_routes.py / test_bridge_*.py
+│   ├── test_settings.py / test_settings_diff.py  # Pydantic settings model
+│   ├── test_outcome_tools.py / test_outcome_indexer.py
+│   ├── test_review_command.py
+│   ├── test_frontmatter.py / test_date_utils.py
+│   ├── test_resolve_system_prompt.py
+│   ├── test_prompt_history.py / test_prompt_stats.py
+│   └── ...            # Per-module unit tests
+├── integration/       # With mocked dependencies
 ├── golden/            # LLM-as-judge evaluation system
-│   ├── conversations/ # 8 YAML test cases
+│   ├── conversations/ # YAML test cases
 │   ├── results/       # Evaluation results (JSON + markdown)
-│   ├── evaluator.py   # Core evaluation engine
-│   ├── judge_prompts.py  # Judge prompt templates
-│   ├── result_storage.py # Storage & reporting
-│   └── test_golden_conversations.py  # Test runner
+│   ├── evaluator.py
+│   ├── judge_prompts.py
+│   ├── result_storage.py
+│   └── test_golden_conversations.py
 ├── fixtures/          # Test data and shared fixtures
 └── conftest.py        # Shared pytest fixtures + --evaluate flag
 ```
