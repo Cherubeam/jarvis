@@ -3,7 +3,7 @@
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-94A3B8?logo=openrouter&logoColor=fff)](#)
-![Version 0.15.0](https://img.shields.io/badge/version-0.15.0-green.svg)
+![Version 0.20.0](https://img.shields.io/badge/version-0.20.0-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 > A personal AI assistant built from first principles to solve the vendor lock-in problem in conversational AI.
@@ -159,13 +159,17 @@ mode** (togglable day-axis variant), **Agents** (categorized grid +
 per-agent detail with tools, recent sessions, 14-day cost sparkline, and
 "start session →" launcher), the **Agent Prompt Editor** (Prompt /
 Versions / Stats / Context tabs on each agent — edit `system.md`,
-snapshot-on-save history with restore, resolved-prompt preview),
-**Outcomes** (score pending recommendations — happened / didn't / partial
-+ quality 1-5 + note), and **Settings** (every field in the typed
-`Settings` model editable across 16 sections with inline descriptions,
-customized-dot overrides, model-validator error display, and a managed-
-header guard that prevents first-save from overwriting a hand-edited
-`config/local.yaml`). See
+snapshot-on-save history with restore, resolved-prompt preview), the
+**Includes editor** (Includes tab — edit shared and local prompt
+fragments like `voice-profile.md` in place, with shared-write modal
+confirm + per-include snapshot history), **Outcomes** (score pending
+recommendations — happened / didn't / partial + quality 1-5 + note),
+and **Settings** (every field in the typed `Settings` model editable
+across 16 sections with inline descriptions, customized-dot overrides,
+model-validator error display, field-level hot-apply gating that
+reports which changes took effect live vs. need a restart, and a
+managed-header guard that prevents first-save from overwriting a
+hand-edited `config/local.yaml`). See
 [docs/engineering/gui.md](docs/engineering/gui.md) for architecture +
 rebuild instructions.
 
@@ -323,9 +327,27 @@ See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full pr
 jarvis/
 ├── apps/                               # Deployable applications
 │   ├── cli/                            # CLI entry point
-│   │   ├── main.py                     # Command-line interface
-│   │   └── display.py                  # Rich terminal formatting
-│   └── web/                            # Web application (Phase 6, placeholder)
+│   │   ├── main.py                     # Command-line interface + slash-command loop
+│   │   ├── display.py                  # Rich terminal formatting
+│   │   ├── session_factory.py          # build_session() — shared CLI/GUI bootstrap
+│   │   └── review.py                   # /outcomes scoring helpers (public API for GUI)
+│   └── gui/                            # JARVIS GUI (Phases 1–8)
+│       ├── main.py                     # Entry: uvicorn.run + webbrowser.open
+│       ├── server/                     # FastAPI backend
+│       │   ├── app.py                  # Factory + lifespan (MCP start/stop, logger save)
+│       │   ├── state.py                # GuiSession + per-turn handlers
+│       │   ├── protocol.py             # WebSocket TypedDicts (server ↔ client)
+│       │   ├── streaming.py            # WebStreamHandler — on_event → queue events
+│       │   ├── confirmation.py         # WebConfirmationHandler — diff buffer + threaded wait
+│       │   ├── bridge.py               # Per-turn orchestration (agent.run in to_thread)
+│       │   ├── agents/                 # Agent detail + prompt-history helpers
+│       │   ├── home/                   # cost_week + task_links rollups
+│       │   ├── history/                # Conversations index + derive helpers
+│       │   └── routes/                 # api · chat_ws · agents · agent_includes ·
+│       │                               #   conversations · home · outcomes · settings
+│       └── web/                        # React 18 + Vite + TypeScript frontend
+│           ├── src/                    # React + TypeScript source
+│           └── dist/                   # Built bundle (committed; rebuild with `npm run build`)
 │
 ├── packages/                           # Shared libraries
 │   ├── core/                           # Core functionality
@@ -334,7 +356,10 @@ jarvis/
 │   │   ├── stream_handler.py           # Streaming response handler with agentic loop
 │   │   ├── memory.py                   # Conversation logging (schema v1.0.0)
 │   │   ├── pricing.py                  # Cost calculation and tracking
-│   │   ├── settings.py                 # Typed pydantic-settings model + load_config()
+│   │   ├── settings.py                 # Typed pydantic-settings model + load_config() + classify_changes
+│   │   ├── frontmatter.py              # YAML frontmatter parse/dump + atomic write
+│   │   ├── date_utils.py               # parse_relative_date (ISO + "next week", "1 month", etc.)
+│   │   ├── daily_summary.py            # /daily-summary request builder (CLI + GUI shared)
 │   │   ├── events.py                   # Typed event dataclasses for streaming decoupling
 │   │   ├── filesystem_access.py        # Filesystem access control (FilesystemGuard)
 │   │   ├── card_renderer.py             # Pattern card rendering (HTML/PNG via WeasyPrint)
@@ -485,16 +510,23 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] Skills framework (SKILL.md-driven, vendor-portable, used as passive knowledge packs)
 - [x] JARVIS delegation (orchestrator auto-routes to specialists)
 - [x] Extended tools — web search (DuckDuckGo + URL fetch via `web_tools` group)
+- [x] Outcome tracking (`track_recommendation`, `/outcomes`, `recall_outcomes` — closed loop on advice)
+- [x] Readwise / Reading Assistant integration (`/reading`)
 - [ ] Extended tools — Playwright browser automation
 - [ ] Intelligent model routing (task complexity → model selection)
 
 **Phase 6A: Event Decoupling (Partially Complete)**
 - [x] Event decoupling (typed events, StreamHandler emission)
-- [x] Typed configuration (`packages/core/settings.py`)
+- [x] Typed configuration (`packages/core/settings.py` + in-GUI Settings editor)
 - [ ] Move print statements from StreamHandler into CLI adapter
 
+**Phase 6B/C: Web Interface (Complete ✅ — Phases 1–8 shipped)**
+- [x] Chat shell + Conversations browser + Home + Sidebar Timeline (0.17.0)
+- [x] Agents overview + Agent Detail + Prompt Editor + Outcomes view (0.19.0)
+- [x] Settings editor + Prompt-include editor + hot-apply gating (0.20.0)
+- [ ] Interactive delegation sub-loops (deferred)
+
 **Future Phases:**
-- [ ] Web interface (Phase 6B/C — FastAPI + frontend)
 - [x] Context window management — history summarization (opt-in, ~40K threshold) and tool result trimming
 - [ ] System monitoring and optimization
 
@@ -541,10 +573,13 @@ This project demonstrates several things I value as an engineer:
 - **Language**: Python 3.13
 - **LLM Provider**: LiteLLM + OpenRouter (unified API for Claude, GPT-4, Gemini, etc.)
 - **Terminal UI**: rich + prompt_toolkit
+- **GUI Backend**: FastAPI + WebSockets (uvicorn)
+- **GUI Frontend**: React 18 + Vite + TypeScript (built bundle committed)
 - **Storage**: Local filesystem (markdown + JSON)
 - **Vector DB**: ChromaDB (optional, for conversation recall / RAG)
 - **HTTP**: httpx + trafilatura (web fetch tool)
-- **Configuration**: YAML + environment variables
+- **Configuration**: YAML + `pydantic-settings` (typed) + environment variables
+- **Code Quality**: ruff (lint + format) + mypy (`strict=true`); CI + pre-commit hooks
 - **Testing**: pytest + mutmut ([details](docs/engineering/testing.md))
 - **Package Management**: uv (fast Python package installer)
 
