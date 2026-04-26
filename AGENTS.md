@@ -304,6 +304,7 @@ After any implementation, review and update **all** relevant documentation — n
 - **[docs/changelog.md](docs/changelog.md)** — always update (new entry under `[Unreleased]`)
 - **[docs/engineering/architecture.md](docs/engineering/architecture.md)** — if project structure or components changed
 - **[docs/engineering/api.md](docs/engineering/api.md)** — if public interfaces changed
+- **[docs/engineering/gui.md](docs/engineering/gui.md)** — if any GUI surface, route, or per-phase architecture changed
 - **[docs/product/roadmap.md](docs/product/roadmap.md)** — if a roadmap item was completed or added
 - **[docs/product/decisions.md](docs/product/decisions.md)** — if an architectural decision was made (new ADR)
 - **[AGENTS.md](AGENTS.md)** — if agents, commands, or development workflow changed
@@ -459,4 +460,4 @@ While pre-1.0, minor bumps may include breaking changes.
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-25*
