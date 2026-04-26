@@ -9,39 +9,47 @@
 Jarvis follows a modular, scalable architecture designed for multi-agent support and multiple interfaces:
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                     User Interfaces                             │
-├──────────────────────┬─────────────────────────────────────────┤
-│     CLI (apps/cli)   │         GUI (apps/gui) — Phase 1        │
-└──────────────────────┴─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                       User Interfaces                            │
+├──────────────────────────┬──────────────────────────────────────┤
+│   CLI (apps/cli)         │   GUI (apps/gui) — Phases 1–8        │
+│   • main loop            │   • FastAPI + WebSocket              │
+│   • session_factory      │   • React 18 + Vite + TypeScript     │
+│   • review (/outcomes)   │   • bridge / state / streaming /     │
+│                          │     confirmation                      │
+└──────────────────────────┴──────────────────────────────────────┘
                                     │
-┌───────────────────────────────────▼────────────────────────────┐
-│                      Shared Packages                            │
-├─────────────────┬──────────────────┬───────────────────────────┤
-│  packages/core  │  packages/agents │  packages/integrations    │
-│                 │                  │                           │
-│  • LLM Client   │  • Base Agent      │  • Things 3               │
-│  • Context      │  • JARVIS Agent    │  • Obsidian               │
-│  • Memory       │  • Writer Agent    │  • Cortex (semantic search)│
-│  • (Future: Calendar)     │
-│  • Pricing      │  • Tactics Coach   │                           │
-│  • Stream       │  • Developer Agent │                           │
-│    Handler      │  • Data-driven     │                           │
-│  • Tools        │    agents (13)     │                           │
-│  • RAG          │  • Registry        │                           │
-├─────────────────┴──────────────────┴───────────────────────────┤
-│                    packages/telemetry                           │
-│  • Metrics tracking (TTFT, latency)                            │
-│  • Evaluation framework                                         │
-└────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────▼─────────────────────────────┐
+│                       Shared Packages                            │
+├─────────────────────┬──────────────────┬────────────────────────┤
+│   packages/core     │ packages/agents  │ packages/integrations  │
+│                     │                  │                        │
+│  • LLM Client       │ • Base Agent     │ • Things 3             │
+│  • Context Builder  │ • JARVIS Agent   │ • Obsidian             │
+│  • Memory           │ • Writer Agent   │ • Cortex (semantic)    │
+│  • Pricing          │ • Tactics Coach  │ • Readwise             │
+│  • Stream Handler   │ • Developer      │ • MCP (client)         │
+│  • Settings (typed) │ • Data-driven    │                        │
+│  • Frontmatter      │   agents (×13)   │                        │
+│  • Date utils       │ • Registry       │                        │
+│  • Daily summary    │ • _shared/       │                        │
+│  • Tools / RAG      │   prompt incl.   │                        │
+│  • Events           │                  │                        │
+├─────────────────────┴──────────────────┴────────────────────────┤
+│                     packages/telemetry                           │
+│  • Metrics tracking (TTFT, latency)                              │
+│  • Evaluation framework                                          │
+└──────────────────────────────────────────────────────────────────┘
                                     │
-┌───────────────────────────────────▼────────────────────────────┐
-│                      Data Layer (data/)                         │
-│                                                                 │
-│  • data/context/*.md        User's personal context             │
-│  • data/conversations/YYYY/  Session logs (JSON, by year)        │
-│  • .cache/jarvis/           Task sync cache                     │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────▼─────────────────────────────┐
+│                       Data Layer (data/)                         │
+│                                                                  │
+│  • data/context/*.md         User's personal context             │
+│  • data/conversations/YYYY/   Session logs (JSON, by year)       │
+│  • data/outcomes/             Tracked recommendations + reviews  │
+│  • data/prompt-history/       Per-agent prompt snapshots (gitignored) │
+│  • .cache/jarvis/             Task sync cache                    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -63,22 +71,62 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - Track response latency using MetricsTracker
 
 **Key Functions:**
-- `load_config()`: Load YAML config and environment variables
 - `parse_args()`: Parse CLI arguments (`--agent`, `--model`)
 - `main()`: Main chat loop with agent routing and metrics tracking
 - `_handle_agent_command()`: Route slash commands to registered agents
+- `load_config()`: Re-export of `packages.core.settings.load_config()` (returns typed `Settings` model — see ADR-032)
+
+**Helpers split out:**
+- `apps/cli/session_factory.py` — `build_session(confirmation_handler)` lifts the pre-loop wiring (config, agents, tool groups, logger, stream handler) into a reusable factory parameterized on `ConfirmationHandler`. CLI calls it with `CLIConfirmationHandler()`; GUI calls it with `WebConfirmationHandler` per turn. Same `SessionComponents` dataclass returned to both.
+- `apps/cli/review.py` — pending-outcome review for `/outcomes`. Public symbols `PendingItem`, `load_pending_due()`, `apply_review()`, `pending_item_to_wire()` are reused by the GUI's `routes/outcomes.py`.
 
 **Dependencies:**
 - `packages.agents.jarvis`: Default JARVIS orchestrator agent
 - `packages.agents.registry`: Agent discovery and slash-command routing
+- `packages.core.settings`: Typed configuration loader (`load_config() -> Settings`)
 - `packages.core.stream_handler`: Shared streaming + metrics + cost tracking
 - `packages.integrations.things3.task_sync`: Sync Things 3 tasks on startup
 - `packages.integrations.obsidian`: Obsidian vault integration (`/daily-summary` command)
 - `packages.core.context_builder`: Get system prompt
+- `packages.core.daily_summary`: Build `/daily-summary` requests (CLI + GUI shared)
 - `packages.core.llm_client`: Stream LLM responses
 - `packages.core.memory`: Log conversations
 - `packages.core.pricing`: Calculate costs
 - `packages.telemetry.metrics`: Track TTFT and response latency
+
+---
+
+### 1b. GUI Layer (`apps/gui/`)
+
+**Purpose**: A graphical peer to the CLI, sharing the same agents, tools, vault, conversation files, and approval flow. Browser-served at `http://127.0.0.1:8123` (no auth — bound to localhost only).
+
+**Location**: `apps/gui/` (entry: `apps/gui/main.py`)
+
+**Responsibilities:**
+- FastAPI + WebSocket server (`apps/gui/server/`)
+- React 18 + Vite + TypeScript frontend (`apps/gui/web/`)
+- Chat surface with streaming, vault-write approval diffs, command palette
+- Conversations browser, Dashboard / Home, Sidebar Timeline, Agents grid
+- Agent Prompt Editor + Includes editor, Outcomes scoring, Settings editor
+
+**Key modules:**
+- `server/app.py` — FastAPI factory + lifespan (MCP start/stop, conversation save on shutdown)
+- `server/state.py` — `GuiSession` holds `SessionComponents` + per-turn handlers
+- `server/bridge.py` — per-turn orchestration (`agent.run()` in `asyncio.to_thread`)
+- `server/streaming.py` — `WebStreamHandler` subscribes to the `Event` bus, maps each event to a WS protocol dict over a bounded `janus.Queue`
+- `server/confirmation.py` — `WebConfirmationHandler` mirrors the `ConfirmationHandler` ABC; `present_diff` buffers, `get_confirmation` blocks the worker thread on a `threading.Event` resolved by the client's `approval_decision`
+- `server/protocol.py` — WebSocket TypedDicts (server ↔ client); mirrored in `apps/gui/web/src/lib/types.ts`
+- `server/routes/` — REST routes: `api · chat_ws · agents · agent_includes · conversations · home · outcomes · settings`
+- `server/agents/`, `server/home/`, `server/history/` — domain helpers (cost rollups, conversation index, prompt history)
+
+**Dependencies:**
+- `apps.cli.session_factory.build_session` — shared session bootstrap
+- `apps.cli.review` — outcome scoring helpers
+- `packages.core.settings` — typed config (live-rebound on hot-applicable saves; see `HOT_APPLY_PATHS`)
+- `packages.core.daily_summary` — `/daily-summary` request builder
+- `packages.core.events`, `packages.core.frontmatter` — typed events + atomic writes
+
+See [docs/engineering/gui.md](gui.md) for the full per-phase architecture and the WebSocket protocol reference.
 
 ---
 
