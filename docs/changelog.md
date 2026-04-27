@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.20.0] - 2026-04-25
+## [0.20.0] - 2026-04-27
 
 GUI Configuration: typed `pydantic-settings` configuration end-to-end, the in-GUI Settings editor, field-level hot-apply gating, and the prompt-include editor.
 
