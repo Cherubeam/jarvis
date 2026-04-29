@@ -46,7 +46,6 @@ export function ChatView({
   setSession,
   historyRefreshToken,
   onTurnFinished,
-  onOpenHistory,
   pendingSeed,
   onSeedConsumed,
 }: {
@@ -59,7 +58,6 @@ export function ChatView({
   setSession: (s: SessionMeta) => void
   historyRefreshToken: number
   onTurnFinished: () => void
-  onOpenHistory: (id: string) => void
   pendingSeed: string | null
   onSeedConsumed: () => void
 }) {
@@ -70,11 +68,16 @@ export function ChatView({
   const [totals, setTotals] = useState({ messages: 0, tokens: 0, cost: 0 })
   const [inFlight, setInFlight] = useState(false)
   const [composerSeed, setComposerSeed] = useState('')
+  const [composerDraft, setComposerDraft] = useState('')
   // True once the WS has emitted `session_start`; gates the pendingSeed
   // submit so Quick Start clicks from Home don't race the WS open.
   const [wsReady, setWsReady] = useState(false)
   const wsRef = useRef<ReturnType<typeof connect> | null>(null)
   const streamRef = useRef<HTMLDivElement | null>(null)
+  // Mirror of the `session` prop kept up-to-date inside handleServerEvent
+  // without forcing the function to re-bind on every render. Used to detect
+  // file_id swaps (resume) so we can clear the local stream.
+  const sessionRef = useRef<SessionMeta | null>(session)
 
   // Connect WS
   useEffect(() => {
@@ -127,6 +130,15 @@ export function ChatView({
 
   function handleServerEvent(ev: ServerEvent) {
     if (ev.type === 'session_start') {
+      // If the file_id changed (resume swap), wipe the in-memory event
+      // stream so the historic replay events that follow render into a
+      // fresh canvas instead of stacking under the old turns.
+      if (sessionRef.current && sessionRef.current.file_id !== ev.session.file_id) {
+        setEvents([])
+        setThinking(null)
+        setTotals({ messages: 0, tokens: 0, cost: 0 })
+      }
+      sessionRef.current = ev.session
       setSession(ev.session)
       setWsReady(true)
       return
@@ -257,6 +269,20 @@ export function ChatView({
     wsRef.current?.send({ type: 'submit', text })
   }
 
+  function resume(fileId: string) {
+    if (inFlight) return
+    if (sessionRef.current && sessionRef.current.file_id === fileId) return
+    if (composerDraft.trim()) {
+      const ok = window.confirm(
+        'You have an unsent message. Switching conversations will discard it. Continue?',
+      )
+      if (!ok) return
+      setComposerDraft('')
+      setComposerSeed('')
+    }
+    wsRef.current?.send({ type: 'resume', file_id: fileId })
+  }
+
   function pickCommand(a: Agent) {
     setPaletteOpen(false)
     if (a.command) setComposerSeed(a.command + ' ')
@@ -290,7 +316,8 @@ export function ChatView({
           mode={tweaks.sidebarMode}
           session={session}
           refreshToken={historyRefreshToken}
-          onOpen={onOpenHistory}
+          onOpen={resume}
+          disabled={inFlight}
         />
 
         <main
@@ -478,6 +505,7 @@ export function ChatView({
             disabled={inFlight}
             onSubmit={submit}
             onOpenPalette={() => setPaletteOpen(true)}
+            onValueChange={setComposerDraft}
           />
 
           <CommandPalette
@@ -522,6 +550,7 @@ function ComposerWrapper({
   disabled?: boolean
   onSubmit: (t: string) => void
   onOpenPalette: () => void
+  onValueChange?: (v: string) => void
 }) {
   // Seed is consumed by submitting it directly (the palette picks a slash command).
   useEffect(() => {

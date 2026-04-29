@@ -56,6 +56,7 @@ export type ClientMsg =
   | { type: 'submit'; text: string }
   | { type: 'approval_decision'; id: string; approved: boolean }
   | { type: 'cancel' }
+  | { type: 'resume'; file_id: string }
 
 export type Agent = {
   name: string

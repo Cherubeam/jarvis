@@ -357,6 +357,18 @@ The Chat-view sidebar has two render variants, toggled from the Tweaks panel:
 
 Both variants share the same fetch (`/api/conversations?limit=20&sort=recent`), header, search box (still inert, will be wired in a later phase), loading / error / empty states, and session footer. Only the row rendering branches on `mode`.
 
+**Resume on click (chat view).** Clicking a row in the chat sidebar now resumes that conversation in-place rather than navigating to History. The flow:
+
+1. Frontend sends `{"type": "resume", "file_id": "<stem>"}` over the existing chat WebSocket.
+2. `apps/gui/server/routes/chat_ws.py` refuses the resume with an `error` event when `session.in_flight` is true (the running save would clobber the rebound logger's history).
+3. `apps/gui/server/resume.py:load_and_replay()` reads the JSON via `ConversationLogger.load()`, calls the new `ConversationLogger.rehydrate(messages, session_start, conversation_id, metrics)` to mutate the active logger in place (so `get_messages_for_api()` returns prior history and `save()` writes back to the original file), then pushes a fresh `session_start` event + per-message replay events (`user`, `text`, `tool_call`) onto the same per-turn queue. Tool-call cards are paired with their following `tool_call_id` results by metadata; `elapsed_ms` is `0` for replayed cards (not stored in the JSON).
+4. `ChatView` watches for a `session_start` whose `file_id` differs from the current one and clears its local `events` / `thinking` / `totals` before the replay events render — the chat re-paints onto a fresh canvas.
+5. The next user message appends to the same JSON. Sidebar / History / Home re-fetch on the next `turn_finished`.
+
+Sidebar rows render at 50 % opacity with `cursor: not-allowed` while a turn is streaming (Sidebar's new `disabled` prop, fed by `ChatView`'s `inFlight` state). When the composer has unsent text, `ChatView` prompts before sending the resume so the draft isn't silently discarded.
+
+Soft-delete-style "leave a breadcrumb" or fork-into-new-file resume modes are out of scope — resume always continues into the same file.
+
 Card height in timeline mode is log-bucketed in `heightFor(tokens)`:
 
 ```
@@ -488,8 +500,9 @@ flag for delegation, just the tool invocation. If
 - **Non-atomic writes** in `ConversationLogger.save()` mean the index may
   occasionally try to read a half-written file. We swallow `JSONDecodeError`
   and skip; the next refresh picks it up clean.
-- **Resume** and **Export** buttons are rendered but disabled — actual resume
-  requires rehydrating a `ConversationLogger` mid-process and is deferred.
+- **Resume from the History detail pane** is still a stub (button currently
+  just navigates to chat). Resume from the *chat sidebar* is implemented (see
+  Sidebar Timeline mode → Resume on click). **Export** is still deferred.
 - **Transcript viewer** — "open full transcript →" is a stub (returns to Chat).
 - **Pagination UI** — backend supports `limit`/`offset`, but the History view
   loads 200 at once and Sidebar caps at 20. Add an infinite scroll when users

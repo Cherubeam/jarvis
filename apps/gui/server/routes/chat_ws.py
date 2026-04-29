@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from apps.gui.server.bridge import run_turn
+from apps.gui.server.resume import ResumeError, load_and_replay
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,6 +65,23 @@ async def chat_ws(websocket: WebSocket) -> None:
                     await run_turn(session, user_text, queue)
                 finally:
                     session.in_flight = False
+            elif kind == "resume":
+                if session.in_flight:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "A turn is in flight — wait for it to finish before resuming.",
+                        }
+                    )
+                    continue
+                file_id = msg.get("file_id", "")
+                try:
+                    await asyncio.to_thread(load_and_replay, session, file_id, queue)
+                except ResumeError as e:
+                    await websocket.send_json({"type": "error", "message": str(e)})
+                except Exception:
+                    logger.exception("resume failed for %r", file_id)
+                    await websocket.send_json({"type": "error", "message": "resume failed — see server logs"})
             elif kind == "approval_decision":
                 if session.confirmation is not None:
                     session.confirmation.resolve(

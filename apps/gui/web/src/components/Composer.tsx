@@ -7,22 +7,29 @@ export function Composer({
   accent,
   onSubmit,
   onOpenPalette,
+  onValueChange,
   disabled,
 }: {
   theme: Theme
   accent: string
   onSubmit: (text: string) => void
   onOpenPalette: () => void
+  onValueChange?: (value: string) => void
   disabled?: boolean
 }) {
   const [v, setV] = useState('')
   const taRef = useRef<HTMLTextAreaElement | null>(null)
 
+  const updateValue = (next: string) => {
+    setV(next)
+    onValueChange?.(next)
+  }
+
   const submit = () => {
     const t = v.trim()
     if (!t || disabled) return
     onSubmit(t)
-    setV('')
+    updateValue('')
     if (taRef.current) taRef.current.style.height = 'auto'
   }
 
@@ -37,7 +44,7 @@ export function Composer({
   }
 
   const autosize = (ev: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setV(ev.target.value)
+    updateValue(ev.target.value)
     ev.target.style.height = 'auto'
     ev.target.style.height = Math.min(ev.target.scrollHeight, 200) + 'px'
   }

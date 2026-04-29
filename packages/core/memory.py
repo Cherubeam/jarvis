@@ -517,6 +517,43 @@ class ConversationLogger:
                     f"({len(all_utilized)}/{len(all_loaded)} sections referenced in responses)"
                 )
 
+    def rehydrate(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        session_start: datetime,
+        conversation_id: str | None = None,
+        metrics: SessionMetrics | None = None,
+    ) -> None:
+        """Re-point this logger at a historic conversation.
+
+        After this call, ``get_messages_for_api()`` returns the historic
+        history (so the next agent turn sees prior context) and ``save()``
+        writes back to the file derived from ``session_start`` (so new turns
+        append to the original conversation rather than starting a new one).
+
+        ``_message_counter`` is bumped to the highest existing ``msg_NNN``
+        suffix so newly added messages don't collide.
+        """
+        self.current_conversation = list(messages)
+        self.session_start = session_start
+        if conversation_id is not None:
+            self.conversation_id = conversation_id
+        if metrics is not None:
+            self.metrics = metrics
+
+        max_id = 0
+        for m in messages:
+            mid = m.get("id", "")
+            if isinstance(mid, str) and mid.startswith("msg_"):
+                try:
+                    n = int(mid[4:])
+                except ValueError:
+                    continue
+                if n > max_id:
+                    max_id = n
+        self._message_counter = max_id
+
     def get_messages_for_api(self) -> list[dict[str, Any]]:
         """Return messages in the format the API expects.
 

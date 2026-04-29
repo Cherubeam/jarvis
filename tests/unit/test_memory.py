@@ -1415,3 +1415,116 @@ class TestConversationLoggerUtilization:
         assert len(ctx["section_breakdown"]) == 2
         assert ctx["section_breakdown"][0]["name"] == "soul"
         assert ctx["section_breakdown"][1]["approx_tokens"] == 400
+
+
+# ---------------------------------------------------------------------------
+# rehydrate
+# ---------------------------------------------------------------------------
+
+
+class TestRehydrate:
+    def test_rehydrate_replaces_messages_and_repoints_save(self, temp_conversations_dir):
+        from datetime import datetime as _dt
+
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "fresh start")  # would write to a new file
+
+        # Pretend we loaded an older conversation:
+        historic_start = _dt(2026, 1, 5, 14, 30, 0)
+        historic_messages = [
+            {
+                "id": "msg_001",
+                "parent_id": None,
+                "role": "user",
+                "timestamp": "2026-01-05T14:30:00",
+                "content": [{"type": "text", "text": "old user q"}],
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            },
+            {
+                "id": "msg_002",
+                "parent_id": None,
+                "role": "assistant",
+                "timestamp": "2026-01-05T14:30:05",
+                "content": [{"type": "text", "text": "old answer"}],
+                "agent": "JARVIS",
+                "usage": None,
+                "latency": None,
+                "stop_reason": None,
+                "status": "completed",
+                "error": None,
+                "metadata": {},
+            },
+        ]
+        logger.rehydrate(
+            messages=historic_messages,
+            session_start=historic_start,
+            conversation_id="conv_old_one",
+        )
+
+        # In-memory state is replaced (not appended).
+        assert logger.current_conversation == historic_messages
+        assert logger.session_start == historic_start
+        assert logger.conversation_id == "conv_old_one"
+        # _message_counter advances past the highest existing id so new
+        # messages don't collide.
+        assert logger._message_counter == 2
+
+        # Next add picks up at msg_003 and save() writes to the historic path.
+        logger.add_message("user", "follow-up")
+        assert logger.current_conversation[-1]["id"] == "msg_003"
+        logger.save()
+
+        target = temp_conversations_dir / "2026" / "2026-01-05_14-30-00.json"
+        assert target.is_file()
+        data = json.loads(target.read_text())
+        assert data["id"] == "conv_old_one"
+        assert [m["id"] for m in data["messages"]] == ["msg_001", "msg_002", "msg_003"]
+
+    def test_rehydrate_with_empty_messages_resets_counter(self, temp_conversations_dir):
+        from datetime import datetime as _dt
+
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "keep this around briefly")
+        assert logger._message_counter == 1
+
+        logger.rehydrate(
+            messages=[],
+            session_start=_dt(2026, 2, 14, 8, 0, 0),
+            conversation_id="conv_empty",
+        )
+        assert logger.current_conversation == []
+        assert logger._message_counter == 0
+        assert logger.conversation_id == "conv_empty"
+
+    def test_rehydrate_preserves_existing_id_and_metrics_when_omitted(self, temp_conversations_dir):
+        from datetime import datetime as _dt
+
+        logger = ConversationLogger(temp_conversations_dir, conversation_id="conv_keepme")
+        original_metrics = logger.metrics
+        logger.rehydrate(
+            messages=[{"id": "msg_007", "role": "user", "content": "x"}],
+            session_start=_dt(2026, 3, 3, 0, 0, 0),
+        )
+        assert logger.conversation_id == "conv_keepme"
+        assert logger.metrics is original_metrics
+        # _message_counter parsed from the highest "msg_NNN" suffix.
+        assert logger._message_counter == 7
+
+    def test_rehydrate_ignores_malformed_message_ids(self, temp_conversations_dir):
+        from datetime import datetime as _dt
+
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.rehydrate(
+            messages=[
+                {"id": "garbage", "role": "user", "content": "a"},
+                {"id": "msg_xyz", "role": "user", "content": "b"},
+                {"id": "msg_42", "role": "user", "content": "c"},
+            ],
+            session_start=_dt(2026, 4, 1, 0, 0, 0),
+        )
+        assert logger._message_counter == 42
