@@ -578,3 +578,64 @@ class TestChunkDocumentBoundary:
         assert chunks == ["abcdef", "efghij", "ij"]
         # Overlap between first two chunks
         assert chunks[0][-2:] == chunks[1][:2]
+
+
+# ---------------------------------------------------------------------------
+# delete_conversation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestDeleteConversation:
+    def _make_indexer(self):
+        mock_chroma = MagicMock()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_chroma.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
+
+        with patch.dict("sys.modules", {"chromadb": mock_chroma}):
+            from packages.core.rag.indexer import ConversationIndexer
+
+            indexer = ConversationIndexer.__new__(ConversationIndexer)
+            indexer.db_path = Path("/tmp/fake_rag")
+            indexer.embedding_model = "openrouter/openai/text-embedding-3-small"
+            indexer.api_key = None
+            indexer.api_base = None
+            indexer._client = mock_chroma.PersistentClient.return_value
+            indexer._collection = mock_collection
+            return indexer
+
+    def test_returns_zero_for_empty_id(self):
+        indexer = self._make_indexer()
+        assert indexer.delete_conversation("") == 0
+        indexer._collection.delete.assert_not_called()
+
+    def test_deletes_matching_chunks_by_metadata(self):
+        indexer = self._make_indexer()
+        indexer._collection.get.return_value = {
+            "ids": ["conv_X_pair_0", "conv_X_pair_1", "conv_X_pair_2"],
+        }
+
+        n = indexer.delete_conversation("conv_X")
+
+        assert n == 3
+        indexer._collection.get.assert_called_once_with(where={"conv_id": "conv_X"}, include=[])
+        indexer._collection.delete.assert_called_once_with(ids=["conv_X_pair_0", "conv_X_pair_1", "conv_X_pair_2"])
+
+    def test_returns_zero_when_no_chunks_match(self):
+        indexer = self._make_indexer()
+        indexer._collection.get.return_value = {"ids": []}
+
+        n = indexer.delete_conversation("conv_never_indexed")
+
+        assert n == 0
+        indexer._collection.delete.assert_not_called()
+
+    def test_returns_zero_when_collection_get_raises(self):
+        indexer = self._make_indexer()
+        indexer._collection.get.side_effect = RuntimeError("backend exploded")
+
+        n = indexer.delete_conversation("conv_X")
+
+        assert n == 0
+        indexer._collection.delete.assert_not_called()

@@ -244,3 +244,38 @@ def test_legacy_file_without_agent_field_is_tolerated(tmp_conversations):
     items, _ = idx.list()
     assert items[0]["agents"] == []
     assert items[0]["title"] == "legacy q"
+
+
+def test_delete_unlinks_file_and_evicts_cache(tmp_conversations):
+    path = _write_conversation(tmp_conversations, "2026-04-19_10-00-00")
+    _write_conversation(tmp_conversations, "2026-04-19_11-00-00")
+    idx = ConversationIndex(tmp_conversations)
+    asyncio.run(idx.refresh())
+    assert idx.facets()["total"] == 2
+
+    deleted = idx.delete("2026-04-19_10-00-00")
+    assert deleted is True
+    assert not path.exists()
+    assert str(path) not in idx._cache
+    items, total = idx.list()
+    assert total == 1
+    assert items[0]["id"] == "2026-04-19_11-00-00"
+
+
+def test_delete_returns_false_for_missing_id(tmp_conversations):
+    _write_conversation(tmp_conversations, "2026-04-19_10-00-00")
+    idx = ConversationIndex(tmp_conversations)
+    asyncio.run(idx.refresh())
+    assert idx.delete("does-not-exist") is False
+    # Existing entry untouched.
+    assert idx.facets()["total"] == 1
+
+
+def test_delete_clears_dirty_flag(tmp_conversations):
+    _write_conversation(tmp_conversations, "2026-04-19_10-00-00")
+    idx = ConversationIndex(tmp_conversations)
+    asyncio.run(idx.refresh())
+    idx.mark_dirty("2026-04-19_10-00-00")
+    assert "2026-04-19_10-00-00" in idx._dirty
+    assert idx.delete("2026-04-19_10-00-00") is True
+    assert "2026-04-19_10-00-00" not in idx._dirty

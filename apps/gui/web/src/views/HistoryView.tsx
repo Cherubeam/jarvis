@@ -22,6 +22,7 @@ export function HistoryView({
   selectedId,
   setSelectedId,
   goToChat,
+  onConversationDeleted,
 }: {
   theme: Theme
   accent: string
@@ -30,6 +31,8 @@ export function HistoryView({
   selectedId: string | null
   setSelectedId: (id: string | null) => void
   goToChat: () => void
+  /** Called after a successful DELETE so App can bump the global refresh token. */
+  onConversationDeleted: (id: string) => void
 }) {
   const [all, setAll] = useState<ConversationSummary[]>([])
   const [facets, setFacets] = useState<HistoryFacets>({ agents: [], tools: [], total: 0 })
@@ -215,6 +218,11 @@ export function HistoryView({
           accent={accent}
           conversation={selected}
           onResume={goToChat}
+          onDeleted={(id) => {
+            setAll((prev) => prev.filter((c) => c.id !== id))
+            if (selectedId === id) setSelectedId(null)
+            onConversationDeleted(id)
+          }}
         />
       </div>
     </main>

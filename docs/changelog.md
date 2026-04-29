@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **JARVIS GUI — Hard-delete a conversation from the History detail pane.** Test conversations and accidental sessions can now be removed without dropping into the filesystem. A red `delete` button next to `resume` / `export` runs a confirm dialog and `DELETE /api/conversations/{id}`; on success the row drops from the History list, the global refresh token bumps so Sidebar / Home / Agent-detail re-fetch, and the selection clears. The button surfaces network-level errors inline.
+  - Backend: new `DELETE /api/conversations/{conv_id}` route in `apps/gui/server/routes/conversations.py`. Returns 204 on success, 404 when the id isn't indexed, and 409 when the id matches the currently-active session's `file_id` — the running `ConversationLogger` would silently re-create the file on the next save, so refusing the delete is the safer default.
+  - `ConversationIndex.delete(conv_id)` in `apps/gui/server/history/index.py` resolves the id to its on-disk path, `unlink()`s the file, evicts the cache entry, and clears any stale `_dirty` flag. ChromaDB cleanup is the route's responsibility (RAG isn't always wired into the GUI process).
+  - `ConversationIndexer.delete_conversation(conv_id)` in `packages/core/rag/indexer.py` removes every chunk whose `conv_id` metadata matches, so semantic recall stops surfacing the deleted content. The route gates this on `settings.rag.enabled` and on the ChromaDB directory existing — instantiating the indexer ad-hoc avoids holding a connection for the lifetime of the GUI process. Failures here are logged and swallowed: a stuck embedding DB shouldn't block the user-visible file deletion.
+  - **9 new tests** — 3 in `tests/unit/gui/test_history_index.py` (file unlink + cache eviction, missing-id no-op, dirty-flag clear), 3 in `tests/unit/gui/test_conversations_route.py` (204 path, 404 path, 409 active-conv guard with a stub `gui_session`), and 4 in `tests/unit/test_rag_indexer.py::TestDeleteConversation` (empty conv_id no-op, multi-chunk delete by metadata filter, no-match returns 0, ChromaDB exception swallowed). **2193 tests total, all pass.**
+
 ---
 
 ## [0.20.0] - 2026-04-27

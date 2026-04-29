@@ -122,6 +122,24 @@ class ConversationIndexer:
 
         return new_count
 
+    def delete_conversation(self, conv_id: str) -> int:
+        """Remove every chunk belonging to *conv_id* from ChromaDB.
+
+        Returns the number of records deleted. Safe to call when the
+        conversation was never indexed — returns 0.
+        """
+        if not conv_id:
+            return 0
+        try:
+            result = self._collection.get(where={"conv_id": conv_id}, include=[])
+        except Exception:
+            return 0
+        ids = result.get("ids", [])
+        if not ids:
+            return 0
+        self._collection.delete(ids=ids)
+        return len(ids)
+
     def _load_conversation(self, filepath: Path) -> dict[str, Any] | None:
         """Load and migrate a conversation file. Returns None on error or if empty."""
         try:

@@ -450,6 +450,16 @@ transcript preview). Matches design v4.
   `total` file count, for the filter chips.
 - `GET /api/conversations/{id}` — full detail including all messages + preview
   (first 4 non-tool messages, 240 chars each).
+- `DELETE /api/conversations/{id}` — hard-delete the JSON file, evict the
+  in-memory `ConversationIndex` cache entry, and (when `rag.enabled`) remove
+  the conversation's chunks from the ChromaDB recall collection. Returns 204
+  on success, 404 when the id isn't indexed, 409 when the id matches the
+  currently-active session's `file_id` (the running `ConversationLogger`
+  would silently re-create the file on the next save). The button lives in
+  the History detail pane; on success the row drops from the list,
+  `historyRefreshToken` bumps so Sidebar / Home / AgentDetail re-fetch, and
+  the selection clears. Soft-delete and bulk-delete are intentionally out of
+  scope.
 
 ### Data shape
 

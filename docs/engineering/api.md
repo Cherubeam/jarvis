@@ -741,6 +741,7 @@ The GUI binds to `127.0.0.1:8123` (no auth — never expose). All routes are mou
 | `GET /api/conversations` | `routes/conversations.py` | Filtered list: `q / agent / tool / date / sort / limit / offset` | 0.17.0 |
 | `GET /api/conversations/facets` | `routes/conversations.py` | Unique agents + tools for filter chips | 0.17.0 |
 | `GET /api/conversations/{id}` | `routes/conversations.py` | Full detail + preview | 0.17.0 |
+| `DELETE /api/conversations/{id}` | `routes/conversations.py` | Hard-delete JSON file + index cache + ChromaDB chunks; 409 when id is the active session | unreleased |
 | `GET /api/home` | `routes/home.py` | Composite Dashboard payload (greeting + tasks + cost-week + resume + recent + quick-start) | 0.17.0 |
 | `GET /api/outcomes/pending` | `routes/outcomes.py` | Pending outcomes past their `revisit_at` date; `[]` when disabled | 0.19.0 |
 | `POST /api/outcomes/{file_id}/review` | `routes/outcomes.py` | Body `{verdict, quality, note}`. 403 when disabled | 0.19.0 |
@@ -767,4 +768,4 @@ The GUI binds to `127.0.0.1:8123` (no auth — never expose). All routes are mou
 
 ---
 
-*Last updated: 2026-04-25*
+*Last updated: 2026-04-29*
