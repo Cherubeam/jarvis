@@ -25,15 +25,42 @@ export function ConvDetailPane({
   accent,
   conversation,
   onResume,
+  onDeleted,
 }: {
   theme: Theme
   accent: string
   conversation: ConversationSummary | null
   onResume: () => void
+  onDeleted?: (id: string) => void
 }) {
   const [detail, setDetail] = useState<ConversationDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function handleDelete(id: string) {
+    if (deleting) return
+    const ok = window.confirm(
+      'Delete this conversation? This permanently removes the JSON file and any recall index entries.',
+    )
+    if (!ok) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const r = await fetch(`/api/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!r.ok) {
+        const body = await r.text()
+        throw new Error(body || `HTTP ${r.status}`)
+      }
+      onDeleted?.(id)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setDeleteError(msg)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     if (!conversation) {
@@ -245,8 +272,38 @@ export function ConvDetailPane({
             >
               export
             </button>
+            <button
+              onClick={() => handleDelete(c.id)}
+              disabled={deleting}
+              title="Permanently delete this conversation"
+              style={{
+                all: 'unset',
+                cursor: deleting ? 'wait' : 'pointer',
+                padding: '7px 12px',
+                borderRadius: 5,
+                border: `1px solid ${theme.error}`,
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 11,
+                color: theme.error,
+                opacity: deleting ? 0.5 : 1,
+              }}
+            >
+              {deleting ? 'deleting…' : 'delete'}
+            </button>
           </div>
         </div>
+        {deleteError && (
+          <div
+            style={{
+              marginTop: 10,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 11,
+              color: theme.error,
+            }}
+          >
+            delete failed: {deleteError}
+          </div>
+        )}
 
         {/* 5-stat strip */}
         <div

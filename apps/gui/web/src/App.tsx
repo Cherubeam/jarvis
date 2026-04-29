@@ -184,6 +184,7 @@ export default function App() {
           selectedId={selectedHistoryId}
           setSelectedId={setSelectedHistoryId}
           goToChat={() => setView('chat')}
+          onConversationDeleted={bumpHistoryRefresh}
         />
       )}
       {view === 'settings' && <SettingsView theme={theme} accent={accent} />}

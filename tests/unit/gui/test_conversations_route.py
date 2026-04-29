@@ -116,6 +116,54 @@ def test_detail_200_and_404(client):
     assert r.status_code == 404
 
 
+def test_delete_unlinks_file_and_404s_after(client, tmp_path):
+    convs = tmp_path / "conversations"
+    target = convs / "2026" / "2026-04-19_09-00-00.json"
+    assert target.exists()
+
+    r = client.delete("/api/conversations/2026-04-19_09-00-00")
+    assert r.status_code == 204
+    assert not target.exists()
+
+    # Subsequent GET 404s — index cache evicted.
+    r = client.get("/api/conversations/2026-04-19_09-00-00")
+    assert r.status_code == 404
+
+    # List drops the deleted row.
+    r = client.get("/api/conversations")
+    assert r.status_code == 200
+    assert r.json()["total"] == 1
+
+
+def test_delete_404_for_missing_id(client):
+    r = client.delete("/api/conversations/does-not-exist")
+    assert r.status_code == 404
+
+
+def test_delete_409_when_id_matches_active_session(tmp_path):
+    convs = tmp_path / "conversations"
+    _write(convs / "2026" / "2026-04-20_10-00-00.json")
+
+    index = ConversationIndex(convs)
+    asyncio.run(index.refresh())
+
+    # Stub a gui_session whose session_meta() reports the target as active.
+    class _StubSession:
+        def session_meta(self):
+            return {"file_id": "2026-04-20_10-00-00"}
+
+    app = FastAPI()
+    app.state.conversation_index = index
+    app.state.gui_session = _StubSession()
+    app.include_router(conversations_router)
+    c = TestClient(app)
+
+    r = c.delete("/api/conversations/2026-04-20_10-00-00")
+    assert r.status_code == 409
+    # File still on disk.
+    assert (convs / "2026" / "2026-04-20_10-00-00.json").exists()
+
+
 def test_empty_index_is_healthy(tmp_path):
     empty = tmp_path / "nope"
     index = ConversationIndex(empty)

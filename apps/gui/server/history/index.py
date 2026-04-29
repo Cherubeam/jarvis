@@ -148,6 +148,25 @@ class ConversationIndex:
         total = len(items)
         return items[offset : offset + limit], total
 
+    def delete(self, conv_id: str) -> bool:
+        """Hard-delete a conversation: unlink the JSON file and evict from cache.
+
+        Returns True if a file was found and unlinked, False if not found.
+        ChromaDB cleanup is the caller's responsibility (RAG is opt-in and
+        not always wired into the GUI process).
+        """
+        path = self._path_for(conv_id)
+        if path is None or not path.is_file():
+            return False
+        try:
+            path.unlink()
+        except OSError as e:
+            logger.warning("delete(%s) unlink failed: %s", conv_id, e)
+            return False
+        self._cache.pop(str(path), None)
+        self._dirty.discard(conv_id)
+        return True
+
     def get(self, conv_id: str) -> ConversationDetail | None:
         """Load full detail for one conversation. None if not found."""
         path = self._path_for(conv_id)
