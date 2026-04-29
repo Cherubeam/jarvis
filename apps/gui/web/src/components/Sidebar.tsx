@@ -26,6 +26,7 @@ export function Sidebar({
   session,
   refreshToken,
   onOpen,
+  disabled = false,
 }: {
   theme: Theme
   accent: string
@@ -34,8 +35,11 @@ export function Sidebar({
   session: SessionMeta | null
   /** Bumped by App on turn_finished so the list re-fetches without reload. */
   refreshToken: number
-  /** Called when the user clicks a row — App routes to History view. */
+  /** Called when the user clicks a row. In chat view this resumes the
+   * conversation in-place; elsewhere it's a no-op handler set by the parent. */
   onOpen: (id: string) => void
+  /** When true (a turn is streaming) rows render grayed-out and refuse clicks. */
+  disabled?: boolean
 }) {
   const [items, setItems] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -202,10 +206,12 @@ export function Sidebar({
             return (
               <button
                 key={c.id}
-                onClick={() => onOpen(c.id)}
+                onClick={() => !disabled && onOpen(c.id)}
+                disabled={disabled}
+                title={disabled ? 'Wait for the current turn to finish' : undefined}
                 style={{
                   all: 'unset',
-                  cursor: 'pointer',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                   display: 'block',
                   width: '100%',
                   boxSizing: 'border-box',
@@ -214,6 +220,7 @@ export function Sidebar({
                   marginBottom: 2,
                   background: active ? theme.surface2 : 'transparent',
                   borderLeft: active ? `2px solid ${hue}` : '2px solid transparent',
+                  opacity: disabled ? 0.5 : 1,
                 }}
               >
                 <div
@@ -270,6 +277,7 @@ export function Sidebar({
             theme={theme}
             accent={accent}
             onOpen={onOpen}
+            disabled={disabled}
           />
         )}
       </div>
@@ -348,12 +356,14 @@ function TimelineRows({
   theme,
   accent,
   onOpen,
+  disabled = false,
 }: {
   items: ConversationSummary[]
   activeFileId: string | undefined
   theme: Theme
   accent: string
   onOpen: (id: string) => void
+  disabled?: boolean
 }) {
   const rows = useMemo(() => buildTimelineRows(items), [items])
 
@@ -418,10 +428,12 @@ function TimelineRows({
               }}
             >
               <button
-                onClick={() => onOpen(conv.id)}
+                onClick={() => !disabled && onOpen(conv.id)}
+                disabled={disabled}
+                title={disabled ? 'Wait for the current turn to finish' : undefined}
                 style={{
                   all: 'unset',
-                  cursor: 'pointer',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                   boxSizing: 'border-box',
                   width: '100%',
                   height: cardH,
@@ -436,6 +448,7 @@ function TimelineRows({
                   gap: 3,
                   minWidth: 0,
                   overflow: 'hidden',
+                  opacity: disabled ? 0.5 : 1,
                 }}
               >
                 <div

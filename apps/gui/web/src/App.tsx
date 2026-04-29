@@ -128,7 +128,6 @@ export default function App() {
           setSession={setSession}
           historyRefreshToken={historyRefreshToken}
           onTurnFinished={bumpHistoryRefresh}
-          onOpenHistory={openHistoryId}
           pendingSeed={pendingSeed}
           onSeedConsumed={onSeedConsumed}
         />
