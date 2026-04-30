@@ -21,7 +21,7 @@ export function HistoryView({
   refreshToken,
   selectedId,
   setSelectedId,
-  goToChat,
+  onResume,
   onConversationDeleted,
 }: {
   theme: Theme
@@ -30,7 +30,8 @@ export function HistoryView({
   refreshToken: number
   selectedId: string | null
   setSelectedId: (id: string | null) => void
-  goToChat: () => void
+  /** Switch to chat and queue a resume for the given file_id. */
+  onResume: (fileId: string) => void
   /** Called after a successful DELETE so App can bump the global refresh token. */
   onConversationDeleted: (id: string) => void
 }) {
@@ -217,7 +218,7 @@ export function HistoryView({
           theme={theme}
           accent={accent}
           conversation={selected}
-          onResume={goToChat}
+          onResume={onResume}
           onDeleted={(id) => {
             setAll((prev) => prev.filter((c) => c.id !== id))
             if (selectedId === id) setSelectedId(null)

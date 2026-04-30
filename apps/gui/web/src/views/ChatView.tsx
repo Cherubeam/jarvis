@@ -48,6 +48,8 @@ export function ChatView({
   onTurnFinished,
   pendingSeed,
   onSeedConsumed,
+  pendingResumeId,
+  onResumeConsumed,
 }: {
   theme: Theme
   accent: string
@@ -60,6 +62,8 @@ export function ChatView({
   onTurnFinished: () => void
   pendingSeed: string | null
   onSeedConsumed: () => void
+  pendingResumeId: string | null
+  onResumeConsumed: () => void
 }) {
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [thinking, setThinking] = useState<string | null>(null)
@@ -127,6 +131,23 @@ export function ChatView({
     onSeedConsumed()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingSeed, wsReady])
+
+  // Pending resume id from the History detail-pane "resume" button. Same
+  // race-guard as pendingSeed: wait for wsReady. No composer-draft warn —
+  // the user wasn't typing in chat, they were over in History.
+  useEffect(() => {
+    if (pendingResumeId === null) return
+    if (!wsReady) return
+    if (inFlight) return
+    if (sessionRef.current && sessionRef.current.file_id === pendingResumeId) {
+      // Already on this conversation — nothing to do.
+      onResumeConsumed()
+      return
+    }
+    wsRef.current?.send({ type: 'resume', file_id: pendingResumeId })
+    onResumeConsumed()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingResumeId, wsReady])
 
   function handleServerEvent(ev: ServerEvent) {
     if (ev.type === 'session_start') {

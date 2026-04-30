@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **JARVIS GUI — History detail-pane `resume →` button now actually resumes.** Reuses the WS resume protocol that the chat sidebar already uses; clicking the button (or "open full transcript →" at the bottom of the preview) switches to the chat view and replays the conversation in-place. Same continue-into-the-same-file semantics as the sidebar path.
+  - New `pendingResumeId: string | null` state in `apps/gui/web/src/App.tsx`, mirroring the existing `pendingSeed` race-guard pattern. ConvDetailPane's button → App sets `pendingResumeId` + switches view → ChatView consumes it after `wsReady` and emits `{type: 'resume', file_id}`. No composer-draft warn (the user wasn't typing in chat).
+  - Removed the stale `title="Resume is deferred — currently returns to chat"` tooltip and 0.7-opacity styling from the detail-pane resume button.
+  - No new server work; the underlying resume infrastructure landed in the prior release.
+  - Live-verified in browser: History → click row → click `resume →` → chat-view active session swaps, replay text renders, no console errors. **2215 tests still pass.**
+
 - **JARVIS GUI — Resume a past conversation from the chat-view sidebar.** Clicking a conversation row in the chat sidebar no longer yanks you to the History view (which was the confusing prior behavior). Instead, the past conversation loads into the live chat stream and the next message you send appends to the *same* JSON file rather than starting a new one.
   - Wire protocol: new client message `{"type": "resume", "file_id": "<stem>"}` handled in `apps/gui/server/routes/chat_ws.py`. Refused with an `error` event when a turn is in flight (the running save would clobber the rebound logger's history).
   - New module `apps/gui/server/resume.py` — `load_and_replay()` reads the JSON via `ConversationLogger.load()`, mutates the active `ConversationLogger` in place via the new `rehydrate(messages, session_start, conversation_id, metrics)` method (so `get_messages_for_api()` sees prior context and `save()` writes back to the original file), then emits a fresh `session_start` + per-message replay events (`user` / `text` / `tool_call`) so the chat view paints the prior turns. Tool calls are paired with their following `tool_call_id` results by metadata. `elapsed_ms` is `0` for replayed cards (not stored in the JSON).
