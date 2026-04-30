@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: ~2,174 collected as of 0.20.0 (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git). The growth since ~1,790 reflects the GUI, outcome-tracking, and pydantic-settings test suites added in 0.16.0–0.20.0.
+**Tests**: ~2,215 collected as of 0.21.0 (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git). The growth since ~1,790 reflects the GUI, outcome-tracking, pydantic-settings, and conversation-lifecycle test suites added in 0.16.0–0.21.0.
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -885,4 +885,4 @@ tool = ToolDefinition(
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-30*
