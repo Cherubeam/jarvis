@@ -460,4 +460,4 @@ While pre-1.0, minor bumps may include breaking changes.
 
 ---
 
-*Last updated: 2026-04-25*
+*Last updated: 2026-04-30*

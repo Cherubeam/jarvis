@@ -118,6 +118,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 - `server/protocol.py` — WebSocket TypedDicts (server ↔ client); mirrored in `apps/gui/web/src/lib/types.ts`
 - `server/routes/` — REST routes: `api · chat_ws · agents · agent_includes · conversations · home · outcomes · settings`
 - `server/agents/`, `server/home/`, `server/history/` — domain helpers (cost rollups, conversation index, prompt history)
+- `server/resume.py` — `load_and_replay()` for chat-view conversation resume: reads a historic JSON, mutates the active `ConversationLogger` in place via `rehydrate()` so the next save appends to the original file, and emits synthetic StreamEvents for the chat UI to repaint the prior turns
 
 **Dependencies:**
 - `apps.cli.session_factory.build_session` — shared session bootstrap

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.21.0] - 2026-04-30
+
+GUI Conversation Lifecycle: hard-delete + resume from both the chat sidebar and the History detail pane.
+
 ### Added
 - **JARVIS GUI — History detail-pane `resume →` button now actually resumes.** Reuses the WS resume protocol that the chat sidebar already uses; clicking the button (or "open full transcript →" at the bottom of the preview) switches to the chat view and replays the conversation in-place. Same continue-into-the-same-file semantics as the sidebar path.
   - New `pendingResumeId: string | null` state in `apps/gui/web/src/App.tsx`, mirroring the existing `pendingSeed` race-guard pattern. ConvDetailPane's button → App sets `pendingResumeId` + switches view → ChatView consumes it after `wsReady` and emits `{type: 'resume', file_id}`. No composer-draft warn (the user wasn't typing in chat).

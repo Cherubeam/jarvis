@@ -152,9 +152,12 @@ uv run jarvis-gui --no-browser # just serve
 ```
 
 Shipped surfaces: **Chat** (streaming, tool cards, vault-write approval
-diffs, command palette, Tweaks panel, light/dark + accent swap), **Home**
+diffs, command palette, Tweaks panel, light/dark + accent swap, click a
+sidebar row to **resume** that conversation in-place — your next message
+appends to the same JSON file), **Home**
 (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start),
-**History** (two-pane filterable conversation browser), **Sidebar Timeline
+**History** (two-pane filterable conversation browser with per-conversation
+**hard-delete** and one-click resume from the detail pane), **Sidebar Timeline
 mode** (togglable day-axis variant), **Agents** (categorized grid +
 per-agent detail with tools, recent sessions, 14-day cost sparkline, and
 "start session →" launcher), the **Agent Prompt Editor** (Prompt /
