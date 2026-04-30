@@ -62,6 +62,15 @@ export default function App() {
     setPendingSeed(cmd)
     setView('chat')
   }, [])
+  // Pending resume target — set by the History detail-pane resume button.
+  // ChatView consumes it once the WS is open and emits the `resume` message,
+  // mirroring the pendingSeed pattern. `null` = no pending resume.
+  const [pendingResumeId, setPendingResumeId] = useState<string | null>(null)
+  const onResumeConsumed = useCallback(() => setPendingResumeId(null), [])
+  const onResumeFromHistory = useCallback((fileId: string) => {
+    setPendingResumeId(fileId)
+    setView('chat')
+  }, [])
   const openHistoryId = useCallback((id: string) => {
     setSelectedHistoryId(id)
     setView('history')
@@ -130,6 +139,8 @@ export default function App() {
           onTurnFinished={bumpHistoryRefresh}
           pendingSeed={pendingSeed}
           onSeedConsumed={onSeedConsumed}
+          pendingResumeId={pendingResumeId}
+          onResumeConsumed={onResumeConsumed}
         />
       )}
       {view === 'home' && (
@@ -182,7 +193,7 @@ export default function App() {
           refreshToken={historyRefreshToken}
           selectedId={selectedHistoryId}
           setSelectedId={setSelectedHistoryId}
-          goToChat={() => setView('chat')}
+          onResume={onResumeFromHistory}
           onConversationDeleted={bumpHistoryRefresh}
         />
       )}

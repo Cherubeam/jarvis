@@ -30,7 +30,7 @@ export function ConvDetailPane({
   theme: Theme
   accent: string
   conversation: ConversationSummary | null
-  onResume: () => void
+  onResume: (fileId: string) => void
   onDeleted?: (id: string) => void
 }) {
   const [detail, setDetail] = useState<ConversationDetail | null>(null)
@@ -238,8 +238,8 @@ export function ConvDetailPane({
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button
-              onClick={onResume}
-              title="Resume is deferred — currently returns to chat"
+              onClick={() => onResume(c.id)}
+              title="Open in chat and continue from this conversation"
               style={{
                 all: 'unset',
                 cursor: 'pointer',
@@ -251,7 +251,6 @@ export function ConvDetailPane({
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: 0.3,
-                opacity: 0.7,
               }}
             >
               resume →
@@ -431,7 +430,7 @@ export function ConvDetailPane({
                 )
               })}
               <button
-                onClick={onResume}
+                onClick={() => onResume(c.id)}
                 style={{
                   all: 'unset',
                   cursor: 'pointer',

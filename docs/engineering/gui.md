@@ -500,9 +500,11 @@ flag for delegation, just the tool invocation. If
 - **Non-atomic writes** in `ConversationLogger.save()` mean the index may
   occasionally try to read a half-written file. We swallow `JSONDecodeError`
   and skip; the next refresh picks it up clean.
-- **Resume from the History detail pane** is still a stub (button currently
-  just navigates to chat). Resume from the *chat sidebar* is implemented (see
-  Sidebar Timeline mode → Resume on click). **Export** is still deferred.
+- **Resume from the History detail pane** uses the same WS resume protocol
+  as the chat sidebar (`{type: "resume", file_id}`). `App.pendingResumeId`
+  is set by the detail-pane button and consumed by `ChatView` after
+  `wsReady` — same race-guard shape as `pendingSeed` from Home's Quick
+  Start. **Export** is still deferred.
 - **Transcript viewer** — "open full transcript →" is a stub (returns to Chat).
 - **Pagination UI** — backend supports `limit`/`offset`, but the History view
   loads 200 at once and Sidebar caps at 20. Add an infinite scroll when users
