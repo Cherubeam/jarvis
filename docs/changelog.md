@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **JARVIS GUI — Home `ResumeCard` now resumes in-place instead of yanking to History.** Closes the inconsistency caught right after v0.21.0 shipped: the chat-sidebar and History detail-pane both fire the WS `resume` protocol, but the Home view's `Continue where you left off` card was still calling `onOpenHistory(resume.id)` and bouncing the user into a different view. `HomeView` now accepts an `onResume(fileId)` prop, wired through App.tsx to the existing `onResumeFromHistory` handler that drives the same `pendingResumeId` plumbing. Empty-state behavior (no prior session) still falls back to starting a fresh chat. Pure frontend wiring change, no backend touch, no new tests. Live-verified in browser: clicking the resume card switches to the chat view with the prior session's totals (`12 msgs · 42.127 tokens`) populated, no console errors.
+
 ---
 
 ## [0.21.0] - 2026-04-30

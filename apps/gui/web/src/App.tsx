@@ -151,6 +151,7 @@ export default function App() {
           session={session}
           onOpenHistory={openHistoryId}
           onOpenHistoryRoot={() => setView('history')}
+          onResume={onResumeFromHistory}
           onStartChat={onStartChat}
         />
       )}

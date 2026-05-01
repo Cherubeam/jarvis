@@ -20,6 +20,7 @@ export function HomeView({
   session,
   onOpenHistory,
   onOpenHistoryRoot,
+  onResume,
   onStartChat,
 }: {
   theme: Theme
@@ -28,6 +29,7 @@ export function HomeView({
   session: SessionMeta | null
   onOpenHistory: (id: string) => void
   onOpenHistoryRoot: () => void
+  onResume: (fileId: string) => void
   onStartChat: (cmd: string | null) => void
 }) {
   const [data, setData] = useState<HomeData | null>(null)
@@ -154,7 +156,7 @@ export function HomeView({
                 accent={accent}
                 resume={resume}
                 onResume={() => {
-                  if (resume) onOpenHistory(resume.id)
+                  if (resume) onResume(resume.id)
                   else onStartChat(null)
                 }}
               />
