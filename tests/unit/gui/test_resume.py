@@ -13,7 +13,11 @@ import pytest
 from apps.gui.server.resume import (
     ResumeError,
     _build_replay_events,
+    _metrics_from_dict,
+    _msg_text,
     _parse_session_start,
+    _path_for_file_id,
+    _safe_parse_json,
     load_and_replay,
 )
 from packages.core.memory import ConversationLogger
@@ -46,7 +50,7 @@ class _StubSession:
         }
 
 
-def _write_conv(path, messages, *, conv_id="conv_replay_x", session_start="2026-04-01T10:00:00"):
+def _write_conv(path, messages, *, conv_id="conv_replay_x", session_start="2026-04-01T10:00:00", metrics=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "schema_version": "1.0.0",
@@ -57,7 +61,8 @@ def _write_conv(path, messages, *, conv_id="conv_replay_x", session_start="2026-
         "agent": {"name": "JARVIS"},
         "context": {"files_loaded": [], "metadata": {}},
         "environment": {"client": "test"},
-        "metrics": {
+        "metrics": metrics
+        or {
             "total_tokens": 250,
             "total_cost_usd": 0.0123,
             "total_prompt_tokens": 200,
@@ -97,9 +102,28 @@ class TestBuildReplayEvents:
         )
         assert [e["type"] for e in events] == ["user", "text"]
         assert events[0] == {"type": "user", "id": "msg_001", "text": "hello", "time": ""}
+        assert set(events[0].keys()) == {"type", "id", "text", "time"}
+        assert events[1]["type"] == "text"
         assert events[1]["agent"] == "JARVIS"
         assert events[1]["markdown"] == "world"
+        assert events[1]["id"] == "msg_002"
         assert events[1]["stats"] == {"tokens": 12, "cost": 0.0001, "ttft": 100, "total": 500}
+        assert set(events[1].keys()) == {"type", "id", "agent", "markdown", "stats"}
+
+    def test_assistant_default_agent_is_JARVIS(self):
+        """Missing `agent` field on assistant message → "JARVIS" default."""
+        events = _build_replay_events(
+            [{"id": "m1", "role": "assistant", "content": "hello"}]
+        )
+        assert len(events) == 1
+        assert events[0]["agent"] == "JARVIS"
+
+    def test_text_event_omits_stats_keys_when_usage_absent(self):
+        """No usage / latency on the message → stats={} on the text event."""
+        events = _build_replay_events(
+            [{"id": "m1", "role": "assistant", "agent": "writer", "content": "hi"}]
+        )
+        assert events[0]["stats"] == {}
 
     def test_tool_call_paired_with_following_tool_result(self):
         events = _build_replay_events(
@@ -127,6 +151,8 @@ class TestBuildReplayEvents:
         )
         assert len(events) == 1
         ev = events[0]
+        # Strict shape — wire contract for the chat-view tool card.
+        assert set(ev.keys()) == {"type", "id", "agent", "tool", "args", "result", "elapsed_ms", "status"}
         assert ev["type"] == "tool_call"
         assert ev["id"] == "call_42"
         assert ev["agent"] == "writer"
@@ -159,8 +185,10 @@ class TestBuildReplayEvents:
                 },
             ]
         )
+        # tool_call is emitted before the text — matches the loop order.
         assert [e["type"] for e in events] == ["tool_call", "text"]
         assert events[0]["tool"] == "search_notes"
+        assert events[0]["result"] == {"summary": "no results"}
         assert events[1]["markdown"] == "thinking out loud"
 
     def test_tool_call_without_paired_result_emits_empty_summary(self):
@@ -178,6 +206,21 @@ class TestBuildReplayEvents:
         assert len(events) == 1
         assert events[0]["result"] == {"summary": ""}
 
+    def test_tool_call_id_falls_back_to_msg_id_when_absent(self):
+        """call without `id` → uses the assistant message's id as the tool-call id."""
+        events = _build_replay_events(
+            [
+                {
+                    "id": "msg_alt",
+                    "role": "assistant",
+                    "agent": "JARVIS",
+                    "content": "",
+                    "tool_calls": [{"function": {"name": "x", "arguments": "{}"}}],
+                }
+            ]
+        )
+        assert events[0]["id"] == "msg_alt"
+
     def test_unparseable_arguments_become_empty_dict(self):
         events = _build_replay_events(
             [
@@ -192,9 +235,28 @@ class TestBuildReplayEvents:
         )
         assert events[0]["args"] == {}
 
+    def test_arguments_already_dict_passes_through(self):
+        """JSON-arguments already parsed (some imports do this)."""
+        events = _build_replay_events(
+            [
+                {
+                    "id": "m1",
+                    "role": "assistant",
+                    "agent": "JARVIS",
+                    "content": "",
+                    "tool_calls": [{"id": "c", "function": {"name": "x", "arguments": {"k": "v"}}}],
+                }
+            ]
+        )
+        assert events[0]["args"] == {"k": "v"}
+
     def test_empty_user_message_is_dropped(self):
         events = _build_replay_events([{"id": "msg_001", "role": "user", "content": ""}])
         assert events == []
+
+    def test_user_message_without_id_uses_empty_string_id(self):
+        events = _build_replay_events([{"role": "user", "content": "hi"}])
+        assert events == [{"type": "user", "id": "", "text": "hi", "time": ""}]
 
     def test_tool_result_text_truncated_to_240_chars(self):
         long_text = "a" * 1000
@@ -215,7 +277,19 @@ class TestBuildReplayEvents:
                 },
             ]
         )
+        # Truncated to exactly 240 — no ellipsis (the implementation uses [:240]).
         assert len(events[0]["result"]["summary"]) == 240
+
+    def test_tool_messages_alone_emit_no_visible_event(self):
+        """Tool messages without a preceding assistant tool_call are dropped."""
+        events = _build_replay_events(
+            [{"id": "m1", "role": "tool", "tool_call_id": "x", "content": "orphan"}]
+        )
+        assert events == []
+
+    def test_unknown_role_dropped_silently(self):
+        events = _build_replay_events([{"id": "m1", "role": "system", "content": "noise"}])
+        assert events == []
 
 
 # ---------------------------------------------------------------------------
@@ -232,13 +306,140 @@ class TestParseSessionStart:
         out = _parse_session_start(None, "2026-04-29_15-22-08")
         assert out == datetime(2026, 4, 29, 15, 22, 8)
 
+    def test_empty_string_falls_back_to_stem(self):
+        out = _parse_session_start("", "2026-04-29_15-22-08")
+        assert out == datetime(2026, 4, 29, 15, 22, 8)
+
     def test_invalid_iso_falls_back_to_stem(self):
         out = _parse_session_start("not-a-date", "2026-04-29_15-22-08")
         assert out == datetime(2026, 4, 29, 15, 22, 8)
 
     def test_unparseable_stem_raises(self):
-        with pytest.raises(ResumeError):
+        with pytest.raises(ResumeError, match="could not derive session_start"):
             _parse_session_start(None, "garbage")
+
+
+# ---------------------------------------------------------------------------
+# _path_for_file_id — security guard + resolution
+# ---------------------------------------------------------------------------
+
+
+class TestPathForFileId:
+    def test_resolves_under_year_subdir(self, tmp_path):
+        f = tmp_path / "2026" / "2026-04-01_10-00-00.json"
+        f.parent.mkdir(parents=True)
+        f.write_text("{}")
+        assert _path_for_file_id(tmp_path, "2026-04-01_10-00-00") == f
+
+    def test_rejects_traversal(self, tmp_path):
+        with pytest.raises(ResumeError, match="invalid file_id"):
+            _path_for_file_id(tmp_path, "../etc/passwd")
+
+    def test_rejects_slash(self, tmp_path):
+        with pytest.raises(ResumeError, match="invalid file_id"):
+            _path_for_file_id(tmp_path, "2026/04/01")
+
+    def test_rejects_empty(self, tmp_path):
+        with pytest.raises(ResumeError, match="invalid file_id"):
+            _path_for_file_id(tmp_path, "")
+
+    def test_rejects_non_year_prefix(self, tmp_path):
+        with pytest.raises(ResumeError, match="invalid file_id"):
+            _path_for_file_id(tmp_path, "abcd-04-01_10-00-00")
+
+    def test_raises_when_file_missing(self, tmp_path):
+        with pytest.raises(ResumeError, match="conversation not found"):
+            _path_for_file_id(tmp_path, "2026-04-01_10-00-00")
+
+
+# ---------------------------------------------------------------------------
+# _metrics_from_dict — coerces floats/ints, defaults to zero
+# ---------------------------------------------------------------------------
+
+
+class TestMetricsFromDict:
+    def test_all_keys_coerced(self):
+        m = _metrics_from_dict(
+            {
+                "total_prompt_tokens": "10",
+                "total_completion_tokens": "5",
+                "total_tokens": 15,
+                "total_cost_usd": "0.5",
+                "total_cache_read_tokens": "2",
+                "total_cache_write_tokens": "1",
+                "total_thinking_tokens": "3",
+                "request_count": "4",
+                "total_ttft_ms": "100",
+                "total_latency_ms": "200",
+            }
+        )
+        assert m.total_prompt_tokens == 10
+        assert m.total_completion_tokens == 5
+        assert m.total_tokens == 15
+        assert m.total_cost_usd == 0.5
+        assert m.total_cache_read_tokens == 2
+        assert m.total_cache_write_tokens == 1
+        assert m.total_thinking_tokens == 3
+        assert m.request_count == 4
+        assert m.total_ttft_ms == 100.0
+        assert m.total_latency_ms == 200.0
+
+    def test_empty_dict_yields_zero_metrics(self):
+        m = _metrics_from_dict({})
+        assert m.total_tokens == 0
+        assert m.total_cost_usd == 0.0
+        assert m.request_count == 0
+
+    def test_none_values_treated_as_zero(self):
+        m = _metrics_from_dict({"total_tokens": None, "total_cost_usd": None})
+        assert m.total_tokens == 0
+        assert m.total_cost_usd == 0.0
+
+
+# ---------------------------------------------------------------------------
+# _msg_text + _safe_parse_json
+# ---------------------------------------------------------------------------
+
+
+def test_msg_text_string_content():
+    assert _msg_text({"content": "hello"}) == "hello"
+
+
+def test_msg_text_block_list_content():
+    """Block-list content delegates to memory._extract_text_from_content."""
+    out = _msg_text({"content": [{"type": "text", "text": "hello "}, {"type": "text", "text": "world"}]})
+    assert out == "hello world"
+
+
+def test_msg_text_missing_content_returns_empty():
+    assert _msg_text({}) == ""
+
+
+def test_msg_text_none_content_returns_empty():
+    assert _msg_text({"content": None}) == ""
+
+
+def test_safe_parse_json_passes_dict_through():
+    assert _safe_parse_json({"k": "v"}) == {"k": "v"}
+
+
+def test_safe_parse_json_returns_empty_for_non_string():
+    assert _safe_parse_json(42) == {}
+    assert _safe_parse_json(None) == {}
+    assert _safe_parse_json(["list"]) == {}
+
+
+def test_safe_parse_json_returns_empty_for_invalid_json():
+    assert _safe_parse_json("not-json") == {}
+
+
+def test_safe_parse_json_returns_empty_when_parsed_isnt_dict():
+    """JSON arrays parse fine but aren't dicts — must return {}."""
+    assert _safe_parse_json("[1, 2, 3]") == {}
+
+
+def test_safe_parse_json_valid_json_dict():
+    assert _safe_parse_json('{"a": 1}') == {"a": 1}
 
 
 # ---------------------------------------------------------------------------
@@ -295,9 +496,13 @@ class TestLoadAndReplay:
         assert types[0] == "session_start"
         assert types[1] == "system"
         assert "Resumed conversation" in emitted[1]["text"]
+        # System message includes the file_id and the message count.
+        assert "2026-04-01_10-00-00" in emitted[1]["text"]
+        assert "2 prior message(s)" in emitted[1]["text"]
         assert types[-1] == "totals"
         assert emitted[-1]["messages"] == 2
         assert emitted[-1]["cost"] == pytest.approx(0.0123)
+        assert emitted[-1]["tokens"] == 250
         # Replay events sit between system and totals.
         replay_types = types[2:-1]
         assert replay_types == ["user", "text"]
@@ -333,3 +538,66 @@ class TestLoadAndReplay:
         session.conversation_index = _Idx()
         load_and_replay(session, "2026-04-01_10-00-00", Queue())
         assert marked == ["2026-04-01_10-00-00"]
+
+    def test_index_mark_dirty_failure_is_swallowed(self, tmp_path):
+        """An exception from mark_dirty must NOT bubble out of resume."""
+        session = self._make_session(tmp_path)
+        convs = session.components.conversations_dir
+        _write_conv(
+            convs / "2026" / "2026-04-01_10-00-00.json",
+            [{"id": "m", "role": "user", "content": "hi"}],
+            session_start="2026-04-01T10:00:00",
+        )
+
+        class _BadIdx:
+            def mark_dirty(self, file_id: str) -> None:
+                raise RuntimeError("boom")
+
+        session.conversation_index = _BadIdx()
+        # Should not raise.
+        load_and_replay(session, "2026-04-01_10-00-00", Queue())
+
+    def test_no_index_attribute_is_tolerated(self, tmp_path):
+        """conversation_index defaults to None — code path that skips mark_dirty."""
+        session = self._make_session(tmp_path)
+        session.conversation_index = None
+        convs = session.components.conversations_dir
+        _write_conv(
+            convs / "2026" / "2026-04-01_10-00-00.json",
+            [{"id": "m", "role": "user", "content": "hi"}],
+            session_start="2026-04-01T10:00:00",
+        )
+        # Should not raise.
+        load_and_replay(session, "2026-04-01_10-00-00", Queue())
+
+    def test_session_start_event_carries_session_meta_payload(self, tmp_path):
+        """First event is session_start with the full session_meta dict."""
+        session = self._make_session(tmp_path)
+        convs = session.components.conversations_dir
+        _write_conv(
+            convs / "2026" / "2026-04-01_10-00-00.json",
+            [{"id": "m", "role": "user", "content": "hi"}],
+            session_start="2026-04-01T10:00:00",
+        )
+        q: Queue[dict[str, Any]] = Queue()
+        load_and_replay(session, "2026-04-01_10-00-00", q)
+        first = q.get_nowait()
+        assert first["type"] == "session_start"
+        assert "session" in first
+        assert first["session"]["model"] == "test/model"
+
+    def test_empty_messages_emits_only_meta_and_totals(self, tmp_path):
+        """An empty conversation file → session_start + system + totals (no replay)."""
+        session = self._make_session(tmp_path)
+        convs = session.components.conversations_dir
+        _write_conv(
+            convs / "2026" / "2026-04-01_10-00-00.json",
+            [],
+            session_start="2026-04-01T10:00:00",
+        )
+        q: Queue[dict[str, Any]] = Queue()
+        load_and_replay(session, "2026-04-01_10-00-00", q)
+        types = []
+        while not q.empty():
+            types.append(q.get_nowait()["type"])
+        assert types == ["session_start", "system", "totals"]
