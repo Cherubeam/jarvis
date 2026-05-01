@@ -434,11 +434,13 @@ conversations grid, quick-start commands. Matches design v1 Home.
   `historyRefreshToken` that Sidebar + HistoryView use. Chat's
   `turn_finished` bumps it → Home invalidates → `/api/home` returns
   fresh cost-week + resume + recent.
+- **Resume card** fires the WS `resume` protocol via the same
+  `pendingResumeId` plumbing the History detail pane uses (see
+  *Conversation lifecycle (v0.21.0)* below); empty-state still falls
+  back to `onStartChat(null)`.
 
 ### Known limitations (Phase 3)
 
-- **Resume** button routes to History detail (same as Phase 2); true
-  rehydration of a past `ConversationLogger` is deferred.
 - **Sparkline drill-down** — bars are static; clicking doesn't filter
   History.
 - **Task ↔ conversation link editing** — read-only derivation; users
