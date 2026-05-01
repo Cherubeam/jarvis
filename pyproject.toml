@@ -142,7 +142,10 @@ module = ["chromadb"]
 follow_imports = "skip"
 
 [tool.mutmut]
-paths_to_mutate = ["packages/core/"]
+# Scoped to recent additions (GUI server + typed settings) for the
+# 2026-05 audit. Historical results for packages/core/ live in
+# docs/engineering/mutation-testing-report.md (2026-04-13 Linux CI).
+paths_to_mutate = ["apps/gui/server/", "packages/core/settings.py"]
 tests_dir = ["tests/"]
 runner = "uv run pytest -x --tb=no -q"
 also_copy = ["packages/", "apps/", "config/", "data/context/", "scripts/"]
