@@ -441,3 +441,207 @@ def test_put_and_promote_share_write_lock(writer_local: TestClient) -> None:
     assert r.status_code == 409  # local already exists
     # Sanity: the helper produces the documented shape so the lock dict key is stable.
     assert key == "writer/_includes/voice_profile"
+
+
+# ---------------------------------------------------------------------------
+# Helper: _guard_placeholder (regex-validated path segment)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "",  # empty fails ^[A-Za-z_]
+        "1leading_digit",  # leading digit
+        "has-dash",  # hyphen not in [A-Za-z0-9_]
+        "has space",  # space disallowed
+        "has.dot",  # dot disallowed
+        "..",  # path-traversal-shaped
+        "/",
+        "voice/profile",
+        "voice_profile!",  # trailing punctuation
+        "ünicode",  # ASCII-only character class
+    ],
+)
+def test_guard_placeholder_rejects_unsafe_input(bad: str) -> None:
+    from fastapi import HTTPException
+
+    from apps.gui.server.routes.agent_includes import _guard_placeholder
+
+    with pytest.raises(HTTPException) as exc:
+        _guard_placeholder(bad)
+    assert exc.value.status_code == 404
+    assert exc.value.detail == f"placeholder '{bad}' not declared"
+
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "voice_profile",
+        "anti_patterns",
+        "_private",
+        "Mixed_Case_123",
+        "x",
+        "_",
+        "snake_case_with_digits_42",
+    ],
+)
+def test_guard_placeholder_accepts_safe_input(good: str) -> None:
+    """Returns None for any [A-Za-z_][A-Za-z0-9_]* string."""
+    from apps.gui.server.routes.agent_includes import _guard_placeholder
+
+    assert _guard_placeholder(good) is None
+
+
+# ---------------------------------------------------------------------------
+# Helper: _meta_dict (resilient YAML re-parse)
+
+
+def test_meta_dict_returns_parsed_yaml(tmp_path: Path) -> None:
+    from apps.gui.server.routes.agent_includes import _meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("name: writer\nprompt_includes:\n  voice_profile: voice-profile\n", encoding="utf-8")
+    out = _meta_dict(p)
+    assert out == {"name": "writer", "prompt_includes": {"voice_profile": "voice-profile"}}
+
+
+def test_meta_dict_missing_file_returns_empty(tmp_path: Path) -> None:
+    """File not found is swallowed → empty dict (so callers can `.get(...)` safely)."""
+    from apps.gui.server.routes.agent_includes import _meta_dict
+
+    assert _meta_dict(tmp_path / "does-not-exist.yaml") == {}
+
+
+def test_meta_dict_corrupt_yaml_returns_empty(tmp_path: Path) -> None:
+    from apps.gui.server.routes.agent_includes import _meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("not: valid: yaml: at: all:", encoding="utf-8")
+    assert _meta_dict(p) == {}
+
+
+def test_meta_dict_empty_file_returns_empty(tmp_path: Path) -> None:
+    """yaml.safe_load(\"\") is None — must coerce to {} via `or {}`."""
+    from apps.gui.server.routes.agent_includes import _meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("", encoding="utf-8")
+    assert _meta_dict(p) == {}
+
+
+# ---------------------------------------------------------------------------
+# Helper: _repo_rel (best-effort relative path display)
+
+
+def test_repo_rel_returns_relative_path(tmp_path: Path) -> None:
+    from apps.gui.server.routes.agent_includes import _repo_rel
+
+    session = SimpleNamespace(components=SimpleNamespace(jarvis_dir=tmp_path))
+    target = tmp_path / "packages" / "agents" / "writer" / "prompts" / "voice-profile.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("x", encoding="utf-8")
+    assert _repo_rel(target, session) == "packages/agents/writer/prompts/voice-profile.md"
+
+
+def test_repo_rel_falls_back_to_absolute_when_unrelated(tmp_path: Path) -> None:
+    """ValueError on .relative_to() must fall back to str(path)."""
+    from apps.gui.server.routes.agent_includes import _repo_rel
+
+    session = SimpleNamespace(components=SimpleNamespace(jarvis_dir=tmp_path / "nested"))
+    (tmp_path / "nested").mkdir()
+    outside = tmp_path / "outside.md"
+    outside.write_text("x", encoding="utf-8")
+    assert _repo_rel(outside, session) == str(outside)
+
+
+# ---------------------------------------------------------------------------
+# Helper: _affects_agents (early-return on non-shared status)
+
+
+@pytest.mark.parametrize(
+    "non_shared_status",
+    [
+        "FOUND_LOCAL",
+        "FOUND_LOCAL_EXAMPLE",
+        "FOUND_SHARED_EXAMPLE",
+        "MISSING",
+    ],
+)
+def test_affects_agents_returns_empty_for_non_shared(non_shared_status: str) -> None:
+    """Local/example/missing must never propagate — short-circuit returns []."""
+    from apps.gui.server.routes.agent_includes import _affects_agents
+    from packages.agents.prompt_includes import IncludeStatus
+
+    status = getattr(IncludeStatus, non_shared_status)
+    # Registry deliberately empty — early return must fire before iteration.
+    session = SimpleNamespace(components=SimpleNamespace(agent_registry={}))
+    assert _affects_agents(session, "writer", "voice_profile", status) == []
+
+
+def test_affects_agents_excludes_self_from_shared_results(tmp_path: Path) -> None:
+    """The caller's own id must never appear in the affects list."""
+    _make_shared(tmp_path, voice_profile="shared")
+    writer = _make_meta(tmp_path, "writer", prompt_includes={"voice_profile": "voice_profile"})
+    reviewer = _make_meta(tmp_path, "content_reviewer", prompt_includes={"voice_profile": "voice_profile"})
+    client = TestClient(_build_app(tmp_path, {"writer": writer, "content_reviewer": reviewer}))
+    rows = client.get("/api/agents/writer/includes").json()
+    assert rows[0]["affects_agents"] == ["content_reviewer"]
+    assert "writer" not in rows[0]["affects_agents"]
+
+
+def test_affects_agents_results_are_sorted(tmp_path: Path) -> None:
+    """`for other_id in sorted(registry)` — iteration order must be deterministic."""
+    _make_shared(tmp_path, voice_profile="shared")
+    writer = _make_meta(tmp_path, "writer", prompt_includes={"voice_profile": "voice_profile"})
+    # Register out of alphabetical order; output must still be sorted.
+    zeta = _make_meta(tmp_path, "zeta", prompt_includes={"voice_profile": "voice_profile"})
+    alpha = _make_meta(tmp_path, "alpha", prompt_includes={"voice_profile": "voice_profile"})
+    client = TestClient(_build_app(tmp_path, {"zeta": zeta, "writer": writer, "alpha": alpha}))
+    rows = client.get("/api/agents/writer/includes").json()
+    assert rows[0]["affects_agents"] == ["alpha", "zeta"]
+
+
+# ---------------------------------------------------------------------------
+# Helper: _editable_for (FOUND_LOCAL / FOUND_SHARED → True; rest → False)
+
+
+@pytest.mark.parametrize(
+    ("status_name", "expected"),
+    [
+        ("FOUND_LOCAL", True),
+        ("FOUND_SHARED", True),
+        ("FOUND_LOCAL_EXAMPLE", False),
+        ("FOUND_SHARED_EXAMPLE", False),
+        ("MISSING", False),
+    ],
+)
+def test_editable_for_status(status_name: str, expected: bool) -> None:
+    from apps.gui.server.routes.agent_includes import _editable_for
+    from packages.agents.prompt_includes import IncludeStatus
+
+    assert _editable_for(getattr(IncludeStatus, status_name)) is expected
+
+
+# ---------------------------------------------------------------------------
+# Helper: _history_key (string-shape lock used by snapshots + write lock)
+
+
+def test_history_key_format() -> None:
+    """The literal "{agent_id}/_includes/{placeholder}" — anchors the
+    sub-directory layout that `_rebuild_index_from_disk` filters by."""
+    from apps.gui.server.routes.agent_includes import _history_key
+
+    assert _history_key("writer", "voice_profile") == "writer/_includes/voice_profile"
+    assert _history_key("content_reviewer", "anti_patterns") == "content_reviewer/_includes/anti_patterns"
+
+
+# ---------------------------------------------------------------------------
+# Helper: _shared_dir_for (path arithmetic)
+
+
+def test_shared_dir_for_resolves_relative_to_agent_parent(tmp_path: Path) -> None:
+    from apps.gui.server.routes.agent_includes import _shared_dir_for
+
+    agent_dir = tmp_path / "packages" / "agents" / "writer"
+    expected = tmp_path / "packages" / "agents" / "_shared" / "prompts"
+    assert _shared_dir_for(agent_dir) == expected
