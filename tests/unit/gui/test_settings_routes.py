@@ -490,3 +490,419 @@ def test_round_trip_get_put_noop_stable(tmp_path: Path) -> None:
     written = (tmp_path / "config" / "local.yaml").read_text()
     parsed = yaml.safe_load(written[len(MANAGED_HEADER) + 1 :])
     assert parsed == get_body["overrides"]
+
+
+# ---------------------------------------------------------------------------
+# Helper: _has_managed_header (file-content sentinel)
+
+
+def test_has_managed_header_missing_file_returns_false(tmp_path: Path) -> None:
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    assert _has_managed_header(tmp_path / "nope.yaml") is False
+
+
+def test_has_managed_header_directory_returns_false(tmp_path: Path) -> None:
+    """Path that exists but isn't a file (e.g. a directory) → False, not crash."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    d = tmp_path / "subdir"
+    d.mkdir()
+    assert _has_managed_header(d) is False
+
+
+def test_has_managed_header_empty_file_returns_false(tmp_path: Path) -> None:
+    """All-blank file: every line is skipped, function returns False at end."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text("", encoding="utf-8")
+    assert _has_managed_header(p) is False
+
+
+def test_has_managed_header_blank_lines_only_returns_false(tmp_path: Path) -> None:
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text("\n\n   \n\t\n", encoding="utf-8")
+    assert _has_managed_header(p) is False
+
+
+def test_has_managed_header_first_non_blank_matches(tmp_path: Path) -> None:
+    """Leading blank lines are skipped; first non-blank must equal MANAGED_HEADER exactly."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text(f"\n\n{MANAGED_HEADER}\nrouting:\n  enabled: true\n", encoding="utf-8")
+    assert _has_managed_header(p) is True
+
+
+def test_has_managed_header_first_non_blank_mismatches(tmp_path: Path) -> None:
+    """A different first non-blank line → False, even if MANAGED_HEADER appears later."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text(f"# user wrote this\n{MANAGED_HEADER}\n", encoding="utf-8")
+    assert _has_managed_header(p) is False
+
+
+def test_has_managed_header_strips_whitespace_before_compare(tmp_path: Path) -> None:
+    """`line = raw.strip()` — surrounding whitespace on the header line is normalised."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text(f"   {MANAGED_HEADER}   \n", encoding="utf-8")
+    assert _has_managed_header(p) is True
+
+
+def test_has_managed_header_partial_match_returns_false(tmp_path: Path) -> None:
+    """Substring or prefix is not enough — must equal exactly."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text(MANAGED_HEADER[:-5] + "\n", encoding="utf-8")
+    assert _has_managed_header(p) is False
+
+
+def test_has_managed_header_oserror_returns_false(tmp_path: Path, monkeypatch) -> None:
+    """OSError during open → swallowed, returns False (not raise)."""
+    from apps.gui.server.routes.settings import _has_managed_header
+
+    p = tmp_path / "local.yaml"
+    p.write_text(MANAGED_HEADER + "\n", encoding="utf-8")
+
+    def _raise(*_a, **_k):
+        raise OSError("boom")
+
+    monkeypatch.setattr(Path, "open", _raise)
+    assert _has_managed_header(p) is False
+
+
+# ---------------------------------------------------------------------------
+# Helper: _get_write_lock (singleton settings lock on app.state)
+
+
+def test_get_write_lock_creates_lock_on_first_call() -> None:
+    from apps.gui.server.routes.settings import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+    lock = asyncio.run(_get_write_lock(app))
+    assert isinstance(lock, asyncio.Lock)
+    assert app.state.settings_write_lock is lock
+
+
+def test_get_write_lock_reuses_existing_lock() -> None:
+    """Second call must return the exact same instance — no replacement."""
+    from apps.gui.server.routes.settings import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+
+    async def _twice():
+        a = await _get_write_lock(app)
+        b = await _get_write_lock(app)
+        return a, b
+
+    a, b = asyncio.run(_twice())
+    assert a is b
+
+
+def test_get_write_lock_respects_preexisting_lock() -> None:
+    """If the attribute is already set to a Lock, that exact object is returned."""
+    from apps.gui.server.routes.settings import _get_write_lock
+
+    preexisting = asyncio.Lock()
+    app = SimpleNamespace(state=SimpleNamespace(settings_write_lock=preexisting))
+    out = asyncio.run(_get_write_lock(app))
+    assert out is preexisting
+
+
+def test_get_write_lock_serialises_concurrent_holders() -> None:
+    """Two coroutines holding the same lock must run serially, not interleave."""
+    from apps.gui.server.routes.settings import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+    log: list[str] = []
+
+    async def _hold(label: str, hold_for: float):
+        lock = await _get_write_lock(app)
+        async with lock:
+            log.append(f"{label}-enter")
+            await asyncio.sleep(hold_for)
+            log.append(f"{label}-exit")
+
+    async def _race():
+        await asyncio.gather(_hold("a", 0.05), _hold("b", 0.0))
+
+    asyncio.run(_race())
+    assert log in (
+        ["a-enter", "a-exit", "b-enter", "b-exit"],
+        ["b-enter", "b-exit", "a-enter", "a-exit"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Helper: _classify_error (schema-walking dispatch)
+
+
+def _scalar_schema() -> dict:
+    """Tiny schema fixture exercising properties / additionalProperties / items."""
+    return {
+        "type": "object",
+        "properties": {
+            "scalar": {"type": "integer"},
+            "section": {
+                "type": "object",
+                "properties": {"flag": {"type": "boolean"}},
+            },
+            "rules": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}, "access": {"type": "string"}},
+                },
+            },
+            "servers": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {"transport": {"type": "string"}},
+                },
+            },
+        },
+    }
+
+
+def test_classify_error_scalar_leaf_is_field_kind() -> None:
+    """loc lands on a scalar → 'field' + card_loc strips the leaf segment."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("scalar",), _scalar_schema())
+    assert kind == "field"
+    assert card_loc == []
+
+
+def test_classify_error_nested_field_strips_leaf() -> None:
+    """Nested scalar: card_loc = parent path."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("section", "flag"), _scalar_schema())
+    assert kind == "field"
+    assert card_loc == ["section"]
+
+
+def test_classify_error_object_node_is_model_validator() -> None:
+    """loc stops at an object boundary → 'model_validator' + full loc retained."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("section",), _scalar_schema())
+    assert kind == "model_validator"
+    assert card_loc == ["section"]
+
+
+def test_classify_error_int_segment_descends_via_items() -> None:
+    """An int segment in loc must follow the array's `items` schema."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("rules", 0, "access"), _scalar_schema())
+    assert kind == "field"
+    assert card_loc == ["rules", 0]
+
+
+def test_classify_error_int_segment_landing_on_object_is_model_validator() -> None:
+    """loc=('rules', 0) — current ends on the items-object → model_validator."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("rules", 0), _scalar_schema())
+    assert kind == "model_validator"
+    assert card_loc == ["rules", 0]
+
+
+def test_classify_error_descends_via_additional_properties() -> None:
+    """Dynamic-keyed dict: a string segment not in `properties` falls into `additionalProperties`."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("servers", "n8n", "transport"), _scalar_schema())
+    assert kind == "field"
+    assert card_loc == ["servers", "n8n"]
+
+
+def test_classify_error_unknown_segment_breaks_walk() -> None:
+    """Segment not in properties/additionalProperties → current = None → field with loc[:-1]."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error(("section", "missing"), _scalar_schema())
+    assert kind == "field"
+    assert card_loc == ["section"]
+
+
+def test_classify_error_walk_into_non_dict_short_circuits() -> None:
+    """Once `current` becomes a non-dict, the loop bails out and treats as field."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    schema = {"type": "object", "properties": {"a": {"type": "integer"}}}
+    kind, card_loc = _classify_error(("a", "deeper"), schema)
+    assert kind == "field"
+    assert card_loc == ["a"]
+
+
+def test_classify_error_empty_loc_returns_root_model_validator() -> None:
+    """No segments — current stays as the root schema → model_validator with empty loc."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    kind, card_loc = _classify_error((), _scalar_schema())
+    assert kind == "model_validator"
+    assert card_loc == []
+
+
+def test_classify_error_object_with_only_additional_properties_is_model_validator() -> None:
+    """A node missing `type: object` but with `additionalProperties` → still model_validator."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    schema = {"properties": {"servers": {"additionalProperties": {"type": "string"}}}}
+    kind, card_loc = _classify_error(("servers",), schema)
+    assert kind == "model_validator"
+    assert card_loc == ["servers"]
+
+
+def test_classify_error_object_with_only_properties_is_model_validator() -> None:
+    """A node with `properties` but no explicit `type: object` → still model_validator."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    schema = {"properties": {"section": {"properties": {"flag": {"type": "boolean"}}}}}
+    kind, card_loc = _classify_error(("section",), schema)
+    assert kind == "model_validator"
+
+
+# ---------------------------------------------------------------------------
+# Helper: _normalize_validation_errors (wraps _classify_error per pydantic err)
+
+
+def test_normalize_validation_errors_attaches_card_loc_and_kind() -> None:
+    """Each pydantic error grows `card_loc` + `kind`; original `loc`/`msg`/`type` preserved."""
+    from pydantic import ValidationError
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    payload = Settings().model_dump()
+    payload["summarization"]["token_threshold"] = "not an int"
+    try:
+        Settings.model_validate(payload)
+    except ValidationError as exc:
+        out = _normalize_validation_errors(exc)
+    else:
+        raise AssertionError("expected ValidationError")
+
+    assert len(out) >= 1
+    err = next(e for e in out if e["loc"] == ["summarization", "token_threshold"])
+    assert err["kind"] == "field"
+    assert err["card_loc"] == ["summarization"]
+    assert err["msg"]
+    assert err["type"]
+
+
+def test_normalize_validation_errors_empty_when_no_errors() -> None:
+    """A ValidationError with zero entries → empty list."""
+    from unittest.mock import MagicMock
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    fake = MagicMock()
+    fake.errors.return_value = []
+    assert _normalize_validation_errors(fake) == []
+
+
+def test_normalize_validation_errors_preserves_loc_as_list() -> None:
+    """loc tuples from pydantic must be serialised as lists (JSON-friendly)."""
+    from unittest.mock import MagicMock
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    fake = MagicMock()
+    fake.errors.return_value = [
+        {"loc": ("routing", "enabled"), "msg": "bad", "type": "type_error.bool"}
+    ]
+    out = _normalize_validation_errors(fake)
+    assert out[0]["loc"] == ["routing", "enabled"]
+    assert isinstance(out[0]["loc"], list)
+
+
+def test_normalize_validation_errors_handles_missing_loc_msg_type() -> None:
+    """Defensive `.get()` calls — missing keys default to () / "" / "" without raising."""
+    from unittest.mock import MagicMock
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    fake = MagicMock()
+    fake.errors.return_value = [{}]
+    out = _normalize_validation_errors(fake)
+    assert out == [{"loc": [], "card_loc": [], "msg": "", "type": "", "kind": "model_validator"}]
+
+
+def test_normalize_validation_errors_classifies_model_validator_at_server_dict() -> None:
+    """End-to-end: missing `command` on stdio MCP server → model_validator on the server node."""
+    from pydantic import ValidationError
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    payload = Settings().model_dump()
+    payload["mcp"]["enabled"] = True
+    payload["mcp"]["servers"] = {
+        "n8n": {
+            "transport": "stdio",
+            "tool_group": "n8n",
+            "timeout_seconds": 30.0,
+            "command": None,
+            "args": [],
+            "env": None,
+            "cwd": None,
+            "url": None,
+            "headers": None,
+        }
+    }
+    try:
+        Settings.model_validate(payload)
+    except ValidationError as exc:
+        out = _normalize_validation_errors(exc)
+    else:
+        raise AssertionError("expected ValidationError")
+
+    err = next(e for e in out if e["loc"] == ["mcp", "servers", "n8n"])
+    assert err["kind"] == "model_validator"
+    assert err["card_loc"] == ["mcp", "servers", "n8n"]
+
+
+def test_normalize_validation_errors_multiple_errors_each_classified() -> None:
+    """Two failing fields → two normalised entries, each with its own kind+card_loc."""
+    from pydantic import ValidationError
+
+    from apps.gui.server.routes.settings import _normalize_validation_errors
+
+    payload = Settings().model_dump()
+    payload["summarization"]["token_threshold"] = "not an int"
+    payload["routing"]["enabled"] = "not a bool"
+    try:
+        Settings.model_validate(payload)
+    except ValidationError as exc:
+        out = _normalize_validation_errors(exc)
+    else:
+        raise AssertionError("expected ValidationError")
+
+    locs = {tuple(e["loc"]) for e in out}
+    assert ("summarization", "token_threshold") in locs
+    assert ("routing", "enabled") in locs
+    for e in out:
+        assert "kind" in e
+        assert "card_loc" in e
+        assert isinstance(e["card_loc"], list)
+
+
+# ---------------------------------------------------------------------------
+# Helper: _local_yaml_path (anchors the literal path)
+
+
+def test_local_yaml_path_joins_jarvis_dir_with_config_local_yaml(tmp_path: Path) -> None:
+    """Pin the literal "config/local.yaml" segments so a refactor is caught."""
+    from apps.gui.server.routes.settings import _local_yaml_path
+
+    session = SimpleNamespace(components=SimpleNamespace(jarvis_dir=tmp_path))
+    assert _local_yaml_path(session) == tmp_path / "config" / "local.yaml"
