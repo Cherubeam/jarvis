@@ -2,7 +2,7 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Current**: 2026-05-01 (Linux CI — GUI server + typed settings audit, workflow runs `25217994644` baseline / `25219263045` after improvements)
+**Current**: 2026-05-02 (Linux CI — GUI server + typed settings audit, three runs: `25217994644` baseline / `25219263045` first pass / `25249193229` second pass)
 **Previous**: 2026-04-13 (Linux CI, `packages/core/` audit, workflow run `24336325780`)
 **Older baselines**: 2026-04-11 (Linux CI), 2026-04-03 (macOS, historical)
 **Tool**: mutmut 3.5.0
@@ -21,41 +21,41 @@ paths_to_mutate = ["apps/gui/server/", "packages/core/settings.py"]
 
 The historical `packages/core/` numbers from 2026-04-13 below remain authoritative for that scope.
 
-### Baseline → after one pass of test improvements
+### Baseline → first pass → second pass
 
-| Status | Baseline (run `25217994644`) | After (run `25219263045`) | Δ |
-|---|---:|---:|---:|
-| 🎉 Killed | 1,843 | **2,390** | +547 |
-| 🙁 Survived | 1,175 | **628** | **−547 (−46.6%)** |
-| 🫥 No tests | 339 | 339 | 0 |
-| ⏰ Timeout | 2 | 2 | 0 |
-| **Total mutants** | **3,359** | **3,359** | — |
+| Status | Baseline (`25217994644`) | First pass (`25219263045`) | Second pass (`25249193229`) | Δ vs baseline |
+|---|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | **2,424** | **+581** |
+| 🙁 Survived | 1,175 | 628 | **594** | **−581 (−49.4%)** |
+| 🫥 No tests | 339 | 339 | 339 | 0 |
+| ⏰ Timeout | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | — |
 
-**Kill rate on testable mutants**: `1843 / (3359 − 339) = 61.0%` baseline → `2390 / (3359 − 339) = 79.1%` after (+18.1pp from one round of targeted test work).
+**Kill rate on testable mutants** (= killed / (total − no_tests)): **61.0% baseline → 79.1% first pass → 80.3% second pass (+19.3pp total).** Half the survivors gone after two rounds of targeted test work.
 
 ### Per-module survivor reduction
 
-The work targeted the six modules with the most survivors. Modules untouched in this pass show 0 change, which validates the targeted approach.
+Two rounds of targeted work. Untouched modules show 0 change — validates the approach.
 
-| Module | Baseline survivors | After | Δ | Reduction |
-|---|---:|---:|---:|---:|
-| `apps.gui.server.bridge` | 468 | 201 | −267 | **−57%** |
-| `apps.gui.server.history.index` | 207 | 98 | −109 | −53% |
-| `apps.gui.server.confirmation` | 97 | 18 | −79 | **−81%** |
-| `apps.gui.server.resume` | 82 | 29 | −53 | −65% |
-| `apps.gui.server.history.derive` | 50 | 28 | −22 | −44% |
-| `apps.gui.server.streaming` | 45 | 28 | −17 | −38% |
-| `apps.gui.server.routes.settings` | 41 | 41 | 0 | not targeted |
-| `apps.gui.server.agents.prompt_history` | 40 | 40 | 0 | not targeted |
-| `apps.gui.server.routes.agent_includes` | 38 | 38 | 0 | not targeted |
-| `apps.gui.server.routes.home` | 32 | 32 | 0 | not targeted |
-| `apps.gui.server.routes.agents` | 27 | 27 | 0 | not targeted |
-| `packages.core.settings` | 16 | 16 | 0 | not targeted |
-| `apps.gui.server.routes.outcomes` | 13 | 13 | 0 | not targeted |
-| `apps.gui.server.home.task_links` | 11 | 11 | 0 | not targeted |
-| `apps.gui.server.agents.prompt_stats` | 6 | 6 | 0 | not targeted |
-| `apps.gui.server.agents.detail` | 2 | 2 | 0 | not targeted |
-| **TOTAL** | **1,175** | **628** | **−547** | **−46.6%** |
+| Module | Baseline | First pass | Second pass | Total Δ | Targeted in |
+|---|---:|---:|---:|---:|---|
+| `apps.gui.server.bridge` | 468 | 201 | 201 | **−267 (−57%)** | first |
+| `apps.gui.server.history.index` | 207 | 98 | 98 | **−109 (−53%)** | first |
+| `apps.gui.server.confirmation` | 97 | 18 | 18 | **−79 (−81%)** | first |
+| `apps.gui.server.resume` | 82 | 29 | 29 | **−53 (−65%)** | first |
+| `apps.gui.server.history.derive` | 50 | 28 | 28 | **−22 (−44%)** | first |
+| `apps.gui.server.streaming` | 45 | 28 | 28 | **−17 (−38%)** | first |
+| `apps.gui.server.routes.outcomes` | 13 | 13 | **0** | **−13 (−100%)** | second |
+| `apps.gui.server.home.task_links` | 11 | 11 | 2 | **−9 (−82%)** | second |
+| `apps.gui.server.routes.agents` | 27 | 27 | 19 | **−8 (−30%)** | second (`_guard_agent_id` only — `_load_meta_dict` and `_get_write_lock` still uncovered) |
+| `apps.gui.server.agents.prompt_stats` | 6 | 6 | 3 | **−3 (−50%)** | second |
+| `apps.gui.server.agents.prompt_history` | 40 | 40 | 39 | −1 | side-effect |
+| `apps.gui.server.routes.settings` | 41 | 41 | 41 | 0 | not targeted |
+| `apps.gui.server.routes.agent_includes` | 38 | 38 | 38 | 0 | not targeted |
+| `apps.gui.server.routes.home` | 32 | 32 | 32 | 0 | not targeted |
+| `packages.core.settings` | 16 | 16 | 16 | 0 | not targeted |
+| `apps.gui.server.agents.detail` | 2 | 2 | 2 | 0 | already comprehensive |
+| **TOTAL** | **1,175** | **628** | **594** | **−581 (−49.4%)** | |
 
 ### Modules with no tests at all (339 mutants)
 
@@ -72,7 +72,15 @@ These four entry-point / wiring modules have no direct unit tests — every muta
 
 ### What the test improvements look like
 
-Seven test files: 6 strengthened + 1 new (`test_bridge_run_turn.py` for the regular chat flow). +144 tests total. All 462 GUI/settings tests pass locally in ~2s. Pattern across all six modules:
+**First pass** — seven test files: 6 strengthened + 1 new (`test_bridge_run_turn.py` for the regular chat flow). +144 tests, focused on the six largest survivor counts.
+
+**Second pass** — four small files strengthened (+46 tests):
+- `test_outcomes_route.py`: parametrized rejection for every short-circuit in `_guard_file_id`'s OR chain (empty / `/` / `..` / `\` / leading `.`)
+- `test_agents_route.py`: parametrized accept + reject for `_guard_agent_id`
+- `test_home_task_links.py`: `_salient_words` boundary at 4 chars + longest-first sort + digit handling, plus stronger assertions on `link_tasks_to_conversations` (input mutation, two-link cap, multi-task isolation)
+- `test_prompt_stats.py`: `_iso_mtime` edge cases (missing file / dir as path / UTC suffix), `approx_tokens` boundaries, `compute_stats` line-count formula edges, `token_estimate_method` literal lock-in
+
+All 508 in-scope tests pass locally in ~2s. Pattern across both passes:
 
 1. **Strict event-shape assertions** — every queue dict checked for exact `{type, id, agent, ...}` keys, not just substring matches
 2. **Helper-function tests** — `_now_hhmm`, `_find_deferred_handler`, `_mark_current_dirty`, `_diff_lines`, `_truncate`, `_safe_parse_json`, `_path_for_file_id`, `_metrics_from_dict`, `_msg_text`, `_in_date_range`, `_build_summary_dict` all directly exercised
