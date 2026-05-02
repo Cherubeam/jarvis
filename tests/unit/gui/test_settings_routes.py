@@ -818,9 +818,7 @@ def test_normalize_validation_errors_preserves_loc_as_list() -> None:
     from apps.gui.server.routes.settings import _normalize_validation_errors
 
     fake = MagicMock()
-    fake.errors.return_value = [
-        {"loc": ("routing", "enabled"), "msg": "bad", "type": "type_error.bool"}
-    ]
+    fake.errors.return_value = [{"loc": ("routing", "enabled"), "msg": "bad", "type": "type_error.bool"}]
     out = _normalize_validation_errors(fake)
     assert out[0]["loc"] == ["routing", "enabled"]
     assert isinstance(out[0]["loc"], list)
