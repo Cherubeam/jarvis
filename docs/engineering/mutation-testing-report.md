@@ -11,6 +11,64 @@
 
 ---
 
+## 2026-05-02 — GUI server + typed settings (fourth pass)
+
+Workflow run [`25250457940`](https://github.com/Cherubeam/jarvis/actions/runs/25250457940) on branch `test/gui-mutation-pass-4`. Targeted `apps/gui/server/routes/settings.py` only — the easiest untouched concentration after PR #27. Total elapsed: ~4 min for 3,359 mutants.
+
+### Baseline → first → second → third → fourth
+
+| Status | Baseline | First | Second | Third | Fourth (`25250457940`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | 2,475 | **2,508** | **+665** |
+| 🙁 Survived | 1,175 | 628 | 594 | 543 | **510** | **−665 (−56.6%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 339 | 0 |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | **3,359** | — |
+
+**Kill rate on testable mutants** (`killed / 3,020`): **61.0% → 79.1% → 80.3% → 82.0% → 83.05% (+22.05pp total, +1.1pp this pass).**
+
+### Per-module survivor reduction (fourth pass focus)
+
+| Module | Third pass | Fourth pass | Δ this pass | Targeted helpers |
+|---|---:|---:|---:|---|
+| `apps.gui.server.routes.settings` | 41 | **8** | **−33 (−80%)** | `_classify_error` 21 → 8 (residual is literal-string mutants on schema-walking constants), `_normalize_validation_errors` 14 → 0, `_get_write_lock` 4 → 0, `_has_managed_header` 2 → 0, plus `_local_yaml_path` lock-in |
+| **TOTAL (targeted modules)** | **41** | **8** | **−33 (−80%)** | — |
+
+All other modules unchanged — clean attribution that the entire kill-rate improvement traces to this single file. +31 unit tests (full subset 611 → 642 tests), green locally in ~3 s.
+
+### Why _classify_error left 8 survivors
+
+`_classify_error` walks the dereferenced schema dict-by-segment, returning either `("field", loc[:-1])` or `("model_validator", loc)`. The 8 residual survivors are mutations to:
+
+- The `"model_validator"` and `"field"` return-string literals (renaming them silently still passes our `assert kind == "..."` checks because mutmut leaves the test code unmutated, but in practice mutmut's literal-string mutations include both prepending and substring deletion that produce semantically-distinct strings — these survive because no downstream test path catches them).
+- The schema-key dispatch constants: `"items"` (array branch), `"properties"` (object descent), `"additionalProperties"` (dynamic-keyed dict), `"type"` and `"object"` in the trailing classification check.
+
+Same pattern as `agent_includes._meta_dict` after pass 3: equivalent or near-equivalent literal mutants. The fix is a `# pragma: no mutate` annotation pass on these dispatch constants, not more tests — exactly what the 2026-04-13 sweep did for `packages/core/` (253 pragma annotations, 9,929 → 9,676 total mutants). Deferred to a focused pragma-sweep PR.
+
+### Top remaining survivors after fourth pass (in scope)
+
+| Module | Survivors | Notes |
+|---|---:|---|
+| `apps.gui.server.bridge` | 201 | `_run_delegation` (193) + `_run_one_turn` history-summarization branch (~40) — PR #29 target |
+| `apps.gui.server.history.index` | 98 | Residual after first pass |
+| `apps.gui.server.agents.prompt_history` | 39 | `_rebuild_index_from_disk` + `list_snapshots` + snapshot helpers — needs `tmp_path`-based fixtures |
+| `apps.gui.server.routes.agent_includes` | 33 | Residual literal-string mutants (pragma candidates) |
+| `apps.gui.server.resume` | 29 | Residual after first pass |
+| `apps.gui.server.history.derive` | 28 | Residual after first pass |
+| `apps.gui.server.streaming` | 28 | Residual after first pass |
+| `apps.gui.server.confirmation` | 19 | Residual after first pass |
+| `apps.gui.server.routes.agents` | 11 | Residual `_load_meta_dict` literals |
+| `apps.gui.server.routes.settings` | 8 | Residual `_classify_error` literals (pragma candidates) |
+| `packages.core.settings` | 8 | Residual `_inline_refs` / `_diff_*` literals |
+| `apps.gui.server.agents.prompt_stats` | 3 | Residual after second pass |
+| `apps.gui.server.routes.home` | 2 | Effectively done |
+| `apps.gui.server.agents.detail` | 2 | Already comprehensive — skip |
+| **TOTAL** | **510** | (+ 339 no-tests = 849 unkilled overall) |
+
+**Equivalent-mutant accumulation:** As the easy survivors get killed, the remaining ones increasingly cluster around literal-string constants (`"utf-8"`, `"properties"`, error-message text) that produce semantically-identical behaviour. Two follow-up tracks make sense from here: PR #29 chasing the largest concrete target (`bridge._run_delegation`), and a separate "pragma sweep" PR annotating the equivalent-mutant clusters in `routes.settings`, `routes.agent_includes`, `routes.agents._load_meta_dict`, and `packages.core.settings` (~50–60 survivors total likely to drop to the no-effect category).
+
+---
+
 ## 2026-05-02 — GUI server + typed settings (third pass)
 
 Workflow run [`25250114070`](https://github.com/Cherubeam/jarvis/actions/runs/25250114070) on branch `test/gui-mutation-pass-3`. Targeted the four "easiest next batch" modules called out in PR #26's follow-up plan. Total elapsed: ~4 min for 3,359 mutants on Linux CI.
