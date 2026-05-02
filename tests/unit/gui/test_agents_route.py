@@ -191,3 +191,47 @@ def test_detail_empty_index_returns_empty_recent(tmp_path):
     assert j["recent_sessions"] == []
     assert j["last_used"] is None
     assert j["cost_14d_total"] == 0.0
+
+
+# ---- _guard_agent_id (path-traversal guard) --------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "a/b",
+        "../etc/passwd",
+        "..",
+        "a..b",  # contains ".." mid-string — also caught
+        "../",
+        "writer/../../escape",
+    ],
+)
+def test_guard_agent_id_rejects_unsafe_input(bad: str):
+    from fastapi import HTTPException
+
+    from apps.gui.server.routes.agents import _guard_agent_id
+
+    with pytest.raises(HTTPException) as exc:
+        _guard_agent_id(bad)
+    assert exc.value.status_code == 404
+    # Detail message includes the offending id verbatim — locks the f-string.
+    assert exc.value.detail == f"agent '{bad}' not found"
+
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "writer",
+        "content_reviewer",
+        "agent-with-dash",
+        "snake_case_name",
+        "",  # empty is allowed by this guard (only "/" and ".." rejected)
+        ".hidden",  # leading dot allowed (different from outcomes' guard)
+    ],
+)
+def test_guard_agent_id_accepts_safe_input(good: str):
+    """Returns None for any string that doesn't contain "/" or ".."."""
+    from apps.gui.server.routes.agents import _guard_agent_id
+
+    assert _guard_agent_id(good) is None
