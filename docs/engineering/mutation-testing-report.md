@@ -2,15 +2,102 @@
 
 > Audit of test suite quality across the JARVIS codebase.
 
-**Current**: 2026-04-13 (Linux CI, workflow run `24336325780`)
-**Previous baselines**: 2026-04-11 (Linux CI), 2026-04-03 (macOS, historical)
+**Current**: 2026-05-01 (Linux CI — GUI server + typed settings audit, workflow runs `25217994644` baseline / `25219263045` after improvements)
+**Previous**: 2026-04-13 (Linux CI, `packages/core/` audit, workflow run `24336325780`)
+**Older baselines**: 2026-04-11 (Linux CI), 2026-04-03 (macOS, historical)
 **Tool**: mutmut 3.5.0
 **Python**: 3.13.5
 **Environment**: GitHub Actions `ubuntu-latest` — see [`.github/workflows/mutation.yml`](../../.github/workflows/mutation.yml)
 
 ---
 
-## 2026-04-13 Linux CI (current)
+## 2026-05-01 — GUI server + typed settings (current scope)
+
+After GUI Phases 1–8 + the typed-settings refactor + conversation-lifecycle work shipped in 0.16.0–0.21.0, none of the new code in `apps/gui/server/` had been mutation-audited. Re-scoped `paths_to_mutate` in `pyproject.toml` to:
+
+```toml
+paths_to_mutate = ["apps/gui/server/", "packages/core/settings.py"]
+```
+
+The historical `packages/core/` numbers from 2026-04-13 below remain authoritative for that scope.
+
+### Baseline → after one pass of test improvements
+
+| Status | Baseline (run `25217994644`) | After (run `25219263045`) | Δ |
+|---|---:|---:|---:|
+| 🎉 Killed | 1,843 | **2,390** | +547 |
+| 🙁 Survived | 1,175 | **628** | **−547 (−46.6%)** |
+| 🫥 No tests | 339 | 339 | 0 |
+| ⏰ Timeout | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | — |
+
+**Kill rate on testable mutants**: `1843 / (3359 − 339) = 61.0%` baseline → `2390 / (3359 − 339) = 79.1%` after (+18.1pp from one round of targeted test work).
+
+### Per-module survivor reduction
+
+The work targeted the six modules with the most survivors. Modules untouched in this pass show 0 change, which validates the targeted approach.
+
+| Module | Baseline survivors | After | Δ | Reduction |
+|---|---:|---:|---:|---:|
+| `apps.gui.server.bridge` | 468 | 201 | −267 | **−57%** |
+| `apps.gui.server.history.index` | 207 | 98 | −109 | −53% |
+| `apps.gui.server.confirmation` | 97 | 18 | −79 | **−81%** |
+| `apps.gui.server.resume` | 82 | 29 | −53 | −65% |
+| `apps.gui.server.history.derive` | 50 | 28 | −22 | −44% |
+| `apps.gui.server.streaming` | 45 | 28 | −17 | −38% |
+| `apps.gui.server.routes.settings` | 41 | 41 | 0 | not targeted |
+| `apps.gui.server.agents.prompt_history` | 40 | 40 | 0 | not targeted |
+| `apps.gui.server.routes.agent_includes` | 38 | 38 | 0 | not targeted |
+| `apps.gui.server.routes.home` | 32 | 32 | 0 | not targeted |
+| `apps.gui.server.routes.agents` | 27 | 27 | 0 | not targeted |
+| `packages.core.settings` | 16 | 16 | 0 | not targeted |
+| `apps.gui.server.routes.outcomes` | 13 | 13 | 0 | not targeted |
+| `apps.gui.server.home.task_links` | 11 | 11 | 0 | not targeted |
+| `apps.gui.server.agents.prompt_stats` | 6 | 6 | 0 | not targeted |
+| `apps.gui.server.agents.detail` | 2 | 2 | 0 | not targeted |
+| **TOTAL** | **1,175** | **628** | **−547** | **−46.6%** |
+
+### Modules with no tests at all (339 mutants)
+
+These four entry-point / wiring modules have no direct unit tests — every mutant reports "no tests" rather than survived. Future passes can target them.
+
+| Module | Mutants | Notes |
+|---|---:|---|
+| `apps.gui.server.app` | 47 | FastAPI app factory — exercised only via integration |
+| `apps.gui.server.state` | 47 | `GuiSession` + `_DeferredConfirmationHandler` |
+| `apps.gui.server.session_factory_helpers` | 28 | `build_delegate_agent` glue |
+| `apps.gui.server.routes.chat_ws` | 21 | WS endpoint handler |
+| `apps.gui.server.bridge` (subset) | 193 | Helper paths the new tests don't reach yet |
+| `apps.gui.server.streaming` (subset) | 3 | `_put` overflow recovery branch |
+
+### What the test improvements look like
+
+Seven test files: 6 strengthened + 1 new (`test_bridge_run_turn.py` for the regular chat flow). +144 tests total. All 462 GUI/settings tests pass locally in ~2s. Pattern across all six modules:
+
+1. **Strict event-shape assertions** — every queue dict checked for exact `{type, id, agent, ...}` keys, not just substring matches
+2. **Helper-function tests** — `_now_hhmm`, `_find_deferred_handler`, `_mark_current_dirty`, `_diff_lines`, `_truncate`, `_safe_parse_json`, `_path_for_file_id`, `_metrics_from_dict`, `_msg_text`, `_in_date_range`, `_build_summary_dict` all directly exercised
+3. **Default-argument tests** — calls without optional kwargs to lock in defaults (`agent="JARVIS"`, `max_chars=240`, `max_items=4`, etc.)
+4. **Both branches of conditionals** — empty/whitespace inputs, missing optional dict keys, error paths
+5. **Boundary conditions** — exact-length truncation, empty strings, zero/negative inputs, exact threshold matches in date-range presets
+
+### CI workflow fix shipped
+
+The first attempt (`25217931788`) finished in 37s and reported "not checked" for every mutant. Root cause: `.github/workflows/mutation.yml` only installed `--extra test`, but `tests/unit/gui/*` imports `fastapi.TestClient` from the `web` extra. Without it, pytest collection fails and mutmut bails. Fixed by mirroring the test workflow's `--extra test --extra web` install line.
+
+### How to reproduce
+
+```bash
+# Ensure paths_to_mutate in pyproject.toml targets the modules you care about.
+gh workflow run mutation.yml --ref <branch>
+gh run watch
+gh run download --name mutmut-results-<run-id>
+```
+
+The artifact contains `mutmut-results.txt` (one mutant per line) + `mutmut-summary.txt` (final emoji counter) + `mutmut-run.log` (full runner output). Retained 90 days.
+
+---
+
+## 2026-04-13 Linux CI (`packages/core/` scope)
 
 After five phases of targeted test improvements (229 new tests across 15 branches) plus a pragma sweep (64 annotations):
 
