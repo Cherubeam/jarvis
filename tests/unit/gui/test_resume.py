@@ -110,19 +110,15 @@ class TestBuildReplayEvents:
         assert events[1]["stats"] == {"tokens": 12, "cost": 0.0001, "ttft": 100, "total": 500}
         assert set(events[1].keys()) == {"type", "id", "agent", "markdown", "stats"}
 
-    def test_assistant_default_agent_is_JARVIS(self):
+    def test_assistant_default_agent_is_jarvis(self):
         """Missing `agent` field on assistant message → "JARVIS" default."""
-        events = _build_replay_events(
-            [{"id": "m1", "role": "assistant", "content": "hello"}]
-        )
+        events = _build_replay_events([{"id": "m1", "role": "assistant", "content": "hello"}])
         assert len(events) == 1
         assert events[0]["agent"] == "JARVIS"
 
     def test_text_event_omits_stats_keys_when_usage_absent(self):
         """No usage / latency on the message → stats={} on the text event."""
-        events = _build_replay_events(
-            [{"id": "m1", "role": "assistant", "agent": "writer", "content": "hi"}]
-        )
+        events = _build_replay_events([{"id": "m1", "role": "assistant", "agent": "writer", "content": "hi"}])
         assert events[0]["stats"] == {}
 
     def test_tool_call_paired_with_following_tool_result(self):
@@ -282,9 +278,7 @@ class TestBuildReplayEvents:
 
     def test_tool_messages_alone_emit_no_visible_event(self):
         """Tool messages without a preceding assistant tool_call are dropped."""
-        events = _build_replay_events(
-            [{"id": "m1", "role": "tool", "tool_call_id": "x", "content": "orphan"}]
-        )
+        events = _build_replay_events([{"id": "m1", "role": "tool", "tool_call_id": "x", "content": "orphan"}])
         assert events == []
 
     def test_unknown_role_dropped_silently(self):

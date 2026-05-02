@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -235,10 +234,8 @@ async def test_run_turn_buffered_text_overrides_result_text(tmp_path):
         def last_usage(self):
             return {"tokens": 99, "cost": 0.5}
 
-    fake_buf = _Buf()
-    # Pre-set it so the bridge's web_stream is overwritten — the bridge always
-    # constructs a fresh WebStreamHandler though, so to assert this behavior we
-    # mock the constructor.
+    # The bridge always constructs a fresh WebStreamHandler internally, so to
+    # assert that buffered text wins we patch the constructor with a stub.
     from unittest.mock import patch
 
     real_buf_text = "buffered version"
