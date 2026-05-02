@@ -210,3 +210,68 @@ def test_review_rejected_when_disabled(tmp_path: Path, outcomes_dir: Path):
         json={"outcome": "happened", "quality": 3, "note": ""},
     )
     assert r.status_code == 403
+
+
+# ---- _guard_file_id (path-traversal guard) ---------------------------------
+#
+# Direct unit tests on the helper — exhaustively cover every short-circuit
+# in the OR chain so mutations to any single condition get caught.
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "",  # empty
+        "a/b",  # path separator
+        "../etc/passwd",  # traversal
+        "..",  # bare traversal
+        "a..b",  # contains "..", caught even mid-string
+        ".hidden",  # leading dot
+        ".",  # bare dot
+        "..\\",  # also catches ".."
+        "..\\evil",
+        "a\\b",  # backslash separator (Windows-style)
+        "C:\\path",
+    ],
+)
+def test_guard_file_id_rejects_unsafe_input(bad: str):
+    from fastapi import HTTPException
+
+    from apps.gui.server.routes.outcomes import _guard_file_id
+
+    with pytest.raises(HTTPException) as exc:
+        _guard_file_id(bad)
+    assert exc.value.status_code == 404
+    # Detail message includes the offending file_id verbatim — locked in for
+    # debugging clarity (and to kill the f-string format mutant).
+    assert exc.value.detail == f"outcome '{bad}' not found"
+
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "a",
+        "2026-04-19_10-00-00",
+        "abc-def_123",
+        "outcome.md",  # period in middle is fine
+        "x.y.z",  # multiple periods fine (no leading dot, no "..")
+    ],
+)
+def test_guard_file_id_accepts_valid_stems(good: str):
+    """Valid filename stems → returns None (no exception)."""
+    from apps.gui.server.routes.outcomes import _guard_file_id
+
+    assert _guard_file_id(good) is None
+
+
+def test_review_path_traversal_returns_404(tmp_path: Path, outcomes_dir: Path):
+    """End-to-end: the route applies the guard before touching the filesystem."""
+    _write_outcome(outcomes_dir, "a.md")
+    c = TestClient(_build_app(tmp_path))
+    # FastAPI normalizes some path syntax; use a value that survives routing.
+    r = c.post(
+        "/api/outcomes/..hidden/review",
+        json={"outcome": "happened", "quality": 3, "note": ""},
+    )
+    assert r.status_code == 404
+    assert "not found" in r.json()["detail"]
