@@ -150,3 +150,148 @@ def test_empty_index_returns_null_resume_and_seven_zero_days(tmp_path):
     assert j["recent"] == []
     assert j["cost_week"]["total"] == 0.0
     assert all(d["cost"] == 0.0 for d in j["cost_week"]["days"])
+
+
+# ---------------------------------------------------------------------------
+# Helper: _greeting (datetime -> str by hour bucket)
+
+
+@pytest.mark.parametrize(
+    ("hour", "expected"),
+    [
+        (0, "Good morning"),
+        (5, "Good morning"),
+        (11, "Good morning"),
+        (12, "Good afternoon"),
+        (15, "Good afternoon"),
+        (17, "Good afternoon"),
+        (18, "Good evening"),
+        (21, "Good evening"),
+        (23, "Good evening"),
+    ],
+)
+def test_greeting_hour_buckets(hour: int, expected: str) -> None:
+    """Pin the exact boundary at h<12, h<18, else."""
+    from datetime import datetime as dt
+
+    from apps.gui.server.routes.home import _greeting
+
+    assert _greeting(dt(2026, 4, 19, hour, 30, 0)) == expected
+
+
+# ---------------------------------------------------------------------------
+# Helper: _day_label (date -> "Monday, April 20")
+
+
+def test_day_label_strftime_format() -> None:
+    """Format must be %A, %B %-d — not isoformat."""
+    from datetime import date as d
+
+    from apps.gui.server.routes.home import _day_label
+
+    # 2026-04-20 was a Monday.
+    assert _day_label(d(2026, 4, 20)) == "Monday, April 20"
+
+
+def test_day_label_falls_back_to_isoformat_when_no_strftime() -> None:
+    """Fallback branch — exercise the `hasattr(d, 'strftime')` False arm."""
+
+    from apps.gui.server.routes.home import _day_label
+
+    class FakeDate:
+        def isoformat(self) -> str:
+            return "fake-iso"
+
+    assert _day_label(FakeDate()) == "fake-iso"  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# Helper: _task_to_dict (Task, list_key) -> wire dict
+
+
+@pytest.mark.parametrize(
+    ("list_key", "expected_priority"),
+    [
+        ("today", "high"),
+        ("upcoming", "medium"),
+        ("inbox", "low"),
+        ("anything_else", "medium"),  # else-branch falls through to medium
+    ],
+)
+def test_task_to_dict_priority_mapping(list_key: str, expected_priority: str) -> None:
+    from apps.gui.server.routes.home import _task_to_dict
+
+    task = Task(title="Write tests", project="Mutmut", when_date="2026-04-19")
+    out = _task_to_dict(task, list_key)
+    assert out == {
+        "title": "Write tests",
+        "project": "Mutmut",
+        "when_date": "2026-04-19",
+        "priority": expected_priority,
+        "list": list_key,
+    }
+
+
+def test_task_to_dict_null_coalesces_empty_project_and_date() -> None:
+    """Empty/falsy project & when_date must become None (not ''), per `or None`."""
+    from apps.gui.server.routes.home import _task_to_dict
+
+    task = Task(title="bare", project="", when_date="")
+    out = _task_to_dict(task, "today")
+    assert out["project"] is None
+    assert out["when_date"] is None
+    assert out["title"] == "bare"
+    assert out["priority"] == "high"
+
+
+# ---------------------------------------------------------------------------
+# Helper: _flatten_tasks (by_list dict -> ordered list, capped at 6)
+
+
+def test_flatten_tasks_orders_today_upcoming_inbox() -> None:
+    from apps.gui.server.routes.home import _flatten_tasks
+
+    by_list = {
+        "inbox": [Task(title="i1", project=None, when_date=None)],
+        "upcoming": [Task(title="u1", project=None, when_date=None)],
+        "today": [Task(title="t1", project=None, when_date=None)],
+    }
+    flat = _flatten_tasks(by_list)
+    assert [t["title"] for t in flat] == ["t1", "u1", "i1"]
+    assert [t["list"] for t in flat] == ["today", "upcoming", "inbox"]
+
+
+def test_flatten_tasks_caps_at_six() -> None:
+    """_TASKS_CAP = 6 — early-return must fire on the seventh task."""
+    from apps.gui.server.routes.home import _flatten_tasks
+
+    by_list = {
+        "today": [Task(title=f"t{i}", project=None, when_date=None) for i in range(10)],
+        "upcoming": [Task(title="u-extra", project=None, when_date=None)],
+        "inbox": [],
+    }
+    flat = _flatten_tasks(by_list)
+    assert len(flat) == 6
+    assert [t["title"] for t in flat] == ["t0", "t1", "t2", "t3", "t4", "t5"]
+
+
+def test_flatten_tasks_handles_missing_keys_and_none_values() -> None:
+    """`.get(key, []) or []` must tolerate both missing keys and explicit None."""
+    from apps.gui.server.routes.home import _flatten_tasks
+
+    assert _flatten_tasks({}) == []
+    assert _flatten_tasks({"today": None, "upcoming": None, "inbox": None}) == []
+
+
+def test_flatten_tasks_cap_split_across_buckets() -> None:
+    """Cap must trigger mid-bucket — 4 today + 3 upcoming = stop after 6."""
+    from apps.gui.server.routes.home import _flatten_tasks
+
+    by_list = {
+        "today": [Task(title=f"t{i}", project=None, when_date=None) for i in range(4)],
+        "upcoming": [Task(title=f"u{i}", project=None, when_date=None) for i in range(3)],
+        "inbox": [Task(title="i-never", project=None, when_date=None)],
+    }
+    flat = _flatten_tasks(by_list)
+    assert [t["title"] for t in flat] == ["t0", "t1", "t2", "t3", "u0", "u1"]
+    assert all(t["title"] != "i-never" for t in flat)
