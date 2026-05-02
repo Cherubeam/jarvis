@@ -205,7 +205,7 @@ def test_missing_summary_falls_back_to_prompt():
     assert pending["summary"] == "custom-prompt"
 
 
-def test_default_agent_is_JARVIS():
+def test_default_agent_is_jarvis():
     """Constructor default must remain "JARVIS" — design contract."""
     q: Queue = Queue(maxsize=10)
     h = WebConfirmationHandler(q, turn_id="t1")  # no agent= kwarg
@@ -316,14 +316,7 @@ def test_present_diff_overwrites_buffered_diff():
 def test_diff_lines_fallback_parses_unified_diff_text():
     """Diffs without a structured `.lines` attr fall back to text parsing."""
     diff = SimpleNamespace(
-        diff_text=(
-            "--- a/notes/x.md\n"
-            "+++ b/notes/x.md\n"
-            "@@ -1,2 +1,3 @@\n"
-            " context line\n"
-            "-old line\n"
-            "+new line\n"
-        ),
+        diff_text=("--- a/notes/x.md\n+++ b/notes/x.md\n@@ -1,2 +1,3 @@\n context line\n-old line\n+new line\n"),
         path="notes/x.md",
     )
     out = _diff_lines(diff)
