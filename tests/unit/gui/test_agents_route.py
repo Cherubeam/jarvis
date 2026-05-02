@@ -235,3 +235,206 @@ def test_guard_agent_id_accepts_safe_input(good: str):
     from apps.gui.server.routes.agents import _guard_agent_id
 
     assert _guard_agent_id(good) is None
+
+
+# ---- _load_meta_dict (resilient YAML re-parse) -----------------------------
+
+
+def test_load_meta_dict_parses_valid_yaml(tmp_path):
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text(
+        "name: writer\ntemperature: 0.5\nmax_tokens: 4096\nprompt_includes:\n  voice_profile: voice-profile\n",
+        encoding="utf-8",
+    )
+    out = _load_meta_dict(p)
+    assert out == {
+        "name": "writer",
+        "temperature": 0.5,
+        "max_tokens": 4096,
+        "prompt_includes": {"voice_profile": "voice-profile"},
+    }
+
+
+def test_load_meta_dict_missing_file_returns_empty(tmp_path):
+    """Missing file → swallowed exception → empty dict so callers can `.get()`."""
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    assert _load_meta_dict(tmp_path / "nope.yaml") == {}
+
+
+def test_load_meta_dict_corrupt_yaml_returns_empty(tmp_path):
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("not: valid: yaml: at: all:", encoding="utf-8")
+    assert _load_meta_dict(p) == {}
+
+
+def test_load_meta_dict_empty_file_returns_empty(tmp_path):
+    """yaml.safe_load(\"\") returns None — must coerce to {} via `or {}`."""
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("", encoding="utf-8")
+    assert _load_meta_dict(p) == {}
+
+
+def test_load_meta_dict_top_level_list_returns_list(tmp_path):
+    """Documents the `or {}` only fires for None — a YAML list survives.
+
+    This is intentional: `.get()` on the result will fail loudly upstream.
+    Locking the behaviour here means a future "harden" mutation that
+    silently coerces non-dict YAML to {} would be killed.
+    """
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("- one\n- two\n", encoding="utf-8")
+    assert _load_meta_dict(p) == ["one", "two"]
+
+
+# ---- _get_write_lock (per-agent asyncio.Lock cache) ------------------------
+
+
+def test_get_write_lock_creates_lock_on_first_call():
+    import asyncio as _asyncio
+
+    from apps.gui.server.routes.agents import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+    lock = _asyncio.run(_get_write_lock(app, "writer"))
+    assert isinstance(lock, _asyncio.Lock)
+    assert app.state.prompt_write_locks == {"writer": lock}
+
+
+def test_get_write_lock_returns_same_lock_for_same_agent():
+    """Cache hit: a second call must return the exact same Lock instance."""
+    import asyncio as _asyncio
+
+    from apps.gui.server.routes.agents import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+
+    async def _two_calls():
+        a = await _get_write_lock(app, "writer")
+        b = await _get_write_lock(app, "writer")
+        return a, b
+
+    a, b = _asyncio.run(_two_calls())
+    assert a is b
+    assert app.state.prompt_write_locks == {"writer": a}
+
+
+def test_get_write_lock_distinct_per_agent():
+    """Different agent_ids must get distinct Lock objects."""
+    import asyncio as _asyncio
+
+    from apps.gui.server.routes.agents import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+
+    async def _two_agents():
+        return await _get_write_lock(app, "writer"), await _get_write_lock(app, "researcher")
+
+    w, r = _asyncio.run(_two_agents())
+    assert w is not r
+    assert set(app.state.prompt_write_locks.keys()) == {"writer", "researcher"}
+
+
+def test_get_write_lock_reuses_preexisting_state_dict():
+    """If state.prompt_write_locks is already a non-empty dict, that exact
+    object must be reused (no replacement)."""
+    import asyncio as _asyncio
+
+    from apps.gui.server.routes.agents import _get_write_lock
+
+    preexisting: dict = {"writer": _asyncio.Lock()}
+    app = SimpleNamespace(state=SimpleNamespace(prompt_write_locks=preexisting))
+    lock = _asyncio.run(_get_write_lock(app, "writer"))
+    assert lock is preexisting["writer"]
+    assert app.state.prompt_write_locks is preexisting
+
+
+def test_get_write_lock_serialises_concurrent_holders():
+    """Two coroutines awaiting the same lock must execute serially, not interleave."""
+    import asyncio as _asyncio
+
+    from apps.gui.server.routes.agents import _get_write_lock
+
+    app = SimpleNamespace(state=SimpleNamespace())
+    log: list[str] = []
+
+    async def _hold(label: str, hold_for: float):
+        lock = await _get_write_lock(app, "writer")
+        async with lock:
+            log.append(f"{label}-enter")
+            await _asyncio.sleep(hold_for)
+            log.append(f"{label}-exit")
+
+    async def _race():
+        await _asyncio.gather(_hold("a", 0.05), _hold("b", 0.0))
+
+    _asyncio.run(_race())
+    # No interleaving: each holder's enter+exit are adjacent in the log.
+    assert log in (
+        ["a-enter", "a-exit", "b-enter", "b-exit"],
+        ["b-enter", "b-exit", "a-enter", "a-exit"],
+    )
+
+
+# ---- _history_root + path helpers -----------------------------------------
+
+
+def test_history_root_joins_jarvis_dir_with_settings_path(tmp_path):
+    from apps.gui.server.routes.agents import _history_root
+
+    settings = SimpleNamespace(paths=SimpleNamespace(prompt_history_dir="data/prompt-history"))
+    components = SimpleNamespace(jarvis_dir=tmp_path, settings=settings)
+    session = SimpleNamespace(components=components)
+    assert _history_root(session) == tmp_path / "data/prompt-history"
+
+
+def test_meta_path_returns_none_for_unknown_agent():
+    from apps.gui.server.routes.agents import _meta_path
+
+    session = SimpleNamespace(components=SimpleNamespace(agent_registry={}))
+    assert _meta_path("nope", session) is None
+
+
+def test_agent_dir_returns_none_when_meta_path_none():
+    from apps.gui.server.routes.agents import _agent_dir
+
+    session = SimpleNamespace(components=SimpleNamespace(agent_registry={}))
+    assert _agent_dir("nope", session) is None
+
+
+def test_system_prompt_path_returns_none_when_agent_dir_none():
+    from apps.gui.server.routes.agents import _system_prompt_path
+
+    session = SimpleNamespace(components=SimpleNamespace(agent_registry={}))
+    assert _system_prompt_path("nope", session) is None
+
+
+def test_system_prompt_path_appends_prompts_system_md(tmp_path):
+    """Returns ``<agent_dir>/prompts/system.md`` — locks the literal segments."""
+    from apps.gui.server.routes.agents import _system_prompt_path
+    from packages.agents.registry import AgentMeta
+
+    meta_path = tmp_path / "packages" / "agents" / "writer" / "meta.yaml"
+    meta_path.parent.mkdir(parents=True)
+    meta_path.write_text("name: writer\n", encoding="utf-8")
+    registry = {
+        "writer": AgentMeta(
+            name="writer",
+            description="",
+            command="/write",
+            meta_path=meta_path,
+            tool_groups=(),
+            skills=(),
+            vault_writing=None,
+        )
+    }
+    session = SimpleNamespace(components=SimpleNamespace(agent_registry=registry))
+    assert _system_prompt_path("writer", session) == meta_path.parent / "prompts" / "system.md"
