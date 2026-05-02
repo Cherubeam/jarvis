@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+- **GUI mutation-test sweep — kill rate on `apps/gui/server/` + typed settings: 61.0% → 79.1% (+18.1pp).** First mutation audit of the GUI backend since it shipped (Phases 1–8). Baseline run on 2026-05-01 (workflow `25217994644`) found 1,843 killed / 1,175 survived / 339 no-tests across 3,359 mutants. Targeted six modules with the most survivors and added strict event-shape assertions, missing-branch coverage, and helper-function tests. Rerun (workflow `25219263045`) reduced survivors to 628 — half gone in one pass:
+  - `bridge.py`: 468 → 201 survivors (−57%); new `test_bridge_run_turn.py` covers the regular chat flow (`run_turn` had 208 unguarded mutants), plus stricter `_run_daily_summary_turn` event sequencing.
+  - `history/index.py`: 207 → 98 (−53%); added sort=messages branch, `_path_for` filesystem fallback, `_in_date_range` preset coverage, `_build_summary_dict` date-fallback chain, dominant-agent reordering, facets() ordering.
+  - `confirmation.py`: 97 → 18 (−81%); added `_diff_lines` text-fallback parser, resolve(approval_id mismatch), discard idempotency, custom-agent flow.
+  - `resume.py`: 82 → 29 (−65%); added `_path_for_file_id` security guard, `_metrics_from_dict` coercion, `_safe_parse_json` branches, strict event shapes.
+  - `history/derive.py`: 50 → 28 (−44%); added boundary tests on `duration_str`, preview defaults, block-content type filtering.
+  - `streaming.py`: 45 → 28 (−38%); added `_safe_parse_json` + `_truncate` boundaries, ToolResult orphan handling, `last_usage` None default.
+  - Total: +144 tests across 7 files (6 strengthened + 1 new). All 462 GUI/settings tests pass locally in ~2s. See [mutation-testing-report.md](engineering/mutation-testing-report.md) for the full breakdown. CI fix: `mutation.yml` now installs `--extra web` (without it, GUI test collection fails and every mutant reports "not checked").
+
 ### Fixed
 - **JARVIS GUI — Home `ResumeCard` now resumes in-place instead of yanking to History.** Closes the inconsistency caught right after v0.21.0 shipped: the chat-sidebar and History detail-pane both fire the WS `resume` protocol, but the Home view's `Continue where you left off` card was still calling `onOpenHistory(resume.id)` and bouncing the user into a different view. `HomeView` now accepts an `onResume(fileId)` prop, wired through App.tsx to the existing `onResumeFromHistory` handler that drives the same `pendingResumeId` plumbing. Empty-state behavior (no prior session) still falls back to starting a fresh chat. Pure frontend wiring change, no backend touch, no new tests. Live-verified in browser: clicking the resume card switches to the chat view with the prior session's totals (`12 msgs · 42.127 tokens`) populated, no console errors.
 
