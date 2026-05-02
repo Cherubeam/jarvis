@@ -11,6 +11,66 @@
 
 ---
 
+## 2026-05-02 — GUI server + typed settings (third pass)
+
+Workflow run [`25250114070`](https://github.com/Cherubeam/jarvis/actions/runs/25250114070) on branch `test/gui-mutation-pass-3`. Targeted the four "easiest next batch" modules called out in PR #26's follow-up plan. Total elapsed: ~4 min for 3,359 mutants on Linux CI.
+
+### Baseline → first → second → third
+
+| Status | Baseline | First (`25219263045`) | Second (`25249193229`) | Third (`25250114070`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | **2,475** | **+632** |
+| 🙁 Survived | 1,175 | 628 | 594 | **543** | **−632 (−53.8%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 0 |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | — |
+
+**Kill rate on testable mutants** (`killed / (total − no_tests)` against 3,020 testable): **61.0% → 79.1% → 80.3% → 82.0% (+21.0pp total, +1.7pp this pass).**
+
+### Per-module survivor reduction (third pass focus)
+
+| Module | Second pass | Third pass | Δ this pass | Targeted helpers |
+|---|---:|---:|---:|---|
+| `apps.gui.server.routes.home` | 32 | **2** | **−30 (−94%)** | `_greeting` / `_day_label` / `_task_to_dict` / `_flatten_tasks` (cap-at-6, mid-bucket cutoff, missing/None tolerance) |
+| `packages.core.settings` | 16 | **8** | **−8 (−50%)** | `_inline_refs` (cycle, missing def, non-defs ref, scalars, list/dict recursion), `_diff_dict`, `_diff_paths`, `dereferenced_schema` |
+| `apps.gui.server.routes.agents` | 19 | **11** | **−8 (−42%)** | `_load_meta_dict`, `_get_write_lock` (creation / cache-hit / distinct-per-agent / preexisting-state / async serialisation), `_history_root`, path helpers |
+| `apps.gui.server.routes.agent_includes` | 38 | **33** | **−5 (−13%)** | `_guard_placeholder` (parametrized like `_guard_agent_id`), `_meta_dict`, `_repo_rel`, `_affects_agents` (early-return + sort + self-exclude), `_editable_for`, `_history_key`, `_shared_dir_for` |
+| **TOTAL (targeted modules)** | **105** | **54** | **−51 (−49%)** | — |
+
+Untargeted modules unchanged. +91 unit tests across 4 files; the in-scope subset (`tests/unit/gui/`, `test_settings.py`, `test_settings_diff.py`) goes 508 → 611 tests, full subset green in ~3 s.
+
+### Why agent_includes only dropped 13%
+
+The remaining 33 survivors cluster in three helpers:
+
+- `_meta_dict` (11) — every survivor is inside the `try: yaml.safe_load(p.read_text(encoding="utf-8")) or {} except: ...` block. Mutmut mutates the `encoding="utf-8"` literal, the `or {}` fallback constant, and the `exc_info=True` keyword — all of which produce identical observable output for the inputs we test (parsed dict / empty dict on failure). These are equivalent or near-equivalent mutants; killing them needs either `# pragma: no mutate` annotations or assertions on logger output.
+- `_lookup` (14) — error-message string mutations and the `JARVIS` literal short-circuit. Could be killed with stricter `assert exc.value.detail == "..."` assertions on every 404 path, but the existing integration tests assert status codes only.
+- `_row_for` (6) — `IncludeRow` constructor argument-order mutations + `_repo_rel` invocation conditions. Hard to reach without rewriting tests around full `IncludeRow.model_dump()` equality.
+
+`routes.home` showed what's possible when the helpers are pure formatters — 94% reduction from a single test file edit. The agent_includes residue is a different category of survivor and isn't worth chasing without the `# pragma: no mutate` discussion that the 2026-04-13 sweep already had.
+
+### Top remaining survivors after third pass (in scope)
+
+| Module | Survivors | Notes |
+|---|---:|---|
+| `apps.gui.server.bridge` | 201 | `_run_delegation` (193) + `_run_one_turn` history-summarization branch (~40 of 27 listed) — needs delegation-test fixture extension to `test_bridge_run_turn.py`. Largest single remaining target. |
+| `apps.gui.server.history.index` | 98 | Residual `_path_for` filesystem fallback edges + `list()` corner-case filters |
+| `apps.gui.server.routes.agent_includes` | 33 | Residual literal-string and equivalent mutants — see above |
+| `apps.gui.server.resume` | 29 | Residual after first pass |
+| `apps.gui.server.history.derive` | 28 | Residual after first pass |
+| `apps.gui.server.streaming` | 28 | Residual after first pass |
+| `apps.gui.server.confirmation` | 19 | Residual after first pass (was 18, +1 ascribed to a new mutant from updated cache or re-classification) |
+| `apps.gui.server.agents.prompt_history` | 39 | `_rebuild_index_from_disk` (15), `list_snapshots` (12), snapshot helpers — needs `tmp_path`-based fixtures |
+| `apps.gui.server.routes.settings` | 41 | `_classify_error` (21) + `_normalize_validation_errors` (14) — pure helpers, easy follow-up target |
+| `apps.gui.server.routes.agents` | 11 | Residual `_load_meta_dict` literals after this pass |
+| `apps.gui.server.routes.home` | 2 | Effectively done |
+| `packages.core.settings` | 8 | Residual `_inline_refs` / `_diff_*` literals |
+| `apps.gui.server.agents.prompt_stats` | 3 | Residual after second pass |
+| `apps.gui.server.agents.detail` | 2 | Already comprehensive — skip |
+| **TOTAL** | **543** | (+ 339 no-tests = 882 unkilled overall) |
+
+---
+
 ## 2026-05-01 — GUI server + typed settings (current scope)
 
 After GUI Phases 1–8 + the typed-settings refactor + conversation-lifecycle work shipped in 0.16.0–0.21.0, none of the new code in `apps/gui/server/` had been mutation-audited. Re-scoped `paths_to_mutate` in `pyproject.toml` to:
