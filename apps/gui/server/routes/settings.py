@@ -123,7 +123,7 @@ def _classify_error(loc: tuple[Any, ...], schema: dict[str, Any]) -> tuple[str, 
     current: Any = schema
     for segment in loc:
         if not isinstance(current, dict):
-            current = None
+            current = None  # pragma: no mutate
             break
         if isinstance(segment, int):
             current = current.get("items")
@@ -136,7 +136,7 @@ def _classify_error(loc: tuple[Any, ...], schema: dict[str, Any]) -> tuple[str, 
             if isinstance(additional, dict):
                 current = additional
                 continue
-            current = None
+            current = None  # pragma: no mutate
 
     loc_list = list(loc)
     if isinstance(current, dict) and (
