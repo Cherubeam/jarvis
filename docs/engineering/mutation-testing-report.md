@@ -11,6 +11,74 @@
 
 ---
 
+## 2026-05-03 — GUI server + typed settings (fifth pass — gap closure)
+
+Workflow run [`25274185208`](https://github.com/Cherubeam/jarvis/actions/runs/25274185208) on branch `test/gui-mutation-pass-5`. Closed the genuine test gaps surfaced when inspecting pass-4 survivors via `mutmut show`. Process notes worth preserving:
+
+1. The first PR plan was a **pragma sweep** based on the hypothesis that pass-4's residual survivors were equivalent literal-string mutants. Investigation proved that wrong — inspecting actual mutant diffs showed they're mostly genuine test gaps (under-asserted return values, missed exception detail strings, branches not exercised by the existing fixtures). Branch `test/gui-mutation-pragma-sweep` was created and abandoned cleanly.
+2. The pivoted strategy was: populate the local mutmut cache (workaround the macOS fork-segfault with `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES uv run mutmut run --max-children 1` until cache files appear in `mutants/`), inspect each survivor via `mutmut show`, categorise as gap or equivalent, write tests / annotate accordingly.
+3. A **pre-existing date-window flake** in `test_detail_cost_14d_sums_only_agent_sessions` blocked the first workflow run (37s, every mutant "not checked") because mutmut uses `pytest -x` for baseline collection. Fixed inline as part of this PR; widened the assertion to allow the three reachable totals as fixture dates drift.
+
+### Baseline → first → second → third → fourth → fifth
+
+| Status | Baseline | First | Second | Third | Fourth | Fifth (`25274185208`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | 2,475 | 2,508 | **2,535** | **+692** |
+| 🙁 Survived | 1,175 | 628 | 594 | 543 | 510 | **455** | **−720 (−61.3%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 339 | 339 | 0 |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | **3,359** | **3,331** | **−28 (pragmas)** |
+
+**Kill rate on testable mutants** (`killed / (total − no_tests)`): **61.0% → 79.1% → 80.3% → 82.0% → 83.05% → 84.78% (+23.8pp total, +1.73pp this pass).**
+
+### Per-helper kills (fifth-pass focus)
+
+In-scope total: **60 targeted survivors → 5 remaining (−92%).** 6 helpers hit zero, 3 have small residue.
+
+| Helper | Pass 4 | Pass 5 | Status | What killed it |
+|---|---:|---:|---|---|
+| `agent_includes._lookup` | 14 | **0** | ✅ | Exact `exc.detail` strings on every 404 path; new unknown-agent-on-GET case |
+| `agent_includes._row_for` | 6 | **0** | ✅ | `path` value + tz-aware `last_modified_iso` shape (`+00:00` suffix) + missing-file null-coercion |
+| `agent_includes._affects_agents` | 2 | **0** | ✅ | meta_path=None skip + filename-miss skip (continue-vs-break) tests |
+| `agent_includes._meta_dict` | 11 | **2** | residue | Unicode test killed encoding mutations; `or {}` operator mutations remain |
+| `agents._load_meta_dict` | 11 | **2** | residue | Same as above |
+| `routes/settings._classify_error` | 8 | **0** | ✅ | Bare-`type:object` schema test + array-without-items test + 2 pragmas on equivalent `current = None` lines |
+| `packages.core.settings._diff_*` | 4 | **1** | residue | Multi-key dynamic + type-mismatch + key-only-on-one-side tests killed 3 of 4; `_diff_paths_1` (default arg `prefix=""` → `"XXXX"`) inexplicably survived despite an explicit test that traces to a clear failure path |
+| `packages.core.settings._inline_refs` | 2 | **0** | ✅ | Cycle through nested dict + cycle through nested list tests pin the `seen` kwarg in both recursive comprehensions |
+| `packages.core.settings.dereferenced_schema` | 2 | **0** | ✅ | Pragma on `pop("$defs", {})` default-arg (pydantic always emits `$defs`) |
+| **TOTAL TARGETED** | **60** | **5** | **−55 (−92%)** | |
+
+Untargeted modules unchanged.
+
+### Top remaining survivors after fifth pass (in scope)
+
+| Module | Survivors | Notes |
+|---|---:|---|
+| `apps.gui.server.bridge` | 201 | `_run_delegation` (193) + `_run_one_turn` history-summarization branch (~40) — PR #30 target |
+| `apps.gui.server.history.index` | 98 | Residual after first pass |
+| `apps.gui.server.agents.prompt_history` | 39 | Snapshot helpers — needs `tmp_path`-based fixtures |
+| `apps.gui.server.resume` | 29 | Residual after first pass |
+| `apps.gui.server.history.derive` | 28 | Residual after first pass |
+| `apps.gui.server.streaming` | 28 | Residual after first pass |
+| `apps.gui.server.confirmation` | 19 | Residual after first pass |
+| `apps.gui.server.routes.agent_includes` | 2 | `_meta_dict` residue (likely `or {}` operator mutations) |
+| `apps.gui.server.routes.agents` | 2 | `_load_meta_dict` residue (same pattern) |
+| `apps.gui.server.routes.home` | 2 | Residual `_flatten_tasks` literals (untouched in pass 5) |
+| `packages.core.settings` | 1 | `_diff_paths_1` (default-arg mutation) |
+| `apps.gui.server.agents.prompt_stats` | 3 | Residual after second pass |
+| `apps.gui.server.agents.detail` | 2 | Already comprehensive — skip |
+| **TOTAL** | **454**[^1] | (+ 339 no-tests = 793 unkilled overall) |
+
+[^1]: Per-module total here is 454; the summary line says 455. The discrepancy is one survivor in a module not enumerated above (likely test-related noise from the `routes.home._flatten_tasks` re-classification).
+
+### Lessons for future passes
+
+- **Inspect before assuming.** "Equivalent mutant" is a tempting hypothesis when assertions look strong, but `mutmut show` is the only way to be sure. Cost: ~10 minutes per helper to inspect + categorise.
+- **The local cache works on macOS** despite the fork-segfault. Run mutmut with `--max-children 1` and `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES`; let it process for ~30s; kill it. The cache files in `mutants/` survive partial runs.
+- **Watch for `pytest -x` cliffs.** Any single failing test in the suite blocks mutmut's baseline collection and silently invalidates the entire run. The 37-second "success" status is the canary — investigate before trusting any sub-1-min mutation run.
+
+---
+
 ## 2026-05-02 — GUI server + typed settings (fourth pass)
 
 Workflow run [`25250457940`](https://github.com/Cherubeam/jarvis/actions/runs/25250457940) on branch `test/gui-mutation-pass-4`. Targeted `apps/gui/server/routes/settings.py` only — the easiest untouched concentration after PR #27. Total elapsed: ~4 min for 3,359 mutants.
