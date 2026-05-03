@@ -175,11 +175,15 @@ def test_detail_cost_14d_sums_only_agent_sessions(client):
     """cost_14d should count the writer's 0.02 + 0.005 conversations but not
     the researcher's 0.01."""
     j = client.get("/api/agents/writer").json()
-    # Today may shift the window; just check the total is close to 0.025 if the
-    # test-fixture dates fall inside the 14-day window relative to real today.
-    # If outside the window the total is 0 — both are correct depending on date.
-    # What we CAN assert: cost_14d_total never includes researcher's 0.01.
-    assert j["cost_14d_total"] in (0.0, pytest.approx(0.025))
+    # Fixture dates are 2026-04-19 (0.005) and 2026-04-20 (0.02); both fall in
+    # the 14-day window when run before 2026-05-03, but as today drifts they
+    # exit the window in age order: the older 0.005 falls out first, then 0.02.
+    # Valid totals are therefore 0.025 (both in), 0.02 (only newer in), or
+    # 0.0 (both out). The invariant we actually care about: researcher's 0.01
+    # is NEVER included.
+    total = j["cost_14d_total"]
+    assert total in (0.0, pytest.approx(0.02), pytest.approx(0.025))
+    assert total != pytest.approx(0.01)
 
 
 def test_detail_empty_index_returns_empty_recent(tmp_path):
