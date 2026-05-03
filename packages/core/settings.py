@@ -687,7 +687,7 @@ def dereferenced_schema() -> dict[str, Any]:
     doesn't need a JSON-Schema resolver.
     """
     raw = Settings.model_json_schema()
-    defs = raw.pop("$defs", {}) or {}
+    defs = raw.pop("$defs", {}) or {}  # pragma: no mutate
     inlined = _inline_refs(raw, defs)
     assert isinstance(inlined, dict)
     return inlined

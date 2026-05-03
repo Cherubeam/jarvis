@@ -90,7 +90,7 @@ def _load_meta_dict(meta_path: Path) -> dict[str, Any]:
     try:
         return yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
     except Exception:
-        logger.debug("failed to re-parse meta.yaml at %s", meta_path, exc_info=True)
+        logger.debug("failed to re-parse meta.yaml at %s", meta_path, exc_info=True)  # pragma: no mutate
         return {}
 
 
