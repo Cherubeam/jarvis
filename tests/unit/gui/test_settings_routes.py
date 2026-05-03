@@ -773,6 +773,34 @@ def test_classify_error_object_with_only_properties_is_model_validator() -> None
     assert kind == "model_validator"
 
 
+def test_classify_error_type_object_alone_is_model_validator() -> None:
+    """A node with ONLY `{"type": "object"}` (no properties, no additionalProperties)
+    must classify as model_validator. Pins `current.get("type") == "object"` against
+    mutations to either string literal — defends mutants on `"type"` key and `"object"`
+    value where the secondary `properties in current` clauses can't pick up the slack."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    schema = {"properties": {"empty_obj": {"type": "object"}}}
+    kind, card_loc = _classify_error(("empty_obj",), schema)
+    assert kind == "model_validator"
+    assert card_loc == ["empty_obj"]
+
+
+def test_classify_error_int_segment_returns_none_when_array_lacks_items() -> None:
+    """When an array node has no `items` key, `current.get("items")` returns None,
+    which on the NEXT iteration triggers the inner `not isinstance(current, dict)`
+    arm. This pins `current = None; break` against `current = None; return`
+    mutations (which would crash callers expecting a tuple)."""
+    from apps.gui.server.routes.settings import _classify_error
+
+    # Array node without `items` — first iter descends via properties to {"type": "array"};
+    # second iter (int) does .get("items") → None; third iter sees not-dict → break.
+    schema = {"properties": {"arr": {"type": "array"}}}
+    kind, card_loc = _classify_error(("arr", 0, "x"), schema)
+    assert kind == "field"
+    assert card_loc == ["arr", 0]
+
+
 # ---------------------------------------------------------------------------
 # Helper: _normalize_validation_errors (wraps _classify_error per pydantic err)
 

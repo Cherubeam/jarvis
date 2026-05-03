@@ -137,7 +137,7 @@ def writer_missing(tmp_path: Path) -> TestClient:
 # GET /includes (list)
 
 
-def test_list_includes_returns_one_row_per_declared(writer_local: TestClient) -> None:
+def test_list_includes_returns_one_row_per_declared(writer_local: TestClient, tmp_path: Path) -> None:
     r = writer_local.get("/api/agents/writer/includes")
     assert r.status_code == 200
     rows = r.json()
@@ -149,6 +149,24 @@ def test_list_includes_returns_one_row_per_declared(writer_local: TestClient) ->
     assert row["editable"] is True
     assert row["bytes"] == len("terse and precise")
     assert row["affects_agents"] == []
+    # Pin path + last_modified_iso shape — defends against _row_for mutating
+    # `path=None` or `last_modified_iso=None` regardless of file presence.
+    assert row["path"] == "packages/agents/writer/prompts/voice-profile.md"
+    assert isinstance(row["last_modified_iso"], str)
+    # tz=UTC produces a "+00:00" suffix; tz=None produces a naive isoformat with no offset.
+    assert row["last_modified_iso"].endswith("+00:00")
+
+
+def test_list_includes_missing_file_has_null_path_and_mtime(writer_missing: TestClient) -> None:
+    """When the include resolves to MISSING, _row_for must emit None for path / bytes /
+    last_modified_iso — defends the initial-default branch (`bytes = None`,
+    `last_modified = None`) against `last_modified = ""` mutations."""
+    rows = writer_missing.get("/api/agents/writer/includes").json()
+    assert len(rows) == 1
+    assert rows[0]["status"] == "missing"
+    assert rows[0]["path"] is None
+    assert rows[0]["bytes"] is None
+    assert rows[0]["last_modified_iso"] is None
 
 
 def test_list_includes_jarvis_returns_empty(writer_local: TestClient) -> None:
@@ -208,16 +226,34 @@ def test_get_include_returns_content(writer_local: TestClient) -> None:
 def test_get_include_unknown_placeholder_404(writer_local: TestClient) -> None:
     r = writer_local.get("/api/agents/writer/includes/not_a_real_placeholder")
     assert r.status_code == 404
+    assert r.json()["detail"] == "placeholder 'not_a_real_placeholder' not declared"
 
 
 def test_get_include_invalid_placeholder_404(writer_local: TestClient) -> None:
     r = writer_local.get("/api/agents/writer/includes/has-a-dash")
     assert r.status_code == 404
+    assert r.json()["detail"] == "placeholder 'has-a-dash' not declared"
 
 
 def test_get_include_jarvis_404(writer_local: TestClient) -> None:
     r = writer_local.get("/api/agents/JARVIS/includes/voice_profile")
     assert r.status_code == 404
+    assert r.json()["detail"] == "JARVIS has no prompt_includes"
+
+
+def test_get_include_unknown_agent_404(writer_local: TestClient) -> None:
+    """Unknown agent on GET include must hit the registry-miss branch in _lookup."""
+    r = writer_local.get("/api/agents/no_such_agent/includes/voice_profile")
+    assert r.status_code == 404
+    assert r.json()["detail"] == "agent 'no_such_agent' not found"
+
+
+def test_get_include_jarvis_case_sensitive(writer_local: TestClient) -> None:
+    """The "JARVIS" check is case-sensitive: lowercase "jarvis" must NOT short-circuit
+    to the JARVIS-specific message; it falls through to the unknown-agent branch."""
+    r = writer_local.get("/api/agents/jarvis/includes/voice_profile")
+    assert r.status_code == 404
+    assert r.json()["detail"] == "agent 'jarvis' not found"
 
 
 def test_get_include_missing_returns_empty_content(writer_missing: TestClient) -> None:
@@ -529,6 +565,19 @@ def test_meta_dict_empty_file_returns_empty(tmp_path: Path) -> None:
     assert _meta_dict(p) == {}
 
 
+def test_meta_dict_decodes_unicode_via_utf8_encoding(tmp_path: Path) -> None:
+    """Non-ASCII content forces the `encoding="utf-8"` choice — any other encoding
+    (latin-1, ascii, None=platform-default on non-utf8 systems) would either raise
+    UnicodeDecodeError or yield mojibake, both of which break this assertion."""
+    from apps.gui.server.routes.agent_includes import _meta_dict
+
+    p = tmp_path / "meta.yaml"
+    # Snowman + cyrillic + chinese — encoded as utf-8 they're 3+ bytes each.
+    p.write_text("description: ☃ café 北京\n", encoding="utf-8")
+    out = _meta_dict(p)
+    assert out == {"description": "☃ café 北京"}
+
+
 # ---------------------------------------------------------------------------
 # Helper: _repo_rel (best-effort relative path display)
 
@@ -599,6 +648,46 @@ def test_affects_agents_results_are_sorted(tmp_path: Path) -> None:
     client = TestClient(_build_app(tmp_path, {"zeta": zeta, "writer": writer, "alpha": alpha}))
     rows = client.get("/api/agents/writer/includes").json()
     assert rows[0]["affects_agents"] == ["alpha", "zeta"]
+
+
+def test_affects_agents_skips_meta_path_none_continues_iteration(tmp_path: Path) -> None:
+    """If a registry entry has `meta_path is None`, _affects_agents must `continue`
+    (skip it) and keep iterating — not `break` out of the whole loop. Pins the
+    continue-vs-break choice against any mutation."""
+    from packages.agents.registry import AgentMeta
+
+    _make_shared(tmp_path, voice_profile="shared")
+    writer = _make_meta(tmp_path, "writer", prompt_includes={"voice_profile": "voice_profile"})
+    # Sorted iteration goes "broken" (meta_path=None) then "valid" — if `continue`
+    # becomes `break`, "valid" is never visited and affects_agents is empty.
+    broken = AgentMeta(
+        name="broken",
+        description="",
+        command="",
+        meta_path=None,
+        tool_groups=(),
+        skills=(),
+        vault_writing=None,
+    )
+    valid = _make_meta(tmp_path, "valid", prompt_includes={"voice_profile": "voice_profile"})
+    client = TestClient(_build_app(tmp_path, {"writer": writer, "broken": broken, "valid": valid}))
+    rows = client.get("/api/agents/writer/includes").json()
+    assert rows[0]["affects_agents"] == ["valid"]
+
+
+def test_affects_agents_skips_filename_miss_continues_iteration(tmp_path: Path) -> None:
+    """If another agent's prompt_includes don't reference our filename, _affects_agents
+    must `continue` (skip it) and keep iterating — not `break`. Pins the
+    continue-vs-break choice for the second filter inside the loop."""
+    _make_shared(tmp_path, voice_profile="shared", other_thing="other shared")
+    writer = _make_meta(tmp_path, "writer", prompt_includes={"voice_profile": "voice_profile"})
+    # Sorted iteration: "other_only" (uses other_thing, not voice_profile) then "uses_vp".
+    # If `continue` becomes `break`, "uses_vp" is never visited.
+    other_only = _make_meta(tmp_path, "other_only", prompt_includes={"x": "other_thing"})
+    uses_vp = _make_meta(tmp_path, "uses_vp", prompt_includes={"voice_profile": "voice_profile"})
+    client = TestClient(_build_app(tmp_path, {"writer": writer, "other_only": other_only, "uses_vp": uses_vp}))
+    rows = client.get("/api/agents/writer/includes").json()
+    assert rows[0]["affects_agents"] == ["uses_vp"]
 
 
 # ---------------------------------------------------------------------------

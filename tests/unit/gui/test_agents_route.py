@@ -281,6 +281,18 @@ def test_load_meta_dict_empty_file_returns_empty(tmp_path):
     assert _load_meta_dict(p) == {}
 
 
+def test_load_meta_dict_decodes_unicode_via_utf8_encoding(tmp_path):
+    """Non-ASCII content forces the `encoding="utf-8"` choice — any other encoding
+    (latin-1, ascii, None=platform-default) would either raise UnicodeDecodeError or
+    yield mojibake."""
+    from apps.gui.server.routes.agents import _load_meta_dict
+
+    p = tmp_path / "meta.yaml"
+    p.write_text("description: ☃ café 北京\n", encoding="utf-8")
+    out = _load_meta_dict(p)
+    assert out == {"description": "☃ café 北京"}
+
+
 def test_load_meta_dict_top_level_list_returns_list(tmp_path):
     """Documents the `or {}` only fires for None — a YAML list survives.
 
