@@ -457,3 +457,430 @@ async def test_run_turn_unbinds_deferred_handler_on_error(tmp_path):
     await run_turn(session, "hi", Queue(maxsize=64))
     deferred.bind.assert_called_once()
     deferred.unbind.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# run_turn — strict event-shape assertions
+#
+# Catch dict-key mutations (e.g. "id" → "XXidXX" / "ID") that pass type-only
+# tests because `e["message"]` still works when only `e["id"]` is mutated.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_turn_event_dict_keys_are_exact(tmp_path):
+    """Every emitted event has the canonical key set — no typos, no extras."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "hello", q)
+    events = _drain(q)
+
+    by_type = {e["type"]: e for e in events}
+    assert set(by_type["user"].keys()) == {"type", "id", "text", "time"}
+    assert set(by_type["thinking_start"].keys()) == {"type", "agent"}
+    assert set(by_type["thinking_end"].keys()) == {"type", "agent"}
+    assert set(by_type["text"].keys()) == {"type", "id", "agent", "markdown", "stats"}
+    assert set(by_type["totals"].keys()) == {"type", "messages", "tokens", "cost"}
+    assert set(by_type["turn_finished"].keys()) == {"type", "id"}
+
+
+@pytest.mark.asyncio
+async def test_run_turn_error_event_dict_keys_are_exact(tmp_path):
+    """Error path emits {type, id, message} — pin the exact key set."""
+    session = _make_session(tmp_path)
+    session.components.active_agent.run.side_effect = RuntimeError("boom")
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "hi", q)
+    events = _drain(q)
+
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+    assert err["message"] == "boom"
+
+
+# ---------------------------------------------------------------------------
+# _run_one_turn — summarization branch (~15 mutants)
+#
+# Existing tests exercise only summarization.enabled=False. With it True, the
+# fast-model lookup and summarize_history call get exercised, killing mutations
+# on the resolve_model("fast", ...) call site.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_one_turn_summarization_calls_resolve_model_with_fast_preset(tmp_path, monkeypatch):
+    """When summarization.enabled, resolve_model is called with EXACTLY ("fast", models)
+    and summarize_history is invoked with the resolved model_id, threshold, keep_recent."""
+    from apps.gui.server import bridge
+
+    session = _make_session(tmp_path)
+    session.components.settings.summarization.enabled = True
+    session.components.settings.summarization.token_threshold = 12_345
+    session.components.settings.summarization.keep_recent = 7
+    session.components.logger.get_messages_for_api.return_value = [{"role": "user", "content": "earlier"}]
+
+    resolve_calls: list[tuple] = []
+
+    def _fake_resolve(preset, models):
+        resolve_calls.append((preset, models))
+        return SimpleNamespace(model_id="resolved/fast/model")
+
+    summarize_calls: list[dict] = []
+
+    def _fake_summarize(history, client, *, model_id, token_threshold, keep_recent):
+        summarize_calls.append(
+            {
+                "model_id": model_id,
+                "token_threshold": token_threshold,
+                "keep_recent": keep_recent,
+                "history_len": len(history),
+            }
+        )
+        return history  # passthrough
+
+    monkeypatch.setattr(bridge, "resolve_model", _fake_resolve)
+    monkeypatch.setattr(bridge, "summarize_history", _fake_summarize)
+
+    await run_turn(session, "hi", Queue(maxsize=64))
+
+    # resolve_model called exactly once with the "fast" preset literal.
+    assert len(resolve_calls) == 1
+    preset, models = resolve_calls[0]
+    assert preset == "fast"
+    assert models is session.components.settings.models
+    # summarize_history called with the threshold + keep_recent verbatim.
+    assert len(summarize_calls) == 1
+    assert summarize_calls[0] == {
+        "model_id": "resolved/fast/model",
+        "token_threshold": 12_345,
+        "keep_recent": 7,
+        "history_len": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_run_one_turn_no_summarization_skips_resolve_model(tmp_path, monkeypatch):
+    """summarization.enabled=False (default in fixture) — neither resolve_model
+    nor summarize_history is called."""
+    from apps.gui.server import bridge
+
+    session = _make_session(tmp_path)
+    # Defaults already disabled, but pin it explicitly.
+    session.components.settings.summarization.enabled = False
+
+    monkeypatch.setattr(bridge, "resolve_model", MagicMock(side_effect=AssertionError("must not run")))
+    monkeypatch.setattr(bridge, "summarize_history", MagicMock(side_effect=AssertionError("must not run")))
+
+    await run_turn(session, "hi", Queue(maxsize=64))
+
+
+@pytest.mark.asyncio
+async def test_run_one_turn_records_history_tokens_with_floor_div_4(tmp_path):
+    """The history-byte budget is recorded as `bytes // 4` (rough token estimate).
+    Pins the literal `// 4` against `// 5`, `/ 4`, `None` mutations."""
+    session = _make_session(tmp_path)
+    # Two messages with known byte-length content — predictable history_bytes.
+    session.components.logger.get_messages_for_api.return_value = [
+        {"role": "user", "content": "x" * 40},  # 40 bytes utf-8
+        {"role": "assistant", "content": "y" * 40},  # 40 bytes utf-8
+    ]
+    # Replace _FakeMetrics.record_history_tokens with a recording mock.
+    record_calls: list = []
+    session.components.logger.metrics.record_history_tokens = lambda n: record_calls.append(n)
+
+    await run_turn(session, "hi", Queue(maxsize=64))
+
+    # 80 bytes // 4 = 20 tokens. Mutation to // 5 → 16, / 4 → 20.0 (float), None crashes.
+    assert record_calls == [20]
+    # And the value must be int (not float — defends `// 4` → `/ 4` mutation).
+    assert isinstance(record_calls[0], int) and not isinstance(record_calls[0], bool)
+
+
+# ---------------------------------------------------------------------------
+# _run_delegation — covers 193 untested mutants
+#
+# The delegation flow is reached when active_agent.run() returns a StreamResult
+# whose .delegate_to matches a registered agent id. Bridge then calls
+# build_delegate_agent (mocked here) and runs the result through asyncio.to_thread.
+# ---------------------------------------------------------------------------
+
+
+def _make_session_with_delegation(
+    tmp_path: Path,
+    *,
+    agent_name: str = "JARVIS",
+    delegate_id: str = "writer",
+    delegate_task: str = "draft a section",
+    delegate_context: str | None = None,
+    delegate_text: str = "drafted output",
+    delegate_tool_messages: list | None = None,
+) -> tuple[SimpleNamespace, MagicMock]:
+    """Build a session whose active_agent.run() returns a delegating StreamResult,
+    plus the delegate agent mock (whose .run will be called inside _run_delegation).
+    Returns (session, delegate_agent_mock) so tests can assert against the delegate."""
+    session = _make_session(tmp_path, agent_name=agent_name)
+    session.components.agent_registry = {delegate_id: MagicMock(name=f"AgentMeta:{delegate_id}")}
+    # Make the orchestrator's StreamResult delegate.
+    session.components.active_agent.run.return_value = StreamResult(
+        text="orchestrator decision",
+        usage=TokenUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
+        cost_usd=0.001,
+        metrics=SimpleNamespace(ttft_ms=100, total_latency_ms=500),
+        tool_messages=[],
+        delegate_to=delegate_id,
+        delegate_task=delegate_task,
+        delegate_context=delegate_context,
+    )
+
+    delegate_agent = MagicMock(name=f"DelegateAgent:{delegate_id}")
+    delegate_agent.run.return_value = StreamResult(
+        text=delegate_text,
+        usage=TokenUsage(prompt_tokens=20, completion_tokens=15, total_tokens=35),
+        cost_usd=0.005,
+        metrics=SimpleNamespace(ttft_ms=200, total_latency_ms=900),
+        tool_messages=delegate_tool_messages or [],
+    )
+    return session, delegate_agent
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_emits_delegation_then_thinking_then_text(tmp_path, monkeypatch):
+    """Full happy-path event sequence: original turn finishes, then delegation
+    overlays {delegation, thinking_start, thinking_end, text} for the delegate."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(tmp_path)
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "go write something", q)
+    events = _drain(q)
+    kinds = [e["type"] for e in events]
+
+    # Original turn's events come first, then the delegate's, then totals/finished.
+    assert kinds == [
+        "user",
+        "thinking_start",
+        "thinking_end",
+        "text",  # orchestrator's text
+        "delegation",
+        "thinking_start",  # delegate's
+        "thinking_end",
+        "text",  # delegate's text
+        "totals",
+        "turn_finished",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_event_carries_from_to_reason(tmp_path, monkeypatch):
+    """delegation event has exact key set + values pulled from the StreamResult."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path,
+        agent_name="JARVIS",
+        delegate_id="writer",
+        delegate_task="draft a Substack note",
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "delegate plz", q)
+    events = _drain(q)
+    deleg = next(e for e in events if e["type"] == "delegation")
+
+    assert set(deleg.keys()) == {"type", "id", "from", "to", "reason"}
+    assert deleg["from"] == "JARVIS"
+    assert deleg["to"] == "writer"
+    assert deleg["reason"] == "draft a Substack note"
+    # delegation id format: "d-XXXXXXXX" (8 hex chars).
+    assert deleg["id"].startswith("d-")
+    assert len(deleg["id"]) == 10
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_text_event_uses_delegate_id_as_agent(tmp_path, monkeypatch):
+    """The post-delegation text event reports the DELEGATE's id as `agent`,
+    not the orchestrator's. Pins the agent attribution."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path, agent_name="JARVIS", delegate_id="writer", delegate_text="draft body"
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "go", q)
+    events = _drain(q)
+
+    # Two text events: orchestrator's first ("orchestrator decision"), delegate's second.
+    text_events = [e for e in events if e["type"] == "text"]
+    assert len(text_events) == 2
+    assert text_events[0]["agent"] == "JARVIS"
+    assert text_events[0]["markdown"] == "orchestrator decision"
+    assert text_events[1]["agent"] == "writer"
+    assert text_events[1]["markdown"] == "draft body"
+    # Delegate's text event id format: "r-XXXXXXXX" (8 hex chars).
+    assert text_events[1]["id"].startswith("r-")
+    assert len(text_events[1]["id"]) == 10
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_appends_context_to_initial_prompt(tmp_path, monkeypatch):
+    """When result.delegate_context is set, the delegate's run() is called with
+    initial = f"{task}\\n\\nContext:\\n{context}"."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path,
+        delegate_task="continue the draft",
+        delegate_context="prior turn produced X",
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    await run_turn(session, "go", Queue(maxsize=64))
+
+    # First positional arg to delegate_agent.run is the assembled prompt.
+    args, kwargs = delegate_agent.run.call_args
+    assert args[0] == "continue the draft\n\nContext:\nprior turn produced X"
+    assert kwargs["stream_handler"] is session.components.stream_handler
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_no_context_uses_bare_task(tmp_path, monkeypatch):
+    """delegate_context=None → initial = the task verbatim, no Context: suffix."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path,
+        delegate_task="just do it",
+        delegate_context=None,
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    await run_turn(session, "go", Queue(maxsize=64))
+
+    args, _ = delegate_agent.run.call_args
+    assert args[0] == "just do it"
+    assert "Context:" not in args[0]
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_persists_assistant_message_with_delegate_agent_name(tmp_path, monkeypatch):
+    """Logger.add_message for the delegate's response uses agent_name=delegate_id,
+    not the orchestrator's name. Pins the per-agent attribution in History."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path, agent_name="JARVIS", delegate_id="writer", delegate_text="written"
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    await run_turn(session, "go", Queue(maxsize=64))
+
+    add_msg_calls = session.components.logger.add_message.call_args_list
+    # Two "assistant" messages: orchestrator's then delegate's.
+    assistant_calls = [c for c in add_msg_calls if c.args and c.args[0] == "assistant"]
+    assert len(assistant_calls) == 2
+    # Last assistant call is the delegate's.
+    delegate_call = assistant_calls[-1]
+    assert delegate_call.args[1] == "written"
+    assert delegate_call.kwargs["agent_name"] == "writer"
+    assert delegate_call.kwargs["total_tokens"] == 35
+    assert delegate_call.kwargs["cost_usd"] == 0.005
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_persists_tool_messages_with_delegate_agent_name(tmp_path, monkeypatch):
+    """When the delegate emits tool_messages, logger.add_tool_messages is called
+    with agent_name=delegate_id (not the orchestrator's)."""
+    from apps.gui.server import bridge
+
+    tool_messages = [{"role": "tool", "content": "result"}]
+    session, delegate_agent = _make_session_with_delegation(
+        tmp_path,
+        delegate_id="researcher",
+        delegate_tool_messages=tool_messages,
+    )
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    await run_turn(session, "go", Queue(maxsize=64))
+
+    # add_tool_messages called twice — once for orchestrator (empty list, NOT called),
+    # once for the delegate.
+    add_tool_calls = session.components.logger.add_tool_messages.call_args_list
+    delegate_call = next((c for c in add_tool_calls if c.kwargs.get("agent_name") == "researcher"), None)
+    assert delegate_call is not None
+    assert delegate_call.args[0] == tool_messages
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_skips_when_delegate_to_not_in_registry(tmp_path, monkeypatch):
+    """If delegate_to is set but the id isn't registered, the bridge silently
+    skips delegation — no delegation event, no build_delegate_agent call."""
+    from apps.gui.server import bridge
+
+    session = _make_session(tmp_path)
+    session.components.active_agent.run.return_value = StreamResult(
+        text="x",
+        usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        cost_usd=0.0,
+        metrics=SimpleNamespace(ttft_ms=10, total_latency_ms=20),
+        tool_messages=[],
+        delegate_to="ghost_agent",  # not in (empty) registry
+    )
+    build_mock = MagicMock()
+    monkeypatch.setattr(bridge, "build_delegate_agent", build_mock)
+
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "go", q)
+    events = _drain(q)
+
+    assert all(e["type"] != "delegation" for e in events)
+    build_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_failure_emits_error_event_and_continues(tmp_path, monkeypatch):
+    """If the delegate's run() raises, the bridge emits an error event with the
+    delegate id in the message and continues to totals/turn_finished."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(tmp_path, delegate_id="writer")
+    delegate_agent.run.side_effect = RuntimeError("delegate boom")
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "go", q)
+    events = _drain(q)
+    kinds = [e["type"] for e in events]
+
+    # delegation event still emitted, then thinking_start, then error (not thinking_end/text).
+    assert "delegation" in kinds
+    err = next(e for e in events if e["type"] == "error")
+    assert err["message"] == "Delegate writer failed: delegate boom"
+    # Original turn's totals + turn_finished still happen because _run_delegation
+    # returns early but run_turn's outer flow continues.
+    assert kinds[-2:] == ["totals", "turn_finished"]
+
+
+@pytest.mark.asyncio
+async def test_run_delegation_text_event_dict_keys_are_exact(tmp_path, monkeypatch):
+    """Delegate's text event has the canonical key set — pins {type,id,agent,markdown,stats}."""
+    from apps.gui.server import bridge
+
+    session, delegate_agent = _make_session_with_delegation(tmp_path, delegate_id="writer")
+    monkeypatch.setattr(bridge, "build_delegate_agent", MagicMock(return_value=delegate_agent))
+
+    await run_turn(session, "go", Queue(maxsize=64))
+
+    # Re-drain via the queue would lose ordering; rebuild events list manually.
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "go", q)
+    events = _drain(q)
+    delegate_text = [e for e in events if e["type"] == "text" and e.get("agent") == "writer"]
+    assert len(delegate_text) == 1
+    assert set(delegate_text[0].keys()) == {"type", "id", "agent", "markdown", "stats"}
+    # Stats has the canonical sub-keys (defaulted from delegate_result.metrics).
+    assert set(delegate_text[0]["stats"].keys()) == {"ttft", "total", "tokens", "cost"}
