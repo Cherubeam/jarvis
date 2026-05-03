@@ -367,3 +367,79 @@ def test_dereferenced_schema_returns_dict_with_properties() -> None:
     assert "properties" in schema
     # Sanity: at least one of the well-known top-level sections is present.
     assert "models" in schema["properties"]
+
+
+# ---------------------------------------------------------------------------
+# Pass-5 follow-ups: kill mutants surfaced by the pass-4 sweep
+
+
+def test_diff_dict_multiple_keys_only_in_current_all_kept() -> None:
+    """Two+ dynamic keys (mcp.servers["a"], mcp.servers["b"]) — the loop must
+    `continue` after each one; mutating to `break` would only emit the first."""
+    from packages.core.settings import _diff_dict
+
+    out = _diff_dict({"a": 1, "b": 2, "c": 3}, {"a": 1})
+    assert out == {"b": 2, "c": 3}
+
+
+def test_diff_dict_dict_in_current_with_scalar_default_falls_to_value_compare() -> None:
+    """When ONLY current is a dict and default is a scalar (or vice versa), the
+    `isinstance(value, dict) and isinstance(default_value, dict)` guard must be `and`,
+    not `or` — `or` would call `_diff_dict(scalar, dict)` and crash inside."""
+    from packages.core.settings import _diff_dict
+
+    # current['x'] is dict, defaults['x'] is scalar → the dict-recursion branch is skipped,
+    # value-compare runs (`{"k": 1} != "scalar"` → True), key kept wholesale.
+    out = _diff_dict({"x": {"k": 1}}, {"x": "scalar"})
+    assert out == {"x": {"k": 1}}
+    # Reverse direction: current scalar, default dict → same.
+    out = _diff_dict({"x": "scalar"}, {"x": {"k": 1}})
+    assert out == {"x": "scalar"}
+
+
+def test_diff_paths_default_prefix_is_empty_string() -> None:
+    """The `prefix=""` default must stay empty — a mutation to e.g. `prefix="X"`
+    would prepend the literal to every dotted leaf path."""
+    from packages.core.settings import _diff_paths
+
+    # Two-level recursion: top-level call has prefix="" by default. If default is
+    # mutated to a non-empty string, output would be "X.a" instead of "a".
+    assert _diff_paths({"a": 1}, {"a": 2}) == ["a"]
+    assert _diff_paths({"a": {"b": 1}}, {"a": {"b": 2}}) == ["a.b"]
+
+
+def test_diff_paths_multiple_keys_only_on_one_side_all_emitted() -> None:
+    """Two+ keys present on only one side — the loop must `continue` so each one
+    becomes a leaf path. Mutating to `break` would only emit the first."""
+    from packages.core.settings import _diff_paths
+
+    out = sorted(_diff_paths({"a": 1, "b": 2, "c": 3}, {"a": 1}))
+    assert out == ["b", "c"]
+
+
+def test_inline_refs_passes_seen_through_dict_recursion() -> None:
+    """When recursing into a dict's children, `seen` must be threaded through — a
+    mutation that drops the kwarg (using the empty default) would let cycles slip
+    past the guard on subsequent dict descents."""
+    from packages.core.settings import _inline_refs
+
+    # Self-referential def named "Recursive". Cycle is wrapped in a dict so the
+    # ref expansion happens inside a child of an outer dict. With seen lost in
+    # the dict-comprehension recursion, the recursion would NOT terminate.
+    defs = {"Recursive": {"properties": {"self": {"$ref": "#/$defs/Recursive"}}}}
+    node = {"top": {"$ref": "#/$defs/Recursive"}}
+    out = _inline_refs(node, defs)
+    # Cycle short-circuits — the inner $ref is preserved as a {"$ref": ...} dict.
+    assert out == {"top": {"properties": {"self": {"$ref": "#/$defs/Recursive"}}}}
+
+
+def test_inline_refs_passes_seen_through_list_recursion() -> None:
+    """When recursing into a list's items, `seen` must be threaded through — same
+    cycle-protection guarantee as the dict branch."""
+    from packages.core.settings import _inline_refs
+
+    # Self-referential def, with the cycle reachable through a list-valued key.
+    defs = {"Recursive": {"items": [{"$ref": "#/$defs/Recursive"}]}}
+    node = {"top": {"$ref": "#/$defs/Recursive"}}
+    out = _inline_refs(node, defs)
+    assert out == {"top": {"items": [{"$ref": "#/$defs/Recursive"}]}}
