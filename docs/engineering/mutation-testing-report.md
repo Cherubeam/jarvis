@@ -11,6 +11,66 @@
 
 ---
 
+## 2026-05-03 — GUI server + typed settings (sixth pass — bridge delegation)
+
+Workflow run [`25274539727`](https://github.com/Cherubeam/jarvis/actions/runs/25274539727) on branch `test/gui-mutation-bridge-delegation`. Largest concrete remaining target: `bridge.py` (394 of 510 survivors after pass 5). Originally planned as `_run_delegation` only; bundled in the connected `_run_one_turn` summarization branch and a strict-key sweep on `run_turn` events because they share fixture infrastructure and the marginal cost is small. Daily-summary helper (`_run_daily_summary_turn`, 110 survivors) split off for the next PR.
+
+### Baseline → first → ... → sixth
+
+| Status | Baseline | 1st | 2nd | 3rd | 4th | 5th | 6th (`25274539727`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | 2,475 | 2,508 | 2,535 | **2,681** | **+838** |
+| 🙁 Survived | 1,175 | 628 | 594 | 543 | 510 | 455 | **502** | **−673 (−57%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 339 | 339 | **146** | **−193 (−57%)** |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | **3,359** | **3,331** | **3,331** | −28 (pragmas) |
+| **Unkilled total** (survived + no-tests) | **1,514** | **967** | **933** | **882** | **849** | **794** | **648** | **−866 (−57%)** |
+
+### Kill-rate caveat
+
+Pass 6 is the first one to move the needle on **"no tests"** mutants. That changes the math: testable-kill-rate slipped 84.78% → 84.18% because the denominator (total − no_tests) grew from 2,992 to 3,185 — 193 mutants from `_run_delegation` moved into evaluation, of which 113 were killed and 80 survived. The cleaner headline is the **−18% drop in total unkilled** (survived + no_tests), since "no tests" is strictly worse than "survived" — at least surviving mutants exercise some test path.
+
+### Per-helper kills (sixth-pass focus, all in bridge.py)
+
+| Helper | Pass 5 | Pass 6 | Δ this pass | What killed it |
+|---|---|---|---:|---|
+| `bridge._run_delegation` | 193 (no tests) | 80 (survived) | **−113 killed (58%)** | 10 new tests covering full event sequence, delegation event keys + `from/to/reason`, delegate-id as `agent` field, `delegate_context` prompt-suffix, logger persistence with `agent_name=delegate_id`, registry-miss silent skip, delegate-exception error path, strict text-event keys |
+| `bridge._run_one_turn` | 27 survived | 7 survived | **−20 (−74%)** | 3 tests on the summarization branch — `resolve_model("fast", models)` exact args, `summarize_history` exact kwargs, `record_history_tokens(bytes // 4)` int (pins `// 4` vs `/ 4` vs `// 5`) |
+| `bridge.run_turn` | 57 survived | 44 survived | **−13 (−23%)** | 2 strict-key tests pin every event's canonical key set (catches `"id"` → `"XXidXX"` / `"ID"` mutations that pass current type-only assertions) |
+| `bridge._run_daily_summary_turn` | 110 | 110 | 0 | not targeted (next PR) |
+| `bridge._mark_current_dirty` | 4 | 4 | 0 | residue |
+| `bridge._daily_summary_turn_sync` | 2 | 2 | 0 | residue |
+| `bridge._find_deferred_handler` | 1 | 1 | 0 | residue |
+| **TOTAL bridge** | **394** | **248** | **−146 (−37%)** | |
+
+Other modules unchanged.
+
+### Top remaining unkilled mutants (in scope, after pass 6)
+
+| Module | Survived + no-tests | Notes |
+|---|---:|---|
+| `apps.gui.server.bridge._run_daily_summary_turn` | 110 | Next PR — same strict-key sweep approach in `test_bridge_daily_summary.py` |
+| `apps.gui.server.history.index` | 98 | Residual after first pass |
+| `apps.gui.server.bridge._run_delegation` | 80 | Residual — assertion strengthening on stats/cost/tokens fields |
+| `apps.gui.server.app` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.state` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.bridge.run_turn` | 44 | Residual after strict-key sweep |
+| `apps.gui.server.agents.prompt_history` | 39 | Snapshot helpers — needs `tmp_path`-fixtures |
+| `apps.gui.server.streaming` | 28+3 | Residual |
+| `apps.gui.server.session_factory_helpers` | 28 (no tests) | Entry-point module |
+| `apps.gui.server.resume` | 29 | Residual |
+| `apps.gui.server.history.derive` | 28 | Residual |
+| `apps.gui.server.routes.chat_ws` | 21 (no tests) | WS endpoint |
+| `apps.gui.server.confirmation` | 19+1 | Residual |
+| `apps.gui.server.bridge._run_one_turn` | 7 | Residual — non-summarization branch |
+| `apps.gui.server.routes.agent_includes` | 2 | `_meta_dict` residue |
+| `apps.gui.server.routes.agents` | 2 | `_load_meta_dict` residue |
+| `apps.gui.server.routes.home` | 2 | `_flatten_tasks` literals |
+| `packages.core.settings` | 1 | `_diff_paths` default-arg |
+| **TOTAL** | **648** | |
+
+---
+
 ## 2026-05-03 — GUI server + typed settings (fifth pass — gap closure)
 
 Workflow run [`25274185208`](https://github.com/Cherubeam/jarvis/actions/runs/25274185208) on branch `test/gui-mutation-pass-5`. Closed the genuine test gaps surfaced when inspecting pass-4 survivors via `mutmut show`. Process notes worth preserving:
