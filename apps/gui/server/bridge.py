@@ -72,7 +72,7 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     try:
         result = await asyncio.to_thread(_run_one_turn, session, user_text)
     except Exception as e:
-        logger.exception("Turn failed")
+        logger.exception("Turn failed")  # pragma: no mutate
         queue.put({"type": "error", "id": turn_id, "message": str(e)})
         queue.put({"type": "turn_finished", "id": turn_id})
         confirmation.discard()
@@ -131,7 +131,7 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     try:
         components.logger.save()
     except Exception:
-        logger.exception("logger.save() failed")
+        logger.exception("logger.save() failed")  # pragma: no mutate
 
     # Invalidate the current session's summary in the History index so the
     # sidebar + /api/conversations reflect this turn on the next fetch.
@@ -216,7 +216,7 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
             stream_handler=c.stream_handler,
         )
     except Exception as e:
-        logger.exception("Delegate run failed")
+        logger.exception("Delegate run failed")  # pragma: no mutate
         queue.put({"type": "error", "id": turn_id, "message": f"Delegate {delegate_id} failed: {e}"})
         return
 
@@ -270,7 +270,7 @@ def _mark_current_dirty(session: GuiSession) -> None:
         file_id = session.components.logger.session_start.strftime("%Y-%m-%d_%H-%M-%S")
         index.mark_dirty(file_id)
     except Exception:
-        logger.debug("mark_dirty failed", exc_info=True)
+        logger.debug("mark_dirty failed", exc_info=True)  # pragma: no mutate
 
 
 def _find_deferred_handler(session: GuiSession) -> Any:
@@ -357,7 +357,7 @@ async def _run_daily_summary_turn(session: GuiSession, user_text: str, queue: Qu
     try:
         result = await asyncio.to_thread(_daily_summary_turn_sync, session, request.messages)
     except Exception as e:
-        logger.exception("daily-summary stream failed")
+        logger.exception("daily-summary stream failed")  # pragma: no mutate
         queue.put({"type": "error", "id": turn_id, "message": str(e)})
         queue.put({"type": "turn_finished", "id": turn_id})
         confirmation.discard()
@@ -414,7 +414,7 @@ async def _run_daily_summary_turn(session: GuiSession, user_text: str, queue: Qu
             target_date,
         )
     except Exception as e:
-        logger.exception("daily-summary append failed")
+        logger.exception("daily-summary append failed")  # pragma: no mutate
         queue.put({"type": "error", "id": turn_id, "message": f"Vault write failed: {e}"})
         write_result = None
 
@@ -430,7 +430,7 @@ async def _run_daily_summary_turn(session: GuiSession, user_text: str, queue: Qu
     try:
         c.logger.save()
     except Exception:
-        logger.exception("logger.save() failed")
+        logger.exception("logger.save() failed")  # pragma: no mutate
 
     _mark_current_dirty(session)
 
