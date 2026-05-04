@@ -11,6 +11,70 @@
 
 ---
 
+## 2026-05-04 — GUI server + typed settings (seventh pass — daily-summary helper)
+
+Workflow run [`25303616666`](https://github.com/Cherubeam/jarvis/actions/runs/25303616666) on branch `test/gui-mutation-daily-summary`. Targeted `bridge._run_daily_summary_turn` (110 survivors after pass 6) using the strict-key-sweep + exact-value patterns established in PRs #29, #30. Plus a small pragma sweep on `bridge.py` `logger.exception`/`debug` message strings (provably equivalent — tests don't capture log output).
+
+### Baseline → ... → seventh
+
+| Status | Baseline | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th (`25303616666`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | 2,475 | 2,508 | 2,535 | 2,681 | **2,734** | **+891** |
+| 🙁 Survived | 1,175 | 628 | 594 | 543 | 510 | 455 | 502 | **422** | **−753 (−64%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 339 | 339 | 146 | **146** | **−193 (−57%)** |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | **3,359** | **3,331** | **3,331** | **3,304** | −55 (pragmas) |
+| **Unkilled (S+N)** | **1,514** | **967** | **933** | **882** | **849** | **794** | **648** | **568** | **−946 (−62.5%)** |
+
+**Kill rate on testable mutants** (`killed / 3,158`): **86.57% (+2.4pp this pass; +25.6pp total).**
+
+### Per-helper kills (seventh-pass focus, all in bridge.py)
+
+| Helper | Pass 6 | Pass 7 | Δ this pass | What killed it |
+|---|---:|---:|---:|---|
+| `bridge._run_daily_summary_turn` | 110 | **45** | **−65 (−59%)** | Strict-key sweep on all 7 emitted event types (user / thinking_start/end / text + stats sub-keys / system / totals / turn_finished) + per-error-path checks on 5 failure modes; logger.add_message exact-kwarg lock-in; turn_id / system-event-id format pinning; session.confirmation `is None` cleanup; totals int/float coercion |
+| `bridge._mark_current_dirty` | 4 | **0** | **−4 (−100%)** | Pragma'd the `mark_dirty failed` debug log message |
+| `bridge.run_turn` | 44 | **37** | **−7 (−16%)** | Pragma bonus: `Turn failed` exception log + dual `logger.save() failed` log lines |
+| `bridge._run_delegation` | 80 | **76** | **−4 (−5%)** | Pragma bonus: `Delegate run failed` exception log |
+| `bridge._run_one_turn` | 7 | 7 | 0 | residue (non-summarization branch) |
+| `bridge._daily_summary_turn_sync` | 2 | 2 | 0 | residue |
+| `bridge._find_deferred_handler` | 1 | 1 | 0 | residue |
+| **TOTAL bridge** | **248** | **168** | **−80 (−32%)** | |
+
+Other modules unchanged. Total mutants dropped from 3,331 to 3,304 — 6 pragma annotations excluded their lines (each `logger.exception(...)` line generates ~3 mutation variants × 6 lines × accounting for some that mutmut had already counted).
+
+### Bridge.py is now under 200 unkilled mutants
+
+After pass 7, bridge.py has **168 unkilled** (was 394 after pass 5, 248 after pass 6). The remaining residue concentrates in two helpers:
+- `_run_delegation` (76) — assertion strengthening on stats fields, cache_*, ttft_ms / total_latency_ms in the delegate's logger.add_message call
+- `_run_daily_summary_turn` (45) — residual after the strict-key sweep, mostly in the deeper code paths (max_tokens save/restore in `_daily_summary_turn_sync`, write_result branches)
+
+### Top remaining unkilled mutants (in scope, after pass 7)
+
+| Module | Survived + no-tests | Notes |
+|---|---:|---|
+| `apps.gui.server.history.index` | 98 | Residual after first pass — biggest single concrete target now |
+| `apps.gui.server.bridge._run_delegation` | 76 | Residual after PR #30 — kwarg-strengthening on delegate's logger.add_message |
+| `apps.gui.server.app` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.state` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.bridge._run_daily_summary_turn` | 45 | Deeper code-path residue after strict-key sweep |
+| `apps.gui.server.agents.prompt_history` | 39 | Snapshot helpers — needs `tmp_path`-fixtures |
+| `apps.gui.server.bridge.run_turn` | 37 | Residual after strict-key sweep |
+| `apps.gui.server.streaming` | 28+3 | Residual |
+| `apps.gui.server.session_factory_helpers` | 28 (no tests) | Entry-point module |
+| `apps.gui.server.resume` | 29 | Residual |
+| `apps.gui.server.history.derive` | 28 | Residual |
+| `apps.gui.server.routes.chat_ws` | 21 (no tests) | WS endpoint |
+| `apps.gui.server.confirmation` | 19+1 | Residual |
+| `apps.gui.server.bridge._run_one_turn` | 7 | Non-summarization residue |
+| `apps.gui.server.routes.agent_includes` | 2 | residue |
+| `apps.gui.server.routes.agents` | 2 | residue |
+| `apps.gui.server.routes.home` | 2 | residue |
+| `packages.core.settings` | 1 | residue |
+| **TOTAL** | **568** | (422 survived + 146 no-tests) |
+
+---
+
 ## 2026-05-03 — GUI server + typed settings (sixth pass — bridge delegation)
 
 Workflow run [`25274539727`](https://github.com/Cherubeam/jarvis/actions/runs/25274539727) on branch `test/gui-mutation-bridge-delegation`. Largest concrete remaining target: `bridge.py` (394 of 510 survivors after pass 5). Originally planned as `_run_delegation` only; bundled in the connected `_run_one_turn` summarization branch and a strict-key sweep on `run_turn` events because they share fixture infrastructure and the marginal cost is small. Daily-summary helper (`_run_daily_summary_turn`, 110 survivors) split off for the next PR.
