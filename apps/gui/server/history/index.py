@@ -61,7 +61,7 @@ class ConversationIndex:
             try:
                 self._dir.mkdir(parents=True, exist_ok=True)
             except OSError:
-                logger.debug("couldn't mkdir %s", self._dir, exc_info=True)
+                logger.debug("couldn't mkdir %s", self._dir, exc_info=True)  # pragma: no mutate
             self._cache.clear()
             self._dirty.clear()
             return
@@ -99,19 +99,19 @@ class ConversationIndex:
             data = json.loads(raw)
         except (json.JSONDecodeError, OSError) as e:
             # Non-atomic writes race — skip this pass, next refresh picks it up.
-            logger.debug("skipping unreadable %s: %s", path, e)
+            logger.debug("skipping unreadable %s: %s", path, e)  # pragma: no mutate
             return None
 
         try:
             data = migrate_conversation(data)
         except Exception as e:  # never let one bad file kill the whole refresh
-            logger.debug("skipping unmigrateable %s: %s", path, e)
+            logger.debug("skipping unmigrateable %s: %s", path, e)  # pragma: no mutate
             return None
 
         try:
             return _build_summary_dict(path, data)
         except Exception as e:
-            logger.debug("skipping unparseable %s: %s", path, e)
+            logger.debug("skipping unparseable %s: %s", path, e)  # pragma: no mutate
             return None
 
     def list(
@@ -161,7 +161,7 @@ class ConversationIndex:
         try:
             path.unlink()
         except OSError as e:
-            logger.warning("delete(%s) unlink failed: %s", conv_id, e)
+            logger.warning("delete(%s) unlink failed: %s", conv_id, e)  # pragma: no mutate
             return False
         self._cache.pop(str(path), None)
         self._dirty.discard(conv_id)
@@ -177,7 +177,7 @@ class ConversationIndex:
             data = json.loads(path.read_text(encoding="utf-8"))
             data = migrate_conversation(data)
         except (json.JSONDecodeError, OSError) as e:
-            logger.debug("get(%s) read failed: %s", conv_id, e)
+            logger.debug("get(%s) read failed: %s", conv_id, e)  # pragma: no mutate
             return None
 
         summary_dict = _build_summary_dict(path, data)
