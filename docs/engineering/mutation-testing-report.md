@@ -11,6 +11,72 @@
 
 ---
 
+## 2026-05-04 — GUI server + typed settings (eighth pass — history.index)
+
+Workflow run [`25304439662`](https://github.com/Cherubeam/jarvis/actions/runs/25304439662) on branch `test/gui-mutation-history-index`. Targeted `apps.gui.server.history.index` (98 survivors after pass 7 — biggest single concrete target now that bridge.py is under 200 unkilled). Same inspect-then-categorise methodology established in PRs #29-#31: `mutmut show` each survivor, pragma the equivalent log-message clusters, write tests for the genuine gaps.
+
+### Baseline → ... → eighth
+
+| Status | Baseline | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th (`25304439662`) | Δ vs baseline |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 🎉 Killed | 1,843 | 2,390 | 2,424 | 2,475 | 2,508 | 2,535 | 2,681 | 2,734 | **2,750** | **+907** |
+| 🙁 Survived | 1,175 | 628 | 594 | 543 | 510 | 455 | 502 | 422 | **357** | **−818 (−70%)** |
+| 🫥 No tests | 339 | 339 | 339 | 339 | 339 | 339 | 146 | 146 | **146** | **−193 (−57%)** |
+| ⏰ Timeout | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 0 |
+| **Total mutants** | **3,359** | **3,359** | **3,359** | **3,359** | **3,359** | **3,331** | **3,331** | **3,304** | **3,255** | **−104 (pragmas)** |
+| **Unkilled (S+N)** | **1,514** | **967** | **933** | **882** | **849** | **794** | **648** | **568** | **503** | **−1,011 (−66.8%)** |
+
+**Kill rate on testable mutants** (`killed / 3,109`): **88.45% (+1.9pp this pass; +27.4pp total).**
+
+### Per-helper kills (eighth-pass focus, all in history/index.py)
+
+| Helper | Pass 7 | Pass 8 | Δ this pass | What killed it |
+|---|---:|---:|---:|---|
+| `_parse_file` | 26 | **2** | **−24 (−92%)** | 3 pragmas on `skipping unreadable/unmigrateable/unparseable` log lines + unicode JSON encoding test |
+| `delete` | 9 | **0** | **−9 (−100%)** | Pragma on `delete(...) unlink failed` warning + `return False` on OSError test |
+| `facets` | 6 | **1** | **−5 (−83%)** | Two-conversation tool_calls fixture — pins accumulator + sort key |
+| `get` | 12 | **4** | **−8 (−67%)** | Pragma on `get(...) read failed` log + unicode JSON encoding test |
+| `_refresh_sync` | 19 | **7** | **−12 (−63%)** | Pragma on `couldn't mkdir` log + mid-loop stat-OSError continue test + mkdir kwarg lock-in test |
+| `_build_summary_dict` | 11 | **7** | **−4 (−36%)** | `data.get(default)` lock-in for messages/metrics/model + exact-10-char boundary tests + dom/and conjunction test |
+| `list` | 13 | **9** | **−4 (−31%)** | No-kwarg call asserts defaults + sort-key `or 0` / `or 0.0` defaults |
+| `_in_date_range` | 2 | 2 | 0 | residue — boundary tests didn't catch the actual mutations (likely `<` vs `<=` flip) |
+| **TOTAL history/index.py** | **98** | **32** | **−66 (−67%)** | |
+
+Other modules unchanged. Total mutants dropped 49 — pragma annotations on 5 logger lines excluded their generated mutations.
+
+### Top remaining unkilled mutants (in scope, after pass 8)
+
+| Module | Survived + no-tests | Notes |
+|---|---:|---|
+| `apps.gui.server.bridge._run_delegation` | 76 | Residual after PR #30 — kwarg-strengthening on delegate's logger.add_message |
+| `apps.gui.server.app` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.state` | 47 (no tests) | Entry-point module |
+| `apps.gui.server.bridge._run_daily_summary_turn` | 45 | Deeper code-path residue after pass 7 |
+| `apps.gui.server.agents.prompt_history` | 39 | Snapshot helpers — needs `tmp_path`-fixtures |
+| `apps.gui.server.bridge.run_turn` | 37 | Residual after strict-key sweep |
+| `apps.gui.server.history.index` | 32 | Pass-8 residue (mostly `list` filter combos + `_build_summary_dict` deeper logic) |
+| `apps.gui.server.streaming` | 28+3 | Residual |
+| `apps.gui.server.session_factory_helpers` | 28 (no tests) | Entry-point module |
+| `apps.gui.server.history.derive` | 28 | Residual |
+| `apps.gui.server.resume` | 29 | Residual |
+| `apps.gui.server.routes.chat_ws` | 21 (no tests) | WS endpoint |
+| `apps.gui.server.confirmation` | 19+1 | Residual |
+| `apps.gui.server.bridge._run_one_turn` | 7 | Non-summarization residue |
+| Smaller residue | ~7 | `routes.*`, `packages.core.settings`, `agents.detail`, `home`, `bridge.*` |
+| **TOTAL** | **503** | (357 survived + 146 no-tests) |
+
+### Methodology pattern, refined across passes 5-8
+
+The "inspect via `mutmut show` → categorise → pragma OR test" loop is now well-grooved. Per helper:
+1. `mutmut show <id>` for each survivor → diff against original
+2. If mutation is in a `logger.debug/warning/exception` message string → pragma (one-line edit)
+3. If mutation flips a boolean / changes a literal in code that's actually returned or asserted → write a focused test
+4. Skip "deeper logic" residue if cost > value (e.g. `_build_summary_dict` still has 7 survivors — likely in date-extraction edge cases I didn't enumerate)
+
+Average yield per pass when targeting a 98-survivor module like history.index: ~67% kill rate in 1 session of work.
+
+---
+
 ## 2026-05-04 — GUI server + typed settings (seventh pass — daily-summary helper)
 
 Workflow run [`25303616666`](https://github.com/Cherubeam/jarvis/actions/runs/25303616666) on branch `test/gui-mutation-daily-summary`. Targeted `bridge._run_daily_summary_turn` (110 survivors after pass 6) using the strict-key-sweep + exact-value patterns established in PRs #29, #30. Plus a small pragma sweep on `bridge.py` `logger.exception`/`debug` message strings (provably equivalent — tests don't capture log output).
