@@ -494,3 +494,315 @@ def test_parse_daily_summary_command_branches():
     _, failure = parse_daily_summary_command("/daily-summary bad")
     assert isinstance(failure, DailySummaryFailure)
     assert failure.error == DailySummaryError.INVALID_DATE
+
+
+# ---------------------------------------------------------------------------
+# Strict event-key sweep
+#
+# Catches dict-key mutations ("id" → "XXidXX" / "ID", "time" → "TIME", etc.)
+# that pass type-only assertions because e["message"] still works when only
+# e["id"] is mutated. ~50 mutants killed in one pass.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_event_dict_keys_are_exact_on_happy_path(tmp_path: Path):
+    """Every event in the happy-path sequence has its canonical key set."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    write_result = SimpleNamespace(success=True, message="Appended")
+
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch("apps.gui.server.bridge.append_to_daily_note", return_value=write_result),
+    ):
+        await run_turn(session, "/daily-summary", q)
+
+    by_type: dict[str, dict] = {}
+    for ev in _drain(q):
+        # `text` events use unique ids per occurrence; daily-summary emits one each.
+        by_type[ev["type"]] = ev
+
+    assert set(by_type["user"].keys()) == {"type", "id", "text", "time"}
+    assert set(by_type["thinking_start"].keys()) == {"type", "agent"}
+    assert set(by_type["thinking_end"].keys()) == {"type", "agent"}
+    assert set(by_type["text"].keys()) == {"type", "id", "agent", "markdown", "stats"}
+    assert set(by_type["text"]["stats"].keys()) == {"ttft", "total", "tokens", "cost"}
+    assert set(by_type["system"].keys()) == {"type", "id", "text"}
+    assert set(by_type["totals"].keys()) == {"type", "messages", "tokens", "cost"}
+    assert set(by_type["turn_finished"].keys()) == {"type", "id"}
+
+
+@pytest.mark.asyncio
+async def test_error_event_dict_keys_are_exact_on_invalid_date(tmp_path: Path):
+    """Parse-failure error event has the canonical {type, id, message} key set."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    await run_turn(session, "/daily-summary not-a-date", q)
+    events = _drain(q)
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+
+
+@pytest.mark.asyncio
+async def test_error_event_dict_keys_are_exact_on_missing_prompt(tmp_path: Path):
+    """FileNotFoundError on get_daily_note_instructions emits a clean error event."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    with patch(
+        "apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions",
+        side_effect=FileNotFoundError("missing"),
+    ):
+        await run_turn(session, "/daily-summary", q)
+    events = _drain(q)
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+    assert err["message"] == "Daily note prompt file not found."
+
+
+@pytest.mark.asyncio
+async def test_error_event_dict_keys_are_exact_on_build_failure(tmp_path: Path):
+    """build_daily_summary_request returning Failure emits a clean error event."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    failure = DailySummaryFailure(error=DailySummaryError.VAULT_NOT_CONFIGURED, message="vault is broken")
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=failure),
+    ):
+        await run_turn(session, "/daily-summary", q)
+    events = _drain(q)
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+    assert err["message"] == "vault is broken"
+
+
+@pytest.mark.asyncio
+async def test_error_event_dict_keys_are_exact_on_stream_failure(tmp_path: Path):
+    """stream_handler.stream raising emits a clean error event mid-flow."""
+    session = _make_session(tmp_path)
+    session.components.stream_handler.stream.side_effect = RuntimeError("llm down")
+    q: Queue[dict] = Queue(maxsize=64)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch("apps.gui.server.bridge.append_to_daily_note"),
+    ):
+        await run_turn(session, "/daily-summary", q)
+    events = _drain(q)
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+    assert err["message"] == "llm down"
+
+
+@pytest.mark.asyncio
+async def test_error_event_dict_keys_are_exact_on_vault_write_failure(tmp_path: Path):
+    """append_to_daily_note raising emits a 'Vault write failed: ...' error event."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch("apps.gui.server.bridge.append_to_daily_note", side_effect=PermissionError("read-only")),
+    ):
+        await run_turn(session, "/daily-summary", q)
+    events = _drain(q)
+    err = next(e for e in events if e["type"] == "error")
+    assert set(err.keys()) == {"type", "id", "message"}
+    assert err["message"] == "Vault write failed: read-only"
+
+
+# ---------------------------------------------------------------------------
+# Logger.add_message exact-kwarg assertions
+#
+# Catches None-substitution mutations on every kwarg passed to add_message
+# (prompt_tokens=None, cost_usd=None, agent_name=None, etc.).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_assistant_add_message_kwargs_are_exact(tmp_path: Path):
+    """The assistant's logger.add_message call has every kwarg pinned to its source."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    write_result = SimpleNamespace(success=True, message="ok")
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch("apps.gui.server.bridge.append_to_daily_note", return_value=write_result),
+    ):
+        await run_turn(session, "/daily-summary", q)
+
+    add_msg = session.components.logger.add_message.call_args_list
+    # Two calls: ("user", "/daily-summary"), then assistant with the stream result.
+    assert len(add_msg) == 2
+    assert add_msg[0].args == ("user", "/daily-summary")
+
+    assistant = add_msg[1]
+    assert assistant.args == ("assistant", "summary text")
+    # All kwargs from the StreamResult — None substitution would break each.
+    assert assistant.kwargs == {
+        "prompt_tokens": 100,
+        "completion_tokens": 50,
+        "total_tokens": 150,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd": 0.001,
+        "ttft_ms": 120,
+        "total_latency_ms": 800,
+        "agent_name": "JARVIS",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Turn-id and system-id format assertions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_turn_id_format_is_u_plus_8_hex(tmp_path: Path):
+    """turn_id is exactly "u-XXXXXXXX" (10 chars). Defends against [:8] → [:9]
+    or f-string-removed mutations."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch(
+            "apps.gui.server.bridge.append_to_daily_note",
+            return_value=SimpleNamespace(success=True, message="ok"),
+        ),
+    ):
+        await run_turn(session, "/daily-summary", q)
+
+    user = next(e for e in _drain(q) if e["type"] == "user")
+    assert user["id"].startswith("u-")
+    assert len(user["id"]) == 10  # "u-" + 8 hex chars
+    assert all(c in "0123456789abcdef" for c in user["id"][2:])
+
+
+@pytest.mark.asyncio
+async def test_system_event_id_format_is_s_plus_8_hex(tmp_path: Path):
+    """The system event from the vault-write result has id 's-XXXXXXXX' (10 chars).
+    Pins the f-string format and the hex slice length."""
+    session = _make_session(tmp_path)
+    q: Queue[dict] = Queue(maxsize=64)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch(
+            "apps.gui.server.bridge.append_to_daily_note",
+            return_value=SimpleNamespace(success=True, message="Appended"),
+        ),
+    ):
+        await run_turn(session, "/daily-summary", q)
+
+    sys_ev = next(e for e in _drain(q) if e["type"] == "system")
+    assert sys_ev["id"].startswith("s-")
+    assert len(sys_ev["id"]) == 10
+    assert all(c in "0123456789abcdef" for c in sys_ev["id"][2:])
+
+
+# ---------------------------------------------------------------------------
+# Cleanup: session.confirmation reset to None (not "" or other falsy)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_confirmation_cleared_to_none_on_happy_path(tmp_path: Path):
+    """After a successful daily-summary turn, session.confirmation is set to None
+    exactly — not "" or False or other falsy mutations."""
+    session = _make_session(tmp_path)
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch(
+            "apps.gui.server.bridge.append_to_daily_note",
+            return_value=SimpleNamespace(success=True, message="ok"),
+        ),
+    ):
+        await run_turn(session, "/daily-summary", Queue(maxsize=64))
+    assert session.confirmation is None
+
+
+# ---------------------------------------------------------------------------
+# Totals math — pin the int(...)/float(...) coercion
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_totals_event_coerces_tokens_to_int_and_cost_to_float(tmp_path: Path):
+    """Totals tokens is int, cost is float. Pins the int()/float() wrappers and
+    the `or 0` / `or 0.0` defaults — mutating to `or 1` / `and 0` would break."""
+    session = _make_session(tmp_path)
+    # Set non-zero metrics so the `or 0` default isn't hit.
+    session.components.logger.metrics.total_tokens = 12345
+    session.components.logger.metrics.total_cost_usd = 0.0250
+
+    build_result = DailySummaryRequest(
+        messages=[{"role": "system", "content": "x"}],
+        note_path=Path("/vault/x.md"),
+        target_date=None,
+    )
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch(
+            "apps.gui.server.bridge.append_to_daily_note",
+            return_value=SimpleNamespace(success=True, message="ok"),
+        ),
+    ):
+        await run_turn(session, "/daily-summary", Queue(maxsize=64))
+
+    q: Queue[dict] = Queue(maxsize=64)
+    with (
+        patch("apps.gui.server.bridge.JarvisAgent.get_daily_note_instructions", return_value="DAILY"),
+        patch("apps.gui.server.bridge.build_daily_summary_request", return_value=build_result),
+        patch(
+            "apps.gui.server.bridge.append_to_daily_note",
+            return_value=SimpleNamespace(success=True, message="ok"),
+        ),
+    ):
+        await run_turn(session, "/daily-summary", q)
+    totals = next(e for e in _drain(q) if e["type"] == "totals")
+    assert totals["tokens"] == 12345
+    assert isinstance(totals["tokens"], int)
+    assert totals["cost"] == 0.025
+    assert isinstance(totals["cost"], float)
