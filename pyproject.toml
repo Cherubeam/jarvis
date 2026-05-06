@@ -9,6 +9,7 @@ dependencies = [
     "ddgs>=9.0.0",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
+    # pinned <1.82.7: security regression in 1.82.7+ (do not bump without re-validating).
     "litellm>=1.82,<1.82.7",
     "mcp>=1.25.0",
     "prompt-toolkit>=3.0.52",
@@ -40,9 +41,6 @@ web = [
     "sse-starlette>=2.0.0",
     "websockets>=12.0",
     "janus>=1.0.0",
-]
-rag = [
-    "chromadb>=0.6.0",
 ]
 dev = [
     "mypy>=1.13.0",
