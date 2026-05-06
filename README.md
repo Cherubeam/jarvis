@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Obsidian Note Creator, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer)
+- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Obsidian Note Creator, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer, Reading Assistant)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
