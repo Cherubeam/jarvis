@@ -136,24 +136,6 @@ def _make_agent_vault_tools(meta: AgentMeta, settings: Settings, vault_config: A
         return []
 
 
-def stream_and_track(
-    client: LLMClient,
-    messages: list[dict[str, Any]],
-    metrics_tracker: MetricsTracker,
-    pricing: ModelPricing | None,
-    model_id: str,
-    print_chunks: bool = False,
-    max_tokens: int | None = None,
-) -> StreamResult:
-    """Stream an LLM response, tracking metrics and cost.
-
-    Thin wrapper around StreamHandler.stream() for backward compatibility.
-    """
-    handler = StreamHandler(client, metrics_tracker, pricing, model_id)
-    handler.max_tokens = max_tokens
-    return handler.stream(messages, print_chunks=print_chunks)
-
-
 def get_project_root() -> Path:
     """Get the project root directory."""
     # Navigate from apps/cli/main.py to project root
