@@ -86,6 +86,26 @@ class StreamHandler:
         if self.on_event is not None:
             self.on_event(event)
 
+    def _announce_tool_call(self, call: Any) -> None:
+        """Emit ToolCallStarted, then notify via on_tool_call callback or fall back to a CLI print.
+
+        The print is the only user-visible signal in callback-less mode (e.g. scripts
+        constructing StreamHandler directly). It must stay until a CreditLimit/ToolCall
+        event channel exists for non-CLI consumers.
+        """
+        self._emit(
+            ToolCallStarted(
+                tool_name=call.function.name,
+                tool_call_id=call.id,
+                arguments=call.function.arguments,
+                instance_id=self.instance_id,
+            )
+        )
+        if self.on_tool_call is not None:
+            self.on_tool_call(call.function.name)
+        else:
+            print(f"[Tool: {call.function.name}]")
+
     def _calculate_cost(self, usage: TokenUsage, raw_response: Any = None) -> float:
         """Calculate cost using pricing, LiteLLM fallback, or zero."""
         if self.pricing:
@@ -118,6 +138,8 @@ class StreamHandler:
                     f"(minimum {_MIN_USEFUL_TOKENS} needed). Please add credits at "
                     f"https://openrouter.ai/settings/credits"
                 ) from e
+            # CLI-only signal: no CreditLimit event class exists yet, and this fallback
+            # only triggers in interactive sessions where stdout is the user's channel.
             print(f"\n⚠ Credit limit: reduced max_tokens from {self.max_tokens} → {e.affordable}")
             self.max_tokens = e.affordable
             return api_call()
@@ -288,18 +310,7 @@ class StreamHandler:
 
             # UX feedback for each tool call
             for call in tool_result.tool_calls:
-                self._emit(
-                    ToolCallStarted(
-                        tool_name=call.function.name,
-                        tool_call_id=call.id,
-                        arguments=call.function.arguments,
-                        instance_id=self.instance_id,
-                    )
-                )
-                if self.on_tool_call is not None:
-                    self.on_tool_call(call.function.name)
-                else:
-                    print(f"[Tool: {call.function.name}]")
+                self._announce_tool_call(call)
 
             # Build assistant message from tool calls
             assistant_msg = {
@@ -561,18 +572,7 @@ class StreamHandler:
 
             # UX feedback for each tool call
             for call in tool_calls:
-                self._emit(
-                    ToolCallStarted(
-                        tool_name=call.function.name,
-                        tool_call_id=call.id,
-                        arguments=call.function.arguments,
-                        instance_id=self.instance_id,
-                    )
-                )
-                if self.on_tool_call is not None:
-                    self.on_tool_call(call.function.name)
-                else:
-                    print(f"[Tool: {call.function.name}]")
+                self._announce_tool_call(call)
 
             # Build assistant message from tool calls
             assistant_msg = {
