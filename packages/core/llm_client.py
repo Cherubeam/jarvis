@@ -10,11 +10,7 @@ from typing import Any
 
 import litellm
 
-litellm.suppress_debug_info = True
-
-# E402: import deferred so suppress_debug_info is set before downstream imports
-# of litellm (avoids debug spam at startup).
-from packages.core.model_resolver import get_api_key, infer_provider  # noqa: E402
+from packages.core.model_resolver import get_api_key, infer_provider
 
 
 def _apply_cache_control(messages: list[dict[str, Any]], model: str) -> list[dict[str, Any]]:
