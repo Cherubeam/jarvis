@@ -474,16 +474,17 @@ jarvis/
 
 ## Roadmap
 
-This is a learning project, and I'm building it iteratively. Current priorities:
+This is a learning project, and I'm building it iteratively. Workstreams use the
+initiative/milestone naming scheme ([ADR-033](docs/product/decisions.md#adr-033-initiative--milestone-naming-scheme)); current priorities:
 
-**Phase 1: Foundation & Metrics (Complete ✅)**
+**`FND` — Foundation & Metrics (Complete ✅)**
 - [x] Basic chat interface with persistent context
 - [x] Conversation logging and history
 - [x] Token usage tracking and cost calculation
 - [x] LiteLLM integration for provider flexibility
 - [x] **Comprehensive testing framework**
 
-**Phase 2: Evaluation & Quality Metrics (Complete ✅)**
+**`EVAL` — Evaluation & Quality Metrics (Complete ✅)**
 - [x] 10 golden test conversations defined
 - [x] **LLM-as-judge automated evaluation (~$0.41/run)**
 - [x] **Things 3 integration** (SQLite-based task sync via `things.py`)
@@ -494,18 +495,18 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [x] ChatGPT conversation import (bulk import with filters)
 - [x] Claude conversation import (bulk import with date filters)
 
-**Phase 3: Context & Integrations (Complete ✅)**
+**`CTX` — Context & Integrations (Complete ✅)**
 - [x] Context builder with frontmatter selective loading
 - [x] Obsidian daily note integration (`/daily-summary`)
 
-**Phase 4: Agent Framework (Complete ✅)**
+**`AGENT` — Agent Framework (Complete ✅)**
 - [x] Base agent class with prompt loading
 - [x] Agent registry with filesystem-based auto-discovery
 - [x] Specialist agents: Writing, Research, Clarity
 - [x] Slash-command routing and standalone `--agent` mode
 - [x] StreamHandler extraction from CLI
 
-**Phase 5: Agent Capabilities (In Progress)**
+**`CAP` — Agent Capabilities (In Progress)**
 - [x] Tool calling infrastructure (`ToolDefinition`, `ToolRegistry`, agentic loop)
 - [x] Web fetch tool (httpx + trafilatura)
 - [x] Conversation recall via RAG (ChromaDB, opt-in)
@@ -518,20 +519,20 @@ This is a learning project, and I'm building it iteratively. Current priorities:
 - [ ] Extended tools — Playwright browser automation
 - [ ] Intelligent model routing (task complexity → model selection)
 
-**Phase 6A: Event Decoupling (Partially Complete)**
-- [x] Event decoupling (typed events, StreamHandler emission)
-- [x] Typed configuration (`packages/core/settings.py` + in-GUI Settings editor)
-- [ ] Move print statements from StreamHandler into CLI adapter
-
-**Phase 6B/C: Web Interface (Complete ✅ — Phases 1–8 shipped)**
+**`WEB` — Web Interface (Complete ✅ — `WEB-01`…`WEB-08` shipped)**
+- [x] Event decoupling prerequisite (typed events, StreamHandler emission) + typed configuration (`packages/core/settings.py` + in-GUI Settings editor)
 - [x] Chat shell + Conversations browser + Home + Sidebar Timeline (0.17.0)
 - [x] Agents overview + Agent Detail + Prompt Editor + Outcomes view (0.19.0)
 - [x] Settings editor + Prompt-include editor + hot-apply gating (0.20.0)
 - [ ] Interactive delegation sub-loops (deferred)
+- [ ] Move print statements from StreamHandler into CLI adapter
 
-**Future Phases:**
-- [x] Context window management — history summarization (opt-in, ~40K threshold) and tool result trimming
-- [ ] System monitoring and optimization
+**`AON` — Always-On & Loop Engineering (Planned)**
+- [ ] Safety rails + shared TurnRunner, scheduled briefing, Telegram, headless Mac host, eval hardening (`AON-01`…`AON-05`)
+
+**Later initiatives:**
+- [x] `TOK` — context-window management: history summarization (opt-in, ~40K threshold) and tool result trimming
+- [ ] `OPS` — system monitoring and optimization
 
 See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
 

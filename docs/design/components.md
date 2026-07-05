@@ -88,7 +88,7 @@ See also: [principles.md](principles.md) for design principles,
 
 ---
 
-*This inventory reflects JARVIS features as of Phase 5. Components will be added as new capabilities ship. Implementation details (props, state, styling) belong in a future component specification — this document establishes the vocabulary.*
+*This inventory reflects JARVIS features as of the `CAP` (Agent Capabilities) initiative. Components will be added as new capabilities ship. Implementation details (props, state, styling) belong in a future component specification — this document establishes the vocabulary.*
 
 ---
 

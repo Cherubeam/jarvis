@@ -9,17 +9,17 @@ JARVIS is currently a single-threaded, CLI-based personal assistant where one ag
 - **Always-on operation**: Running agents as background services in a homelab environment
 - **Multi-consumer output**: Routing agent output to CLI, Web UI, or activity feeds simultaneously
 
-This document is the **comprehensive, self-contained reference** for scaling JARVIS to multi-agent operation. It covers what has been implemented (Phase 6A), what comes next (Scenarios A/B/C), and all critical design decisions including review feedback.
+This document is the **comprehensive, self-contained reference** for scaling JARVIS to multi-agent operation. It covers what has been implemented (event decoupling — the `WEB` prerequisite), what comes next (Scenarios A/B/C), and all critical design decisions including review feedback. Much of the always-on/multi-agent work here is now tracked under the `AON` initiative (see roadmap).
 
 **Infrastructure context**: No existing homelab. Docker Compose is the starting deployment target, with Kubernetes as a later upgrade path.
 
 ---
 
-## 2. Phase 6A: Event Decoupling (Implemented)
+## 2. Event Decoupling — `WEB` prerequisite (Implemented)
 
 **Status**: Complete and integrated. All 31 existing tests pass. Fully backward compatible.
 
-Phase 6A decouples streaming output from direct `print()` calls, enabling multiple consumers to subscribe to agent output. This is the **prerequisite for all multi-agent scenarios**.
+Event decoupling separates streaming output from direct `print()` calls, enabling multiple consumers to subscribe to agent output. This is the **prerequisite for all multi-agent scenarios**.
 
 ### What Was Built
 
@@ -321,7 +321,7 @@ Each agent instance gets its own `ConversationLogger` instance, writing to a sep
 ## 7. Implementation Order
 
 ```
-Phase 6A: Event Decoupling          ✅ DONE
+Event Decoupling (WEB)              ✅ DONE
     │
     ├── Remaining: Move print statements into CLI adapter (deferred)
     │
@@ -348,7 +348,7 @@ Scenario B: Homelab                   (only when always-on operation is needed)
     4. Worker process entrypoint
 ```
 
-**Build order**: Phase 6A → Scenario A + Scenario C (in parallel) → Scenario B
+**Build order**: event decoupling → Scenario A + Scenario C (in parallel) → Scenario B
 
 ### Verification Criteria
 
@@ -386,7 +386,7 @@ Scenario B: Homelab                   (only when always-on operation is needed)
 | Direct wiring over EventBus | Start with `queue.Queue` and direct calls. Add EventBus only if needed |
 | Cost controls are mandatory | `CostGuard` is not optional. Every scenario enforces per-task budgets |
 | Docker Compose before K8s | No existing infra. Start simple |
-| Don't build ahead | Scenarios A/B/C code should only be built when needed. Phase 6A is the only prerequisite that was implemented early (because it also serves the Web UI) |
+| Don't build ahead | Scenarios A/B/C code should only be built when needed. Event decoupling is the only prerequisite that was implemented early (because it also serves the Web UI) |
 | No interleaved streaming | Parallel agent output displayed sequentially, not mixed (Important #4) |
 | Per-instance logging | Each agent instance writes to its own conversation log (Critical #3) |
 | File-level locks for writes | `fcntl.flock()` advisory locks prevent concurrent file corruption (Important #5) |

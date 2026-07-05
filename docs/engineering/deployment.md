@@ -297,7 +297,7 @@ echo "# Current Focus" > data/context/current_focus.md
 **Solutions:**
 - Use cheaper model (see [Model Comparison](../research/models.md))
 - Implement context truncation (future)
-- Add model routing (Phase 5)
+- Add model routing (`CAP`)
 
 ---
 
@@ -343,7 +343,7 @@ uv run python -m apps.cli.main
 uv run jarvis
 ```
 
-### Web Interface (Phase 3)
+### Web Interface (WEB)
 
 ```bash
 # Backend

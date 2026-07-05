@@ -286,7 +286,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 **Design Decision**:
 - Reads the Things 3 SQLite database directly via `things.py` — language-independent, no app launch needed
 - Replaced AppleScript approach (ADR-008) which had 5s timeouts and fragile language detection
-- Phase B (MCP for write operations) remains a future option
+- Things 3 write operations (via MCP) remain a future option — tracked under `CAP`
 - See ADR-008 for historical context
 
 ---
@@ -402,7 +402,7 @@ mcp:
 - `vault_write_tools.py`: `make_vault_write_tools()` factory — generic vault write tools (create_note, edit_note, list_notes_in_dir) for any agent
 - `codebase_tools.py`: `read_source_file`, `search_code`, `list_directory`, `read_architecture_map` — read-only codebase introspection tools for the Developer Agent
 - `git_tools.py`: `git_status`, `git_diff`, `git_branch`, `git_add`, `git_commit`, `git_log` — git operations with branch-prefix enforcement and `[JARVIS-auto]` commit tagging
-- `project_write_tools.py`: `write_file`, `edit_file`, `create_directory` — guarded file write tools with confirmation handler and scope restrictions (Phase 1: `.md`, `.yaml`, `.yml` only)
+- `project_write_tools.py`: `write_file`, `edit_file`, `create_directory` — guarded file write tools with confirmation handler and scope restrictions (`DEV-01`: `.md`, `.yaml`, `.yml` only)
 - `test_tools.py`: `run_tests` — runs the test suite via subprocess with timeout
 
 **Agentic Loop** (in `StreamHandler`):
@@ -679,7 +679,7 @@ jarvis/
 │   ├── cli/                        # CLI entry point
 │   │   ├── main.py                 # CLI application
 │   │   └── display.py              # Rich terminal formatting
-│   └── web/                        # Web application (Phase 3)
+│   └── web/                        # Web application (WEB)
 │       ├── backend/                # FastAPI backend
 │       └── frontend/               # React frontend
 │
@@ -690,7 +690,7 @@ jarvis/
 │   │   ├── memory.py               # Conversation logging
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
-│   │   ├── events.py               # Typed event dataclasses (Phase 6A)
+│   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
 │   │   ├── app.py                  # Shared bootstrap (config, init)
 │   │   ├── filesystem_access.py    # Filesystem access control (FilesystemGuard)
 │   │   ├── card_renderer.py         # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
@@ -877,7 +877,7 @@ jarvis/
 
 **Future:**
 - `sentence-transformers` - Local embeddings (alternative to API embeddings)
-- `textual` - TUI (Phase 7)
+- `textual` - TUI (`UX`)
 
 ---
 
@@ -885,7 +885,7 @@ jarvis/
 
 ### Current State
 
-Phase 6A (Event Decoupling) is implemented:
+WEB event decoupling (the prerequisite for the web interface) is implemented:
 
 - **Events**: Typed event dataclasses (`TextChunk`, `ToolCallStarted`, `ToolResult`, `UsageReport`, `AgentStarted`, `AgentFinished`, `DelegationRequested`) for decoupled streaming output
 - **Typed config**: `packages/core/settings.py` (`load_config() -> Settings`) is the canonical loader for both CLI and GUI; PR-8a deleted the dict-based wrapper.

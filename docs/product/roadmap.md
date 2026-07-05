@@ -327,9 +327,13 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 **Timeline**: 2026-04-19 → 2026-04-25
 **Goal**: Add a graphical peer to the CLI that shares the same agents, tools, conversation files, and approval flow.
 
-The build was sliced into eight GUI sub-phases (referred to as "GUI Phase 1–8"
-in the changelog — historical labels kept intact per ADR-033). Each landed on
-its own feature branch and was merged via `gh pr merge --rebase`.
+The build was sliced into eight chronological sub-phases, now milestones
+**`WEB-01`…`WEB-08`**: Chat shell, Conversations browser, Dashboard/Home,
+Sidebar Timeline, Agents overview+detail, Prompt Editor, `/daily-summary` +
+`/outcomes` handlers, Settings editor. They appear as "GUI Phase 1–8" in the
+changelog and in older engineering-note history — historical labels kept intact
+per ADR-033. Each landed on its own feature branch, merged via
+`gh pr merge --rebase`. The groupings below organize their deliverables by layer.
 
 ### Design Foundations
 
