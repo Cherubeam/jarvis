@@ -1,18 +1,21 @@
 # JARVIS GUI — engineering notes
 
-Phases 1–8 (plus follow-ups) are shipped. The GUI provides:
+The `WEB` initiative's milestones `WEB-01`…`WEB-08` (plus follow-ups) are
+shipped. They are the eight chronological GUI sub-phases (labelled "GUI Phase
+1–8" in changelog history — see [ADR-033](../product/decisions.md#adr-033-initiative--milestone-naming-scheme)).
+The GUI provides:
 
-- **Phase 1 — Chat shell** (FastAPI + WebSocket + React; CLI parity)
-- **Phase 2 — Conversations browser** (live Sidebar + two-pane History view)
-- **Phase 3 — Dashboard / Home** (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start)
-- **Phase 4 — Sidebar Timeline mode** (togglable day-axis variant)
-- **Phase 5 — Agents Overview + Detail** (categorized grid, 14-day cost sparkline, "start session →")
-- **Phase 6 — Agent Prompt Editor** (Prompt / Versions / Stats / Context tabs with snapshot history)
-- **Phase 6 follow-up — Prompt-include editor** (Includes tab with shared-write modal confirm)
-- **Phase 7 — `/daily-summary` and `/outcomes` GUI handlers** (Outcomes view + bridge wiring)
-- **Phase 8 — Settings editor** (every typed field across 16 sections with managed-header guard + field-level hot-apply gating)
+- **`WEB-01` — Chat shell** (FastAPI + WebSocket + React; CLI parity)
+- **`WEB-02` — Conversations browser** (live Sidebar + two-pane History view)
+- **`WEB-03` — Dashboard / Home** (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start)
+- **`WEB-04` — Sidebar Timeline mode** (togglable day-axis variant)
+- **`WEB-05` — Agents Overview + Detail** (categorized grid, 14-day cost sparkline, "start session →")
+- **`WEB-06` — Agent Prompt Editor** (Prompt / Versions / Stats / Context tabs with snapshot history)
+- **`WEB-06` follow-up — Prompt-include editor** (Includes tab with shared-write modal confirm)
+- **`WEB-07` — `/daily-summary` and `/outcomes` GUI handlers** (Outcomes view + bridge wiring)
+- **`WEB-08` — Settings editor** (every typed field across 16 sections with managed-header guard + field-level hot-apply gating)
 
-Per-phase architecture and decision notes live in their own sections
+Per-milestone architecture and decision notes live in their own sections
 below. The release-version mapping lives in
 [docs/changelog.md](../changelog.md).
 
@@ -119,7 +122,7 @@ uv run jarvis-gui --no-browser   # backend on :8123
 
 Open http://localhost:5173 for hot-reloading UI with a live backend.
 
-## Agents view (Phase 5)
+## Agents view (WEB-05)
 
 The left-rail **Agents** slot — previously stubbed — now renders the Agents overview grid and an Agent Detail page. Matches the v6 prototype's Agents Overview and the Overview tab of Agent Detail.
 
@@ -160,14 +163,14 @@ Layout:
 - `cost_14d_rollup(index, agent_id, today=None, *, days=14)` — walks `index._cache.values()`, sums `cost` only where `agent_id in summary["agents"]`. Tolerates missing `cost` / `None` / missing `agents` key.
 - `recent_sessions_for_agent(index, agent_id, *, limit=6)` — filters summaries by `agent_id in summary["agents"]`, sorts by `summary["id"]` descending (matching the index's own "recent" sort).
 
-### Known limitations (Phase 5)
+### Known limitations (WEB-05)
 
 - **`last_used` caps at 500 conversations.** Agents whose most recent session is older than the 500th most recent conversation show as `unused`. Acceptable for localhost.
 - **No per-agent search on the grid.** 16 agents × 3 columns = ~6 rows; a search bar would be noise. v6 doesn't have one either.
 
-## Agent Prompt Editor (Phase 6)
+## Agent Prompt Editor (WEB-06)
 
-Activates the tab row that Phase 5 shipped as a placeholder. Five tabs on the Agent Detail page: **Overview · Prompt · Versions · Stats · Context**. Tab state is local to `AgentDetailView` (`useState<TabKey>`) — no URL routing, no persistence across navigation.
+Activates the tab row that WEB-05 shipped as a placeholder. Five tabs on the Agent Detail page: **Overview · Prompt · Versions · Stats · Context**. Tab state is local to `AgentDetailView` (`useState<TabKey>`) — no URL routing, no persistence across navigation.
 
 ### Endpoints
 
@@ -219,13 +222,13 @@ JARVIS's prompt isn't backed by a single file — `context_builder.build_system_
 
 The frontend detects `editable: false` and renders a read-only notice + scrollable preview instead of a textarea.
 
-### Known limitations (Phase 6)
+### Known limitations (WEB-06)
 
 - **No diff view between snapshots.** Preview is all-or-nothing; restore overwrites. A visual diff could land in a follow-up.
 - **No keyboard shortcut for Save.** Click-only. Trivial to add (`⌘S` listener on the panel) if we miss it.
 - ~~**No editing of `prompt_includes` files.**~~ Shipped — see *Prompt-include editor* below.
 
-## Prompt-include editor (Phase 6 follow-up)
+## Prompt-include editor (WEB-06 follow-up)
 
 Adds a sixth tab — **Includes** — between *Prompt* and *Versions*, hidden when `prompt_includes_count === 0`. Lets users edit the files behind `{placeholder}` tokens in `system.md` (`voice-profile.md`, `anti-patterns.md`).
 
@@ -244,7 +247,7 @@ All under `/api/agents/{agent_id}/includes*`. JARVIS returns `[]` on list and 40
 
 Reuses `apps/gui/server/agents/prompt_history.py` unchanged. Per-`(agent_id, placeholder)` history is keyed as `f"{agent_id}/_includes/{placeholder}"`, which `Path` composition resolves to `<history_root>/<agent_id>/_includes/<placeholder>/`. The system.md history at `<history_root>/<agent_id>/` coexists in the parent directory; `_rebuild_index_from_disk`'s filename-regex filter silently skips the `_includes` subdirectory when scanning system.md snapshots.
 
-The same per-key `asyncio.Lock` from `app.state.prompt_write_locks` (Phase 6 infra) serves both PUT and `/promote`, keyed on the same slash-encoded string.
+The same per-key `asyncio.Lock` from `app.state.prompt_write_locks` (WEB-06 infra) serves both PUT and `/promote`, keyed on the same slash-encoded string.
 
 ### Frontend
 
@@ -254,14 +257,14 @@ The same per-key `asyncio.Lock` from `app.state.prompt_write_locks` (Phase 6 inf
 - **Example + missing = read-only with a `[ promote to local ]` button.** Promote returns the new detail; the editor unlocks immediately.
 - **Snapshot strip** — last 5 entries with `restore` button; for `shared` includes, the strip is labelled `edits made through this agent · other agents may have edited this shared file independently` because per-(agent, placeholder) history can't see writes routed through a sibling agent's panel.
 
-### Known limitations (Phase 6 follow-up)
+### Known limitations (WEB-06 follow-up)
 
 - **No add/remove of `prompt_includes` keys in `meta.yaml`.** This editor only edits the *files* — the placeholder→filename mapping is still meta.yaml-only.
 - **Per-(agent, placeholder) snapshot history.** A shared edit made through writer's panel doesn't show in content_reviewer's snapshot list (the snapshot strip carries a label flagging this). Cross-agent convergence on a per-file key is a v2 concern.
 - **No central "shared includes library" view.** Editing a shared include from one agent's panel is the only path; there's no `Settings > Includes` page yet.
 - **Tab state resets on navigation.** Leaving the agent page and coming back lands on Overview. Acceptable for a localhost tool.
 
-## Settings view (Phase 8b)
+## Settings view (WEB-08b)
 
 The Settings tab is a form-based editor for every field in `packages.core.settings.Settings`. Saves land in `config/local.yaml` as a diff against `Settings()` defaults.
 
@@ -292,14 +295,14 @@ The Settings tab is a form-based editor for every field in `packages.core.settin
 
 Deliberate. `build_session()` captures settings values into `LLMClient`, tool closures, `FilesystemGuard`, `CortexClient`, and MCP subprocesses at startup. Only three code paths re-read `components.settings.*` per request: `outcomes.*`, `summarization.*` (in `bridge.py`), and `paths.prompt_history_dir` (in `agents.py`). Rebinding `components.settings` after PUT would give a false impression of hot-apply for ~95% of fields. Instead PUT always returns `restart_required: true` and the footer banner says so. Per-field hot-apply gating is a follow-up once real usage identifies which toggles users flip most.
 
-### Known limitations (Phase 8b)
+### Known limitations (WEB-08b)
 
 - **No file-watching / hot-reload** of external `config/local.yaml` edits. The managed-header guard on PUT helps — a user who hand-edits sees a 409 on their next save — but a GET/PUT cycle in the GUI won't pick up disk-side changes until restart.
 - **`evaluation.category_thresholds` (a `dict[str, float]`) is not rendered** — skipped from the scalar-section field list because it's a rare-edit open-keyed map. Edit directly in `config/local.yaml` for now.
 - **No diff view before save.** The footer says "unsaved changes" but doesn't list which fields changed. Low priority while the working set is small.
 - ~~**No field-level restart-vs-hot-apply classification.**~~ Closed by the field-level hot-apply gating follow-up — see below.
 
-### Field-level hot-apply gating (Phase 8b follow-up)
+### Field-level hot-apply gating (WEB-08b follow-up)
 
 Closed PR-8b's deliberate punt that returned `restart_required: true` unconditionally. Saves now report which specific fields took effect live and which still need a JARVIS restart.
 
@@ -314,7 +317,7 @@ Closed PR-8b's deliberate punt that returned `restart_required: true` unconditio
   - cold-only → `"saved · restart JARVIS for N change(s) to take effect"`
   - mixed → `"saved · M applied live · restart for N more change(s)"`
 
-## /daily-summary + /outcomes GUI handlers (Phase 7)
+## /daily-summary + /outcomes GUI handlers (WEB-07)
 
 Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands into the GUI by extracting reusable helpers and forking the per-turn bridge.
 
@@ -327,7 +330,7 @@ Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands in
 
 `apps/gui/server/routes/outcomes.py`:
 
-- `GET /api/outcomes/pending` — returns `{ items: [...] }` (or `{ items: [] }` when `outcomes.enabled: false` — matches Phase 6's read-endpoint precedent).
+- `GET /api/outcomes/pending` — returns `{ items: [...] }` (or `{ items: [] }` when `outcomes.enabled: false` — matches WEB-06's read-endpoint precedent).
 - `POST /api/outcomes/{file_id}/review` — body `{ verdict, quality, note }`. Atomic-writes the review back into the outcome file; 403 when `outcomes.enabled: false`.
 
 ### Bridge integration
@@ -341,18 +344,18 @@ Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands in
 
 ### Frontend
 
-`OutcomesView.tsx` — left-rail entry between Agents and History (uses the existing `check` icon). Inline `OutcomeCard` per pending item with verdict segmented control (`happened` / `didnt` / `partial`) + 1–5 quality buttons + note textarea. On save, the row is removed from local state instead of refetching — same pattern as Phase 6's `promptRefreshToken` scoping.
+`OutcomesView.tsx` — left-rail entry between Agents and History (uses the existing `check` icon). Inline `OutcomeCard` per pending item with verdict segmented control (`happened` / `didnt` / `partial`) + 1–5 quality buttons + note textarea. On save, the row is removed from local state instead of refetching — same pattern as WEB-06's `promptRefreshToken` scoping.
 
-### Known limitations (Phase 7)
+### Known limitations (WEB-07)
 
 - **No retro view of completed outcomes.** Once an outcome is reviewed, it disappears from the pending list. A "history" tab listing scored outcomes is a v2.
 - **`/daily-summary` from the GUI doesn't show a date picker.** Body is the bare command; you can type `/daily-summary 2026-04-20` to override the default date, mirroring the CLI.
 
-## Sidebar Timeline mode (Phase 4)
+## Sidebar Timeline mode (WEB-04)
 
 The Chat-view sidebar has two render variants, toggled from the Tweaks panel:
 
-- `sidebar mode: list` — the default, unchanged from Phase 2: a flat list of the 20 most recent conversations with date / title / agent / msg count / cost.
+- `sidebar mode: list` — the default, unchanged from WEB-02: a flat list of the 20 most recent conversations with date / title / agent / msg count / cost.
 - `sidebar mode: timeline` — ported from design prototype v3: a vertical day-axis with token-sized conversation cards. The 40px axis column shows weekday + day-number + day-cost (sum across all convs on that day) only on the first row of each calendar day; subsequent same-day rows keep the axis column blank, and the card-rail's vertical `borderLeft` stays continuous so the rail reads as one line.
 
 Both variants share the same fetch (`/api/conversations?limit=20&sort=recent`), header, search box (still inert, will be wired in a later phase), loading / error / empty states, and session footer. Only the row rendering branches on `mode`.
@@ -377,13 +380,13 @@ Card height in timeline mode is log-bucketed in `heightFor(tokens)`:
 
 Deterministic — doesn't depend on the current fetch's max token count, so heights don't reshuffle when a new conversation lands.
 
-Agent-hue sits on the card's `borderLeft`: 2px baseline, bumped to 3px with the full card border in the hue and `surface2` background when the card represents the active session. The dominant agent's hue comes from `hueFor()` in `lib/agentHues.ts` (shared with Phase 2 History view).
+Agent-hue sits on the card's `borderLeft`: 2px baseline, bumped to 3px with the full card border in the hue and `surface2` background when the card represents the active session. The dominant agent's hue comes from `hueFor()` in `lib/agentHues.ts` (shared with WEB-02 History view).
 
 Dates are parsed via `parseLocalDate()` in `lib/dateBucket.ts` to avoid the `new Date("YYYY-MM-DD")` UTC-midnight pitfall that can shift weekday labels in negative-offset timezones.
 
 The tweak is persisted in `localStorage` under `jarvis-gui-tweaks-v1` with the rest of the tweaks object. Pre-existing stores without the new key fall back to `list` via `DEFAULT_TWEAKS` spread in `App.tsx`.
 
-## Dashboard / Home (Phase 3)
+## Dashboard / Home (WEB-03)
 
 The left-rail **Home** slot renders the Dashboard — greeting, Things 3
 "On your plate", cost-this-week sparkline, resume card, recent
@@ -439,7 +442,7 @@ conversations grid, quick-start commands. Matches design v1 Home.
   *Conversation lifecycle (v0.21.0)* below); empty-state still falls
   back to `onStartChat(null)`.
 
-### Known limitations (Phase 3)
+### Known limitations (WEB-03)
 
 - **Sparkline drill-down** — bars are static; clicking doesn't filter
   History.
@@ -450,7 +453,7 @@ conversations grid, quick-start commands. Matches design v1 Home.
   Things 3 in the last five minutes. Cache invalidates by wall-clock,
   not by a Home refresh button.
 
-## Conversations browser (Phase 2)
+## Conversations browser (WEB-02)
 
 The History view is a two-pane browser over `data/conversations/YYYY/*.json`:
 400px filters + date-bucketed list + detail pane (5-stat strip, Tools chips,
@@ -497,7 +500,7 @@ flag for delegation, just the tool invocation. If
   session's summary is re-parsed on the next refresh even if mtime is
   unchanged (defends against tight save-then-read races).
 
-### Known limitations (Phase 2)
+### Known limitations (WEB-02)
 
 - **Non-atomic writes** in `ConversationLogger.save()` mean the index may
   occasionally try to read a half-written file. We swallow `JSONDecodeError`
@@ -517,7 +520,7 @@ flag for delegation, just the tool invocation. If
   overwrite each other's JSON. Unlikely for single-user local; document and
   revisit only if it bites.
 
-## Known limitations (Phase 1)
+## Known limitations (WEB-01)
 
 - **Cancel is dispatch-only.** The `{ "type": "cancel" }` message stops
   emitting events to the WS but the in-flight LLM call keeps running in the
@@ -528,7 +531,7 @@ flag for delegation, just the tool invocation. If
 - **No interactive delegate sub-loops** — delegation is single-shot
   (JARVIS → delegate → result → back to JARVIS). Matches the design
   prototype's flow.
-- **`/daily-summary` and `/outcomes`** are CLI-only in Phase 1 (tightly
+- **`/daily-summary` and `/outcomes`** are CLI-only in WEB-01 (tightly
   coupled to `prompt_toolkit` and CLI display).
 - **`uvicorn --reload` breaks MCP subprocess lifecycle** — don't use it.
   Restart manually when changing Python that owns subprocesses.
