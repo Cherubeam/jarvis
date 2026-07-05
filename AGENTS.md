@@ -173,6 +173,23 @@ Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](doc
 | Tool file | `snake_case.py` | `vault_read_tools.py` |
 | Prompt include files | `kebab-case.md` | `voice-profile.md` |
 
+### Roadmap & Initiative Naming
+
+Workstreams use an **initiative / milestone** scheme (see [ADR-033](docs/product/decisions.md#adr-033-initiative--milestone-naming-scheme)) — **not** "Phase N", which previously collided across three separate sequences.
+
+| Entity | Pattern | Examples |
+|--------|---------|----------|
+| Initiative code | `UPPERCASE` mnemonic, allocated once, never reused | `AON`, `WEB`, `CAP` |
+| Milestone | `CODE-NN` (zero-padded), allocated in creation order, **never renumbered/reused** | `AON-01`, `AON-02` |
+| Milestone branch | `feat/<code-nn>-<slug>` | `feat/aon-01-websocket-auth` |
+| Commit / PR scope | `<type>(<code-nn>): …` | `feat(aon-01): add WS token auth` |
+
+Rules:
+- Sequence and priority are expressed by a `Status:` field and document order, **never** by the number — so IDs stay stable when work is inserted or reordered.
+- New initiative codes are recorded in ADR-033's crosswalk when created.
+- Legacy "Phase N" names remain only in historical ledgers (`docs/changelog.md`, past ADRs, git tags); the ADR-033 crosswalk keeps them resolvable. Do **not** rewrite shipped history to the new codes.
+- Current initiatives live in [docs/product/roadmap.md](docs/product/roadmap.md).
+
 ### Imports
 
 ```python
@@ -460,4 +477,4 @@ While pre-1.0, minor bumps may include breaking changes.
 
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-07-05*

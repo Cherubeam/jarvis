@@ -2247,3 +2247,72 @@ This follow-up closes the loop:
 - **`outcomes.*` is deliberately cold,** even though the `/api/outcomes` view re-reads the flag per request. Toggling `outcomes.enabled` on mid-session does _not_ register the `track_recommendation` tool (that happens at startup), so the user-facing effect is partial — restart is the honest advice.
 - **`classify_changes(current, new)`** is the single pure function that diffs two `Settings.model_dump()` shapes, splits changed leaf paths by hot-apply eligibility, and returns `{hot_applied_fields, restart_required_fields, restart_required}`. The PUT response passes these through directly. The frontend `SettingsFooter` branches on the two lists to render one of four messages: no changes, hot-only applied live, cold-only restart required, or a mixed split.
 - **Why a whitelist, not a classifier driven by schema metadata.** Marking a pydantic field as "hot" would invite drift between metadata and reality the moment a new `build_session()` closure captures it. The whitelist forces each addition through a deliberate code-review of the read sites, which is the thing that actually has to be true for the "hot" label to be honest.
+
+---
+
+## ADR-033: Initiative & Milestone Naming Scheme
+
+**Date**: 2026-07-05
+**Status**: ✅ Accepted
+
+### Context
+
+The word "Phase" accumulated three independent, colliding numbering sequences:
+
+1. **Product roadmap** (`docs/product/roadmap.md`) — Phase 1 through Phase 10.
+2. **GUI build-out** (`docs/changelog.md`) — "GUI Phase 1" through "Phase 8", which are really sub-work of product Phase 6 (Web Interface).
+3. **Developer Agent** (`docs/product/developer-agent-roadmap.md`) — its own Phase 1–3.
+
+Plus informal sub-phases (`5A`, `5K`, Things 3 "Phase A/B"). A bare reference like "Phase 1" is ambiguous without knowing *which* sequence, and "Phase N" conflates two different things: a stable **identity** (which body of work) and a **position** (where in the sequence). Inserting or reordering work — e.g. "Things 3 Phase B moved to Phase 5C" — silently invalidates references across the docs. As the project is intended to be maintained for the long term, this ambiguity compounds.
+
+The existing **ADR** convention already solves this for decisions: `ADR-NNN` is allocated once, never renumbered, never reused, and ordering lives outside the ID. This ADR applies the same discipline to workstreams.
+
+### Decision
+
+Adopt a two-tier scheme (ADRs remain the third, decision, tier):
+
+- **Initiative** — a long-lived theme of work. Identified by a short **mnemonic code** (uppercase letters), allocated once and unique forever. Example: `AON`.
+- **Milestone** — a shippable chunk inside an initiative, identified as `CODE-NN` (zero-padded): `AON-01`, `AON-02`. Numbers are allocated in creation order and **never renumbered or reused**. Priority and sequence are expressed by a `Status:` field and document order, **never** by the number.
+- **Tasks** stay as checklist bullets / PRs that reference their milestone (`AON-01`). No third numeric tier.
+- **Branches/commits/PRs** reference the milestone in lowercase: `feat/aon-01-websocket-auth`, PR title `feat(aon-01): …`.
+
+**Crosswalk (legacy → code):**
+
+| Legacy "Phase" | Code | Initiative |
+|---|---|---|
+| Phase 1 | `FND` | Foundation & Metrics |
+| Phase 2 | `EVAL` | Evaluation & Quality Metrics |
+| Phase 3 | `CTX` | Context & Integrations |
+| Phase 4 | `AGENT` | Agent Framework |
+| Phase 5 (5A…5K) | `CAP` | Agent Capabilities |
+| Phase 6 + "GUI Phase 1–8" | `WEB` | Web Interface |
+| Phase 7 | `TOK` | Context-Window Management & Search |
+| Phase 8 | `OPS` | System Monitoring & Optimization |
+| Phase 9 | `UX` | UX Enhancements |
+| Phase 10 | `TUNE` | Fine-tuning (optional) |
+| Developer Agent Phase 1–3 | `DEV` | Developer Agent |
+| *(new)* | `AON` | Always-On & Loop Engineering |
+
+**Migration scope (deliberate).** The scheme is applied to **living** docs — `roadmap.md`, `AGENTS.md` conventions, and this ADR — which describe the *current* plan. **Historical ledgers are left intact**: shipped `changelog.md` entries, past ADR bodies, git tags, and GitHub releases keep the "Phase N" names they shipped under, because rewriting them would make the docs disagree with git history and release notes — a subtler staleness than the one being fixed. This ADR's crosswalk is the single source of truth that keeps any legacy "Phase N" reference resolvable. `developer-agent-roadmap.md` adopts `DEV-NN` when it is next revised.
+
+### Alternatives Considered
+
+1. **Keep "Phase N", just bump to the next free number (Phase 11+)** — ✅ minimal change; ❌ still a single shared number line across three workstreams, still conflates identity with position, ambiguity returns the moment two tracks advance in parallel.
+2. **Purely sequential numeric initiatives (`INIT-011`, `M-042`, Jira-style)** — ✅ fully position-free; ❌ not self-describing — every reference requires a lookup to know the theme; poorer day-to-day readability for a solo maintainer.
+3. **Namespaced "Phase" (`AON Phase 3`)** — ✅ least conceptual change; ❌ wordier and still leans on the term that caused the confusion.
+4. **Mnemonic codes + never-renumbered milestone IDs (chosen)** — ✅ unambiguous anywhere (prefix carries the initiative), ✅ stable under insertion/reordering, ✅ reads well in branches/commits, ✅ mirrors the ADR discipline already trusted; ⚠️ a one-time migration of living docs + a crosswalk to maintain.
+
+### Consequences
+
+**Benefits:**
+- ✅ Cross-workstream collision eliminated — GUI and Developer-Agent sequences become their own namespaced initiatives.
+- ✅ IDs are stable references usable in roadmap, ADRs, branches, commits, and PR titles without renumbering churn.
+- ✅ The crosswalk keeps historical "Phase N" references resolvable without rewriting history.
+
+**Drawbacks:**
+- ⚠️ Two naming worlds coexist during the transition (living docs use codes; historical ledgers use "Phase N") — mitigated by the crosswalk and by not rewriting history.
+- ⚠️ New initiative codes must be chosen and recorded here when created (a light allocation step).
+
+### Related ADRs
+- Generalizes the ADR numbering convention itself (stable, allocate-once IDs) from decisions to workstreams.
+- First application: initiative `AON` (Always-On & Loop Engineering), tracked in `roadmap.md`, motivated by the 2026-07-04 deep-research review.
