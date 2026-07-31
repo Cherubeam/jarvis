@@ -384,7 +384,7 @@ per ADR-033. Each landed on its own feature branch, merged via
 ## AON — Always-On & Loop Engineering
 
 **Status**: 🔄 Planned — Kickoff 2026-07
-**Motivation**: 2026-07-04 deep-research review (codebase audit + verified web research). See ADR-033 for the naming scheme this initiative introduces.
+**Motivation**: 2026-07-04 deep-research review (codebase audit + verified web research), amended 2026-07-31 by an adversarial re-check against newer developments (loop-engineering discipline, cache-economics results, memory-benchmark audits). See ADR-033 for the naming scheme this initiative introduces.
 
 **Goal**: Make JARVIS safe to leave running, reachable without a terminal, and
 able to run loops (autonomous, scheduled, and feedback) — without violating the
@@ -397,9 +397,9 @@ stable and will not be renumbered as the plan evolves.
 
 Make the existing system safe to leave running and cheap to extend. Each item is one feature branch / PR (`feat/aon-01-<slug>`).
 
-- [ ] WebSocket origin allowlist + token auth in `apps/gui/server/routes/chat_ws.py` / `apps/gui/server/app.py`; add TestClient coverage for the GUI-server mutation blind spot (`app.py`, `state.py`, `chat_ws.py`) *(S)*
+- [ ] WebSocket origin allowlist + token auth in `apps/gui/server/routes/chat_ws.py` / `apps/gui/server/app.py`; add TestClient coverage for the GUI-server mutation blind spot (`app.py`, `state.py`, `chat_ws.py`). Lessons from the OpenClaw CVE wave: no tokens in URL params, no "it's localhost" auth deferrals *(S)*
 - [ ] Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py` (currently runs arbitrary Python via conftest with no confirmation) *(S)*
-- [ ] Persisted SQLite cost ledger + daily budget abort in `StreamHandler`/`LLMClient` (pattern per Agent SDK `max_budget_usd`) *(S)*
+- [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
 - [ ] Fix the confirmation deadlock: add a timeout to `apps/gui/server/confirmation.py`, move approval handling out of the blocked receive loop in `chat_ws.py` *(M)*
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [ ] Atomic conversation saves in `packages/core/memory.py` (write-temp-then-rename) *(S)*
@@ -412,11 +412,12 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 One core, many front ends, one safe scheduled job.
 
-- [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on *(L)*
+- [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
 - [ ] Session-per-conversation replacing the global GuiSession (`apps/gui/server/app.py`, `state.py`) *(M)*
 - [ ] `PolicyConfirmationHandler` with a whitelist + persisted approval inbox (headless-safe) *(M)*
 - [ ] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*
-- [ ] Telegram bot via long polling as a thin `TurnRunner` client; Tailscale Serve for the GUI *(M)*
+- [ ] Read-only **verifier subagent** with fresh context that checks the briefing's output before it's sent (the missing piece from the loop-engineering taxonomy; first consumer of a spawn-and-consume-summary delegation mode — note `delegate.py` is terminal-handoff-only today) *(S)*
+- [ ] Telegram bot via long polling as a thin `TurnRunner` client; Tailscale Serve for the GUI. **Content policy**: notifications and approval pings via Telegram; anything vault-derived stays on the Tailscale-only GUI (bot chats are not E2E-encrypted) *(M)*
 
 *Token impact: +$2–6/month for a daily briefing; bounded by the AON-01 ledger.*
 
@@ -426,11 +427,13 @@ One core, many front ends, one safe scheduled job.
 
 Change loop code without flying blind.
 
-- [ ] Route golden evals through the real `TurnRunner`/`StreamHandler` + `context_builder` (remove the reimplemented loop and hardcoded prompt in `tests/golden/`) *(M)*
-- [ ] Replace fabricated fallback judge scores with hard failures; read the baseline `result_storage.py` already writes for CI regression gating *(S)*
-- [ ] Calibrate the judge against ~25 hand-labeled transcripts; randomize answer ordering *(S)*
-- [ ] Deterministic output checks for each scheduled job *(S)*
-- [ ] Automate the outcome-review loop (`apps/cli/review.py`) as the second scheduled job, with typed fact extraction into the vault *(M)*
+- [ ] Route golden evals through the real `TurnRunner`/`StreamHandler` + `context_builder` (remove the reimplemented loop and hardcoded prompt in `tests/golden/` — reuse the AON-02 TurnRunner with mock tools, not a second harness) *(M)*
+- [ ] Replace fabricated fallback judge scores with hard failures — **both** fabrication paths in `tests/golden/evaluator.py` (`_fallback_evaluation` *and* `_fallback_parse`); read the baseline `result_storage.py` already writes for CI regression gating *(S)*
+- [ ] Calibrate the judge against ~25 hand-labeled transcripts using **Cohen's kappa** (raw agreement overstates judge quality by 33–41pp); recalibrate only when divergence exceeds ~20–25% — a stop condition, not an open-ended project. (No answer-ordering randomization — that's a pairwise-judge mitigation; ours is pointwise.) *(S)*
+- [ ] Fix `evaluate_tool_calls` to assert **ordering** (it claims ordered checking but matches by name only); reuse the assertion for scheduled-job checks *(S)*
+- [ ] Deterministic output checks for each scheduled job; source new golden cases from **real failure transcripts** (already persisted via `memory.py`) and tag capability-vs-regression so CI gates only on regression *(S)*
+- [ ] **Harness evals**: does a checkpointed loop survive a kill? does trimming preserve task intent? Plus injection-containment tests (did the *guards* hold, not did the model notice) — cheap additions, prerequisites for AON-04's longer loops *(S)*
+- [ ] Automate the outcome-review loop (`apps/cli/review.py`) as the second scheduled job, with typed fact extraction into the vault. **Quarantine the writes**: extractions land in a staging file requiring human approval before entering prompt-feeding paths (`context_builder.py` feeds vault markdown straight into system prompts — unquarantined auto-writes are a self-reinforcing injection channel). Fact frontmatter gets temporal fields (`valid_at`/`superseded_by`) and extraction is wikilink-aware — the vault already is a graph *(M)*
 
 *Token impact: ~$0.41/eval run + pennies for judges — negligible.*
 
@@ -440,13 +443,16 @@ Change loop code without flying blind.
 
 Dedicated always-on box; loops that run longer, safely.
 
-- [ ] Headless Mac (mini/spare) as a LaunchAgent: auto-login, FileVault off, `pmset -a sleep 0`, auto-restart, Tailscale-only access *(M)*
+- [ ] **Secrets hygiene before the box goes always-on**: `config/local.yaml` holds plaintext API keys and the pattern will grow (OpenRouter, Telegram) — on an unencrypted always-on disk with FileVault off. Move to Keychain or 0600 env files outside the repo; document the physical-theft acceptance *(S)*
+- [ ] Headless Mac (mini/spare) as a LaunchAgent: auto-login, FileVault off, `pmset -a sleep 0`, auto-restart, Tailscale-only access (standalone `tailscaled`, not the App Store build) *(M)*
 - [ ] Route `FilesystemGuard` through **all** write tools (close the bypass in `codebase_tools.py`, `project_write_tools.py`, `git_tools.py`); add a quarantined web-digest job *(M)*
-- [ ] Tool-result clearing in `StreamHandler` + cache-friendly prompt assembly (static prefix first) *(M)*
-- [ ] Raise the iteration cap only alongside file-based checkpoints (JSON task list + progress notes + git); MCP reconnection in `mcp/client.py` *(M)*
+- [ ] **MCP transport policy**: stdio/local-only by default; network transports (SSE/HTTP) are deliberate opt-in (`mcp/client.py` supports all three; thousands of exposed MCP servers are catalogued, roughly half unauthenticated) *(S)*
+- [ ] Wire the existing `history.py:trim_tool_results` into StreamHandler's within-loop iterations — **batched at a token threshold, cache-aware** (per-turn sliding-window trimming mutates old messages and invalidates the cached prefix; don't rebuild what exists). Cache-friendly prompt assembly: static prefix first, dynamic content last. Note: Anthropic's native context-management beta is rejected by OpenRouter, so hand-rolling is correct here; a direct-Anthropic path is optional for long loops only *(M)*
+- [ ] Cache **keepalive pings at ~240s** during approval waits (the circulating 30s convention is ~8× too expensive), only within the break-even horizon; spend counted by the AON-01 ledger *(S)*
+- [ ] Raise the iteration cap only alongside file-based checkpoints (JSON task list + progress notes + git) **and** the AON-03 harness evals passing; MCP reconnection in `mcp/client.py` — re-pin the tool set on reconnect to protect the cache *(M)*
 - [ ] Optional hardening: sandbox-runtime + credential-injecting egress proxy so the agent never holds API keys *(L — only if unattended scope grows)*
 
-*Token impact: net negative — caching + clearing should more than fund longer loops.*
+*Token impact: net negative — caching + batched clearing should more than fund longer loops (savings depend on the pinned tool set + stable prefix; treat vendor percentages as upper bounds, not forecasts).*
 
 ### AON-05 — Voice & proactivity (optional)
 
@@ -454,8 +460,8 @@ Dedicated always-on box; loops that run longer, safely.
 
 Do this only when AON-01…04 feel boring.
 
-- [ ] Home Assistant Assist "Hey Jarvis" wake word + ESP32 satellite as another thin `TurnRunner` client *(L)*
-- [ ] Proactive Telegram notifications from scheduled jobs (approval-inbox digests, outcome summaries) *(M)*
+- [ ] Local speech pipeline (Pipecat or HF speech-to-speech: local STT → TurnRunner → local TTS) as another thin `TurnRunner` client on the always-on Mac. (Dropped the earlier Home Assistant + ESP32 shape: adopting a home-automation platform for a wake word is over-engineering when HA isn't otherwise in use; revisit HA Voice PE only if HA arrives for other reasons) *(L)*
+- [ ] Proactive Telegram notifications from scheduled jobs (approval-inbox digests, outcome summaries) — subject to the AON-02 content policy *(M)*
 
 ---
 
@@ -542,9 +548,11 @@ Do this only when AON-01…04 feel boring.
 
 ### Medium Priority
 
-- [ ] Mobile companion app
 - [ ] Voice input/output *(now scoped under `AON-05`)*
 - [ ] API server mode (for integrations)
+
+> Dropped 2026-07-31: *Mobile companion app* — Telegram (`AON-02`) plus the GUI
+> over Tailscale reaches parity at near-zero build cost.
 
 ### Low Priority / Future Ideas
 
@@ -569,4 +577,4 @@ Do this only when AON-01…04 feel boring.
 
 ---
 
-*Last updated: 2026-07-05*
+*Last updated: 2026-07-31*

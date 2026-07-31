@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs — AON roadmap amendments from adversarial re-check (2026-07-31)
+
+- **Folded the 2026-07-31 delta review into the `AON` milestones in `docs/product/roadmap.md`.** An adversarial re-check of the 2026-07-04 deep-research report (9-agent workflow: 4 fresh-research scouts + 4 critics + synthesis) confirmed the architecture calls and the AON-01→05 ordering, but corrected the quantitative claims and added ~12 content amendments: per-loop deterministic stop conditions (not dollar-only caps), pinned tool set + prefix ordering in TurnRunner (cache stability), a read-only verifier subagent for scheduled jobs, quarantined staging for auto-extracted facts, Cohen's-kappa judge calibration, both judge-fallback fabrication paths flagged, secrets hygiene + MCP stdio-only policy before always-on, ~240s cache keepalives, rescoped tool-result clearing to wiring the existing `trim_tool_results`, AON-05 rewritten from HA/ESP32 to a local Pipecat/HF pipeline, and the mobile-companion-app backlog item dropped.
+
 ### Docs — Initiative & milestone naming scheme (2026-07-05)
 
 - **Adopted the initiative/milestone naming scheme (ADR-033), replacing the overloaded "Phase N" numbering.** Workstreams now use mnemonic initiative codes (`FND`, `EVAL`, `CTX`, `AGENT`, `CAP`, `WEB`, `TOK`, `OPS`, `UX`, `TUNE`, `DEV`) with never-renumbered `CODE-NN` milestones. New initiative **`AON` (Always-On & Loop Engineering)** tracks the roadmap from the 2026-07-04 deep-research review (`AON-01` Harden … `AON-05` Voice). Migration touched **living docs only** — `docs/product/roadmap.md`, `AGENTS.md`, and the new ADR-033. **Historical changelog entries below keep their original "Phase N" labels on purpose** (rewriting shipped history would diverge from git tags/releases); ADR-033's crosswalk maps old → new.
