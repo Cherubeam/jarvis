@@ -123,13 +123,21 @@ This project demonstrates:
 
 **Jarvis Advantage**: Simpler, focused on personal assistant use case, better documentation
 
+### Agent Harnesses (Claude Code, Codex, OpenCode, Cowork, Pi)
+
+These are **complements, not competitors** ([ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context)). They compete on the agentic loop — sandboxing, planning, headless execution — and improve faster than any solo project can. Jarvis does not compete there:
+
+> **Harnesses are commodities; the context is the moat.**
+
+Jarvis is the **personal context, memory, and workflow hub**: the vault, context files, conversation history, typed memory, voice profile, personal integrations, and provider independence. Coding execution is *delegated* to a harness (see the rescoped `DEV` initiative); the context itself is *exported* to every tool via MCP (initiative `HUB`), so nothing has to be copy-pasted between Jarvis, Claude Code, and friends.
+
 ## Non-Goals
 
 What Jarvis is **not** trying to be:
 
 - ❌ A hosted service (local-first always)
 - ❌ A team collaboration tool (personal use only)
-- ❌ A GUI application (CLI/TUI focus for now)
+- ❌ A general-purpose coding agent harness (delegate to Claude Code & co. — ADR-034)
 - ❌ A framework for others to build on (learning project first)
 - ❌ Production-ready for non-technical users (technical audience)
 
@@ -137,4 +145,4 @@ These may change in the future, but clarity on non-goals prevents scope creep.
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-08-19*
