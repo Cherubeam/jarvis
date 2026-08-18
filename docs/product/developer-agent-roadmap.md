@@ -4,6 +4,8 @@ Milestone plan for JARVIS's self-improvement capabilities via the developer agen
 
 Uses the initiative/milestone naming scheme from [ADR-033](decisions.md#adr-033-initiative--milestone-naming-scheme): this is initiative **`DEV`**; milestone IDs (`DEV-01`…) are stable and never renumbered. See [ADR-028](decisions.md) for the architectural decision record. *(Legacy: this doc previously used "Phase 1–3"; historical changelog entries keep that label.)*
 
+> **Rescoped 2026-08-19 per [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context)**: coding harnesses (Claude Code, Codex, OpenCode) are commodities; JARVIS does not compete with them. `DEV-02`/`DEV-03` were unshipped and are rewritten below from "build our own autonomous coding harness" to "**JARVIS decides *what* to improve and delegates execution** to an external harness." The original specs (AutoConfirmationHandler, planning phase, expanded Python file scope with AST validation, in-house heartbeat execution) are superseded. `DEV-01` stays as shipped — its small tool set remains the right size for tiny scoped edits.
+
 ---
 
 ## DEV-01 — Foundation
@@ -21,41 +23,44 @@ The developer agent can read its own codebase, make scoped changes, and commit s
 - **61 tests** covering all tool modules
 - **Max 20 iterations** per invocation
 
-## DEV-02 — Autonomous Operation
+## DEV-02 — Delegated Execution
 
-*Legacy: Phase 2*
+*Legacy: Phase 2 "Autonomous Operation" — rescoped 2026-08-19 per ADR-034*
 
 **Status**: 📋 Planned
 
-Enable unattended use and smarter planning.
+`/develop` becomes a thin dispatcher: JARVIS frames the task and supplies context; an external coding harness executes it.
 
-- **AutoConfirmationHandler**: non-interactive confirmation for CI/scheduled runs
-- **Planning phase**: agent generates and validates a plan before executing changes
-- **End-to-end integration test**: full agent loop with mocked LLM producing real file changes
-- **Expanded file scope**: Python files in agent/skill directories (with AST validation)
+- **Harness dispatch**: invoke Claude Code headless (`claude -p`) / Agent SDK with a JARVIS-composed prompt (task framing, relevant context, acceptance criteria); capture the result and surface it in the conversation
+- **Task composition**: reuse the codebase map + `AGENTS.md` conventions so the delegated harness lands changes that follow house rules (branch naming, commit format, `uv`-only)
+- **Tiny-edit fast path**: keep the DEV-01 tool set for small scoped edits (`meta.yaml`, prompt files) where spawning a harness is overkill — explicit size/scope threshold decides the path
+- **End-to-end integration test**: dispatch a mocked harness run and assert the composed prompt, sandbox flags, and result capture
 
-> **Cross-initiative note**: the AutoConfirmationHandler overlaps `AON-02`'s
-> `PolicyConfirmationHandler` (both solve headless-safe confirmation). Build it
-> once in `packages/core` and share it — don't duplicate.
+> **Dropped from the original spec**: AutoConfirmationHandler (headless-safe
+> confirmation for JARVIS's own jobs is `AON-02`'s `PolicyConfirmationHandler`;
+> confirmation *inside* delegated coding runs is the harness's permission
+> system, not ours), planning phase, and expanded Python file scope with AST
+> validation (the harness already does both better).
 
 ## DEV-03 — Continuous Self-Improvement
 
-*Legacy: Phase 3*
+*Legacy: Phase 3 — rescoped 2026-08-19 per ADR-034*
 
 **Status**: 📋 Planned
 
-Heartbeat mode for periodic, proactive improvements.
+Periodic, proactive improvement — JARVIS discovers, the harness executes, a human reviews the PR.
 
-- **Daemon/heartbeat mode**: scheduled self-improvement cycles (e.g., daily)
-- **Improvement discovery**: agent identifies stale docs, missing tests, outdated configs
-- **PR creation**: auto-creates pull requests for review instead of direct commits
-- **Multi-agent coordination**: developer agent can request reviews from other agents
+- **Improvement discovery**: a scheduled read-only job (an `AON-02` `jarvis run-job` consumer) identifies stale docs, missing tests, outdated configs
+- **Delegated fixes**: each finding becomes a DEV-02 dispatch; the harness opens a PR for human review — JARVIS never merges
+- **Review routing**: findings and PR links land in the `AON-02` approval inbox / Telegram digest
+- **Multi-agent coordination**: developer agent can request reviews from other JARVIS agents (e.g., docs review by the writer)
 
-> **Cross-initiative note**: the daemon/heartbeat and unattended-safety work
-> here depends on `AON` foundations — the shared `TurnRunner` + headless
-> session factory (`AON-02`) and the `FilesystemGuard`/budget/sandbox rails
-> (`AON-01`, `AON-04`). Sequence `DEV-03` after those land.
+> **Cross-initiative note**: depends on `AON` foundations — the shared
+> `TurnRunner` + headless session factory (`AON-02`) and the budget/safety
+> rails (`AON-01`). Sequence `DEV-03` after those land. The in-house
+> daemon/heartbeat *execution* engine from the original spec is superseded:
+> scheduling stays in launchd, execution in the external harness.
 
 ---
 
-*Last updated: 2026-07-05*
+*Last updated: 2026-08-19*
