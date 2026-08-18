@@ -30,6 +30,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 | Phase 10 | `TUNE` | Fine-tuning (optional) |
 | Dev-agent Phase 1–3 | `DEV` | Developer Agent (see `developer-agent-roadmap.md`) |
 | — | `AON` | Always-On & Loop Engineering |
+| — | `HUB` | Context Hub — Cortex/memory via MCP (see [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context)) |
 
 ---
 
@@ -465,6 +466,39 @@ Do this only when AON-01…04 feel boring.
 
 ---
 
+## HUB — Context Hub (Cortex/Memory via MCP)
+
+**Status**: 📋 Planned — allocated 2026-08-19
+**Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
+
+**Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
+
+### HUB-01 — Cortex as MCP server
+
+**Status**: ⏳ Next up · **Effort**: M · **Risk**: Low
+
+Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/local-only per the `AON-04` transport policy).
+
+- [ ] MCP server wrapper over `POST /search` (semantic vault search, tier/source filters)
+- [ ] Read-only by design — no write tools in v1
+- [ ] Register in Claude Code (`.mcp.json`) and verify from a real coding session
+- [ ] JARVIS consumes the same server via its existing MCP client (replaces the bespoke `search_vault_semantic` HTTP path once stable)
+
+### HUB-02 — Context & memory surface
+
+**Status**: 📋 Planned · **Effort**: M · **Risk**: Medium
+
+Extend the server beyond search to JARVIS's curated context.
+
+- [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
+- [ ] Conversation-recall search (scoped, opt-in — most private data class)
+- [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
+
+> **Scope guard (ADR-034)**: `HUB` exports context; it does not grow into a
+> workflow or execution API. Harnesses bring their own loops.
+
+---
+
 ## TOK — Context-Window Management & Search
 
 *Legacy: Phase 7*
@@ -549,7 +583,7 @@ Do this only when AON-01…04 feel boring.
 ### Medium Priority
 
 - [ ] Voice input/output *(now scoped under `AON-05`)*
-- [ ] API server mode (for integrations)
+- [ ] API server mode (for integrations) *(context access now scoped under `HUB`; anything beyond that is out per ADR-034's scope guard)*
 
 > Dropped 2026-07-31: *Mobile companion app* — Telegram (`AON-02`) plus the GUI
 > over Tailscale reaches parity at near-zero build cost.
@@ -577,4 +611,4 @@ Do this only when AON-01…04 feel boring.
 
 ---
 
-*Last updated: 2026-07-31*
+*Last updated: 2026-08-19*
