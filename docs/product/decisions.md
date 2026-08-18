@@ -2292,6 +2292,7 @@ Adopt a two-tier scheme (ADRs remain the third, decision, tier):
 | Phase 10 | `TUNE` | Fine-tuning (optional) |
 | Developer Agent Phase 1–3 | `DEV` | Developer Agent |
 | *(new)* | `AON` | Always-On & Loop Engineering |
+| *(new, 2026-08-19)* | `HUB` | Context Hub — Cortex/memory via MCP (ADR-034) |
 
 **Migration scope (deliberate).** The scheme is applied to **living** docs — `roadmap.md`, `AGENTS.md` conventions, and this ADR — which describe the *current* plan. **Historical ledgers are left intact**: shipped `changelog.md` entries, past ADR bodies, git tags, and GitHub releases keep the "Phase N" names they shipped under, because rewriting them would make the docs disagree with git history and release notes — a subtler staleness than the one being fixed. This ADR's crosswalk is the single source of truth that keeps any legacy "Phase N" reference resolvable. `developer-agent-roadmap.md` adopts `DEV-NN` when it is next revised.
 
@@ -2316,3 +2317,60 @@ Adopt a two-tier scheme (ADRs remain the third, decision, tier):
 ### Related ADRs
 - Generalizes the ADR numbering convention itself (stable, allocate-once IDs) from decisions to workstreams.
 - First application: initiative `AON` (Always-On & Loop Engineering), tracked in `roadmap.md`, motivated by the 2026-07-04 deep-research review.
+
+---
+
+## ADR-034: Context Hub Positioning — Rent Coding Harnesses, Own the Context
+
+**Date**: 2026-08-19
+**Status**: ✅ Accepted
+
+### Context
+
+Since JARVIS started, general-purpose **agent harnesses have become commodities**: Claude Code, OpenAI Codex, and OpenCode (coding, terminal-native, with sandboxing, permission policies, headless/CI modes, and subagents), Claude Cowork (non-coding knowledge work), and minimal open harnesses like Pi. These tools compete on the agentic loop itself and improve at a pace a solo project cannot match.
+
+Parts of the JARVIS roadmap were drifting into that commodity territory:
+
+1. **The developer agent (`DEV`)** — DEV-01 built a hand-rolled miniature coding harness (14 tools, git sandbox, scoped writes), and DEV-02/DEV-03 as originally specced (AutoConfirmationHandler, planning phase, heartbeat, PR creation) re-create what Claude Code already ships as headless mode (`claude -p`), the Agent SDK, hooks/permission policies, and scheduled agents.
+2. **Context is trapped per-tool** — JARVIS's real assets (vault, context files, conversation history, typed memory, Cortex semantic search per ADR-029) are only reachable from inside JARVIS, so using any external harness means copy-pasting context by hand.
+
+Meanwhile the interop layer has standardized: all of the harnesses above are **MCP clients**, and `AGENTS.md` has become the cross-tool convention for repo-level context (this repo's `CLAUDE.md` already just points at it). ADR-029 explicitly anticipated this: *"The API can later be exposed as an MCP server so Claude Code can query the knowledge base."*
+
+### Decision
+
+**Harnesses are commodities; the context is the moat.** JARVIS is positioned as the **personal context, memory, and workflow hub** — not a general agent platform.
+
+1. **Delegate coding execution.** `/develop` becomes a thin dispatcher: JARVIS decides *what* to improve and composes the context/prompt, then delegates execution to an external coding harness (Claude Code headless / Agent SDK). The DEV-01 tool set is retained only for tiny scoped edits (`meta.yaml`, prompts) where a full harness is overkill. DEV-02/DEV-03 are rescoped accordingly in `developer-agent-roadmap.md` (IDs stay, content changes — they are unshipped).
+2. **Export the context via MCP.** Cortex (ADR-029) is promoted from "MCP-ready someday" to the shared context backbone: a new initiative **`HUB`** tracks exposing Cortex + JARVIS context/memory as an **MCP server** consumable by every harness (Claude Code, Codex, OpenCode, Cowork). This flips JARVIS's most valuable asset from "locked inside JARVIS" into the shared memory layer of the whole toolchain — the strongest version of the anti-lock-in thesis.
+3. **Scope guard for `AON`.** The `TurnRunner`/loop work in `AON` remains in scope because it serves JARVIS's *own* conversational sessions, front ends (CLI/GUI/Telegram), and read-only scheduled jobs — but harness-grade features beyond that (deep sandboxing for unattended code edits, long autonomous coding loops) are explicitly out of scope: delegate them.
+4. **Keep building without guilt** everything no harness provides: workflow agents (writer, reading assistant, publisher …), voice profile, provider routing, token economics, integrations (Obsidian, Readwise, Things 3, Substack), and the GUI.
+
+### Alternatives Considered
+
+1. **Keep building the in-house coding harness (DEV-02/03 as specced)**
+   - ❌ Permanently behind Claude Code/OpenCode on sandboxing, planning, and safety
+   - ❌ Duplicates AON confirmation/safety work for a second consumer
+   - ✅ Full control, no external dependency — not worth the treadmill for one user
+2. **Adopt an external harness as JARVIS's core loop too**
+   - ❌ Surrenders provider independence and the local-first conversational core — the part that *is* differentiated
+   - ❌ JARVIS's loop needs (front ends, scheduled read-only jobs) are modest and already built
+3. **Per-tool context bridges instead of MCP** (copy scripts, per-harness plugins)
+   - ❌ N×M integrations, exactly the copy-paste problem being solved
+   - ❌ Ignores that every relevant tool already speaks MCP
+4. **Reposition as hub + delegate coding + MCP export (chosen)** — ✅ each tool does what it's best at; JARVIS's moat compounds instead of its harness lagging
+
+### Consequences
+
+**Benefits:**
+- ✅ DEV-02/03 shrink from harness-building to prompt/context composition — less code, better results
+- ✅ One canonical context store serves every tool; no more copy-paste between JARVIS, Claude Code, and friends
+- ✅ Clear yes/no filter for future roadmap items: "is this hub work or commodity harness work?"
+
+**Drawbacks:**
+- ⚠️ Coding execution depends on an external tool's CLI/SDK surface (mitigated: the dispatcher is thin, and `AGENTS.md` keeps repo context tool-agnostic)
+- ⚠️ An MCP server over personal vault data raises the exposure stakes — inherits the `AON-04` MCP transport policy (stdio/local-only by default) as a hard requirement
+
+### Related ADRs
+- Builds on ADR-029 (Cortex) — `HUB` is its "MCP-ready" clause made first-class.
+- Rescopes ADR-028's follow-on milestones (developer agent DEV-02/03).
+- Initiative `HUB` allocated per ADR-033; crosswalk updated there.
