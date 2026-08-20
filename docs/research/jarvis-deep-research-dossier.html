@@ -1,0 +1,935 @@
+<!doctype html>
+<!-- JARVIS Deep-Research Dossier — prepared 2026-07-04, revised 2026-08-19 (ADR-034 strategic positioning). -->
+<!-- Canonical interactive copy: https://claude.ai/code/artifact/116c007f-b12a-4504-8d34-8868d2c27197 (kept in sync manually). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS Deep-Research Dossier — Audit, Loop Engineering &amp; the Path to Always-On</title>
+</head>
+<body>
+<style>
+  :root {
+    --ground: #E9ECEF;
+    --paper: #FFFFFF;
+    --ink: #141C24;
+    --muted: #5B6875;
+    --faint: #8794A0;
+    --hair: #D4DBE1;
+    --hair-soft: #E4E9ED;
+    --accent: #0F6E7E;
+    --accent-deep: #0A505C;
+    --accent-wash: #E4F0F1;
+    --crit: #B02A32;
+    --high: #BC5A16;
+    --med: #927200;
+    --low: #3C7A5B;
+    --crit-wash: #F7E7E7;
+    --high-wash: #F8ECE1;
+    --med-wash: #F5F0DC;
+    --low-wash: #E6F1EB;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", ui-monospace, monospace;
+    --measure: 42rem;
+  }
+
+  * { box-sizing: border-box; }
+
+  .doc {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1.0625rem;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0 1.5rem 6rem;
+  }
+
+  .shell {
+    max-width: 64rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    padding: 4.5rem 0 2.25rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2.75rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin: 0 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 1.6rem;
+    height: 2px;
+    background: var(--accent);
+  }
+  .masthead h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+    max-width: 20ch;
+  }
+  .masthead .sub {
+    color: var(--muted);
+    font-size: 1.08rem;
+    max-width: 46rem;
+    margin: 0 0 2rem;
+  }
+  .byline {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--faint);
+    letter-spacing: 0.02em;
+    display: flex;
+    gap: 1.4rem;
+    flex-wrap: wrap;
+  }
+  .byline b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Stats strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--hair);
+    border: 1px solid var(--hair);
+    margin: 2.4rem 0 0;
+  }
+  .stat {
+    background: var(--paper);
+    padding: 1rem 1.1rem 1.05rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .stat .n {
+    font-family: var(--serif);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .stat .l {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ---------- Layout with rail ---------- */
+  .body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .rail { display: none; }
+
+  @media (min-width: 60rem) {
+    .body {
+      grid-template-columns: 12.5rem minmax(0, 1fr);
+      gap: 3.5rem;
+      align-items: start;
+    }
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2rem;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+    }
+    .rail ol { list-style: none; margin: 0; padding: 0; }
+    .rail li { margin: 0 0 0.15rem; }
+    .rail a {
+      display: flex;
+      gap: 0.6rem;
+      padding: 0.34rem 0.5rem;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid var(--hair);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .rail a:hover { color: var(--accent-deep); border-left-color: var(--accent); }
+    .rail a .num { color: var(--faint); font-variant-numeric: tabular-nums; }
+    .rail .tag {
+      margin: 1.4rem 0 0.5rem 0.5rem;
+      font-size: 0.64rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+  }
+
+  main { min-width: 0; max-width: var(--measure); }
+
+  /* ---------- Sections ---------- */
+  section { margin: 0 0 3.5rem; scroll-margin-top: 1.5rem; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin: 0 0 1.4rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--hair);
+  }
+  .sec-head .idx {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.6rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  main p { margin: 0 0 1.1rem; }
+  main h3 {
+    font-family: var(--sans);
+    font-size: 1.06rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    margin: 2rem 0 0.8rem;
+  }
+  main h4 {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin: 1.4rem 0 0.5rem;
+  }
+  strong { font-weight: 700; }
+  em { font-style: italic; color: var(--ink); }
+  a { color: var(--accent-deep); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  code, .path {
+    font-family: var(--mono);
+    font-size: 0.82em;
+    background: #EEF2F4;
+    color: var(--accent-deep);
+    padding: 0.08em 0.34em;
+    border-radius: 3px;
+    border: 1px solid var(--hair-soft);
+    word-break: break-word;
+  }
+
+  .cite {
+    font-family: var(--mono);
+    font-size: 0.62em;
+    font-weight: 600;
+    vertical-align: super;
+    line-height: 0;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0 0.05em;
+  }
+  .cite:hover { color: var(--crit); }
+  .cite::before { content: "["; }
+  .cite::after { content: "]"; }
+
+  /* ---------- Lead / exec summary ---------- */
+  .lead {
+    font-size: 1.14rem;
+    line-height: 1.6;
+    color: #232E38;
+  }
+  .lead::first-letter {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 3.1rem;
+    float: left;
+    line-height: 0.82;
+    padding: 0.4rem 0.6rem 0 0;
+    color: var(--accent);
+  }
+
+  /* ---------- Severity chips + finding rows ---------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .chip::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 100px; background: currentColor; }
+  .chip.crit { color: var(--crit); background: var(--crit-wash); }
+  .chip.high { color: var(--high); background: var(--high-wash); }
+  .chip.med  { color: var(--med);  background: var(--med-wash); }
+  .chip.low  { color: var(--low);  background: var(--low-wash); }
+
+  .theme {
+    background: var(--paper);
+    border: 1px solid var(--hair);
+    border-left: 3px solid var(--sev, var(--muted));
+    border-radius: 4px;
+    padding: 1.2rem 1.3rem 1.3rem;
+    margin: 0 0 1rem;
+  }
+  .theme.s-crit { --sev: var(--crit); }
+  .theme.s-high { --sev: var(--high); }
+  .theme.s-med  { --sev: var(--med); }
+  .theme-top {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.75rem;
+  }
+  .theme-top h3 {
+    font-family: var(--sans);
+    font-size: 0.98rem;
+    font-weight: 700;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 12rem;
+  }
+  .theme p { font-size: 0.95rem; margin: 0 0 0.6rem; color: #2A353E; }
+  .theme p:last-child { margin-bottom: 0; }
+
+  .findings { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+  .findings li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    font-size: 0.92rem;
+    padding: 0.55rem 0 0;
+    border-top: 1px solid var(--hair-soft);
+  }
+  .findings li:first-child { border-top: none; padding-top: 0; }
+  .findings .f-sev { padding-top: 0.1rem; }
+  .findings .f-txt strong { display: block; margin-bottom: 0.1rem; }
+  .findings .f-txt .ev { color: var(--muted); font-size: 0.88rem; }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--accent-wash);
+    border: 1px solid #BFDCDD;
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.2rem 0;
+    font-size: 0.94rem;
+  }
+  .callout .k {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ---------- Sub-blocks for loop engineering ---------- */
+  .facet { margin: 0 0 1.6rem; }
+  .facet-grid { display: grid; gap: 0.6rem; margin: 0.8rem 0 0; }
+  .frow {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.9rem;
+    padding: 0.7rem 0;
+    border-top: 1px solid var(--hair-soft);
+    font-size: 0.93rem;
+  }
+  .frow:first-child { border-top: none; }
+  .frow .fk {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding-top: 0.12rem;
+  }
+  .frow.tok .fk { color: var(--accent-deep); }
+  .frow.sec .fk { color: var(--crit); }
+  .frow .fv { color: #2A353E; }
+  .frow .fv p { margin: 0; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--hair); border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: 0.9rem; }
+  thead th {
+    background: var(--ink);
+    color: #EDF1F3;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.7rem 0.9rem;
+  }
+  thead th:first-child { background: #0C141B; }
+  tbody td { padding: 0.65rem 0.9rem; border-top: 1px solid var(--hair-soft); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #F7F9FA; }
+  tbody th {
+    text-align: left;
+    padding: 0.65rem 0.9rem;
+    border-top: 1px solid var(--hair-soft);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    background: #F1F4F6;
+  }
+  td.yes { color: var(--low); font-weight: 600; }
+  td.no { color: var(--crit); font-weight: 600; }
+
+  /* ---------- Recommendation banner ---------- */
+  .rec {
+    background: var(--ink);
+    color: #EAEEF1;
+    border-radius: 5px;
+    padding: 1.4rem 1.5rem;
+    margin: 1.4rem 0;
+  }
+  .rec .k {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6FB7C0;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .rec strong { color: #FFFFFF; }
+  .rec p { margin: 0; font-size: 0.96rem; line-height: 1.55; color: #C7D0D7; }
+  .rec p + p { margin-top: 0.7rem; }
+  .rec code { background: #24303A; color: #8FCFD6; border-color: #33414C; }
+
+  /* ---------- Adopt / skip ---------- */
+  .cols { display: grid; gap: 1.1rem; margin: 1rem 0; }
+  @media (min-width: 40rem) { .cols { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--hair);
+    border-radius: 4px;
+    padding: 1.1rem 1.2rem;
+  }
+  .card .h {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 0.7rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--hair-soft);
+  }
+  .card.adopt .h { color: var(--low); }
+  .card.skip .h { color: var(--muted); }
+  .card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+  .card li { font-size: 0.9rem; line-height: 1.5; padding-left: 1.1rem; position: relative; }
+  .card.adopt li::before { content: "+"; position: absolute; left: 0; color: var(--low); font-weight: 700; font-family: var(--mono); }
+  .card.skip li::before { content: "\2212"; position: absolute; left: 0; color: var(--faint); font-weight: 700; font-family: var(--mono); }
+  .card li b { font-weight: 700; }
+
+  /* ---------- Roadmap phases ---------- */
+  .phase {
+    background: var(--paper);
+    border: 1px solid var(--hair);
+    border-radius: 5px;
+    padding: 1.3rem 1.4rem 1.4rem;
+    margin: 0 0 1.1rem;
+    position: relative;
+  }
+  .phase-top { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin: 0 0 0.4rem; }
+  .phase-no {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .phase-ttl { flex: 1 1 14rem; }
+  .phase-ttl h3 { margin: 0 0 0.15rem; font-size: 1.06rem; font-weight: 700; }
+  .phase-ttl .goal { font-size: 0.9rem; color: var(--muted); font-style: italic; margin: 0; }
+  .phase-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .pill {
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    border: 1px solid var(--hair);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pill b { color: var(--ink); font-weight: 700; }
+  .pill.eff { background: var(--accent-wash); border-color: #BFDCDD; color: var(--accent-deep); }
+  .pill.risk-low { background: var(--low-wash); border-color: #C4E0D2; color: var(--low); }
+  .pill.risk-med { background: var(--med-wash); border-color: #E4DBB0; color: var(--med); }
+
+  .steps { list-style: none; margin: 0.9rem 0 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 0.5rem; }
+  .steps li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.7rem;
+    align-items: baseline;
+    font-size: 0.92rem;
+    padding: 0.5rem 0 0;
+    border-top: 1px solid var(--hair-soft);
+  }
+  .steps li:first-child { border-top: none; padding-top: 0; }
+  .steps li::before {
+    counter-increment: step;
+    content: counter(step);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.1rem;
+  }
+  .steps .e {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--accent-deep);
+    background: var(--accent-wash);
+    border-radius: 3px;
+    padding: 0.12rem 0.4rem;
+    align-self: center;
+  }
+  .steps .e.L { color: var(--high); background: var(--high-wash); }
+  .steps .e.M { color: var(--med); background: var(--med-wash); }
+  .tok-note {
+    margin: 1rem 0 0;
+    font-size: 0.84rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--hair);
+  }
+  .tok-note b { color: var(--accent-deep); }
+
+  /* ---------- Sources ---------- */
+  .sources { list-style: none; margin: 0; padding: 0; counter-reset: src; display: flex; flex-direction: column; gap: 0.5rem; }
+  .sources li {
+    display: grid;
+    grid-template-columns: 1.8rem 1fr;
+    gap: 0.5rem;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--hair-soft);
+    scroll-margin-top: 2rem;
+  }
+  .sources li:first-child { border-top: none; }
+  .sources li::before {
+    counter-increment: src;
+    content: counter(src);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .sources a { color: var(--muted); word-break: break-all; text-decoration: none; }
+  .sources a:hover { color: var(--accent-deep); text-decoration: underline; }
+  .sources li:target { background: var(--accent-wash); border-radius: 3px; }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.4rem;
+    border-top: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--faint);
+    letter-spacing: 0.02em;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="doc">
+  <div class="shell">
+
+    <header class="masthead">
+      <p class="eyebrow">Deep-Research Dossier · Cherubeam / JARVIS</p>
+      <h1>Audit, Loop Engineering &amp; the Path to Always-On</h1>
+      <p class="sub">A grounded review of the JARVIS codebase, the three senses of &ldquo;loop engineering,&rdquo; getting the assistant off the terminal, and a roadmap ordered by value-per-effort.</p>
+      <div class="byline">
+        <span>Prepared for <b>Marco Braun</b></span>
+        <span>2026-07-04 · revised <b>2026-08-19</b> (ADR-034)</span>
+        <span>Hybrid audit + verified web research</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="n">38</span><span class="l">Agents run</span></div>
+        <div class="stat"><span class="n">1.47M</span><span class="l">Tokens</span></div>
+        <div class="stat"><span class="n">46</span><span class="l">Sources</span></div>
+        <div class="stat"><span class="n">40</span><span class="l">Audit findings</span></div>
+        <div class="stat"><span class="n">30</span><span class="l">Verified claims</span></div>
+      </div>
+    </header>
+
+    <div class="body">
+      <nav class="rail" aria-label="Contents">
+        <ol>
+          <li><a href="#s1"><span class="num">01</span> Summary</a></li>
+          <li><a href="#s2"><span class="num">02</span> Codebase audit</a></li>
+          <li><a href="#s3"><span class="num">03</span> Loop engineering</a></li>
+          <li><a href="#s4"><span class="num">04</span> Always-on access</a></li>
+          <li><a href="#s5"><span class="num">05</span> Unknown unknowns</a></li>
+          <li><a href="#spos"><span class="num">06</span> Strategic position</a></li>
+          <li><a href="#s6"><span class="num">07</span> Roadmap</a></li>
+          <li><a href="#s7"><span class="num">08</span> Sources</a></li>
+        </ol>
+        <p class="tag">Severity</p>
+        <ol>
+          <li><span class="chip crit">Critical</span></li>
+          <li><span class="chip high">High</span></li>
+          <li><span class="chip med">Medium</span></li>
+        </ol>
+      </nav>
+
+      <main>
+
+        <!-- 1 -->
+        <section id="s1">
+          <div class="sec-head"><span class="idx">01</span><h2>Executive summary</h2></div>
+          <p class="lead">JARVIS is a well-factored local-first assistant &mdash; 16 agents, typed settings, a real eval harness, 102 test files with serious mutation-testing discipline &mdash; but every architectural assumption bakes in &ldquo;one human, watching, in a terminal, on localhost.&rdquo;</p>
+          <p>The web GUI has no authentication and accepts WebSocket connections from any origin (<code>chat_ws.py:22</code>), which is tolerable today and becomes full remote takeover the moment JARVIS is exposed beyond the machine. The agent already assembles all three legs of the &ldquo;lethal trifecta&rdquo; &mdash; private vault data, untrusted web content, and write/exec tools<a class="cite" href="#s8-8">8</a> &mdash; so unattended runs must be designed by <em>removing</em> a leg per job, not by trusting guardrails; even production classifiers miss ~17% of dangerous actions<a class="cite" href="#s8-10">10</a>.</p>
+          <p>Autonomy is further blocked by a single global session, confirmation handlers that deadlock or silently reject without a human, and no spend limit beyond a 5-iteration cap (<code>stream_handler.py:31</code>). The feedback-loop story is weakest where it matters: golden evals bypass the real StreamHandler, so the exact loop changes you plan would be invisible to them. On access, Telegram long polling is the standout &mdash; outbound-only, works behind NAT, no exposed ports<a class="cite" href="#s8-13">13</a> &mdash; paired with Tailscale for the GUI. On hosting, the Things&nbsp;3 dependency plus local-first preference make a headless Mac mini running JARVIS as a LaunchAgent the clear recommendation. The roadmap puts safety rails and the session refactor first, one read-only scheduled loop plus Telegram second, eval hardening third, deeper autonomy last. Phase&nbsp;1 is startable this week and is mostly small, boring changes &mdash; which is exactly the point.</p>
+          <p><strong>Revision 2026-08-19.</strong> A strategic-positioning pass (now ADR-034 in the repo) was folded into this dossier: with coding-agent harnesses (Claude Code, Codex, OpenCode) now commodities, JARVIS is explicitly the <em>personal context, memory, and workflow hub</em> &mdash; it delegates coding execution to external harnesses instead of growing its own (DEV-02/03 rescoped), and exports its context to every tool via a new Cortex-backed MCP server (initiative <code>HUB</code>). See the new <a href="#spos">Strategic position</a> section; the in-repo <code>roadmap.md</code> (initiatives <code>AON</code>, <code>HUB</code>, <code>DEV</code>) is the authoritative, evolving version of section&nbsp;07.</p>
+        </section>
+
+        <!-- 2 -->
+        <section id="s2">
+          <div class="sec-head"><span class="idx">02</span><h2>Codebase audit</h2></div>
+
+          <div class="theme s-crit">
+            <div class="theme-top">
+              <h3>A · Security assumes a watching human on localhost</h3>
+              <span class="chip crit">Critical</span>
+            </div>
+            <p>The single most important theme: nearly every safety property depends on a human being present at a local terminal. That holds today and collapses the instant JARVIS is tunneled or scheduled.</p>
+            <ul class="findings">
+              <li><span class="f-sev"><span class="chip crit">Crit</span></span><span class="f-txt"><strong>No auth, no WebSocket origin check</strong><span class="ev"><code>chat_ws.py:22</code> accepts unconditionally; CORS (<code>app.py:67-73</code>) doesn&rsquo;t gate WebSockets &mdash; any website you visit can drive the agent via your browser today.</span></span></li>
+              <li><span class="f-sev"><span class="chip crit">Crit</span></span><span class="f-txt"><strong>Prompt-injection &rarr; RCE chain</strong><span class="ev">Web content enters context verbatim (<code>web_fetch.py</code>, <code>web_search.py</code>); <code>test_tools.py:29-42</code> runs pytest (arbitrary Python via conftest) with <em>no confirmation</em>; the developer agent bundles write+git+test tools.</span></span></li>
+              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>FilesystemGuard is bypassed by most write tools</strong><span class="ev">Only <code>obsidian/vault.py</code> and <code>outcome_tools.py</code> consult it; <code>codebase_tools.py</code>, <code>project_write_tools.py</code>, <code>git_tools.py</code> roll their own access logic.</span></span></li>
+              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>Unauthed settings API can persist a malicious MCP server</strong><span class="ev"><code>routes/settings.py</code> &rarr; <code>mcp/client.py</code>; MCP tool descriptions are injected into the prompt unvetted (<code>mcp/bridge.py</code>).</span></span></li>
+              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>The GUI server is the biggest test blind spot</strong><span class="ev">~143 never-executed mutants across <code>app.py</code>, <code>state.py</code>, <code>chat_ws.py</code> &mdash; the exact code you&rsquo;d need to secure has no safety net.</span></span></li>
+            </ul>
+          </div>
+
+          <div class="theme s-high">
+            <div class="theme-top">
+              <h3>B · Human-in-the-loop gates &amp; single-session design block autonomy</h3>
+              <span class="chip high">High</span>
+            </div>
+            <p><strong>Confirmation deadlock:</strong> <code>confirmation.py:98</code> waits on a threading Event with no timeout, and <code>chat_ws.py:65</code> awaits the turn inside the same receive loop that handles approvals &mdash; a vault-write approval wedges the session. Headless CLI silently rejects on EOF.</p>
+            <p><strong>One global session:</strong> <code>app.py:36</code> builds a single GuiSession with takeover semantics; turns are serialized. Background jobs, Telegram, and chat cannot coexist. <strong>No spend circuit breaker:</strong> only the 5-iteration cap; per-response <code>cost_usd</code> is computed but never enforced.</p>
+          </div>
+
+          <div class="theme s-high">
+            <div class="theme-top">
+              <h3>C · Duplicated orchestration, non-reentrant core</h3>
+              <span class="chip high">High</span>
+            </div>
+            <p>Per-turn orchestration is hand-duplicated between <code>apps/cli/main.py:705-809</code> and <code>apps/gui/server/bridge.py:41-260</code>, already diverging. StreamHandler keeps per-call state on <code>self</code>, permanently mutates <code>max_tokens</code>, and duplicates the agentic loop (~120 lines, twice). Every loop-engineering change currently lands in 2&ndash;4 places &mdash; and a Telegram front end would be copy number three.</p>
+          </div>
+
+          <div class="theme s-high">
+            <div class="theme-top">
+              <h3>E · Host portability &amp; F · Evals don&rsquo;t guard the code that matters</h3>
+              <span class="chip high">High</span>
+            </div>
+            <p><strong>Portability:</strong> all 21 skills are gitignored absolute-path symlinks to a private sibling repo with soft-fail resolution &mdash; a fresh clone runs <em>silently degraded</em>. Things&nbsp;3 is doubly macOS-GUI-bound. <strong>Evals:</strong> golden tests reimplement the loop and hardcode the prompt (<code>test_golden_conversations.py:319-400</code>), bypassing the real StreamHandler &mdash; exactly the code the roadmap changes &mdash; and the judge silently fabricates 0.5&ndash;0.6 fallback scores. <span class="chip med">Reliability · Med</span> Non-atomic JSON saves lose a conversation on mid-turn crash; MCP never reconnects; context is frozen at startup.</p>
+          </div>
+        </section>
+
+        <!-- 3 -->
+        <section id="s3">
+          <div class="sec-head"><span class="idx">03</span><h2>Loop engineering</h2></div>
+          <p>You asked about &ldquo;loop engineering&rdquo; in three senses. Each maps to different JARVIS subsystems, token math, and security posture.</p>
+
+          <div class="facet">
+            <h3>3a · Autonomous agentic loops</h3>
+            <p>Today the loop lives in <code>stream_handler.py</code> (duplicated), capped at 5 iterations, with all state in-process. Anthropic&rsquo;s harness research is unambiguous that the path past a small cap is <em>external state</em>, not a bigger number: a JSON task list with per-item pass/fail, a progress-notes file, and git checkpoints<a class="cite" href="#s8-1">1</a>. Concretely: deduplicate the loop into a shared TurnRunner in <code>packages/core</code>; add tool-result clearing &mdash; &ldquo;one of the safest lightest-touch forms of compaction&rdquo;<a class="cite" href="#s8-2">2</a>; and extend delegation past its one-hop ceiling only after sub-agents return distilled 1&ndash;2k-token summaries.</p>
+            <div class="facet-grid">
+              <div class="frow tok"><span class="fk">Tokens</span><span class="fv"><p>Each iteration re-sends the whole context; with a ~12KB skill prompt inlined every turn, iterations 6&ndash;15 can cost 3&ndash;5&times; iterations 1&ndash;5. Counters: tool-result clearing, and prompt caching &mdash; a 500-session study found caching cuts cost ~45&ndash;80% <em>if</em> static content sits in a stable cached prefix<a class="cite" href="#s8-5">5</a>. JARVIS&rsquo;s per-turn skill inlining is currently cache-hostile.</p></span></div>
+              <div class="frow sec"><span class="fk">Security</span><span class="fv"><p>Longer loops mean more consecutive un-reviewed tool calls, compounding the Theme-A injection chain per iteration. The unconfirmed pytest runner is the single worst offender.</p></span></div>
+              <div class="frow"><span class="fk">Evals</span><span class="fv"><p>Any loop change is invisible to the golden suite because it reimplements the loop. Rewiring evals through the real TurnRunner is a <em>precondition</em> for touching iteration logic safely.</p></span></div>
+            </div>
+          </div>
+
+          <div class="facet">
+            <h3>3b · Scheduled / background runs</h3>
+            <div class="callout">
+              <span class="k">First principles</span>
+              A <strong>daemon</strong> runs without a terminal attached, started by the OS. On macOS the scheduler is <code>launchd</code>: you drop a small plist describing &ldquo;run this at this interval,&rdquo; and it handles starting, restarting, and logging &mdash; macOS&rsquo;s <code>cron</code>, but supervising too. A <strong>LaunchAgent</strong> runs inside your logged-in GUI session (and can talk to Things&nbsp;3); a <strong>LaunchDaemon</strong> runs outside it and cannot<a class="cite" href="#s8-18">18</a>. That one fact shapes the hosting decision.</p>
+            </div>
+            <p>There&rsquo;s zero scheduling code today, and that&rsquo;s fine &mdash; the scheduler should stay <em>outside</em> the app (launchd invoking a CLI entry point). What must change inside: a headless entry point (<code>jarvis run-job</code>); a <strong>PolicyConfirmationHandler</strong> that auto-approves a whitelist and routes everything else to a persisted approval inbox; a persisted cost ledger with a daily budget abort &mdash; the Agent SDK ships <code>max_budget_usd</code><a class="cite" href="#s8-3">3</a>, OWASP suggests a $10/session cap<a class="cite" href="#s8-11">11</a>; and per-turn context refresh (tasks.md is synced once at startup).</p>
+            <div class="facet-grid">
+              <div class="frow sec"><span class="fk">Security</span><span class="fv"><p>Every scheduled job must drop one leg of the lethal trifecta<a class="cite" href="#s8-8">8</a>, because no guardrail is reliable enough to substitute (17% false-negatives<a class="cite" href="#s8-10">10</a>). Safest first job: a <em>read-only briefing</em> (vault + Things &rarr; message) &mdash; drops external writes. Never schedule the developer agent unattended &mdash; since ADR-034 this is structural: JARVIS never executes coding runs itself (see <a href="#spos">&sect;06</a>).</p></span></div>
+              <div class="frow tok"><span class="fk">Tokens</span><span class="fv"><p>A daily briefing is cheap and predictable &mdash; ~$0.05&ndash;0.20/day &mdash; and an ideal caching candidate (identical prefix daily), but only <em>bounded</em> once the budget check exists.</p></span></div>
+              <div class="frow"><span class="fk">Evals</span><span class="fv"><p>Scheduled jobs produce artifacts gradeable with <em>deterministic code checks</em> (&ldquo;does the briefing mention every task due today?&rdquo;), which Anthropic recommends over LLM judges<a class="cite" href="#s8-6">6</a>. Each job ships with its output check.</p></span></div>
+            </div>
+          </div>
+
+          <div class="facet">
+            <h3>3c · Feedback / improvement loops</h3>
+            <p>The raw materials exist and are disconnected: golden evals, outcome tracking (<code>outcome_tools.py</code>), a manual review CLI (<code>review.py</code>), telemetry, and ChromaDB RAG. Fixes in value order: <strong>(1)</strong> make evals test the real system and fail loudly instead of fabricating 0.5&ndash;0.6 scores; <strong>(2)</strong> turn on regression gating &mdash; read the baseline <code>result_storage.py</code> already writes; at ~$0.41/run even every-PR is noise-level<a class="cite" href="#s8-7">7</a>; <strong>(3)</strong> calibrate the judge once against ~25 hand-labeled transcripts, since consistency &ne; correctness<a class="cite" href="#s8-12">12</a>; <strong>(4)</strong> automate the outcome loop as a weekly read-only job, the natural home for typed memory &mdash; Mem0-style fact extraction beats raw-transcript RAG (&gt;90% token savings), and graph memory adds only ~2%, so skip it<a class="cite" href="#s8-17">17</a>.</p>
+            <div class="callout">
+              <span class="k">Anti-over-engineering verdict</span>
+              Extract facts to Markdown/JSON in the vault; don&rsquo;t adopt a memory framework. The whole feedback layer costs less per month than one runaway agentic turn &mdash; which is the argument for building it <em>before</em> autonomy, not after.
+            </div>
+          </div>
+        </section>
+
+        <!-- 4 -->
+        <section id="s4">
+          <div class="sec-head"><span class="idx">04</span><h2>Always-on access</h2></div>
+
+          <h4>Channels</h4>
+          <p><strong>Messaging &mdash; Telegram, clearly.</strong> Long polling means the bot makes <em>outbound</em> requests to Telegram and holds the connection open &mdash; no inbound port, no public HTTPS, works behind any home NAT<a class="cite" href="#s8-13">13</a>. Signal via signal-cli needs a JRE, a constant receive loop, and updates every ~3 months or it breaks<a class="cite" href="#s8-14">14</a> &mdash; a treadmill with no payoff for one user. A Telegram bot is just a third front end, which is why the shared TurnRunner extraction is its real prerequisite.</p>
+          <p><strong>Web app &mdash; Tailscale.</strong> Tailscale builds an encrypted private network among your own devices; <em>Serve</em> exposes a local port only inside it &mdash; your phone reaches the GUI, the internet cannot<a class="cite" href="#s8-15">15</a>. Given the GUI has no auth, tailnet-only is the only responsible exposure. Non-negotiable regardless: fix WebSocket origin checking and add token auth first &mdash; &ldquo;private network&rdquo; should be the second wall, not the only one.</p>
+          <p><strong>Voice &mdash; later, but proven viable.</strong> Home Assistant Assist ships a &ldquo;Hey Jarvis&rdquo; wake word with ~$13 ESP32 satellite hardware<a class="cite" href="#s8-20">20</a>. Fun, but it depends on everything above. Park it.</p>
+
+          <h4>Hosting comparison</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Dimension</th><th scope="col">Mac as LaunchAgent</th><th scope="col">Linux home server</th><th scope="col">Cloud VPS</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Things 3</th><td class="yes">Full (Apple Events)</td><td class="no">Lost &mdash; no server API</td><td class="no">Lost + SSRF surface</td></tr>
+                <tr><th scope="row">Skills / vault symlinks</th><td class="yes">Work as-is</td><td>Re-plumb paths</td><td>Re-plumb + cloud sync</td></tr>
+                <tr><th scope="row">Local-first</th><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">No</td></tr>
+                <tr><th scope="row">New concepts</th><td>launchd + Tailscale</td><td>New OS &amp; box</td><td>systemd, hardening, patching</td></tr>
+                <tr><th scope="row">Cost</th><td>Hardware you may own</td><td>Hardware + time</td><td>$5&ndash;20/mo + data off-site</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="rec">
+            <span class="k">Recommendation</span>
+            <p><strong>A headless Mac running JARVIS as a LaunchAgent, reached via Tailscale.</strong> Things&nbsp;3 has no server API &mdash; Cultured Code&rsquo;s own docs say &ldquo;if it&rsquo;s not documented, it&rsquo;s not possible&rdquo;<a class="cite" href="#s8-19">19</a> &mdash; so any non-Mac host silently amputates a live integration, and the codebase is macOS-coupled elsewhere too.</p>
+            <p>It must be a Launch<em>Agent</em> with auto-login, not a LaunchDaemon, because only an agent in a logged-in GUI session can send Apple Events to Things<a class="cite" href="#s8-18">18</a>. Headless recipe: FileVault off (its pre-boot lock blocks remote access after a reboot), auto-login, auto-restart after power loss, <code>pmset -a sleep 0</code> &mdash; sleep is the main availability failure on Apple Silicon minis<a class="cite" href="#s8-21">21</a>. Disabling disk encryption is acceptable <em>only</em> because access stays Tailscale-scoped. Revisit a VPS only if Things is ever dropped.</p>
+          </div>
+        </section>
+
+        <!-- 5 -->
+        <section id="s5">
+          <div class="sec-head"><span class="idx">05</span><h2>Unknown unknowns</h2></div>
+          <p>Capabilities the field treats as table stakes that JARVIS doesn&rsquo;t yet have &mdash; filtered for a one-person, local-first assistant.</p>
+          <div class="cols">
+            <div class="card adopt">
+              <p class="h">Worth adopting</p>
+              <ul>
+                <li><b>Tool descriptions are the cheapest lever anywhere.</b> Rewriting them alone cut task time 40% in Anthropic&rsquo;s tests<a class="cite" href="#s8-22">22</a>. An afternoon on <code>packages/core/tools/*</code> may outperform any architecture work here.</li>
+                <li><b>Typed memory extraction</b> over raw-transcript RAG &mdash; the ChromaDB approach is one generation behind fact extraction (&gt;90% token cut)<a class="cite" href="#s8-17">17</a>.</li>
+                <li><b>Tiered trust for sessions</b> &mdash; run scheduled jobs with reduced tool groups; JARVIS&rsquo;s per-agent tool binding already supports this structurally<a class="cite" href="#s8-23">23</a>.</li>
+                <li><b>Khoj as existence proof</b> &mdash; the closest comparable (self-hosted, Obsidian-centric) ships scheduled automations and thin multi-device clients<a class="cite" href="#s8-24">24</a>. Proactivity is table stakes, not exotic.</li>
+              </ul>
+            </div>
+            <div class="card skip">
+              <p class="h">Consciously skip</p>
+              <ul>
+                <li><b>Parallel multi-agent fan-out</b> &mdash; ~90% eval gains but ~15&times; token cost<a class="cite" href="#s8-22">22</a>. Wrong trade for one person.</li>
+                <li><b>Graph memory</b> &mdash; ~2% gain over typed extraction<a class="cite" href="#s8-17">17</a>.</li>
+                <li><b>LangGraph-style frameworks</b> &mdash; but steal the insight: durability lives in a pluggable SQLite checkpointer; in-memory state loses everything on restart<a class="cite" href="#s8-25">25</a> &mdash; exactly JARVIS&rsquo;s current failure mode.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6 · added 2026-08-19 -->
+        <section id="spos">
+          <div class="sec-head"><span class="idx">06</span><h2>Strategic position <span style="font-weight:400;font-size:1rem;color:var(--faint)">(added 2026-08-19, ADR-034)</span></h2></div>
+          <p>The tool landscape question: with Claude Code, Claude Cowork, OpenAI Codex, OpenCode, and Pi in daily reach, where does JARVIS fit &mdash; and what has it built that already exists? The tools all run agentic loops, but they sit at different layers:</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Tool</th><th scope="col">Layer</th><th scope="col">Competes on</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Claude Code / Codex / OpenCode</th><td>Coding agent harness</td><td>Loop quality: sandboxing, planning, headless/CI modes, subagents</td></tr>
+                <tr><th scope="row">Claude Cowork</th><td>General knowledge-work harness</td><td>Non-coding agentic work over docs, files, connected tools</td></tr>
+                <tr><th scope="row">Pi</th><td>Minimal open harness</td><td>Simplicity; same loop, deliberately tiny</td></tr>
+                <tr><th scope="row">JARVIS</th><td class="yes">Personal context &amp; workflow hub</td><td>Your vault, context files, memory, voice, integrations, provider independence</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="rec">
+            <span class="k">Positioning verdict</span>
+            <p><strong>Harnesses are commodities; the context is the moat.</strong> Nothing in the harness column is worth competing with as a solo project &mdash; and nothing in JARVIS&rsquo;s row is provided by any harness. Build the moat, rent the harnesses, connect them with MCP.</p>
+          </div>
+          <h3>What this changes</h3>
+          <p><strong>DEV-02/03 rescoped: delegate, don&rsquo;t rebuild.</strong> The developer agent&rsquo;s DEV-01 tool set was a hand-rolled miniature Claude Code, and its planned follow-ons (AutoConfirmationHandler, planning phase, heartbeat execution, PR creation) re-created what Claude Code ships as headless mode (<code>claude -p</code>), the Agent SDK, permission policies, and scheduled agents. <code>/develop</code> becomes a thin dispatcher: JARVIS decides <em>what</em> to improve and composes the context; the external harness executes and opens PRs. The DEV-01 tools survive only as a fast path for tiny scoped edits (<code>meta.yaml</code>, prompts).</p>
+          <p><strong>New initiative <code>HUB</code>: export the context via MCP.</strong> Cortex (ADR-029) already anticipated this (&ldquo;MCP-ready&rdquo;). <code>HUB-01</code> wraps its semantic search as a local, stdio-only MCP server registered in Claude Code and consumed by JARVIS itself; <code>HUB-02</code> adds context files and typed memory (post-quarantine facts only, per AON-03). Every harness is an MCP client, so this ends copy-pasting context between tools &mdash; and flips JARVIS&rsquo;s most valuable asset from &ldquo;locked inside JARVIS&rdquo; into the shared memory backbone of the whole toolchain. The single-source-of-truth pattern already works here: <code>CLAUDE.md</code> pointing at <code>AGENTS.md</code>, skills as symlinks &mdash; MCP generalizes it to live data.</p>
+          <p><strong>AON scope guard.</strong> The TurnRunner, front ends, and read-only scheduled jobs stay &mdash; they serve JARVIS&rsquo;s <em>own</em> conversational loop, which no harness replaces. But harness-grade depth beyond that (unattended code-editing sandboxes, long autonomous coding loops) is out: delegated. The audit&rsquo;s &ldquo;never schedule the developer agent unattended&rdquo; is thereby structural, not just policy.</p>
+          <p><strong>Unchanged, deliberately:</strong> workflow agents (writer, reading assistant, publisher&hellip;), voice profile, provider routing, token economics, Obsidian/Readwise/Things&nbsp;3/Substack integrations, and the GUI. None of the listed tools do any of it.</p>
+        </section>
+
+        <!-- 7 -->
+        <section id="s6">
+          <div class="sec-head"><span class="idx">07</span><h2>Phased roadmap</h2></div>
+          <div class="callout">
+            <span class="k">2026-08-19 note</span>
+            These phases now live in the repo as milestones <code>AON-01&hellip;05</code> (plus the 2026-07-31 delta-review amendments) &mdash; <code>docs/product/roadmap.md</code> is authoritative. The ADR-034 revision adds initiative <code>HUB</code> (Cortex as MCP server; independent of AON sequencing, startable any time after AON-01) and rescopes <code>DEV-02/03</code> to delegated execution &mdash; the &ldquo;deeper autonomy&rdquo; in Phase&nbsp;4 below concerns JARVIS&rsquo;s own scheduled loops only, never self-executed coding runs.
+          </div>
+          <p>Ordered by value-per-effort. Effort per step is <b>S</b>/<b>M</b>/<b>L</b>; each phase carries an overall effort, risk, and token-impact note.</p>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">1</span>
+              <div class="phase-ttl"><h3>Safety rails &amp; the shared core</h3><p class="goal">Make the existing system safe to leave running and cheap to extend. Start this week.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+            </div>
+            <ul class="steps">
+              <li><span>WebSocket origin allowlist + token auth in <code>chat_ws.py</code>/<code>app.py</code>; add TestClient coverage for the 143-mutant blind spot.</span><span class="e">S</span></li>
+              <li><span>Add a confirmation gate to the unconfirmed pytest runner (<code>test_tools.py:29-42</code>).</span><span class="e">S</span></li>
+              <li><span>Persisted SQLite cost ledger + daily budget abort in StreamHandler, per <code>max_budget_usd</code><a class="cite" href="#s8-3">3</a>.</span><span class="e">S</span></li>
+              <li><span>Fix the confirmation deadlock: timeout on <code>confirmation.py:98</code>, move approval handling out of the blocked receive loop.</span><span class="e M">M</span></li>
+              <li><span>Rewrite tool descriptions across <code>packages/core/tools/*</code><a class="cite" href="#s8-22">22</a>.</span><span class="e">S</span></li>
+              <li><span>Atomic conversation saves (write-temp-then-rename) in <code>memory.py</code>.</span><span class="e">S</span></li>
+            </ul>
+            <p class="tok-note">Token impact: <b>neutral-to-negative</b> &mdash; budget cap + better tool descriptions reduce waste.</p>
+          </div>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">2</span>
+              <div class="phase-ttl"><h3>Session refactor + first loop + Telegram</h3><p class="goal">One core, many front ends, one safe scheduled job.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span><span class="pill risk-med">Risk <b>Med</b></span></div>
+            </div>
+            <ul class="steps">
+              <li><span>Extract TurnRunner + headless session factory into <code>packages/core</code>; de-duplicate StreamHandler&rsquo;s twin loops. The one refactor everything rides on.</span><span class="e L">L</span></li>
+              <li><span>Session-per-conversation replacing the global GuiSession.</span><span class="e M">M</span></li>
+              <li><span>PolicyConfirmationHandler with whitelist + persisted approval inbox.</span><span class="e M">M</span></li>
+              <li><span><code>jarvis run-job</code> + launchd LaunchAgent; first job = <b>read-only morning briefing</b><a class="cite" href="#s8-8">8</a>; refresh tasks.md per run.</span><span class="e M">M</span></li>
+              <li><span>Telegram bot via long polling<a class="cite" href="#s8-13">13</a> as a thin TurnRunner client; Tailscale Serve for the GUI<a class="cite" href="#s8-15">15</a>.</span><span class="e M">M</span></li>
+            </ul>
+            <p class="tok-note">Token impact: <b>+$2&ndash;6/month</b> for a daily briefing; bounded by the Phase-1 ledger.</p>
+          </div>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">3</span>
+              <div class="phase-ttl"><h3>Evals that guard the loop</h3><p class="goal">Change loop code without flying blind.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+            </div>
+            <ul class="steps">
+              <li><span>Route golden evals through the real TurnRunner; remove the reimplemented loop and hardcoded prompt.</span><span class="e M">M</span></li>
+              <li><span>Replace fabricated fallback scores with hard failures; read the baseline for CI regression gating<a class="cite" href="#s8-7">7</a>.</span><span class="e">S</span></li>
+              <li><span>Calibrate the judge against ~25 hand-labeled transcripts; randomize ordering<a class="cite" href="#s8-12">12</a>.</span><span class="e">S</span></li>
+              <li><span>Deterministic output checks for each scheduled job<a class="cite" href="#s8-6">6</a>.</span><span class="e">S</span></li>
+              <li><span>Automate the outcome-review loop as the second scheduled job, with typed fact extraction into the vault<a class="cite" href="#s8-17">17</a>.</span><span class="e M">M</span></li>
+            </ul>
+            <p class="tok-note">Token impact: <b>~$0.41/eval run</b> + pennies for judges &mdash; negligible.</p>
+          </div>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">4</span>
+              <div class="phase-ttl"><h3>Headless Mac host + deeper autonomy</h3><p class="goal">Dedicated always-on box; loops that run longer, safely.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>M&ndash;L</b></span><span class="pill risk-med">Risk <b>Med</b></span></div>
+            </div>
+            <ul class="steps">
+              <li><span>Headless Mac mini: auto-login, FileVault off, <code>pmset -a sleep 0</code>, auto-restart, Tailscale-only<a class="cite" href="#s8-21">21</a>.</span><span class="e M">M</span></li>
+              <li><span>Route FilesystemGuard through <em>all</em> write tools; add a quarantined web-digest job.</span><span class="e M">M</span></li>
+              <li><span>Tool-result clearing<a class="cite" href="#s8-2">2</a> + cache-friendly prompt assembly (static prefix first), targeting the 45&ndash;80% cut<a class="cite" href="#s8-5">5</a>.</span><span class="e M">M</span></li>
+              <li><span>Raise the iteration cap only alongside file-based checkpoints (JSON task list + progress notes + git)<a class="cite" href="#s8-1">1</a>; MCP reconnection.</span><span class="e M">M</span></li>
+              <li><span>Optional hardening: sandbox-runtime + credential-injecting egress proxy so the agent never holds API keys<a class="cite" href="#s8-9">9</a>.</span><span class="e L">L</span></li>
+            </ul>
+            <p class="tok-note">Token impact: <b>net negative</b> &mdash; caching + clearing should more than fund longer loops.</p>
+          </div>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">5</span>
+              <div class="phase-ttl"><h3>Voice &amp; proactivity <span style="font-weight:400;color:var(--faint)">(optional)</span></h3><p class="goal">Do this only when Phases 1&ndash;4 feel boring.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+            </div>
+            <ul class="steps">
+              <li><span>Home Assistant Assist &ldquo;Hey Jarvis&rdquo; wake word + ESP32 satellite as another thin TurnRunner client<a class="cite" href="#s8-20">20</a>.</span><span class="e L">L</span></li>
+              <li><span>Proactive Telegram notifications from scheduled jobs (approval-inbox digests, outcome summaries).</span><span class="e M">M</span></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 8 -->
+        <section id="s7">
+          <div class="sec-head"><span class="idx">08</span><h2>Sources</h2></div>
+          <p style="font-size:0.9rem;color:var(--muted)">All external claims passed 3-lens adversarial verification (accuracy, currency, applicability); 30/30 survived.</p>
+          <ol class="sources">
+            <li id="s8-1"><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">anthropic.com/engineering/effective-harnesses-for-long-running-agents</a></li>
+            <li id="s8-2"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">anthropic.com/engineering/effective-context-engineering-for-ai-agents</a></li>
+            <li id="s8-3"><a href="https://code.claude.com/docs/en/agent-sdk/agent-loop">code.claude.com/docs/en/agent-sdk/agent-loop</a></li>
+            <li id="s8-4"><a href="https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge">langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge</a></li>
+            <li id="s8-5"><a href="https://arxiv.org/pdf/2601.06007">arxiv.org/pdf/2601.06007 &mdash; prompt-caching cost study</a></li>
+            <li id="s8-6"><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">anthropic.com/engineering/demystifying-evals-for-ai-agents</a></li>
+            <li id="s8-7"><a href="https://www.braintrust.dev/articles/llm-evaluation-guide">braintrust.dev/articles/llm-evaluation-guide</a></li>
+            <li id="s8-8"><a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">simonwillison.net &mdash; the lethal trifecta</a></li>
+            <li id="s8-9"><a href="https://www.anthropic.com/engineering/claude-code-sandboxing">anthropic.com/engineering/claude-code-sandboxing</a> &amp; <a href="https://code.claude.com/docs/en/agent-sdk/secure-deployment">agent-sdk/secure-deployment</a></li>
+            <li id="s8-10"><a href="https://www.anthropic.com/engineering/claude-code-auto-mode">anthropic.com/engineering/claude-code-auto-mode</a></li>
+            <li id="s8-11"><a href="https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html">owasp.org &mdash; AI Agent Security Cheat Sheet</a></li>
+            <li id="s8-12"><a href="https://arxiv.org/pdf/2606.19544">arxiv.org/pdf/2606.19544 &mdash; LLM-judge consistency vs correctness</a></li>
+            <li id="s8-13"><a href="https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks">python-telegram-bot wiki &mdash; polling vs webhooks</a></li>
+            <li id="s8-14"><a href="https://github.com/AsamK/signal-cli">github.com/AsamK/signal-cli</a></li>
+            <li id="s8-15"><a href="https://tailscale.com/docs/features/tailscale-funnel">tailscale.com/docs &mdash; Serve &amp; Funnel</a></li>
+            <li id="s8-16"><a href="https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/">developers.cloudflare.com &mdash; Access self-hosted app</a></li>
+            <li id="s8-17"><a href="https://arxiv.org/abs/2504.19413">arxiv.org/abs/2504.19413</a> &amp; <a href="https://mem0.ai/blog/state-of-ai-agent-memory-2026">mem0.ai &mdash; state of agent memory 2026</a></li>
+            <li id="s8-18"><a href="https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html">developer.apple.com &mdash; Creating launchd Jobs</a></li>
+            <li id="s8-19"><a href="https://culturedcode.com/things/support/articles/2803572/">culturedcode.com/things/support &mdash; automation articles</a></li>
+            <li id="s8-20"><a href="https://www.home-assistant.io/voice_control/">home-assistant.io/voice_control</a></li>
+            <li id="s8-21"><a href="https://astropad.com/blog/headless-mac-mini-setup-guide/">astropad.com &mdash; headless Mac mini guide</a> &amp; hometechops.com</li>
+            <li id="s8-22"><a href="https://www.anthropic.com/engineering/multi-agent-research-system">anthropic.com/engineering/multi-agent-research-system</a></li>
+            <li id="s8-23"><a href="https://github.com/openclaw/openclaw">github.com/openclaw/openclaw</a></li>
+            <li id="s8-24"><a href="https://github.com/khoj-ai/khoj">github.com/khoj-ai/khoj</a></li>
+            <li id="s8-25"><a href="https://docs.langchain.com/oss/python/langgraph/durable-execution">docs.langchain.com &mdash; LangGraph durable execution</a></li>
+          </ol>
+        </section>
+
+        <footer>
+          <span>JARVIS Deep-Research Dossier</span>
+          <span>38 agents · 1.47M tokens · 30/30 claims verified · 2026-07-04 · rev. 2026-08-19 (ADR-034)</span>
+        </footer>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>
