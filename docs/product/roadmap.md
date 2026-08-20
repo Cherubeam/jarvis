@@ -494,8 +494,27 @@ Extend the server beyond search to JARVIS's curated context.
 - [ ] Conversation-recall search (scoped, opt-in — most private data class)
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
+### Source policy — index, don't proxy (2026-08-20)
+
+The rule for "should Cortex integrate source X?":
+
+- **Ingest for recall — yes.** Cortex's value is the one deduplicated semantic
+  index across sources (ADR-029 source plugins: vault, Readwise, later
+  Zotero/Miro). Cross-source "what do I know about X?" is the thing no direct
+  connection provides, and embedding costs are paid once instead of per-tool.
+- **Proxy for actions — no.** Transactional operations (Readwise tagging/
+  saving/daily review, Miro board edits) go through that source's **own** MCP
+  server, registered directly in each client (JARVIS `mcp.servers`, Claude
+  Code `.mcp.json`). Wrapping a maintained official MCP in Cortex is the same
+  commodity-treadmill mistake as building our own coding harness, one layer
+  down (ADR-034).
+- **Raw access stays.** Claude Code reading vault markdown from the filesystem
+  is exact, live, and free — semantic search complements grep, it doesn't
+  replace it.
+
 > **Scope guard (ADR-034)**: `HUB` exports context; it does not grow into a
-> workflow or execution API. Harnesses bring their own loops.
+> workflow or execution API. Harnesses bring their own loops, sources bring
+> their own MCPs.
 
 ---
 
@@ -611,4 +630,4 @@ Extend the server beyond search to JARVIS's curated context.
 
 ---
 
-*Last updated: 2026-08-19*
+*Last updated: 2026-08-20*
