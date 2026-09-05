@@ -10,6 +10,7 @@ import time
 import webbrowser
 
 import uvicorn
+from dotenv import load_dotenv
 
 from apps.gui.server.app import create_app
 from apps.gui.server.auth import (
@@ -53,6 +54,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     jarvis_dir = get_project_root()
+    # The GUI never loaded .env before (only apps/cli/main.py did), so
+    # JARVIS_GUI_TOKEN there was silently ignored — and OPENROUTER_API_KEY had
+    # to be exported in the shell, since collect_api_keys() reads os.environ.
+    # Additive: load_dotenv does not override variables already set.
+    load_dotenv(jarvis_dir / ".env")
+
     # A second load_config() — the first is inside build_gui_session() during
     # lifespan. Only gui.allowed_origins is read here, before the app exists.
     settings = load_config(jarvis_dir)
