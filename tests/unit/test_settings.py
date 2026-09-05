@@ -16,6 +16,7 @@ from packages.core.settings import (
     DeveloperSettings,
     EvaluationSettings,
     FilesystemSettings,
+    GuiSettings,
     MCPServerSettings,
     MCPSettings,
     ModelPresets,
@@ -130,6 +131,29 @@ class TestDeveloperSettings:
     def test_scope_override(self) -> None:
         dev = DeveloperSettings(scope=["packages/"])
         assert dev.scope == ["packages/"]
+
+
+class TestGuiSettings:
+    def test_defaults_match_default_yaml(self) -> None:
+        gui = GuiSettings()
+        assert gui.allowed_origins == []
+
+    def test_allowed_origins_default_is_independent(self) -> None:
+        a = GuiSettings()
+        b = GuiSettings()
+        a.allowed_origins.append("http://mutated:1")
+        assert b.allowed_origins == []
+
+    def test_allowed_origins_override(self) -> None:
+        gui = GuiSettings(allowed_origins=["https://jarvis.example.ts.net"])
+        assert gui.allowed_origins == ["https://jarvis.example.ts.net"]
+
+    def test_holds_no_secret_fields(self) -> None:
+        """GET /api/settings dumps this tree to the browser — no credentials here.
+
+        The auth token lives in data/.gui_token / $JARVIS_GUI_TOKEN instead.
+        """
+        assert set(GuiSettings.model_fields) == {"allowed_origins"}
 
 
 class TestThings3Settings:
@@ -537,6 +561,7 @@ class TestSettingsAggregator:
         assert settings.readwise.enabled is False
         assert settings.pattern_cards.output_dir == "data/pattern-cards"
         assert settings.developer.enabled is True
+        assert settings.gui.allowed_origins == []
 
     def test_partial_section_override_via_dict(self) -> None:
         settings = Settings(models={"streaming": False})  # type: ignore[arg-type]
@@ -567,6 +592,17 @@ class TestClassifyChanges:
             }
         )
         assert expected == HOT_APPLY_PATHS
+
+    def test_gui_allowed_origins_requires_restart(self) -> None:
+        """Read once at GuiAuth.create() and frozen into the middleware stack —
+        Starlette cannot rebuild it after startup, so it must never be hot."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["gui"]["allowed_origins"] = ["https://jarvis.example.ts.net"]
+        result = classify_changes(current, new)
+        assert result["restart_required"] is True
+        assert result["restart_required_fields"] == ["gui.allowed_origins"]
+        assert result["hot_applied_fields"] == []
 
     def test_no_change_empty_buckets(self) -> None:
         current = Settings().model_dump()

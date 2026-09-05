@@ -62,3 +62,5 @@ data/brainstorms/
 # Individual skills (personal content, framework code is tracked)
 packages/skills/*
 !packages/skills/*.py
+# Shared practices symlink (external spec repo, machine-specific path)
+packages/agents/_shared/prompts/engineering-practices.md

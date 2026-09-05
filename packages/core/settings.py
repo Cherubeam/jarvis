@@ -495,6 +495,30 @@ class DeveloperSettings(BaseModel):
     )
 
 
+class GuiSettings(BaseModel):
+    """GUI server — browser-facing origin policy. Holds no secrets.
+
+    The auth token deliberately lives outside Settings (``data/.gui_token`` or
+    ``JARVIS_GUI_TOKEN``): ``GET /api/settings`` dumps this whole tree to the
+    browser, so a credential here would be handed to every client.
+
+    Not surfaced in the Settings GUI — ``apps/gui/web/src/components/settings/
+    sections.ts`` is a hand-maintained list. Edit ``config/local.yaml`` directly.
+    The value still survives a settings save because SettingsView PUTs the whole
+    settings dict back unchanged.
+    """
+
+    allowed_origins: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Extra browser origins allowed to reach the GUI server, as "
+            "scheme://host:port. Additive: the server's own origin and the Vite "
+            "dev origins are always allowed on top of this list. Needed when "
+            "binding to a non-loopback host with --host. Restart required."
+        ),
+    )
+
+
 class Settings(BaseSettings):
     """Top-level JARVIS configuration model.
 
@@ -517,6 +541,7 @@ class Settings(BaseSettings):
     readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
     pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
+    gui: GuiSettings = Field(default_factory=GuiSettings)
 
     jarvis_dir: Path = Field(
         default_factory=Path.cwd,

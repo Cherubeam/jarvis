@@ -149,3 +149,10 @@ developer:
     - ".md"
     - ".yaml"
     - ".yml"
+
+# GUI server — browser-facing origin policy (see docs/engineering/gui.md).
+# The auth token is NOT here: it lives in data/.gui_token or $JARVIS_GUI_TOKEN.
+gui:
+  # Additive — the server's own origin and the Vite dev origins are always
+  # allowed. Set this when binding to a non-loopback host with --host.
+  allowed_origins: []
