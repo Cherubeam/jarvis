@@ -84,10 +84,17 @@ async def chat_ws(websocket: WebSocket) -> None:
                     await websocket.send_json({"type": "error", "message": "resume failed — see server logs"})
             elif kind == "approval_decision":
                 if session.confirmation is not None:
-                    session.confirmation.resolve(
+                    accepted = session.confirmation.resolve(
                         bool(msg.get("approved", False)),
                         approval_id=msg.get("id"),
                     )
+                    if not accepted:
+                        # Stale tab, racing reconnect, or a client that omitted
+                        # the id — the decision names an approval that is not
+                        # pending, so it must not authorize the write.
+                        logger.warning(  # pragma: no mutate
+                            "ignored approval_decision for stale id %r", msg.get("id")
+                        )
             elif kind == "cancel":
                 # Best-effort: stops event dispatch by replacing the on_event sink.
                 # The in-flight LLM call will continue in the worker thread (see
