@@ -105,16 +105,14 @@ obsidian:
       target_dir: ""                # User sets in local.yaml
       template_path: ""             # User sets in local.yaml
 
-# Cortex — shared knowledge layer (semantic vault search)
-cortex:
-  enabled: false                    # Set to true in local.yaml to activate
-  base_url: "http://127.0.0.1:8100"
-  timeout_seconds: 10
-
 # MCP — connect to external MCP tool servers (Model Context Protocol)
+# Cortex vault search is consumed this way since HUB-01: declare the
+# cortex server in local.yaml with `shared: true` so every agent gets it.
 mcp:
   enabled: false              # Set to true in local.yaml
-  servers: {}                 # Declare servers in local.yaml
+  servers: {}                 # Declare servers in local.yaml (per-server keys:
+                              # transport, command/args or url, tool_group,
+                              # shared, timeout_seconds, env, cwd, headers)
 
 # Readwise integration — reading list, highlights, and persona
 readwise:

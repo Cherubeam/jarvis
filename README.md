@@ -79,7 +79,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
 - **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
 - **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
-- **Vault Semantic Search**: Meaning-based search over the Obsidian vault via Cortex (opt-in)
+- **Vault Semantic Search**: Meaning-based search over the Obsidian vault via the Cortex MCP server (opt-in, HUB-01)
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
@@ -382,7 +382,6 @@ jarvis/
 │   │       ├── web_search.py            # DuckDuckGo web search tool
 │   │       ├── blog_tools.py           # Blog management tools
 │   │       ├── card_generator_tools.py # Pattern card generator tools
-│   │       ├── cortex_search.py        # Cortex semantic vault search tool
 │   │       ├── things3_tools.py        # Things 3 task management tools
 │   │       ├── codebase_tools.py       # Codebase analysis tools
 │   │       ├── git_tools.py            # Git operations tools
@@ -418,7 +417,6 @@ jarvis/
 │   │   └── .../                        # Additional skills (each has SKILL.md)
 │   ├── integrations/                   # External service integrations
 │   │   ├── things3/                    # Things 3 task sync + write tools
-│   │   ├── cortex/                     # Cortex semantic search client
 │   │   ├── mcp/                        # MCP client integration
 │   │   │   ├── config.py               # Config parsing + validation
 │   │   │   ├── client.py               # Connection lifecycle + async/sync bridge

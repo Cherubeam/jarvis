@@ -328,32 +328,30 @@ User types: /daily-summary
 
 ---
 
-### 6b. Cortex Integration (`packages/integrations/cortex/`)
+### 6b. Cortex Vault Search (via MCP, `HUB-01`)
 
-**Purpose**: Semantic search over the Obsidian vault via the external Cortex service.
+**Purpose**: Semantic search over the Obsidian vault via the external Cortex service (`cherubeam/cortex`).
 
-**Location**: `packages/integrations/cortex/client.py`, `packages/core/tools/cortex_search.py`
+**How**: Since `HUB-01` (ADR-034), JARVIS consumes Cortex through the generic MCP client (§6c) instead of a bespoke HTTP integration — the same `cortex-mcp` stdio server that Claude Code and other MCP clients use. One integration surface, maintained in the Cortex repo.
 
-**Responsibilities:**
-- HTTP client for the Cortex API (`POST /search`, `GET /status`)
-- Tool wrapper (`search_vault_semantic`) with parameter clamping, output truncation, and graceful degradation
-- Startup health check with user-visible status message
-
-**Key Classes:**
-- `CortexClient`: Synchronous httpx client with tiered timeouts (connect 3s, read configurable)
-- `make_cortex_search_tool()`: Factory that wraps `CortexClient` in a `ToolDefinition`
-
-**Configuration** (`config/default.yaml`):
+**Configuration** (`config/local.yaml`):
 ```yaml
-cortex:
-  enabled: false                    # Set to true in local.yaml to activate
-  base_url: "http://127.0.0.1:8100"
-  timeout_seconds: 10
+mcp:
+  enabled: true
+  servers:
+    cortex:
+      transport: stdio
+      tool_group: cortex
+      shared: true          # every agent gets the tools automatically
+      command: uv
+      args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
 ```
 
-**Opt-in**: Disabled by default. Enable with `cortex.enabled: true` in `local.yaml` after starting the Cortex service (`cherubeam/cortex`). When Cortex is unreachable, the tool returns a fallback message directing agents to `search_notes`.
+The `shared: true` flag (introduced for this integration, generic to any MCP server) routes the server's tools into every agent's shared toolset instead of an opt-in tool group. Tools arrive namespaced: `mcp_cortex__search_knowledge`, `mcp_cortex__index_status`. When the Cortex service is down, the tools return an actionable error and agents fall back to `search_notes`.
 
-**Design Decision**: See ADR-029 (Cortex — Shared Knowledge Layer).
+**History**: The retired bespoke path (`packages/integrations/cortex/`, `packages/core/tools/cortex_search.py`, `search_vault_semantic`, `cortex.*` settings) lived from ADR-029 until HUB-01.
+
+**Design Decisions**: ADR-029 (Cortex — Shared Knowledge Layer), ADR-034 (Context Hub Positioning).
 
 ---
 

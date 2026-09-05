@@ -475,14 +475,14 @@ Do this only when AON-01…04 feel boring.
 
 ### HUB-01 — Cortex as MCP server
 
-**Status**: ⏳ Next up · **Effort**: M · **Risk**: Low
+**Status**: ✅ Complete (2026-09-05)
 
 Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/local-only per the `AON-04` transport policy).
 
-- [ ] MCP server wrapper over `POST /search` (semantic vault search, tier/source filters)
-- [ ] Read-only by design — no write tools in v1
-- [ ] Register in Claude Code (`.mcp.json`) and verify from a real coding session
-- [ ] JARVIS consumes the same server via its existing MCP client (replaces the bespoke `search_vault_semantic` HTTP path once stable)
+- [x] MCP server wrapper over `POST /search` (`cortex-mcp` stdio entry point in `cherubeam/cortex`; tools `search_knowledge` + `index_status`)
+- [x] Read-only by design — no write tools in v1 (`index/refresh` deliberately excluded per the source policy above)
+- [x] Registered in Claude Code (user scope via `claude mcp add`) and verified from a real coding session — first real use immediately surfaced a retrieval-quality gap, fixed and verified in `cherubeam/cortex` (contextual embedding headers, chunk caps, schema fingerprint, stale pruning; eval strict 6/6)
+- [x] JARVIS consumes the same server via its existing MCP client (new generic `shared: true` flag on `mcp.servers` entries routes a server's tools into every agent's shared toolset); bespoke `search_vault_semantic` HTTP path, `packages/integrations/cortex/`, and `cortex.*` settings retired
 
 ### HUB-02 — Context & memory surface
 
