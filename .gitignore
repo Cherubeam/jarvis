@@ -53,6 +53,9 @@ tests/golden/results/
 
 # Personal voice profile
 packages/agents/writer/prompts/voice-profile.md
+# Personal voice profile — real writing samples, employer, self-description.
+# Ships as voice-profile.md.example; copy it and fill it in locally.
+packages/agents/_shared/prompts/voice-profile.md
 
 # Heartbeat runtime data (journals, plans)
 data/heartbeat/

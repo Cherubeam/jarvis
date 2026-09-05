@@ -247,7 +247,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 **Shared prompt includes**: Each `prompt_include` filename is resolved in this order, and the first hit wins:
 
 1. `<agent_dir>/prompts/<filename>.md` — personal override, may be gitignored
-2. `packages/agents/_shared/prompts/<filename>.md` — framework default (`voice-profile.md`, `anti-patterns.md` live here)
+2. `packages/agents/_shared/prompts/<filename>.md` — framework default (`anti-patterns.md` ships here; `voice-profile.md` is gitignored personal content, created from the committed `.example`)
 3. `<agent_dir>/prompts/<filename>.md.example` — committed starter template (triggers a startup warning when used)
 4. `packages/agents/_shared/prompts/<filename>.md.example` — shared starter template (also warns)
 5. Missing → startup warning, placeholder renders as empty string.
