@@ -21,6 +21,10 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': 'http://127.0.0.1:8123',
+      // Sign-in exchange: without this a dev on :5173 cannot get the cookie.
+      // Dev-server config only — nothing here participates in `vite build`, so
+      // this does not change dist/.
+      '/auth': 'http://127.0.0.1:8123',
       // ws: true is REQUIRED for the WebSocket upgrade to forward correctly.
       '/ws': { target: 'ws://127.0.0.1:8123', ws: true },
     },

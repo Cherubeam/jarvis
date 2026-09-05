@@ -7,15 +7,18 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from apps.gui.server.auth import GuiAuth, GuiAuthMiddleware, connection_is_authenticated
 from apps.gui.server.history import ConversationIndex
 from apps.gui.server.routes.agent_includes import router as agent_includes_router
 from apps.gui.server.routes.agents import router as agents_router
 from apps.gui.server.routes.api import router as api_router
+from apps.gui.server.routes.auth import router as auth_router
+from apps.gui.server.routes.auth import sign_in_page
 from apps.gui.server.routes.chat_ws import router as ws_router
 from apps.gui.server.routes.conversations import router as conversations_router
 from apps.gui.server.routes.home import router as home_router
@@ -60,18 +63,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             logger.exception("logger.save() on shutdown failed")
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="JARVIS GUI", lifespan=lifespan)
+def create_app(auth: GuiAuth) -> FastAPI:
+    """Build the GUI app.
 
-    # CORS so vite dev server (:5173) can hit /api and /ws on :8123.
+    ``auth`` is required, not optional: a fail-open default would either ship an
+    unauthenticated server or mint a token file as a side effect of constructing
+    the app. Callers pass an explicit policy (see apps/gui/main.py).
+    """
+    app = FastAPI(title="JARVIS GUI", lifespan=lifespan)
+    # Set before lifespan: the launcher needs the token to print the sign-in URL,
+    # and the middleware needs the policy before the first request.
+    app.state.gui_auth = auth
+
+    # ORDER MATTERS, and it reads backwards: add_middleware inserts at index 0
+    # and the stack is built reversed, so the LAST one added is the OUTERMOST.
+    # CORS must end up outside auth — it answers preflight itself, and an
+    # OPTIONS gated by auth (preflight carries no cookie, by spec) would break
+    # every cross-origin call from the vite dev server.
+    app.add_middleware(GuiAuthMiddleware, auth=auth)
+    # CORS so vite dev server (:5173) can hit /api and /ws on :8123. Derived
+    # from the same allowlist as the auth check so the two cannot drift.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=sorted(auth.allowed_origins),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
+    app.include_router(auth_router)
     app.include_router(api_router)
     app.include_router(agents_router)
     app.include_router(agent_includes_router)
@@ -90,7 +110,13 @@ def create_app() -> FastAPI:
             app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
         @app.get("/")
-        async def root() -> Response:
+        async def root(request: Request) -> Response:
+            # "/" is exempt from the middleware so there is a page to sign in
+            # from; it gates itself instead of serving the app shell to a
+            # stranger. The shell holds no data either way — every call it makes
+            # is gated — but a blank app whose fetches all 403 is a dead end.
+            if not connection_is_authenticated(request.app.state.gui_auth, request):
+                return sign_in_page()
             index_html = WEB_DIST / "index.html"
             if index_html.is_file():
                 return FileResponse(
@@ -101,7 +127,9 @@ def create_app() -> FastAPI:
     else:
 
         @app.get("/")
-        async def root_no_bundle() -> Response:
+        async def root_no_bundle(request: Request) -> Response:
+            if not connection_is_authenticated(request.app.state.gui_auth, request):
+                return sign_in_page()
             return Response(
                 "GUI bundle not found at apps/gui/web/dist/. Run: cd apps/gui/web && npm install && npm run build",
                 status_code=503,
