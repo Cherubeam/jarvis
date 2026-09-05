@@ -243,6 +243,18 @@ class GuiAuth:
         return matched
 
 
+def connection_is_authenticated(auth: GuiAuth, conn: HTTPConnection) -> bool:
+    """True if this connection presents a valid cookie or Bearer token.
+
+    Shared by the middleware and the exempt ``/`` route, so the bundle and the
+    gated API can never disagree about who is signed in.
+    """
+    return auth.check_credentials(
+        cookie=conn.cookies.get(COOKIE_NAME),
+        bearer=bearer_from_header(conn.headers.get("authorization")),
+    )
+
+
 class GuiAuthMiddleware:
     """Gate every HTTP request and WebSocket handshake on origin + credentials.
 
@@ -277,10 +289,7 @@ class GuiAuthMiddleware:
             await self._reject(scope, receive, send, "origin", origin)
             return
 
-        if not self.auth.check_credentials(
-            cookie=conn.cookies.get(COOKIE_NAME),
-            bearer=bearer_from_header(conn.headers.get("authorization")),
-        ):
+        if not connection_is_authenticated(self.auth, conn):
             await self._reject(scope, receive, send, "credentials", origin)
             return
 
