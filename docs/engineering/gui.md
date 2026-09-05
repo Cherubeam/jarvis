@@ -28,7 +28,74 @@ uv run jarvis-gui --no-browser # just serve; visit manually
 uv run jarvis-gui --port 9000  # override the port
 ```
 
-The server binds to `127.0.0.1` only — **no authentication**. Don't expose it.
+The server binds to `127.0.0.1` by default and **requires authentication**
+(since `AON-01` — see [Authentication](#authentication) below and
+[ADR-035](../product/decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)).
+On start it prints a `Sign in:` URL; opening it once signs this browser in.
+
+## Authentication
+
+Two independent checks, because they stop two different attackers:
+
+| Check | Stops |
+|---|---|
+| **Origin allowlist** | A browser being used against you. Browsers do **not** enforce same-origin on WebSockets — before `AON-01`, any page you visited could open `ws://127.0.0.1:8123/ws/chat` and drive the agent. (DNS rebinding is the same trick over plain HTTP.) |
+| **Token** | Another machine on the network, once you bind past loopback with `--host` or put the GUI behind Tailscale. |
+
+### The token
+
+Resolved in order: `$JARVIS_GUI_TOKEN` → `data/.gui_token` (mode `0600`,
+gitignored) → freshly minted and persisted. It survives restarts, so an open tab
+keeps working.
+
+**To rotate or revoke**: delete `data/.gui_token` and restart. Every browser must
+then sign in again. `GET /sign-out` clears the cookie on one browser only.
+
+### Two credentials, not one
+
+Cookies are scoped by host but **not by port**, so a signed-in browser sends the
+GUI cookie to *every* other `127.0.0.1:<port>` listener — a Vite server, an
+Electron app, a malicious `postinstall`. The cookie therefore carries a one-way
+HMAC of the token, not the token itself:
+
+- `Authorization: Bearer <token>` — accepts only the raw token. For curl/scripts.
+- Cookie — accepts only the derived value. For browsers.
+
+A stolen cookie cannot be replayed as a Bearer credential, and vice versa.
+
+```bash
+curl -H "Authorization: Bearer $(cat data/.gui_token)" http://127.0.0.1:8123/api/session
+```
+
+### Gotchas
+
+- **`localhost` and `127.0.0.1` are different cookie hosts.** Signing in on one
+  does not sign you in on the other — re-run the `Sign in:` URL with the host you
+  actually use.
+- **`--host 0.0.0.0` needs `gui.allowed_origins`.** Browsers reach the server
+  under some other hostname, which the allowlist rejects with a 403. Add that
+  origin to `config/local.yaml`:
+  ```yaml
+  gui:
+    allowed_origins: ["https://jarvis.example.ts.net"]
+  ```
+  It is not editable in the Settings UI, and it is restart-only.
+- **`/docs`, `/redoc` and `/openapi.json` are gated** — they publish the whole
+  route inventory, `PUT /api/settings` included.
+- **Behind a TLS-terminating proxy** the cookie's `Secure` flag is not set,
+  because uvicorn's `forwarded_allow_ips` is not widened here. `AON-01` is
+  http/loopback; `AON-02` revisits this with Tailscale.
+
+### Vite dev server (`:5173`)
+
+`vite.config.ts` proxies `/auth` alongside `/api` and `/ws`, so bootstrap through
+the dev server:
+
+1. `uv run jarvis-gui --no-browser`, copy the printed token.
+2. Visit `http://localhost:5173/auth?token=<token>`.
+
+The cookie is set on `localhost` (ports are not part of cookie scope), so both
+`:5173` and `:8123` are then signed in.
 
 The CLI (`uv run jarvis`) continues to work unchanged. Both share:
 - the same conversation JSON files (`data/conversations/YYYY/*.json`)
@@ -42,6 +109,7 @@ apps/gui/
   main.py                 # entry — uvicorn.run + webbrowser.open
   server/
     app.py                # FastAPI factory + lifespan (MCP start/stop, logger save)
+    auth.py               # origin allowlist + token policy + ASGI gate (AON-01)
     state.py              # GuiSession — SessionComponents + per-turn handlers
     protocol.py           # WS TypedDicts (server ↔ client)
     streaming.py          # WebStreamHandler — on_event → queue events
@@ -50,6 +118,7 @@ apps/gui/
     session_factory_helpers.py
     routes/
       api.py              # GET /api/agents, /api/session
+      auth.py             # GET/POST /auth (sign-in), GET /sign-out
       chat_ws.py          # /ws/chat (submit / approval_decision / cancel)
   web/
     src/                  # React + TypeScript source

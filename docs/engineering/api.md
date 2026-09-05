@@ -716,12 +716,14 @@ def chat_stream(
 
 ## GUI Server (`apps.gui.server`) — REST + WebSocket
 
-The GUI binds to `127.0.0.1:8123` (no auth — never expose). All routes are mounted under `apps/gui/server/routes/`. The full WebSocket protocol is documented in [docs/engineering/gui.md](gui.md); the table below is a route index.
+The GUI binds to `127.0.0.1:8123` and requires authentication since `AON-01`: every `/api/*` route, `/ws/chat`, and the auto-generated `/docs`, `/redoc` and `/openapi.json` need either the session cookie or an `Authorization: Bearer <token>` header, and a browser `Origin` outside the allowlist is rejected. Only `/`, `/auth`, `/favicon.ico` and `/assets/*` are exempt. See [gui.md#authentication](gui.md#authentication) and [ADR-035](../product/decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist). All routes are mounted under `apps/gui/server/routes/`. The full WebSocket protocol is documented in [docs/engineering/gui.md](gui.md); the table below is a route index.
 
 ### REST routes
 
 | Route | File | Description | Released |
 |---|---|---|---|
+| `GET /auth` · `POST /auth` | `routes/auth.py` | Sign in: exchange the token for the session cookie, then 303 to `/`. `GET` with no token renders the sign-in page | 0.23.0 |
+| `GET /sign-out` | `routes/auth.py` | Clear the session cookie on this browser | 0.23.0 |
 | `GET /api/session` | `routes/api.py` | Session metadata: `file_id`, `conversation_path`, `models`, agent, totals | 0.17.0 |
 | `GET /api/agents` | `routes/agents.py` | List all registered agents (JARVIS first, then alphabetical) | 0.17.0 / moved 0.19.0 |
 | `GET /api/agents/{id}` | `routes/agents.py` | Agent detail: prompt path, tools, recent sessions, 14-day cost | 0.19.0 |

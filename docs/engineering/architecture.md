@@ -98,7 +98,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 
 ### 1b. GUI Layer (`apps/gui/`)
 
-**Purpose**: A graphical peer to the CLI, sharing the same agents, tools, vault, conversation files, and approval flow. Browser-served at `http://127.0.0.1:8123` (no auth — bound to localhost only).
+**Purpose**: A graphical peer to the CLI, sharing the same agents, tools, vault, conversation files, and approval flow. Browser-served at `http://127.0.0.1:8123`, gated by a token + origin allowlist since `AON-01` ([ADR-035](../product/decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)).
 
 **Location**: `apps/gui/` (entry: `apps/gui/main.py`)
 
