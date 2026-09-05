@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+(nothing yet)
+
+---
+
+## [0.22.0] - 2026-09-05
+
+The context-hub release: ADR-034 strategic positioning ("harnesses are commodities, the context is the moat"), the `HUB` initiative, `HUB-01` shipped end-to-end (Cortex as MCP server, consumed by Claude Code and JARVIS alike), plus the accumulated GUI fixes and the mutation-testing sweep from April–May.
+
 ### Changed — HUB-01 complete: Cortex consumed via MCP; bespoke HTTP path retired (2026-09-05)
 
 - **JARVIS now reaches vault semantic search through the same `cortex-mcp` stdio server Claude Code uses** (one integration surface, per ADR-034). New generic **`shared: true` flag on `mcp.servers` entries** (`MCPServerSettings.shared`): a shared server's tools join every agent's shared toolset instead of forming an opt-in tool group — preserving the old behavior where every agent had vault search automatically. Tools arrive namespaced (`mcp_cortex__search_knowledge`, `mcp_cortex__index_status`); graceful degradation moved into the MCP server (actionable error when the Cortex service is down; agents fall back to `search_notes`). Verified live through JARVIS's own `MCPManager` against the running service.
