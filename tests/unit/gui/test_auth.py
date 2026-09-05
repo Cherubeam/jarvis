@@ -6,6 +6,8 @@ the /auth bootstrap route in test_auth_route.py.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import stat
 from pathlib import Path
@@ -22,6 +24,7 @@ from apps.gui.server.auth import (
     bootstrap_url,
     default_origins,
     derive_cookie_value,
+    install_access_log_redaction,
     is_exempt,
     redact_token,
     resolve_token,
@@ -82,6 +85,18 @@ def test_resolve_token_mints_and_persists_at_mode_600(tmp_path: Path, monkeypatc
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
+def test_minted_token_has_full_entropy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """32 random bytes, url-safe encoded — exactly 43 characters.
+
+    A length assertion of "> 20" would pass on a materially weaker token, and
+    this is the credential guarding the whole GUI.
+    """
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    token = resolve_token(tmp_path)
+    assert len(token) == 43
+    assert token == token.strip()
+
+
 def test_resolve_token_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A second call must reuse the persisted token, not mint a new one —
     otherwise every restart invalidates the browser cookie."""
@@ -126,6 +141,23 @@ def test_derive_cookie_value_differs_from_the_token() -> None:
 
 def test_derive_cookie_value_differs_per_token() -> None:
     assert derive_cookie_value("abc") != derive_cookie_value("abd")
+
+
+def test_derive_cookie_value_known_answer() -> None:
+    """Pins the domain-separation label, not just the shape.
+
+    Without a fixed vector, dropping COOKIE_HMAC_LABEL (or changing it) still
+    produces a stable 64-char hex digest and every structural assertion passes —
+    while silently changing what the cookie means.
+    """
+    assert derive_cookie_value("known-token") == ("36ca7f867e3f31135b691d4762b0fbf3ca69fb6fe9bafd17cd681eb6a0830c59")
+
+
+def test_derive_cookie_value_is_domain_separated() -> None:
+    """The label must actually participate — a bare HMAC over an empty message
+    would be a different, unlabelled construction."""
+    unlabelled = hmac.new(b"known-token", None, hashlib.sha256).hexdigest()
+    assert derive_cookie_value("known-token") != unlabelled
 
 
 def test_derive_cookie_value_is_a_sha256_hex_digest() -> None:
@@ -424,6 +456,32 @@ def test_redacting_filter_scrubs_a_plain_message() -> None:
     )
     assert TokenRedactingFilter().filter(record) is True
     assert record.getMessage() == "visit /auth?token=REDACTED"
+
+
+def test_install_access_log_redaction_attaches_to_uvicorn_access() -> None:
+    """The filter is useless unless it is actually installed on the logger
+    uvicorn writes access lines to."""
+    access_logger = logging.getLogger("uvicorn.access")
+    before = list(access_logger.filters)
+    try:
+        installed = install_access_log_redaction()
+        assert isinstance(installed, TokenRedactingFilter)
+        assert installed in access_logger.filters
+
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="%s %s",
+            args=("GET", "/auth?token=s3cret"),
+            exc_info=None,
+        )
+        for f in access_logger.filters:
+            f.filter(record)  # type: ignore[union-attr]
+        assert "s3cret" not in record.getMessage()
+    finally:
+        access_logger.filters = before
 
 
 def test_redacting_filter_leaves_unrelated_records_alone() -> None:

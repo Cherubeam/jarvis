@@ -122,7 +122,8 @@ def resolve_token(project_root: Path) -> str:
             handle.write(token + "\n")
     except OSError:
         logger.warning(  # pragma: no mutate
-            "could not persist the GUI auth token to %s — using an ephemeral one; it will change on every restart",
+            "could not persist the GUI auth token to %s — using an "  # pragma: no mutate
+            "ephemeral one; it will change on every restart",  # pragma: no mutate
             path,
         )
     return token
@@ -201,9 +202,9 @@ class GuiAuth:
         token = resolve_token(project_root)
         if host in WILDCARD_BIND_HOSTS:
             logger.warning(  # pragma: no mutate
-                "binding to %s: browsers reach this server under some other hostname, "
-                "which the origin allowlist will reject. Add that origin to "
-                "gui.allowed_origins in config/local.yaml.",
+                "binding to %s: browsers reach this server under some other hostname, "  # pragma: no mutate
+                "which the origin allowlist will reject. Add that origin to "  # pragma: no mutate
+                "gui.allowed_origins in config/local.yaml.",  # pragma: no mutate
                 host,
             )
         return cls(
@@ -297,9 +298,9 @@ class GuiAuthMiddleware:
 
     async def _reject(self, scope: Scope, receive: Receive, send: Send, reason: str, origin: str | None) -> None:
         logger.warning(  # pragma: no mutate
-            "rejected %s %s: bad %s (origin=%r)",
+            "rejected %s %s: bad %s (origin=%r)",  # pragma: no mutate
             scope["type"],
-            scope.get("path", ""),
+            scope.get("path", ""),  # pragma: no mutate
             reason,
             origin,
         )

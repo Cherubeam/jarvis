@@ -321,6 +321,16 @@ def test_origin_rejections_name_the_origin(caplog: pytest.LogCaptureFixture) -> 
     assert any("evil.example" in m for m in messages)
 
 
+def test_credential_rejections_also_name_the_origin(caplog: pytest.LogCaptureFixture) -> None:
+    """Both rejection paths log the origin — it is the only clue to who was
+    knocking when a credential check fails."""
+    client = _client()
+    with caplog.at_level(logging.WARNING, logger="apps.gui.server.auth"):
+        client.get("/api/ping", headers={"Origin": ORIGIN})
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("bad credentials" in m and ORIGIN in m for m in messages)
+
+
 def test_rejection_log_never_contains_the_credential(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="apps.gui.server.auth"):
         _client().get("/api/ping", headers={"Authorization": f"Bearer {TOKEN}", "Origin": "http://evil.example"})
