@@ -13,7 +13,6 @@ from packages.core.settings import (
     HOT_APPLY_PATHS,
     AccessRuleSettings,
     CliSettings,
-    CortexSettings,
     DeveloperSettings,
     EvaluationSettings,
     FilesystemSettings,
@@ -264,6 +263,14 @@ class TestMCPServerSettings:
         assert s.timeout_seconds == 30.0
         assert s.url is None
 
+    def test_shared_defaults_to_false(self) -> None:
+        s = MCPServerSettings(transport="stdio", command="uv")
+        assert s.shared is False
+
+    def test_shared_flag_parsed(self) -> None:
+        s = MCPServerSettings(transport="stdio", command="uv", shared=True)
+        assert s.shared is True
+
     def test_sse_requires_url(self) -> None:
         with pytest.raises(ValidationError) as exc:
             MCPServerSettings(transport="sse")
@@ -360,14 +367,6 @@ class TestFilesystemSettings:
     def test_path_required(self) -> None:
         with pytest.raises(ValidationError):
             AccessRuleSettings(access="read")  # type: ignore[call-arg]
-
-
-class TestCortexSettings:
-    def test_defaults_match_default_yaml(self) -> None:
-        c = CortexSettings()
-        assert c.enabled is False
-        assert c.base_url == "http://127.0.0.1:8100"
-        assert c.timeout_seconds == 10
 
 
 class TestReadwiseSettings:
@@ -535,7 +534,6 @@ class TestSettingsAggregator:
         assert settings.obsidian.enabled is False
         assert settings.mcp.enabled is False
         assert settings.filesystem.access_rules == []
-        assert settings.cortex.enabled is False
         assert settings.readwise.enabled is False
         assert settings.pattern_cards.output_dir == "data/pattern-cards"
         assert settings.developer.enabled is True

@@ -276,23 +276,6 @@ def build_session(
         except Exception as e:
             print_system(f"[Vault] Startup failed — vault read tools disabled. ({e})")
 
-    if settings.cortex.enabled:
-        try:
-            from packages.core.tools.cortex_search import make_cortex_search_tool
-            from packages.integrations.cortex.client import CortexClient
-
-            cortex_client = CortexClient(
-                base_url=settings.cortex.base_url,
-                timeout=settings.cortex.timeout_seconds,
-            )
-            shared_tools.append(make_cortex_search_tool(cortex_client))
-            if cortex_client.is_available():
-                print_system("[Cortex] Connected — vault semantic search enabled.")
-            else:
-                print_system("[Cortex] Service unreachable — tool registered but may fail.")
-        except Exception as e:
-            print_system(f"[Cortex] Startup failed — semantic search disabled. ({e})")
-
     if settings.outcomes.enabled:
         try:
             from packages.core.tools.outcome_tools import make_outcome_tools
@@ -447,9 +430,24 @@ def build_session(
 
             mcp_manager = MCPManager()
             mcp_tool_groups = mcp_manager.start(settings.mcp.servers)
+
+            # Servers marked `shared: true` contribute to every agent's
+            # toolset instead of forming an opt-in tool group (e.g. the
+            # Cortex vault-search server, HUB-01).
+            shared_group_names = {
+                server.tool_group or name for name, server in settings.mcp.servers.items() if server.shared
+            }
+            shared_count = 0
+            for group_name in shared_group_names:
+                definitions = mcp_tool_groups.pop(group_name, None)
+                if definitions:
+                    shared_tools.extend(definitions)
+                    shared_count += len(definitions)
+
             tool_groups.update(mcp_tool_groups)
-            total = sum(len(v) for v in mcp_tool_groups.values())
-            print_system(f"[MCP] {total} tool(s) from {len(mcp_tool_groups)} server(s).")
+            total = shared_count + sum(len(v) for v in mcp_tool_groups.values())
+            shared_note = f" ({shared_count} shared)" if shared_count else ""
+            print_system(f"[MCP] {total} tool(s) from {len(settings.mcp.servers)} server(s){shared_note}.")
     except Exception as e:
         print_system(f"[MCP] Startup failed: {e}")
 

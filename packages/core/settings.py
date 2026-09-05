@@ -329,6 +329,13 @@ class MCPServerSettings(BaseModel):
         default="",
         description=("Tool group name agents reference in meta.yaml. Defaults to the server name when empty."),
     )
+    shared: bool = Field(
+        default=False,
+        description=(
+            "When true, this server's tools join the shared toolset every agent "
+            "receives automatically, instead of forming an opt-in tool group."
+        ),
+    )
     timeout_seconds: float = Field(
         default=30.0,
         description="Per-request timeout for this server.",
@@ -413,23 +420,6 @@ class FilesystemSettings(BaseModel):
     access_rules: list[AccessRuleSettings] = Field(
         default_factory=list,
         description=("List of path/access rules. Most-specific path wins; missing paths default to deny."),
-    )
-
-
-class CortexSettings(BaseModel):
-    """Cortex — shared semantic vault search service."""
-
-    enabled: bool = Field(
-        default=False,
-        description="Route semantic vault searches to a running Cortex service.",
-    )
-    base_url: str = Field(
-        default="http://127.0.0.1:8100",
-        description="HTTP endpoint where the Cortex service is listening.",
-    )
-    timeout_seconds: int = Field(
-        default=10,
-        description="Per-request timeout when calling the Cortex service.",
     )
 
 
@@ -524,7 +514,6 @@ class Settings(BaseSettings):
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
-    cortex: CortexSettings = Field(default_factory=CortexSettings)
     readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
     pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
     developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
@@ -594,8 +583,8 @@ def _diff_dict(current: dict[str, Any], defaults: dict[str, Any]) -> dict[str, A
 # Hot-apply classification
 #
 # Most fields are captured at startup by ``build_session()`` into
-# ``LLMClient``, tool closures, ``FilesystemGuard``, ``CortexClient``, and
-# MCP subprocesses — changing them at runtime is a no-op until restart.
+# ``LLMClient``, tool closures, ``FilesystemGuard``, and MCP subprocesses
+# — changing them at runtime is a no-op until restart.
 #
 # A small set of fields is re-read per request from ``session.components.settings``
 # (e.g. the GUI bridge reads ``summarization.*`` at the top of each turn;
