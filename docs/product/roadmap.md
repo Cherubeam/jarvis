@@ -398,10 +398,11 @@ stable and will not be renumbered as the plan evolves.
 
 Make the existing system safe to leave running and cheap to extend. Each item is one feature branch / PR (`feat/aon-01-<slug>`).
 
-- [ ] WebSocket origin allowlist + token auth in `apps/gui/server/routes/chat_ws.py` / `apps/gui/server/app.py`; add TestClient coverage for the GUI-server mutation blind spot (`app.py`, `state.py`, `chat_ws.py`). Lessons from the OpenClaw CVE wave: no tokens in URL params, no "it's localhost" auth deferrals *(S)*
+- [x] **WebSocket origin allowlist + token auth** — one ASGI middleware gates every `/api/*` route, `/ws/chat`, and `/docs`; derived-value cookie for browsers, `Authorization: Bearer` for scripts ([ADR-035](decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)). Also fixed two approval-hijack holes in `confirmation.py` and closed the `app.py`/`state.py`/`chat_ws.py` mutation blind spot (115 unkilled mutants → 84 new tests) *(S)* ✅ 2026-09-05
 - [ ] Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py` (currently runs arbitrary Python via conftest with no confirmation) *(S)*
 - [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
 - [ ] Fix the confirmation deadlock: add a timeout to `apps/gui/server/confirmation.py`, move approval handling out of the blocked receive loop in `chat_ws.py` *(M)*
+- [ ] Reset `WebConfirmationHandler._event`/`_pending_id` per approval, not per turn — `bridge.py` creates one handler per turn, so a second vault write in the same turn silently replays the first decision without prompting. Found during AON-01; current behaviour is pinned in `test_confirmation.py` *(S)*
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [ ] Atomic conversation saves in `packages/core/memory.py` (write-temp-then-rename) *(S)*
 

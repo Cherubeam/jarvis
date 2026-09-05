@@ -78,7 +78,7 @@ uv run jarvis
 
 ### Type Checking
 
-Mypy runs in non-strict mode (config in `[tool.mypy]` in `pyproject.toml`)
+Mypy runs in **strict mode** (`strict = true` plus `warn_unreachable`, config in `[tool.mypy]` in `pyproject.toml`)
 across all production Python code. CI gates type errors via the
 `typecheck` job in `.github/workflows/test.yml`, and the local pre-commit
 hook runs the same command on every commit.

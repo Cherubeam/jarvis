@@ -9,7 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(nothing yet)
+### Security — AON-01: GUI authentication + WebSocket origin allowlist (2026-09-05)
+
+The GUI server shipped with no authentication and an unconditional
+`websocket.accept()`. Because browsers do **not** enforce same-origin on
+WebSockets, any page you visited could open `ws://127.0.0.1:8123/ws/chat` and
+drive the agent — read the vault, write notes, approve its own tool calls. The
+attacker never needed network access; your own browser was the deputy. All 26
+REST routes were open too, including `PUT /api/settings` (rewrites
+`config/local.yaml`) and `/docs` (published the entire route inventory).
+
+- **One ASGI middleware gates everything** — every `/api/*` route, `/ws/chat`,
+  and the auto-generated `/docs`, `/redoc`, `/openapi.json`. Raw ASGI rather
+  than `BaseHTTPMiddleware` (which cannot see a WebSocket scope) and rather than
+  per-route dependencies (the auth-deferral shape). Only `/`, `/auth`,
+  `/favicon.ico` and `/assets/*` are exempt, and `/` gates itself.
+- **Origin allowlist + token, both required.** Origin stops a browser being used
+  against localhost; the token stops another machine once you bind past loopback.
+  Extra origins via the new `gui.allowed_origins` setting (restart-only,
+  `config/local.yaml` — it has no Settings-UI entry).
+- **Two credentials, not one.** Cookies are scoped by host but *not* by port, so
+  a signed-in browser sends the GUI cookie to every other `127.0.0.1:<port>`
+  listener. The cookie therefore carries a one-way HMAC of the token: `Bearer`
+  accepts only the raw token, the cookie only the derived value, so a stolen
+  cookie cannot become a durable credential.
+- **`GET/POST /auth` + a server-rendered sign-in page.** The launcher prints and
+  opens a `Sign in:` URL that 303s to `/` so the token leaves the address bar; a
+  logging filter keeps `?token=` out of uvicorn's access log, which records full
+  request lines. `GET /sign-out` clears one browser's cookie; to revoke
+  everything, delete `data/.gui_token` (mode 0600, gitignored) and restart.
+- See [ADR-035](product/decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)
+  and [gui.md#authentication](engineering/gui.md#authentication).
+
+### Fixed — two approval-hijack holes in the vault-write confirmation (2026-09-05)
+
+`WebConfirmationHandler.resolve()` short-circuited its id check when *either*
+operand was `None`:
+
+- A decision carrying **no id** approved whatever was pending — a stale tab or a
+  racing reconnect could authorize a vault write it never saw.
+- A decision arriving **before anything was pending** pre-armed the event, so the
+  next `get_confirmation()` returned `True` without ever emitting
+  `approval_pending`: an unprompted, invisible vault write.
+
+**Behaviour change**: `resolve()` now requires an exact id match and returns
+`False` otherwise. `discard()` is the only force-release path (all six callers
+already used it). The shipped bundle always sends an id, so no frontend change.
+
+### Fixed — the GUI now loads `.env` (2026-09-05)
+
+`apps/gui/main.py` never called `load_dotenv`; only the CLI did. `OPENROUTER_API_KEY`
+in `.env` was invisible to the GUI, which only worked if the key was already
+exported in the shell. Additive — a shell export still wins.
+
+### Added — tests for the GUI-server mutation blind spot (2026-09-05)
+
+`app.py`, `state.py` and `chat_ws.py` had zero tests and 115 unkilled mutants.
+84 new cases, including the only place the assembled app is exercised: exact
+middleware ordering (CORS must stay outside auth), the WebSocket gated through
+the real factory, all three `WEB_DIST` branches, both lifespan teardown paths
+failing independently, and an exact GET-route inventory that guards the
+absent-`Origin` allowance.
 
 ---
 

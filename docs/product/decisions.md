@@ -2374,3 +2374,101 @@ Meanwhile the interop layer has standardized: all of the harnesses above are **M
 - Builds on ADR-029 (Cortex) — `HUB` is its "MCP-ready" clause made first-class.
 - Rescopes ADR-028's follow-on milestones (developer agent DEV-02/03).
 - Initiative `HUB` allocated per ADR-033; crosswalk updated there.
+
+---
+
+## ADR-035: GUI Authentication — Derived-Value Cookie + Origin Allowlist
+
+**Date**: 2026-09-05
+**Status**: Accepted
+**Milestone**: `AON-01`
+
+### Context
+
+The GUI server shipped with no authentication. `chat_ws.py` called
+`websocket.accept()` unconditionally, and all 26 REST routes were open —
+including `PUT /api/settings`, which rewrites `config/local.yaml`.
+
+The load-bearing fact: **browsers do not enforce same-origin on WebSockets.**
+There is no preflight and no CORS check on a WS handshake (Starlette's
+`CORSMiddleware` short-circuits on non-HTTP scopes), so any page the user
+visited could open `ws://127.0.0.1:8123/ws/chat` and drive the agent. The
+attacker needed no network access — the user's own browser was the deputy. "It
+binds to 127.0.0.1" was not a boundary; it was the assumption the attack relied
+on. DNS rebinding is the same trick over plain HTTP.
+
+`AON` exists to leave JARVIS running, and `AON-02` puts the GUI behind Tailscale
+Serve, so the loopback bind stops being a control at all.
+
+### Decision
+
+Two independent checks, enforced by one raw-ASGI middleware covering HTTP and
+WebSocket scopes alike:
+
+1. **Origin allowlist** — the server's own origin plus the Vite dev origins,
+   computed from the live host/port, unioned with `gui.allowed_origins`. A
+   missing `Origin` header is allowed (non-browser clients have no ambient
+   cookie jar); an exact-match failure is rejected.
+2. **Token** — `$JARVIS_GUI_TOKEN`, else `data/.gui_token` (0600, gitignored,
+   minted on first run and persisted so restarts don't log every tab out).
+
+**Two credentials, not one.** Cookies are scoped by host but not by port, so a
+signed-in browser sends the GUI cookie to every other `127.0.0.1:<port>`
+listener. The cookie therefore carries `HMAC-SHA256(token, "jarvis-gui-cookie-v1")`:
+`Authorization: Bearer` accepts only the raw token, the cookie only the derived
+value. A local eavesdropper who reads one header gets a value that cannot be
+replayed as a Bearer credential.
+
+`GET /auth?token=` (the launcher's auto-opened URL) and `POST /auth` (the
+server-rendered sign-in page) exchange the token for the cookie and 303 to a
+constant `/`. `/`, `/auth`, `/favicon.ico` and `/assets/*` are exempt; `/` gates
+itself, serving the sign-in page rather than a shell whose every fetch 403s.
+
+### Alternatives Considered
+
+- **`?token=` on the WebSocket URL** — rejected by `AON-01`'s own constraint:
+  leaks into access logs, `Referer`, browser history and process listings.
+- **`Sec-WebSocket-Protocol` carrying the token** (what the Kubernetes apiserver
+  does) — legitimate and browser-native, but solves only the WebSocket. REST
+  would still need a second mechanism, and it requires editing
+  `web/src/lib/ws.ts` plus a rebuild of the committed `dist/`.
+- **`localStorage` + an `Authorization` header on all ~20 fetch sites** — a
+  frontend rewrite and a `dist` rebuild, and XSS-readable where an `HttpOnly`
+  cookie is not.
+- **Loopback bind as the sole control** — the deferral this whole class of bug
+  punishes, and incompatible with `AON-02`.
+- **A CSRF synchronizer token** — superseded by the Origin check at zero
+  frontend cost.
+
+The chosen design touches no file under `apps/gui/web/src/`.
+
+### Consequences
+
+- The bootstrap URL is the one place the token appears in a URL, by design. A
+  logging filter scrubs it from uvicorn's access log; it still enters browser
+  history, and `webbrowser.open` hands it to the OS. `POST /auth` from the
+  sign-in page avoids URLs entirely.
+- `localhost` and `127.0.0.1` are **distinct cookie hosts** — signing in on one
+  does not sign in the other. Ports, by contrast, are *not* part of cookie
+  scope, which is why `:5173` and `:8123` share a session and why `SameSite` is
+  a weak layer here: any other loopback port is same-site, so **Origin is the
+  load-bearing CSRF defense**, not SameSite.
+- The absent-`Origin` allowance is safe only while every GET is side-effect
+  free. Nothing in the code enforces that, so `test_app_factory.py` snapshots
+  the exact GET route inventory; adding one fails the test deliberately.
+- `--host 0.0.0.0` requires an explicit `gui.allowed_origins` entry — browsers
+  arrive under some other hostname. The server warns at startup rather than
+  auto-allowing.
+- `gui.allowed_origins` is restart-only (frozen into the middleware constructor;
+  Starlette cannot rebuild the stack after startup) and has no Settings-UI entry.
+- **Behind a TLS-terminating proxy the cookie's `Secure` flag is not set**,
+  because uvicorn's `forwarded_allow_ips` is left at its default. `AON-01` is
+  http/loopback; `AON-02` must revisit this when Tailscale Serve lands.
+- `/docs`, `/redoc` and `/openapi.json` are now gated.
+- No rotation UI: revoke by deleting `data/.gui_token` and restarting.
+
+### Related ADRs
+- ADR-032 (typed settings) — where `GuiSettings` lands.
+- ADR-033 (initiative naming) — `AON-01`.
+- ADR-034 (context hub) — the vault is the moat, which is what makes the GUI
+  worth protecting.

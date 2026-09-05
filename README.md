@@ -147,9 +147,14 @@ files, and approval flow:
 
 ```bash
 uv sync --extra web
-uv run jarvis-gui              # opens http://127.0.0.1:8123 in your browser
-uv run jarvis-gui --no-browser # just serve
+uv run jarvis-gui              # prints a "Sign in:" URL and opens it
+uv run jarvis-gui --no-browser # just serve — open the printed URL yourself
 ```
+
+The GUI requires authentication. Opening the printed `Sign in:` URL once signs
+that browser in; the token lives in `data/.gui_token`. Scripts can use
+`Authorization: Bearer $(cat data/.gui_token)` instead. See
+[docs/engineering/gui.md#authentication](docs/engineering/gui.md#authentication).
 
 Shipped surfaces: **Chat** (streaming, tool cards, vault-write approval
 diffs, command palette, Tweaks panel, light/dark + accent swap, click a
