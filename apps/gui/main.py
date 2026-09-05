@@ -12,9 +12,14 @@ import webbrowser
 import uvicorn
 
 from apps.gui.server.app import create_app
-
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8123
+from apps.gui.server.auth import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    GuiAuth,
+    bootstrap_url,
+    install_access_log_redaction,
+)
+from packages.core.settings import get_project_root, load_config
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -47,13 +52,32 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    app = create_app()
+    jarvis_dir = get_project_root()
+    # A second load_config() — the first is inside build_gui_session() during
+    # lifespan. Only gui.allowed_origins is read here, before the app exists.
+    settings = load_config(jarvis_dir)
+
+    auth = GuiAuth.create(
+        args.host,
+        args.port,
+        project_root=jarvis_dir,
+        extra_origins=settings.gui.allowed_origins,
+    )
+    # uvicorn's access log records the full request line, query string included,
+    # so without this the sign-in URL would print the token to stdout.
+    install_access_log_redaction()
+
+    app = create_app(auth)
 
     url = f"http://{args.host}:{args.port}/"
+    sign_in = bootstrap_url(args.host, args.port, auth.token)
     if not args.no_browser:
-        _open_browser_when_ready(url)
+        _open_browser_when_ready(sign_in)
 
+    # print(), not logging: logging may be redirected to a file or aggregated,
+    # and this line carries the token.
     print(f"JARVIS GUI listening on {url}")
+    print(f"Sign in:  {sign_in}")
     print("Tip: --no-browser to skip auto-open. CTRL+C to quit.")
 
     try:
