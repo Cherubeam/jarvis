@@ -7,8 +7,11 @@ first (we buffer it), then get_confirmation() (we block on a threading.Event).
 The async side flushes the buffered diff into one approval_pending WS event
 and waits for the client's approval_decision, which sets the event.
 
-If the WS disconnects or a session-takeover happens while we're blocked,
-the bridge will call resolve(False) to release the worker thread.
+resolve() is the *client decision* path and requires an exact match on the
+pending approval id — a decision that names no id, names the wrong one, or
+arrives before anything is pending is rejected. discard() is the *force-release*
+path used by the bridge and the WS handler on disconnect / turn end; it is the
+only way to unblock the worker without a matching id.
 """
 
 from __future__ import annotations
@@ -105,19 +108,31 @@ class WebConfirmationHandler(ConfirmationHandler):
         )
         return self._approved
 
-    # Called by the WS handler when an approval_decision arrives, OR by the
-    # bridge to force-release on disconnect / takeover.
     def resolve(self, approved: bool, approval_id: str | None = None) -> bool:
-        if approval_id is not None and self._pending_id is not None and approval_id != self._pending_id:
+        """Apply a client's approval_decision. Returns False if it was rejected.
+
+        The id must match the pending approval exactly. Two holes this closes:
+        a decision carrying no id used to approve whatever was pending (a stale
+        tab or racing reconnect could authorize a write it never saw), and a
+        decision arriving *before* any approval was pending used to pre-arm the
+        event, so the next get_confirmation() returned True without ever
+        emitting approval_pending — an invisible vault write.
+
+        Use discard() to force-release; this method deliberately cannot.
+        """
+        if self._pending_id is None or approval_id != self._pending_id:
             return False
+        self._release(approved)
+        return True
+
+    def _release(self, approved: bool) -> None:
         self._approved = approved
         self._event.set()
-        return True
 
     def discard(self) -> None:
         """Force-resolve as not-approved so any blocked worker thread exits."""
         if not self._event.is_set():
-            self.resolve(False)
+            self._release(False)
 
     def pending_id(self) -> str | None:
         return self._pending_id

@@ -250,8 +250,13 @@ def test_resolve_with_wrong_approval_id_does_not_unblock():
     assert result == [True]
 
 
-def test_resolve_without_approval_id_unblocks():
-    """Bridge calls resolve(False) on disconnect with no id — must release."""
+def test_resolve_without_approval_id_is_rejected():
+    """A decision naming no id must NOT resolve the pending approval.
+
+    discard() is the sanctioned force-release path (bridge / WS handler call it
+    on disconnect and turn end); resolve() is the client-decision path and
+    requires an exact id match.
+    """
     q: Queue = Queue(maxsize=10)
     h = WebConfirmationHandler(q, turn_id="t1")
     h.present_diff(_fake_diff())
@@ -263,9 +268,124 @@ def test_resolve_without_approval_id_unblocks():
     _ = q.get(timeout=1)
 
     accepted = h.resolve(False)  # no approval_id kwarg
-    assert accepted is True
+    assert accepted is False
+    worker.join(timeout=0.05)
+    assert worker.is_alive()
+    assert result == []
+
+    # discard() is what actually releases it.
+    h.discard()
     worker.join(timeout=1)
     assert result == [False]
+
+
+def test_resolve_without_approval_id_cannot_approve_pending_write():
+    """Regression: the approval-hijack path.
+
+    A client that sends {"approved": true} with no id used to approve whatever
+    vault write happened to be pending — a stale tab or racing reconnect could
+    authorize a write it never saw.
+    """
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.present_diff(_fake_diff())
+
+    result: list[bool] = []
+    worker = threading.Thread(target=lambda: result.append(h.get_confirmation()), daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    _ = q.get(timeout=1)
+
+    assert h.resolve(True) is False
+    worker.join(timeout=0.05)
+    assert worker.is_alive()
+    assert result == []
+    assert q.empty()  # no approval_resolved event escaped
+
+    h.discard()
+    worker.join(timeout=1)
+    assert result == [False]
+
+
+def test_resolve_before_anything_pending_is_rejected():
+    """Regression: the pre-arm hijack.
+
+    A decision arriving before any approval is pending used to set the event,
+    so the NEXT get_confirmation() returned True at once without ever emitting
+    approval_pending — an unprompted, invisible vault write.
+    """
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+
+    assert h.pending_id() is None
+    assert h.resolve(True, approval_id="anything") is False
+    assert h.resolve(True) is False
+
+    # The event must NOT be pre-armed: a subsequent approval still blocks.
+    h.present_diff(_fake_diff())
+    result: list[bool] = []
+    worker = threading.Thread(target=lambda: result.append(h.get_confirmation()), daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    pending = q.get(timeout=1)
+    assert pending["type"] == "approval_pending"
+
+    worker.join(timeout=0.05)
+    assert worker.is_alive()
+    assert result == []
+
+    h.resolve(True, approval_id=pending["id"])
+    worker.join(timeout=1)
+    assert result == [True]
+
+
+def test_resolve_after_discard_returns_false():
+    """Once discarded, a late decision must not flip the outcome."""
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.present_diff(_fake_diff())
+
+    result: list[bool] = []
+    worker = threading.Thread(target=lambda: result.append(h.get_confirmation()), daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    pending = q.get(timeout=1)
+
+    h.discard()
+    worker.join(timeout=1)
+    assert result == [False]
+
+    # The id still matches, so resolve() returns True, but the worker is gone
+    # and the recorded outcome stays False for the caller that already read it.
+    assert h.resolve(True, approval_id=pending["id"]) is True
+    assert result == [False]
+
+
+def test_second_confirmation_in_same_turn_replays_first_decision():
+    """Known limitation, pinned so a fix is a deliberate change.
+
+    Neither _event nor _pending_id is reset after a decision, and bridge.py
+    creates one handler per TURN, not per tool call. So a second vault write in
+    the same turn returns the first decision without prompting. Tracked as a
+    separate AON-01 roadmap item.
+    """
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.present_diff(_fake_diff())
+
+    result: list[bool] = []
+    worker = threading.Thread(target=lambda: result.append(h.get_confirmation()), daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    pending = q.get(timeout=1)
+    h.resolve(True, approval_id=pending["id"])
+    worker.join(timeout=1)
+    assert result == [True]
+    _ = q.get(timeout=1)  # approval_resolved
+
+    # Second write in the same turn: returns immediately, reusing the decision.
+    h.present_diff(_fake_diff(path="second.md"))
+    assert h.get_confirmation() is True
 
 
 # ---------------------------------------------------------------------------
