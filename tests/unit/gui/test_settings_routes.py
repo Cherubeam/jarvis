@@ -154,6 +154,30 @@ def test_put_valid_settings_writes_local_yaml(tmp_path: Path) -> None:
     assert parsed == {"routing": {"enabled": True}}
 
 
+def test_put_preserves_section_the_settings_ui_cannot_render(tmp_path: Path) -> None:
+    """``gui`` has no entry in the frontend's hand-maintained SECTIONS list, so
+    it is invisible in the Settings UI and edited via config/local.yaml.
+
+    It survives a save only because SettingsView holds and PUTs the *whole*
+    settings dict. If anyone narrows that payload to known sections,
+    gui.allowed_origins would silently revert to [] on every save — and it is
+    the origin allowlist protecting the WebSocket. This pins the round-trip.
+    """
+    settings = Settings()
+    settings.gui.allowed_origins = ["https://jarvis.example.ts.net"]
+    client = _client(tmp_path, settings)
+
+    payload = client.get("/api/settings").json()["settings"]
+    assert payload["gui"]["allowed_origins"] == ["https://jarvis.example.ts.net"]
+
+    r = client.put("/api/settings", json={"settings": payload})
+    assert r.status_code == 200
+    assert r.json()["overrides"] == {"gui": {"allowed_origins": ["https://jarvis.example.ts.net"]}}
+
+    parsed = yaml.safe_load((tmp_path / "config" / "local.yaml").read_text()[len(MANAGED_HEADER) + 1 :])
+    assert parsed == {"gui": {"allowed_origins": ["https://jarvis.example.ts.net"]}}
+
+
 def test_put_rebinds_components_settings_for_hot_apply(tmp_path: Path) -> None:
     """Field-level hot-apply gating: ``components.settings`` is replaced after save
     so fields re-read per turn (summarization, paths.prompt_history_dir) take
