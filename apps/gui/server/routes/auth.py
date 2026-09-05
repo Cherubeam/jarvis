@@ -98,7 +98,7 @@ def _grant(request: Request, presented: str) -> Response:
     """Validate the token and hand back a cookie-setting redirect, or reject."""
     auth: GuiAuth = request.app.state.gui_auth
     if not auth.check_credentials(cookie=None, bearer=presented):
-        client = request.client.host if request.client else "?"
+        client = request.client.host if request.client else "?"  # pragma: no mutate
         logger.warning("rejected sign-in from %s", client)  # pragma: no mutate
         return sign_in_page(failed=True, status_code=403)
 
