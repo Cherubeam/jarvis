@@ -4,8 +4,10 @@
 > in with your own voice. The copied file is gitignored so personal
 > content never leaks into the repository.
 >
-> Until you copy it, the writer agent falls back to the generic shared
-> voice profile at ``packages/agents/_shared/prompts/voice-profile.md``.
+> Until you copy it, the writer agent falls back to the shared voice profile
+> at ``packages/agents/_shared/prompts/voice-profile.md`` — which is itself
+> gitignored, so on a fresh clone you need to create that one first from
+> ``voice-profile.md.example`` in the same directory.
 
 ## Tone
 

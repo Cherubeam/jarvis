@@ -25,7 +25,8 @@ Banned phrases: "stands as", "underscores", "encompasses", "not just X but Y", "
 - Collaborative chat phrasing: "Great question!", "Absolutely!", "That's a really interesting point"
 - Placeholder templates: "[Your X here]", "e.g., [example]"
 - Inline-header lists (bold word followed by colon-dash pattern, repeated 5+ times)
-- Emoji in professional writing
+- Emoji in professional writing — but NOT text emoticons `:)` `:D`, which Marco uses in
+  casual pieces. See the Vocabulary section of the voice profile; it wins on this.
 - Exclamation marks more than once per 500 words
 
 ## Humanizer's Checklist

@@ -1,0 +1,87 @@
+# Voice Profile (example / starter template)
+
+> Copy this file to `voice-profile.md` in the same directory and fill it in with
+> your own voice. The copy is gitignored, so personal writing samples, employer
+> details and self-description never enter the repository.
+>
+> This shared profile is the fallback for every agent that declares the
+> `voice_profile` prompt include (`writer`, `content_reviewer`,
+> `substack_publisher`, `substack_image_creator`). An agent-local
+> `<agent>/prompts/voice-profile.md` overrides it for that one agent only.
+
+## Sources & Precedence
+
+List the texts this profile was derived from, and rank them. Then keep the rule
+below, because it is the part that is easy to get wrong:
+
+**Never re-derive a voice profile from LLM-assisted text.**
+
+Assisted output is *approved* output — it passed your judgement — but it is not
+evidence of how you write unaided. If you feed it back in, the profile learns the
+assistant's habits (manufactured sentence-length variety, fragment runs, staccato
+triplets) and presents them as yours. Every cycle then drifts further from you
+while looking more like fidelity, because the profile and the recent samples agree
+with each other.
+
+Two practical consequences:
+
+- Mark each source as unassisted / partly assisted / heavily assisted, and say
+  which ones outrank the others.
+- Check *within* a file too. Drafts often contain pasted assistant output
+  alongside your own prose; a giveaway is the assistant addressing you
+  ("Want me to add…?").
+
+If a brand or style guide also exists, say which document wins for **voice** and
+which wins for audience and positioning. They are usually not the same file: a
+style guide describes the aspiration, a voice profile describes the habit.
+
+## Core Persona
+
+_Who is writing. Role, background, what they write from — experience, research,
+practice. Two or three sentences._
+
+## Register
+
+_First language, formality, anything that reads as "error" but is actually voice.
+Say explicitly what an editor must not smooth away._
+
+## Tone
+
+_e.g. "Direct, no hedging. Concedes the other position sincerely before stating
+his own."_
+
+## Rhythm
+
+_Sentence length and paragraph shape, described from real samples. Avoid
+prescribing variety quotas — those produce machine cadence, not voice._
+
+## Humor & Provocation
+
+_How they actually land, with quoted examples. This is the section most often
+lost in editing, so it is the one worth being concrete about._
+
+## Vocabulary & Punctuation
+
+_Preferred words, banned words, contractions, em dash and bold budgets,
+recurring idioms and self-references._
+
+## Openings
+
+_Ranked by what they actually do, not by what would be most striking._
+
+## Closings
+
+_Invitations, forward promises, honest uncertainty. What they never do._
+
+## Signature Moves
+
+_Devices observed in the samples — quote them. Reach for these before inventing
+new ones._
+
+## Structural Preferences
+
+_Headers, lists, blockquotes, tables._
+
+## The Test
+
+_One question to ask of any sentence before shipping it._
