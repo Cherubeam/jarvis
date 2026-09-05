@@ -25,6 +25,7 @@ data/pattern-cards/
 data/prompt-history/
 data/rag/
 data/.cli_history
+data/.gui_token
 
 # Local config overrides (keep default.yaml, ignore local overrides)
 config/local.yaml
