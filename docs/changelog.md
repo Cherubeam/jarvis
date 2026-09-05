@@ -65,11 +65,35 @@ exported in the shell. Additive — a shell export still wins.
 ### Added — tests for the GUI-server mutation blind spot (2026-09-05)
 
 `app.py`, `state.py` and `chat_ws.py` had zero tests and 115 unkilled mutants.
-84 new cases, including the only place the assembled app is exercised: exact
+88 new cases, including the only place the assembled app is exercised: exact
 middleware ordering (CORS must stay outside auth), the WebSocket gated through
 the real factory, all three `WEB_DIST` branches, both lifespan teardown paths
 failing independently, and an exact GET-route inventory that guards the
 absent-`Origin` allowance.
+
+Measured on Linux CI (`mutation.yml`), against the 2026-08-31 `main` baseline:
+
+| | main | AON-01 |
+|---|---|---|
+| mutants | 3255 | 3542 |
+| killed | 2751 | 3101 |
+| **no tests** | **146** | **31** |
+| survived | 356 | 405 |
+| kill rate | 84.5% | **87.6%** |
+
+`no tests` falls by exactly the 115 attributed to those three files; the
+remaining 31 are pre-existing (`session_factory_helpers`, `streaming`). The
+survived count rises because those files were previously *unexecuted* rather
+than passing — mutmut reported them as `no tests`, not as killed.
+
+A first sweep left 61 survivors in the new code. Reading each mutant's diff,
+all but three were equivalent — case-only changes to encoding names and header
+lookups (both case-insensitive), Starlette `set_cookie` defaults matching what
+we pass explicitly, and `receive`/`scope` arguments the rejection paths never
+invoke; **every `GuiAuthMiddleware` survivor fell in that class.** The three
+real gaps (an unpinned HMAC domain-separation label, unpinned token entropy, and
+an untested `install_access_log_redaction`) are now closed and each verified by
+re-applying the mutation.
 
 ---
 
