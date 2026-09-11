@@ -114,6 +114,31 @@ def resolve_include(
     return IncludeResolution(None, IncludeStatus.MISSING)
 
 
+def read_canonical_include(
+    agent_dir: Path,
+    filename: str,
+    shared_dir: Path = _DEFAULT_SHARED_DIR,
+) -> str | None:
+    """Return a prompt include's text only when it resolves to a canonical ``.md``.
+
+    For callers where a ``.md.example`` starter is worse than nothing — e.g. a
+    nested tool call that would otherwise judge writing against placeholder
+    template text.
+
+    Args:
+        agent_dir: Directory whose ``prompts/`` is checked first.
+        filename: Include filename without the ``.md`` extension.
+        shared_dir: Directory for shared fallback prompts.
+
+    Returns:
+        The file content, or ``None`` for example fallbacks and missing files.
+    """
+    resolution = resolve_include(agent_dir, filename, shared_dir)
+    if resolution.is_canonical and resolution.path is not None:
+        return resolution.path.read_text(encoding="utf-8")
+    return None
+
+
 @dataclass(frozen=True)
 class AgentIncludeIssue:
     """A prompt_include that resolved to something other than a canonical ``.md``.

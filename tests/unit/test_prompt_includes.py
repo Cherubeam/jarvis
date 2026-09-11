@@ -11,6 +11,7 @@ from packages.agents.prompt_includes import (
     IncludeResolution,
     IncludeStatus,
     format_issue,
+    read_canonical_include,
     resolve_include,
     validate_agent_includes,
 )
@@ -127,6 +128,46 @@ class TestResolveInclude:
 
 
 # ---------- validate_agent_includes ----------
+
+
+@pytest.mark.unit
+class TestReadCanonicalInclude:
+    def test_returns_text_of_shared_md(self, tmp_path: Path):
+        agent_dir = _make_agent(tmp_path).parent
+        shared = _make_shared_dir(tmp_path)
+        (shared / "voice.md").write_text("SHARED", encoding="utf-8")
+
+        assert read_canonical_include(agent_dir, "voice", shared) == "SHARED"
+
+    def test_prefers_local_md(self, tmp_path: Path):
+        agent_dir = _make_agent(tmp_path).parent
+        shared = _make_shared_dir(tmp_path)
+        (agent_dir / "prompts" / "voice.md").write_text("LOCAL", encoding="utf-8")
+        (shared / "voice.md").write_text("SHARED", encoding="utf-8")
+
+        assert read_canonical_include(agent_dir, "voice", shared) == "LOCAL"
+
+    def test_ignores_example_fallback(self, tmp_path: Path):
+        agent_dir = _make_agent(tmp_path).parent
+        shared = _make_shared_dir(tmp_path)
+        (shared / "voice.md.example").write_text("TEMPLATE", encoding="utf-8")
+
+        assert read_canonical_include(agent_dir, "voice", shared) is None
+
+    def test_returns_none_when_missing(self, tmp_path: Path):
+        agent_dir = _make_agent(tmp_path).parent
+        shared = _make_shared_dir(tmp_path)
+
+        assert read_canonical_include(agent_dir, "voice", shared) is None
+
+    def test_works_for_directory_without_prompts(self, tmp_path: Path):
+        """Skill directories have no prompts/ — resolution goes straight to the shared dir."""
+        bare = tmp_path / "skill"
+        bare.mkdir()
+        shared = _make_shared_dir(tmp_path)
+        (shared / "voice.md").write_text("SHARED", encoding="utf-8")
+
+        assert read_canonical_include(bare, "voice", shared) == "SHARED"
 
 
 @pytest.mark.unit
