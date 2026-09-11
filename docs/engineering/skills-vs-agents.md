@@ -171,6 +171,8 @@ Since skills are no longer standalone-invokable, wrapping them as `ToolDefinitio
 
 A factory function (e.g., `make_content_evaluator_tool()`) loads the skill's `SKILL.md` as a system prompt and its `skill.py` config (temperature, etc.), then wraps the whole thing in a `ToolDefinition`. The tool calls `LLMClient.complete()` with the skill's prompt -- a nested LLM call within the agent's agentic loop.
 
+The content evaluator also receives the writer's voice profile: the CLI resolves `voice-profile` through the prompt-include chain (canonical `.md` only, never a `.md.example`) and the factory appends it to the skill prompt. A nested call does not inherit the calling agent's prompt includes, so anything the skill must judge against has to be passed in explicitly.
+
 **Current examples:** Content Evaluator (`evaluate_content` tool).
 
 **When to use this pattern:**

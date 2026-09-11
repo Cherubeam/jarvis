@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Content review judged voice against a generic checklist (2026-09-11)
+
+- **`evaluate_content` now receives the writer's voice profile.** The `/review`
+  agent had `voice-profile.md` in its own prompt, but the nested evaluation call
+  it makes got only the skill's `SKILL.md`, so the Voice Authenticity lens could
+  judge "sounds human", never "sounds like the writer". The CLI now resolves
+  `voice-profile` through the existing prompt-include chain and passes it to
+  `make_content_evaluator_tool()`, which appends it to the evaluator's system
+  prompt. Only a canonical `.md` is passed; a `.md.example` starter is ignored,
+  so a fresh clone behaves as before.
+- **`anti-patterns.md` no longer sets quotas.** Its Humanizer's Checklist still
+  demanded at least one sentence fragment and at most one phrasal verb — rules
+  the corrected voice profile (2026-09-06) explicitly rejects — and the writer,
+  content reviewer and publisher agents loaded both files side by side. The
+  quotas are gone, the file states that the voice profile wins where the two
+  disagree, "harness" is flagged only as a verb, and three-beat fragment runs
+  join the structural patterns. The matching content-evaluator skill fix landed
+  in `agent-capability-specifications` (`e0f247e`).
+
 ### Security — AON-01: GUI authentication + WebSocket origin allowlist (2026-09-05)
 
 The GUI server shipped with no authentication and an unconditional
