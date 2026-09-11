@@ -37,6 +37,7 @@ def make_content_evaluator_tool(
     skill_dir: Path,
     llm_client: LLMClient,
     model: str,
+    voice_profile: str | None = None,
 ) -> ToolDefinition:
     """Create a content evaluation tool from the content-evaluator skill.
 
@@ -44,6 +45,9 @@ def make_content_evaluator_tool(
         skill_dir: Path to the content-evaluator skill directory.
         llm_client: LLM client for API calls.
         model: Model ID to use for evaluation.
+        voice_profile: The writer's voice profile. When non-blank it is appended
+            to the system prompt, so the Voice Authenticity lens judges against
+            the writer instead of a generic checklist.
 
     Returns:
         A ToolDefinition that evaluates content through the 5-lens framework.
@@ -53,6 +57,9 @@ def make_content_evaluator_tool(
     raw = skill_md.read_text(encoding="utf-8")
     _, body = parse_frontmatter(raw)
     system_prompt = body.strip()
+    profile = (voice_profile or "").strip()
+    if profile:
+        system_prompt += "\n\n## Writer's Voice Profile\n\n" + profile
 
     # Load temperature from skill.py SKILL_CONFIG
     temperature = 0.8  # default

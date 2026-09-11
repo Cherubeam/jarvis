@@ -132,3 +132,30 @@ class TestContentEvaluatorTool:
         # Body after frontmatter, stripped
         assert system_content.startswith("# Content Evaluator")
         assert "Evaluate content through five lenses." in system_content
+
+    def test_voice_profile_appended_to_system_prompt(self, skill_dir, mock_client):
+        """A supplied voice profile follows the SKILL.md body under its own heading, stripped."""
+        tool = make_content_evaluator_tool(
+            skill_dir, mock_client, "test-model", voice_profile="  Long sentences, German commas.\n"
+        )
+        tool.execute(content="test")
+
+        system_content = mock_client.complete.call_args[0][0][0]["content"]
+        assert system_content == (
+            "# Content Evaluator\n\nEvaluate content through five lenses."
+            "\n\n## Writer's Voice Profile\n\nLong sentences, German commas."
+        )
+
+    def test_no_voice_profile_leaves_system_prompt_unchanged(self, skill_dir, mock_client):
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
+        tool.execute(content="test")
+
+        system_content = mock_client.complete.call_args[0][0][0]["content"]
+        assert system_content == "# Content Evaluator\n\nEvaluate content through five lenses."
+
+    def test_blank_voice_profile_is_ignored(self, skill_dir, mock_client):
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model", voice_profile="   \n")
+        tool.execute(content="test")
+
+        system_content = mock_client.complete.call_args[0][0][0]["content"]
+        assert system_content == "# Content Evaluator\n\nEvaluate content through five lenses."

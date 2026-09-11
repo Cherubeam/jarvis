@@ -23,7 +23,7 @@ from typing import Any
 from apps.cli.display import print_system
 from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
-from packages.agents.prompt_includes import format_issue, validate_agent_includes
+from packages.agents.prompt_includes import format_issue, read_canonical_include, validate_agent_includes
 from packages.agents.registry import AgentMeta, discover_agents
 from packages.core.context_builder import build_system_prompt_with_metadata, parse_frontmatter
 from packages.core.filesystem_access import load_filesystem_guard
@@ -325,8 +325,12 @@ def build_session(
         try:
             from packages.core.tools.content_evaluator import make_content_evaluator_tool
 
-            tool_groups["content_evaluator"] = [make_content_evaluator_tool(skill_dir, client, model_id)]
-            print_system("[Tools] Content evaluator loaded.")
+            voice_profile = read_canonical_include(skill_dir, "voice-profile")
+            tool_groups["content_evaluator"] = [
+                make_content_evaluator_tool(skill_dir, client, model_id, voice_profile=voice_profile)
+            ]
+            voice_note = "with voice profile" if voice_profile else "without voice profile (generic voice lens)"
+            print_system(f"[Tools] Content evaluator loaded {voice_note}.")
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
 
