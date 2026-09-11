@@ -1,8 +1,11 @@
+> Where this file and the writer's voice profile disagree, the voice profile wins.
+> These are observations to check, never quotas to fill.
+
 ## Banned Vocabulary
 
 Never use these words or phrases — they are the fingerprints of AI-generated text:
 
-delve, navigate, landscape, tapestry, multifaceted, nuanced, pivotal, foster, comprehensive, leverage, keen, embark, commendable, intriguing, meticulous, beacon, realm, groundbreaking, testament, harness, robust, streamline, cutting-edge, revolutionize, spearhead, transformative, paradigm, synergy, elevate, cornerstone
+delve, navigate, landscape, tapestry, multifaceted, nuanced, pivotal, foster, comprehensive, leverage, keen, embark, commendable, intriguing, meticulous, beacon, realm, groundbreaking, testament, harness (the verb only; as a noun for agent or test tooling it is a legitimate term), robust, streamline, cutting-edge, revolutionize, spearhead, transformative, paradigm, synergy, elevate, cornerstone
 
 Banned phrases: "stands as", "underscores", "encompasses", "not just X but Y", "it's important to note", "it's worth noting", "in today's [noun]", "at the end of the day", "let's unpack", "the reality is", "here's the thing" (unless matching Marco's actual usage pattern)
 
@@ -17,6 +20,7 @@ Banned phrases: "stands as", "underscores", "encompasses", "not just X but Y", "
 - Consistent voice/energy throughout — real pieces have peaks and valleys
 - Single tense throughout — natural writing shifts between present truths and past examples
 - Mirror structure — where the conclusion restates the intro point by point
+- Three-beat fragment runs ("Rank zero. Not buried. Absent.") used as a cadence device
 
 ## Banned Style Markers
 
@@ -35,10 +39,9 @@ Before delivering any piece, verify:
 
 - [ ] No paragraph ends with a summary sentence
 - [ ] At least one parenthetical aside exists
-- [ ] At least one sentence fragment used for emphasis
 - [ ] At least one reference to a mistake, failure, or uncertainty
 - [ ] Tenses shift naturally between present truths and past examples
-- [ ] Maximum ONE phrasal verb total (dive into, unpack, break down, flesh out)
 - [ ] No more than 2 sentences starting with the same word in any section
 - [ ] Vocabulary check: zero words from the banned list
-- [ ] Test: Does this sound like a person at 11pm who still cares? Or a system optimizing for engagement?
+- [ ] No manufactured variety: no fragments or short sentences added for rhythm alone
+- [ ] Test: Does this sound like the writer at 11pm, in their own register, caring about the reader and not about the cadence?
