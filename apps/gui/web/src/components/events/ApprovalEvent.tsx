@@ -10,7 +10,7 @@ export function ApprovalEvent({
   onReject,
   dense,
 }: {
-  e: { id: string; tool: string; agent: string; path: string; diff: DiffLine[]; summary: string }
+  e: { id: string; tool: string; agent: string; path: string; diff: DiffLine[]; summary: string; linkWarnings?: string[] }
   theme: Theme
   onApprove: () => void
   onReject: () => void
@@ -45,6 +45,23 @@ export function ApprovalEvent({
             {e.summary}
           </div>
         </div>
+        {e.linkWarnings && e.linkWarnings.length > 0 && (
+          <div
+            style={{
+              padding: '8px 14px',
+              borderBottom: `1px solid ${theme.border}`,
+              background: `${theme.error}14`,
+              color: theme.error,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ fontWeight: 600 }}>⚠ Links changed — check these before approving:</div>
+            {e.linkWarnings.map((w, i) => (
+              <div key={i}>{w}</div>
+            ))}
+          </div>
+        )}
         <div
           style={{
             maxHeight: 280,

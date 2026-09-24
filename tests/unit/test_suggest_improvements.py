@@ -91,6 +91,22 @@ class TestSuggestImprovements:
             "ask for modifications, or request applying via edit_blog_post."
         )
 
+    def test_result_warns_about_changed_links(self, tool_and_handler):
+        tool, _, sample = tool_and_handler
+        sample.write_text("# Hello\n\nSee https://i.ytimg.com/vi/x.jpg\n", encoding="utf-8")
+        result = tool.execute(
+            path="content/post.md",
+            improved_content="# Hello!\n\nSee https://i.yimg.com/vi/x.jpg\n",
+        )
+        assert "Warning: these links differ from the original." in result
+        assert "- removed or changed: https://i.ytimg.com/vi/x.jpg" in result
+        assert "- new: https://i.yimg.com/vi/x.jpg" in result
+
+    def test_result_has_no_warning_when_links_unchanged(self, tool_and_handler):
+        tool, _, _ = tool_and_handler
+        result = tool.execute(path="content/post.md", improved_content="# Hello\n\nImproved.\n")
+        assert "Warning" not in result
+
     def test_diff_summary_in_result(self, tool_and_handler):
         tool, handler, _ = tool_and_handler
         result = tool.execute(

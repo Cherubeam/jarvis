@@ -150,8 +150,10 @@ Server → client events (each a JSON object with a `type` discriminator):
 - `tool_call { id, agent, tool, args, result, elapsed_ms }` — emitted after a
   `ToolResult` event pairs with its `ToolCallStarted`.
 - `delegation { id, from, to, reason }` — JARVIS → specialist.
-- `approval_pending { id, tool, agent, path, diff, summary }` — vault-write
-  diff awaiting user decision. Client must respond with `approval_decision`.
+- `approval_pending { id, tool, agent, path, diff, summary, link_warnings }` —
+  vault-write diff awaiting user decision. `link_warnings` lists URLs and link
+  targets present in only one version; the card shows them above the diff.
+  Client must respond with `approval_decision`.
 - `approval_resolved { id, approved }` — echoed after resolution.
 - `rag_result { id, query, matches }` — recall cards.
 - `error { id?, message }` — turn failed.

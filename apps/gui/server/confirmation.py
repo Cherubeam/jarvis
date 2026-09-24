@@ -76,6 +76,7 @@ class WebConfirmationHandler(ConfirmationHandler):
                 "path": path,
                 "diff": _diff_lines(diff),
                 "summary": summary,
+                "link_warnings": diff.link_warnings,
             }
         )
 

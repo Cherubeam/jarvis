@@ -45,6 +45,7 @@ export type ServerEvent =
       path: string
       diff: DiffLine[]
       summary: string
+      link_warnings?: string[]
     }
   | { type: 'approval_resolved'; id: string; approved: boolean }
   | { type: 'rag_result'; id: string; query: string; matches: RagMatch[] }
