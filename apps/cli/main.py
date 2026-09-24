@@ -733,6 +733,7 @@ def main(argv: list[str] | None = None) -> None:
                     routed_display = decision.resolved.display_name
                     client.set_model(decision.resolved.model_id)
                     stream_handler.model_id = decision.resolved.model_id
+                    stream_handler.pricing = get_model_pricing(decision.resolved.model_id)
 
             print_assistant_prefix(agent_name)
             result = _run_with_display(
@@ -746,6 +747,7 @@ def main(argv: list[str] | None = None) -> None:
             if routed_model_id is not None:
                 client.set_model(routed_model_id)
                 stream_handler.model_id = routed_model_id
+                stream_handler.pricing = pricing
 
             print_usage_stats(result, routed_model=routed_display)
             print_separator()
