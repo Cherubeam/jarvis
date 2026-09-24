@@ -115,6 +115,7 @@ class ApprovalPendingEvent(TypedDict, total=False):
     path: str
     diff: list[DiffLine]
     summary: str
+    link_warnings: list[str]
 
 
 class ApprovalResolvedEvent(TypedDict):

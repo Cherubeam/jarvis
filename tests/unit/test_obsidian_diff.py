@@ -3,6 +3,7 @@
 from packages.integrations.obsidian.diff import (
     VaultDiff,
     compute_diff,
+    find_link_changes,
     format_diff_for_api,
     format_diff_for_cli,
 )
@@ -55,6 +56,66 @@ class TestComputeDiff:
         small_unchanged = len([dl for dl in diff_small.diff_lines if dl.type == "unchanged"])
         large_unchanged = len([dl for dl in diff_large.diff_lines if dl.type == "unchanged"])
         assert large_unchanged >= small_unchanged
+
+
+# ==================== find_link_changes ====================
+
+# The case that motivated the guard: a full-file rewrite "copied" a link card
+# and changed one host name while the prose edits were elsewhere.
+CARD = "```cardlink\nurl: https://www.youtube.com/watch?v=W8IVKMGbUZE\nimage: https://i.ytimg.com/vi/W8IVKMGbUZE/maxresdefault.jpg\n```\n"
+
+
+class TestFindLinkChanges:
+    def test_no_links_no_warnings(self):
+        assert find_link_changes("plain text", "other text") == []
+
+    def test_unchanged_links_no_warnings(self):
+        assert find_link_changes(CARD + "old prose", CARD + "new prose") == []
+
+    def test_altered_url_reported_as_removed_and_new(self):
+        altered = CARD.replace("i.ytimg.com", "i.yimg.com")
+        assert find_link_changes(CARD, altered) == [
+            "removed or changed: https://i.ytimg.com/vi/W8IVKMGbUZE/maxresdefault.jpg",
+            "new: https://i.yimg.com/vi/W8IVKMGbUZE/maxresdefault.jpg",
+        ]
+
+    def test_wikilink_change(self):
+        assert find_link_changes("see [[Gartner Hype Cycle]]", "see [[Gartner Hype Cylce]]") == [
+            "removed or changed: Gartner Hype Cycle",
+            "new: Gartner Hype Cylce",
+        ]
+
+    def test_relative_markdown_link_target(self):
+        assert find_link_changes("[a](notes/a.md)", "[a](notes/b.md)") == [
+            "removed or changed: notes/a.md",
+            "new: notes/b.md",
+        ]
+
+    def test_url_inside_markdown_link_stops_at_paren(self):
+        assert find_link_changes("[x](https://a.example/p)", "[x](https://a.example/p) more") == []
+
+
+class TestComputeDiffLinkWarnings:
+    def test_populated_for_existing_file(self):
+        diff = compute_diff("post.md", CARD, CARD.replace("ytimg", "yimg"))
+        assert len(diff.link_warnings) == 2
+
+    def test_empty_for_new_file(self):
+        """Every link in a new file is 'new'; warning about all of them is noise."""
+        assert compute_diff("post.md", "", CARD).link_warnings == []
+
+    def test_cli_shows_warning_block_above_diff(self):
+        result = format_diff_for_cli(compute_diff("post.md", CARD, CARD.replace("ytimg", "yimg")))
+        header = result.index("Links changed")
+        assert header < result.index("@@")
+        assert "removed or changed: https://i.ytimg.com" in result
+
+    def test_cli_has_no_warning_block_when_links_unchanged(self):
+        assert "Links changed" not in format_diff_for_cli(compute_diff("post.md", CARD + "a", CARD + "b"))
+
+    def test_api_includes_link_warnings(self):
+        result = format_diff_for_api(compute_diff("post.md", CARD, CARD.replace("ytimg", "yimg")))
+        assert len(result["link_warnings"]) == 2
 
 
 # ==================== format_diff_for_cli ====================

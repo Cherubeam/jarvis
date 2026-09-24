@@ -26,7 +26,7 @@ type StreamEvent =
   | { kind: 'text'; id: string; agent: string; markdown: string; stats?: any }
   | { kind: 'tool_call'; id: string; agent: string; tool: string; args: any; result: any; elapsed_ms: number }
   | { kind: 'delegation'; id: string; from: string; to: string; reason: string }
-  | { kind: 'approval'; id: string; tool: string; agent: string; path: string; diff: any[]; summary: string; resolved?: boolean; approved?: boolean }
+  | { kind: 'approval'; id: string; tool: string; agent: string; path: string; diff: any[]; summary: string; linkWarnings: string[]; resolved?: boolean; approved?: boolean }
   | { kind: 'rag'; id: string; query: string; matches: any[] }
   | { kind: 'system'; id: string; text: string; isError?: boolean }
 
@@ -247,6 +247,7 @@ export function ChatView({
           path: ev.path,
           diff: ev.diff,
           summary: ev.summary,
+          linkWarnings: ev.link_warnings ?? [],
         },
       ])
       return
@@ -487,6 +488,7 @@ export function ChatView({
                         path: e.path,
                         diff: e.diff,
                         summary: e.summary,
+                        linkWarnings: e.linkWarnings,
                       }}
                       theme={theme}
                       onApprove={() => approve(e.id)}

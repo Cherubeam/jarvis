@@ -6,6 +6,7 @@ Uses only stdlib difflib — no new dependencies.
 """
 
 import difflib
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,6 +29,35 @@ class VaultDiff:
     proposed_content: str
     diff_lines: list[DiffLine] = field(default_factory=list)
     summary: str = ""
+    link_warnings: list[str] = field(default_factory=list)
+
+
+# URLs, [[wikilinks]] and markdown link targets — the spans a full-file rewrite
+# can silently corrupt while "copying" untouched text (e.g. i.ytimg.com → i.yimg.com).
+_LINK_PATTERNS = (
+    re.compile(r"https?://[^\s<>\"'`)\]]+"),
+    re.compile(r"\[\[([^\]]+)\]\]"),
+    re.compile(r"\]\(([^)\s]+)\)"),
+)
+
+
+def _extract_links(text: str) -> set[str]:
+    links: set[str] = set()
+    for pattern in _LINK_PATTERNS:
+        links.update(m.group(m.lastindex or 0) for m in pattern.finditer(text))
+    return links
+
+
+def find_link_changes(original: str, proposed: str) -> list[str]:
+    """List links present in only one of the two versions, removed first.
+
+    A changed link shows up as one removal plus one addition. The caller shows
+    these above the diff so a one-character URL edit can't hide in a long hunk.
+    """
+    before, after = _extract_links(original), _extract_links(proposed)
+    removed = [f"removed or changed: {link}" for link in sorted(before - after)]
+    added = [f"new: {link}" for link in sorted(after - before)]
+    return removed + added
 
 
 def compute_diff(
@@ -97,12 +127,14 @@ def compute_diff(
         proposed_content=proposed,
         diff_lines=diff_lines,
         summary=summary,
+        link_warnings=find_link_changes(original, proposed) if original else [],
     )
 
 
 _ANSI_GREEN = "\033[32m"
 _ANSI_RED = "\033[31m"
 _ANSI_CYAN = "\033[36m"
+_ANSI_YELLOW = "\033[33m"
 _ANSI_RESET = "\033[0m"
 
 
@@ -115,6 +147,10 @@ def format_diff_for_cli(diff: VaultDiff) -> str:
         return f"  {diff.file_path}: No changes"
 
     lines = [f"  {diff.file_path} ({diff.summary})", ""]
+    if diff.link_warnings:
+        lines.append(f"  {_ANSI_YELLOW}⚠ Links changed — check these before approving:{_ANSI_RESET}")
+        lines.extend(f"  {_ANSI_YELLOW}  {w}{_ANSI_RESET}" for w in diff.link_warnings)
+        lines.append("")
 
     for dl in diff.diff_lines:
         if dl.type == "added":
@@ -135,5 +171,6 @@ def format_diff_for_api(diff: VaultDiff) -> dict[str, Any]:
         "file_path": diff.file_path,
         "summary": diff.summary,
         "has_changes": bool(diff.diff_lines),
+        "link_warnings": diff.link_warnings,
         "lines": [{"type": dl.type, "content": dl.content} for dl in diff.diff_lines],
     }

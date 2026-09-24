@@ -47,7 +47,7 @@ def test_get_confirmation_blocks_until_resolve_true_unblocks():
 
     pending = q.get(timeout=1)
     # Strict shape — every key matters because the WS contract depends on it.
-    assert set(pending.keys()) == {"type", "id", "tool", "agent", "path", "diff", "summary"}
+    assert set(pending.keys()) == {"type", "id", "tool", "agent", "path", "diff", "summary", "link_warnings"}
     assert pending["type"] == "approval_pending"
     assert pending["tool"] == "vault_write"
     assert pending["agent"] == "JARVIS"
@@ -463,3 +463,21 @@ def test_approval_pending_carries_path_from_computed_diff():
     assert pending["path"] == "notes/real.md"
     assert pending["summary"] == "+1 line, -1 line"
     assert {"kind": "add", "text": "b"} in pending["diff"]
+
+
+def test_approval_pending_carries_link_warnings():
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.present_diff(compute_diff("notes/real.md", "see https://a.example/x\n", "see https://a.example/y\n"))
+
+    worker = threading.Thread(target=h.get_confirmation, daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    pending = q.get(timeout=1)
+    h.discard()
+    worker.join(timeout=1)
+
+    assert pending["link_warnings"] == [
+        "removed or changed: https://a.example/x",
+        "new: https://a.example/y",
+    ]

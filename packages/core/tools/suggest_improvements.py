@@ -47,11 +47,18 @@ def make_suggest_improvements_tool(
 
         confirmation_handler.present_diff(diff)
 
-        return (
+        result = (
             f"Suggested improvements displayed to user ({diff.summary}). "
             "The changes have NOT been applied. The user can discuss them, "
             "ask for modifications, or request applying via edit_blog_post."
         )
+        if diff.link_warnings:
+            result += (
+                "\n\nWarning: these links differ from the original. Unless you changed them on purpose, "
+                "they were altered by accident; tell the user and fix them before anything is applied:\n"
+                + "\n".join(f"- {w}" for w in diff.link_warnings)
+            )
+        return result
 
     return ToolDefinition(
         name="suggest_improvements",

@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Link-change warnings on vault diffs (2026-09-24)
+
+- **Every vault diff now lists links that changed.** `suggest_improvements`
+  and `edit_blog_post` take the whole file as new content, so a model can
+  alter text it was only meant to copy. A live `/review` run changed
+  `i.ytimg.com` to `i.yimg.com` inside a link card, hidden in a 37-line
+  rewrite. `compute_diff()` now compares URLs, `[[wikilinks]]` and markdown
+  link targets between the two versions. Any link found in only one of them is
+  shown above the diff in the CLI and on the GUI approval card, and
+  `suggest_improvements` puts the list in its tool result so the agent can
+  explain or undo it. New files are skipped. Human oversight (EU AI Act
+  Art. 14): a one-character URL change is easy to miss in a long diff.
+  Integrity of vault content; OWASP LLM09 (misinformation).
+
 ### Fixed — GUI approval card showed no diff (2026-09-24)
 
 - **Vault-write approvals in the GUI now show the actual diff and path.**
