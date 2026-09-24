@@ -90,6 +90,13 @@ class ModelsSettings(BaseModel):
         default_factory=ModelPresets,
         description="Named model aliases consumed by agents and the model router.",
     )
+    extra_body: dict[str, dict[str, Any]] = Field(
+        default_factory=lambda: {"openrouter/qwen/qwen3.5-flash-02-23": {"reasoning": {"effort": "none"}}},
+        description=(
+            "Per-model request fields sent verbatim in the provider request body, keyed by full "
+            "model id (e.g. OpenRouter's `reasoning`). Applies to every call made with that model."
+        ),
+    )
 
 
 class PathsSettings(BaseModel):

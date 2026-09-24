@@ -162,7 +162,12 @@ class StreamingResponse:
 class LLMClient:
     """Handles communication with LLM providers via LiteLLM."""
 
-    def __init__(self, api_keys: dict[str, str], default_model: str):
+    def __init__(
+        self,
+        api_keys: dict[str, str],
+        default_model: str,
+        extra_body: dict[str, dict[str, Any]] | None = None,
+    ):
         """
         Initialize the LLM client.
 
@@ -171,9 +176,12 @@ class LLMClient:
                       (e.g. {"openrouter": "sk-...", "anthropic": "sk-ant-..."})
             default_model: Default LiteLLM-routable model ID
                            (e.g. "openrouter/anthropic/claude-sonnet-4.6")
+            extra_body: Per-model request body fields, keyed by full model ID
+                        (e.g. {"openrouter/qwen/...": {"reasoning": {"effort": "none"}}})
         """
         self.api_keys = api_keys
         self.default_model = default_model
+        self.extra_body = extra_body or {}
 
     def set_model(self, model_id: str) -> None:
         """Switch the default model mid-session."""
@@ -183,6 +191,21 @@ class LLMClient:
         """Pick the right API key based on the model's provider prefix."""
         provider = infer_provider(model)
         return get_api_key(provider, self.api_keys)
+
+    def _base_kwargs(self, messages: list[dict[str, Any]], model: str | None, stream: bool) -> dict[str, Any]:
+        """Build the litellm.completion kwargs shared by every call path."""
+        model_to_use = model or self.default_model
+        kwargs: dict[str, Any] = dict(
+            model=model_to_use,
+            messages=_apply_cache_control(messages, model_to_use),
+            stream=stream,
+            api_key=self._resolve_api_key(model_to_use),
+        )
+        if stream:
+            kwargs["stream_options"] = {"include_usage": True}
+        if model_to_use in self.extra_body:
+            kwargs["extra_body"] = self.extra_body[model_to_use]
+        return kwargs
 
     def complete(
         self,
@@ -206,15 +229,7 @@ class LLMClient:
         Returns:
             Raw LiteLLM ModelResponse object
         """
-        model_to_use = model or self.default_model
-        messages = _apply_cache_control(messages, model_to_use)
-
-        kwargs: dict[str, Any] = dict(
-            model=model_to_use,
-            messages=messages,
-            stream=False,
-            api_key=self._resolve_api_key(model_to_use),
-        )
+        kwargs = self._base_kwargs(messages, model, stream=False)
         if tools:
             kwargs["tools"] = tools
         if temperature is not None:
@@ -262,16 +277,7 @@ class LLMClient:
         This eliminates the separate complete() call in the agentic loop,
         saving one round-trip per non-tool query.
         """
-        model_to_use = model or self.default_model
-        messages = _apply_cache_control(messages, model_to_use)
-
-        kwargs: dict[str, Any] = dict(
-            model=model_to_use,
-            messages=messages,
-            stream=True,
-            stream_options={"include_usage": True},
-            api_key=self._resolve_api_key(model_to_use),
-        )
+        kwargs = self._base_kwargs(messages, model, stream=True)
         if tools:
             kwargs["tools"] = tools
         if temperature is not None:
@@ -368,17 +374,8 @@ class LLMClient:
     ) -> Generator[str, None, tuple[TokenUsage, object]]:
         """Stream the response chunk by chunk, returning usage stats and raw response at the end."""
 
-        model_to_use = model or self.default_model
-        messages = _apply_cache_control(messages, model_to_use)
-
         # LiteLLM will handle provider-specific auth and formatting
-        kwargs: dict[str, Any] = dict(
-            model=model_to_use,
-            messages=messages,
-            stream=True,
-            stream_options={"include_usage": True},  # Request usage in streaming
-            api_key=self._resolve_api_key(model_to_use),
-        )
+        kwargs = self._base_kwargs(messages, model, stream=True)
         if tools:
             kwargs["tools"] = tools
         if max_tokens is not None:

@@ -209,7 +209,7 @@ def build_session(
 
     system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
 
-    client = LLMClient(api_keys=api_keys, default_model=model_id)
+    client = LLMClient(api_keys=api_keys, default_model=model_id, extra_body=settings.models.extra_body)
 
     agent_registry = discover_agents()
     skill_registry = discover_skills()
