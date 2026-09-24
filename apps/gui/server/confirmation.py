@@ -28,31 +28,12 @@ from packages.integrations.obsidian.writer import ConfirmationHandler
 logger = logging.getLogger(__name__)
 
 
-def _diff_lines(diff: VaultDiff) -> list[dict[str, str]]:
-    """Convert VaultDiff into the wire shape the design expects.
+_KIND = {"added": "add", "removed": "del", "unchanged": "ctx"}
 
-    VaultDiff's exact structure varies; we fall back to a simple textual
-    representation if the unified .lines attribute isn't available.
-    """
-    lines = getattr(diff, "lines", None)
-    if lines is None:
-        # Best-effort: parse __str__/format output.
-        text = getattr(diff, "diff_text", "") or str(diff)
-        out = []
-        for raw in text.splitlines():
-            if raw.startswith("+") and not raw.startswith("+++"):
-                out.append({"kind": "add", "text": raw[1:]})
-            elif raw.startswith("-") and not raw.startswith("---"):
-                out.append({"kind": "del", "text": raw[1:]})
-            else:
-                out.append({"kind": "ctx", "text": raw})
-        return out
-    out = []
-    for ln in lines:
-        kind = getattr(ln, "kind", "ctx")
-        text = getattr(ln, "text", "")
-        out.append({"kind": kind, "text": text})
-    return out
+
+def _diff_lines(diff: VaultDiff) -> list[dict[str, str]]:
+    """Convert VaultDiff.diff_lines into the wire shape the approval card renders."""
+    return [{"kind": _KIND.get(dl.type, "ctx"), "text": dl.content} for dl in diff.diff_lines]
 
 
 class WebConfirmationHandler(ConfirmationHandler):
@@ -83,8 +64,8 @@ class WebConfirmationHandler(ConfirmationHandler):
 
         approval_id = str(uuid.uuid4())
         self._pending_id = approval_id
-        path = getattr(diff, "path", "") or ""
-        summary = getattr(diff, "summary", "") or prompt
+        path = diff.file_path
+        summary = diff.summary or prompt
 
         self._queue.put(
             {

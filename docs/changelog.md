@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — GUI approval card showed no diff (2026-09-24)
+
+- **Vault-write approvals in the GUI now show the actual diff and path.**
+  `WebConfirmationHandler` read `.lines` and `.path`, which `VaultDiff` doesn't
+  have, so every approval card rendered the dataclass repr as one context line
+  and an empty path. It now maps `VaultDiff.diff_lines` and `file_path`. The
+  tests had used a stand-in object with the wrong field names; they now build
+  real diffs. Human oversight (EU AI Act Art. 14): an approval gate is only as
+  good as what the approver can see.
+
 ### Fixed — Default model answered with its own thinking (2026-09-24)
 
 - **Qwen 3.5 Flash no longer returns its "Thinking Process" as the reply.**

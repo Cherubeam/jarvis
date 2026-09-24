@@ -3,19 +3,17 @@
 import threading
 import time
 from queue import Queue
-from types import SimpleNamespace
 
 from apps.gui.server.confirmation import WebConfirmationHandler, _diff_lines
+from packages.integrations.obsidian.diff import DiffLine, VaultDiff, compute_diff
 
 
-def _fake_diff(lines=None, path="notes/x.md", summary="+1 line"):
-    return SimpleNamespace(
-        lines=lines
-        or [
-            SimpleNamespace(kind="ctx", text="existing"),
-            SimpleNamespace(kind="add", text="new line"),
-        ],
-        path=path,
+def _fake_diff(path="notes/x.md", summary="+1 line"):
+    return VaultDiff(
+        file_path=path,
+        original_content="existing\n",
+        proposed_content="existing\nnew line\n",
+        diff_lines=[DiffLine(type="unchanged", content="existing"), DiffLine(type="added", content="new line")],
         summary=summary,
     )
 
@@ -170,10 +168,10 @@ def test_custom_agent_appears_in_approval_pending_event():
 # ---------------------------------------------------------------------------
 
 
-def test_missing_path_attribute_emits_empty_path():
+def test_empty_file_path_emits_empty_path():
     q: Queue = Queue(maxsize=10)
     h = WebConfirmationHandler(q, turn_id="t1")
-    diff = _fake_diff(path=None)
+    diff = _fake_diff(path="")
     h.present_diff(diff)
 
     worker = threading.Thread(target=h.get_confirmation, daemon=True)
@@ -189,7 +187,7 @@ def test_missing_path_attribute_emits_empty_path():
 def test_missing_summary_falls_back_to_prompt():
     q: Queue = Queue(maxsize=10)
     h = WebConfirmationHandler(q, turn_id="t1")
-    diff = _fake_diff(summary=None)
+    diff = _fake_diff(summary="")
     h.present_diff(diff)
 
     worker = threading.Thread(
@@ -429,67 +427,39 @@ def test_present_diff_overwrites_buffered_diff():
 
 
 # ---------------------------------------------------------------------------
-# _diff_lines fallback path (no .lines attribute → parse diff_text)
+# _diff_lines maps a real VaultDiff (regression: it used to read .lines/.path,
+# which VaultDiff doesn't have, and sent the dataclass repr as one context line)
 # ---------------------------------------------------------------------------
 
 
-def test_diff_lines_fallback_parses_unified_diff_text():
-    """Diffs without a structured `.lines` attr fall back to text parsing."""
-    diff = SimpleNamespace(
-        diff_text=("--- a/notes/x.md\n+++ b/notes/x.md\n@@ -1,2 +1,3 @@\n context line\n-old line\n+new line\n"),
-        path="notes/x.md",
-    )
-    out = _diff_lines(diff)
-
-    # Full event sequence — order preserved, header lines kept verbatim as ctx,
-    # real add/del lines stripped of their leading +/- char.
-    assert out == [
-        {"kind": "ctx", "text": "--- a/notes/x.md"},
-        {"kind": "ctx", "text": "+++ b/notes/x.md"},
-        {"kind": "ctx", "text": "@@ -1,2 +1,3 @@"},
-        {"kind": "ctx", "text": " context line"},
+def test_diff_lines_maps_a_computed_diff():
+    diff = compute_diff("notes/x.md", "context line\nold line\n", "context line\nnew line\n")
+    assert _diff_lines(diff) == [
+        {"kind": "ctx", "text": "@@ -1,2 +1,2 @@"},
+        {"kind": "ctx", "text": "context line"},
         {"kind": "del", "text": "old line"},
         {"kind": "add", "text": "new line"},
     ]
 
 
-def test_diff_lines_fallback_uses_str_when_no_diff_text():
-    """Last-ditch fallback: parse __str__ output."""
-
-    class _StrOnly:
-        def __str__(self) -> str:
-            return "+added\n-removed"
-
-    out = _diff_lines(_StrOnly())  # type: ignore[arg-type]
-    assert out == [
-        {"kind": "add", "text": "added"},
-        {"kind": "del", "text": "removed"},
-    ]
+def test_diff_lines_unknown_type_renders_as_context():
+    diff = _fake_diff()
+    diff.diff_lines = [DiffLine(type="weird", content="A")]
+    assert _diff_lines(diff) == [{"kind": "ctx", "text": "A"}]
 
 
-def test_diff_lines_structured_uses_kind_and_text_attrs():
-    """Structured `.lines` carries (kind, text) attributes through unchanged."""
-    diff = _fake_diff(
-        lines=[
-            SimpleNamespace(kind="ctx", text="A"),
-            SimpleNamespace(kind="add", text="B"),
-            SimpleNamespace(kind="del", text="C"),
-        ],
-    )
-    out = _diff_lines(diff)
-    assert out == [
-        {"kind": "ctx", "text": "A"},
-        {"kind": "add", "text": "B"},
-        {"kind": "del", "text": "C"},
-    ]
+def test_approval_pending_carries_path_from_computed_diff():
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.present_diff(compute_diff("notes/real.md", "a\n", "b\n"))
 
+    worker = threading.Thread(target=h.get_confirmation, daemon=True)
+    worker.start()
+    _wait_for_queue(q)
+    pending = q.get(timeout=1)
+    h.discard()
+    worker.join(timeout=1)
 
-def test_diff_lines_structured_defaults_when_attrs_missing():
-    """Lines that lack `kind`/`text` attrs get sensible defaults."""
-
-    class _Bare:
-        pass
-
-    diff = SimpleNamespace(lines=[_Bare()])
-    out = _diff_lines(diff)
-    assert out == [{"kind": "ctx", "text": ""}]
+    assert pending["path"] == "notes/real.md"
+    assert pending["summary"] == "+1 line, -1 line"
+    assert {"kind": "add", "text": "b"} in pending["diff"]
