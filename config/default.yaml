@@ -14,6 +14,12 @@ models:
     fast: "openrouter/google/gemini-2.5-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"
     balanced: "openrouter/qwen/qwen3.5-flash-02-23"
+  # Per-model request body fields, keyed by full model id and sent on every call
+  # made with that model. Qwen 3.5 Flash otherwise returns its thinking as the answer.
+  extra_body:
+    "openrouter/qwen/qwen3.5-flash-02-23":
+      reasoning:
+        effort: "none"
 
 # Paths (relative to project root)
 paths:

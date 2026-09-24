@@ -194,6 +194,24 @@ models:
     balanced: "openrouter/anthropic/claude-sonnet-4.6"
 ```
 
+### Per-Model Request Fields
+
+`models.extra_body` sends extra fields in the request body for one model, on
+every call made with it (chat, tool loop, summarization, nested tool calls).
+Keys are full model IDs; values go to the provider unchanged. The default
+config uses it to switch off Qwen 3.5 Flash's thinking, which OpenRouter
+otherwise returns as the answer text:
+
+```yaml
+models:
+  extra_body:
+    "openrouter/qwen/qwen3.5-flash-02-23":
+      reasoning:
+        effort: "none"
+```
+
+See OpenRouter's reasoning-tokens guide for the `reasoning` fields.
+
 ### Using Different Providers
 
 1. Add the provider's API key to `.env`:

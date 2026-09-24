@@ -56,6 +56,15 @@ class TestModelsSettings:
         assert presets.quality == "openrouter/anthropic/claude-opus-4.6"
         assert presets.balanced == "openrouter/qwen/qwen3.5-flash-02-23"
 
+    def test_extra_body_turns_off_qwen_reasoning_by_default(self) -> None:
+        extra_body = ModelsSettings().extra_body
+        assert extra_body == {"openrouter/qwen/qwen3.5-flash-02-23": {"reasoning": {"effort": "none"}}}
+
+    def test_extra_body_matches_default_yaml(self) -> None:
+        assert load_config().models.extra_body["openrouter/qwen/qwen3.5-flash-02-23"] == {
+            "reasoning": {"effort": "none"}
+        }
+
     def test_override_default_model(self) -> None:
         settings = ModelsSettings(default="anthropic/claude-haiku-4.5")
         assert settings.default == "anthropic/claude-haiku-4.5"

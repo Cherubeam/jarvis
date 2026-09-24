@@ -64,11 +64,12 @@ Main client for LLM provider interactions.
 
 **Constructor:**
 
-#### `__init__(api_keys: dict[str, str], default_model: str)`
+#### `__init__(api_keys: dict[str, str], default_model: str, extra_body: dict[str, dict] | None = None)`
 
 **Parameters:**
 - `api_keys` - Mapping of provider name → API key (e.g. `{"openrouter": "sk-...", "anthropic": "sk-ant-..."}`)
 - `default_model` - LiteLLM-routable model ID (e.g. `"openrouter/anthropic/claude-sonnet-4.6"`)
+- `extra_body` - Per-model request body fields keyed by full model ID, sent as litellm `extra_body` on every call (`complete`, `chat_stream`, `stream_with_tool_detection`) made with that model. The session passes `settings.models.extra_body`.
 
 **Methods:**
 
@@ -483,6 +484,9 @@ models:
     fast: "openrouter/google/gemini-2.5-flash"
     quality: "openrouter/anthropic/claude-opus-4.6"
     balanced: "openrouter/anthropic/claude-sonnet-4.6"
+  extra_body:                    # per-model request fields, keyed by full model id
+    "openrouter/qwen/qwen3.5-flash-02-23":
+      reasoning: {effort: "none"}
 
 paths:
   context_dir: "data/context"

@@ -4,6 +4,7 @@ Unit tests for llm_client module.
 Tests LLMClient, TokenUsage, and StreamingResponse functionality.
 """
 
+from typing import Any, ClassVar
 from unittest.mock import Mock, patch
 
 import pytest
@@ -528,3 +529,58 @@ class TestTokenUsageCacheFields:
         )
         assert usage.cache_read_tokens == 800
         assert usage.cache_write_tokens == 200
+
+
+@pytest.mark.unit
+class TestExtraBody:
+    """Per-model extra_body is sent on every call path, and only for its model."""
+
+    REASONING_OFF: ClassVar[dict[str, Any]] = {"reasoning": {"effort": "none"}}
+
+    def _client(self) -> LLMClient:
+        return LLMClient(
+            api_keys={"openrouter": "test-key"},
+            default_model="openrouter/qwen/qwen-test",
+            extra_body={"openrouter/qwen/qwen-test": self.REASONING_OFF},
+        )
+
+    def _stream_mock(self) -> Mock:
+        chunk = Mock()
+        chunk.choices = [Mock(delta=Mock(content="hi", tool_calls=None))]
+        chunk.usage = None
+        return Mock(return_value=iter([chunk]))
+
+    def test_defaults_to_empty(self):
+        client = LLMClient(api_keys={}, default_model="test/test-model")
+        assert client.extra_body == {}
+
+    def test_complete_sends_extra_body_for_configured_model(self):
+        with patch("litellm.completion") as mock_completion:
+            self._client().complete([{"role": "user", "content": "hello"}])
+            assert mock_completion.call_args[1]["extra_body"] == self.REASONING_OFF
+
+    def test_complete_omits_extra_body_for_other_model(self):
+        with patch("litellm.completion") as mock_completion:
+            self._client().complete([{"role": "user", "content": "hello"}], model="openrouter/other/model")
+            assert "extra_body" not in mock_completion.call_args[1]
+
+    def test_stream_with_tool_detection_sends_extra_body(self):
+        with patch("litellm.completion", self._stream_mock()) as mock_completion:
+            self._client().stream_with_tool_detection([{"role": "user", "content": "hello"}])
+            kwargs = mock_completion.call_args[1]
+            assert kwargs["extra_body"] == self.REASONING_OFF
+            assert kwargs["stream"] is True
+            assert kwargs["stream_options"] == {"include_usage": True}
+
+    def test_chat_stream_sends_extra_body(self):
+        with patch("litellm.completion", self._stream_mock()) as mock_completion:
+            assert list(self._client().chat_stream([{"role": "user", "content": "hello"}])) == ["hi"]
+            assert mock_completion.call_args[1]["extra_body"] == self.REASONING_OFF
+
+    def test_follows_set_model(self):
+        client = self._client()
+        client.set_model("openrouter/other/model")
+        with patch("litellm.completion") as mock_completion:
+            client.complete([{"role": "user", "content": "hello"}])
+            assert "extra_body" not in mock_completion.call_args[1]
+            assert mock_completion.call_args[1]["stream"] is False

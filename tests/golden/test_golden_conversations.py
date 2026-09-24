@@ -185,9 +185,12 @@ class TestGoldenConversations:
         model_id = (
             f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested
         )
+        from packages.core.settings import load_config
+
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
             default_model=model_id,
+            extra_body=load_config().models.extra_body,
         )
 
         # Look up model pricing once (same approach as production StreamHandler)

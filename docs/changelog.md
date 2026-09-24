@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Default model answered with its own thinking (2026-09-24)
+
+- **Qwen 3.5 Flash no longer returns its "Thinking Process" as the reply.**
+  Through OpenRouter, `qwen/qwen3.5-flash-02-23` now puts its reasoning into
+  the message content unless reasoning is switched off. Sub-agents, which run on
+  the default model, replied with their own planning notes, or with nothing
+  once a tool loop ran out. A new `models.extra_body` setting sends per-model
+  request fields on every call made with that model, and the default config
+  uses it to send `reasoning: {effort: "none"}` for Qwen 3.5 Flash. `LLMClient`
+  now builds its request arguments in one place, so the three call paths can no
+  longer drift apart. The golden-conversation harness passes the same setting.
+- **Routed turns are priced at the routed model's rates.** Heuristic routing
+  switched the model but left the default model's pricing on the stream
+  handler, so the cost shown for fast/quality turns was wrong.
+
 ### Fixed — Content review judged voice against a generic checklist (2026-09-11)
 
 - **`evaluate_content` now receives the writer's voice profile.** The `/review`
