@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Writer tags the prose it writes (2026-09-25)
+
+- **The writer adds `prose` to a note's `assist` frontmatter list** when it
+  writes sentences into it. Structure, brainstorming, edits and research help
+  are tagged by hand. Notes that are mostly LLM prose are kept out of
+  voice-profile work, so the profile isn't re-derived from the assistant's
+  own habits (engineering practice P7).
+
 ### Fixed — Vault edits could revert changes made in Obsidian meanwhile (2026-09-25)
 
 - **Edits refuse to overwrite a note that changed since the agent read it.**
