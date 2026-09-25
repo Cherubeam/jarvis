@@ -35,6 +35,7 @@ class AgentMeta:
     vault_writing: str | None = None
     tool_groups: tuple[str, ...] = ()
     skills: tuple[str, ...] = ()
+    model: str | None = None  # preset name or model id from meta.yaml; None = session model
 
 
 def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
@@ -62,6 +63,7 @@ def _discover_from_meta_yaml(child: Path) -> AgentMeta | None:
         vault_writing=meta_dict.get("vault_writing"),
         tool_groups=tuple(meta_dict.get("tools", [])),
         skills=tuple(meta_dict.get("skills", [])),
+        model=meta_dict.get("model"),
     )
 
 

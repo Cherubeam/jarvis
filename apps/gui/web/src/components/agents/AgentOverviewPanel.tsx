@@ -144,7 +144,12 @@ export function AgentOverviewPanel({
         }}
       >
         <div>
-          model · <span style={{ color: theme.textDisabled }}>(inherits from session)</span>
+          model ·{' '}
+          {detail.model ? (
+            <span style={{ color: theme.textPrimary }}>{detail.model}</span>
+          ) : (
+            <span style={{ color: theme.textDisabled }}>(inherits from session)</span>
+          )}
         </div>
         <div>
           prompt ·{' '}

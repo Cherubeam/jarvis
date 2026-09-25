@@ -31,6 +31,8 @@ class AgentConfig:
     max_tokens: int | None = None
     temperature: float = 0.7
     max_iterations: int | None = None
+    # True when meta.yaml names a model: run() then uses it instead of the session model
+    model_pinned: bool = False
 
 
 class BaseAgent(ABC):
@@ -143,6 +145,9 @@ class BaseAgent(ABC):
         kwargs: dict[str, Any] = {}
         if self.config.max_iterations is not None:
             kwargs["max_iterations"] = self.config.max_iterations
+        if self.config.model_pinned:
+            with stream_handler.using_model(self.config.model):
+                return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
         return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
 
     def add_to_history(self, role: str, content: str) -> None:
@@ -188,12 +193,18 @@ class DataDrivenAgent(BaseAgent):
         print_chunks: bool = False,
         messages_override: list[dict[str, Any]] | None = None,
     ) -> StreamResult:
-        """Run the agent, passing max_tokens when configured."""
-        # Pass agent-configured max_tokens to the stream handler
-        if self.config.max_tokens is not None:
-            stream_handler.max_tokens = self.config.max_tokens
+        """Run the agent with its configured max_tokens, restored afterwards."""
+        if self.config.max_tokens is None:
+            return super().run(message, stream_handler, print_chunks, messages_override)
 
-        return super().run(message, stream_handler, print_chunks, messages_override)
+        previous = stream_handler.max_tokens
+        stream_handler.max_tokens = self.config.max_tokens
+        try:
+            return super().run(message, stream_handler, print_chunks, messages_override)
+        finally:
+            # Keep a credit-fallback reduction made during the run; drop the agent's own limit
+            reduced = stream_handler.max_tokens
+            stream_handler.max_tokens = previous if reduced == self.config.max_tokens else reduced
 
 
 def resolve_system_prompt(
@@ -247,6 +258,7 @@ def agent_from_meta(
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
+    model_pinned: bool = False,
 ) -> DataDrivenAgent:
     """Build an agent from a meta.yaml + prompts/system.md.
 
@@ -255,6 +267,7 @@ def agent_from_meta(
         llm_client: LLM client for API calls.
         model: Model ID to use.
         extra_tools: Optional tools to register on the agent.
+        model_pinned: ``model`` comes from the agent's own meta.yaml; run() switches to it.
         skill_registry: Optional skill registry for resolving bound skills.
         card_search_tool: Optional card search tool for deck-skills.
         skill_names_override: If set, replaces meta.yaml's skills list.
@@ -299,5 +312,6 @@ def agent_from_meta(
         temperature=meta.get("temperature", 0.7),
         max_tokens=meta.get("max_tokens"),
         max_iterations=meta.get("max_iterations"),
+        model_pinned=model_pinned,
     )
     return DataDrivenAgent(config, llm_client)

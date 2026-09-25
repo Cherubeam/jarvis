@@ -136,7 +136,7 @@ class TestHandleAgentCommand:
         handler = Mock(spec=StreamHandler)
         handler.streaming = True
 
-        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+        with patch("apps.cli.session_factory.agent_from_meta") as mock_factory:
             mock_agent = Mock()
             mock_agent.run.return_value = _make_stream_result()
             mock_factory.return_value = mock_agent
@@ -175,7 +175,7 @@ class TestHandleAgentCommand:
         handler.streaming = True
         logger = Mock(spec=ConversationLogger)
 
-        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+        with patch("apps.cli.session_factory.agent_from_meta") as mock_factory:
             mock_agent = Mock()
             mock_agent.run.return_value = stream_result
             mock_factory.return_value = mock_agent
@@ -221,7 +221,7 @@ class TestHandleAgentCommand:
             )
         }
 
-        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+        with patch("apps.cli.session_factory.agent_from_meta") as mock_factory:
             mock_agent = Mock()
             mock_agent.run.return_value = _make_stream_result()
             mock_factory.return_value = mock_agent
@@ -260,7 +260,7 @@ class TestHandleAgentCommand:
 
         with (
             patch("apps.cli.main._run_agent_session") as mock_session,
-            patch("apps.cli.main.agent_from_meta") as mock_factory,
+            patch("apps.cli.session_factory.agent_from_meta") as mock_factory,
         ):
             mock_factory.return_value = Mock()
             result = _handle_agent_command(
@@ -611,7 +611,7 @@ class TestInstantiateAgent:
         )
         registry = {"clarity": meta}
 
-        with patch("apps.cli.main.agent_from_meta") as mock_factory:
+        with patch("apps.cli.session_factory.agent_from_meta") as mock_factory:
             mock_agent = Mock()
             mock_agent.run.return_value = _make_stream_result()
             mock_factory.return_value = mock_agent
