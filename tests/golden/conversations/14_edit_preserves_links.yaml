@@ -1,0 +1,52 @@
+name: "edit_preserves_links"
+description: >
+  Full-file edit must leave everything it doesn't need to change byte-identical:
+  frontmatter, wikilinks, markdown links and the URLs inside a link card.
+  Modeled on a 2026-09 /review run whose suggested edit changed i.ytimg.com to
+  i.yimg.com and a favicon path while fixing prose. Synthetic note, invented IDs.
+category: "personalization"
+context:
+  environment: |
+    The note lives in an Obsidian vault. The returned file replaces the original as-is.
+conversation:
+  - role: "user"
+    content: |
+      Fix the typos in the prose of this note and return the complete file, nothing else.
+
+      ---
+      created: 2026-09-20
+      tags: technical-humanist
+      status: draft
+      ---
+      # Notes on Tool Fatigue
+
+      I spend more time configuring tools then using them. See [[Gartner Hype Cycle]] and the talk below.
+
+      ```cardlink
+      url: https://www.youtube.com/watch?v=dQ9xT3kLm2A
+      title: "Tool fatigue is real"
+      host: www.youtube.com
+      favicon: https://www.youtube.com/s/desktop/5f3a9c1e/img/favicon_32x32.png
+      image: https://i.ytimg.com/vi/dQ9xT3kLm2A/maxresdefault.jpg
+      ```
+
+      The anser is not another tool, its fewer of them. More on that in [my setup](notes/setup-2026.md).
+  - role: "assistant"
+    required_verbatim:
+      - "created: 2026-09-20"
+      - "status: draft"
+      - "[[Gartner Hype Cycle]]"
+      - "url: https://www.youtube.com/watch?v=dQ9xT3kLm2A"
+      - 'title: "Tool fatigue is real"'
+      - "favicon: https://www.youtube.com/s/desktop/5f3a9c1e/img/favicon_32x32.png"
+      - "image: https://i.ytimg.com/vi/dQ9xT3kLm2A/maxresdefault.jpg"
+      - "[my setup](notes/setup-2026.md)"
+    expected_content:
+      - "than using them"
+      - "answer"
+      - "it's fewer"
+    expected_qualities:
+      fixes_all_typos: "then -> than, anser -> answer, its -> it's"
+      returns_complete_file: "Returns the whole note including frontmatter and the cardlink block"
+      changes_nothing_else: "No wording, formatting, link or metadata changes beyond the three typo fixes"
+      no_commentary: "Returns only the file, without explanations around it"

@@ -75,6 +75,8 @@ class TestGoldenConversationStructure:
             "10_delegation.yaml",
             "11_multi_step_tool_use.yaml",
             "12_tool_termination.yaml",
+            "13_review_language_errors.yaml",
+            "14_edit_preserves_links.yaml",
         ]
 
         for filename in expected_files:
@@ -84,7 +86,7 @@ class TestGoldenConversationStructure:
     def test_golden_file_structure_valid(self, golden_conversations_dir: Path):
         """Test that all golden test files have valid YAML structure."""
         yaml_files = list(golden_conversations_dir.glob("*.yaml"))
-        assert len(yaml_files) >= 12, "Expected at least 12 golden test files"
+        assert len(yaml_files) >= 14, "Expected at least 14 golden test files"
 
         for yaml_file in yaml_files:
             with open(yaml_file) as f:
@@ -124,7 +126,7 @@ class TestGoldenConversations:
     3. Establish quality baselines
 
     Run with: pytest tests/golden/ --evaluate
-    Optional: pytest tests/golden/ --evaluate --judge-model=anthropic/claude-opus-4.5
+    Optional: pytest tests/golden/ --evaluate --judge-model=anthropic/claude-opus-5.5
     """
 
     @pytest.fixture(scope="class", autouse=True)
@@ -187,11 +189,14 @@ class TestGoldenConversations:
         )
         from packages.core.settings import load_config
 
+        settings = load_config()
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
             default_model=model_id,
-            extra_body=load_config().models.extra_body,
+            extra_body=settings.models.extra_body,
         )
+        # Same output cap JARVIS uses; an uncapped request is rejected on a low OpenRouter balance
+        self.max_tokens = settings.models.default_max_tokens
 
         # Look up model pricing once (same approach as production StreamHandler)
         from packages.core.pricing import get_model_pricing
@@ -255,17 +260,19 @@ class TestGoldenConversations:
         """Execute a conversation-based golden test (tests 01-08)."""
         from evaluator import EvaluationCriteria
 
+        # Carry the model's own earlier answers forward so follow-up turns have context.
+        # Each assistant turn is stored separately when there is more than one.
+        messages: list[dict] = [{"role": "system", "content": system_prompt}]
+        assistant_turns = sum(1 for t in test_case["conversation"] if t["role"] == "assistant")
+        turn_index = 0
+
         for turn in test_case["conversation"]:
             if turn["role"] == "user":
                 user_message = turn["content"]
-
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ]
+                messages.append({"role": "user", "content": user_message})
 
                 start_time = time.time()
-                stream = model_client.chat_stream(messages)
+                stream = model_client.chat_stream(messages, max_tokens=self.max_tokens)
 
                 response_text = ""
                 for chunk in stream:
@@ -288,13 +295,26 @@ class TestGoldenConversations:
                     expected_themes=turn.get("expected_themes", []),
                     min_length=turn.get("min_length"),
                     max_length=turn.get("max_length"),
+                    required_verbatim=turn.get("required_verbatim", []),
                 )
 
+                turn_index += 1
+                test_name = test_case["name"] if assistant_turns == 1 else f"{test_case['name']}_turn{turn_index}"
+                # The judge sees the earlier exchange too, or it can't score "builds on previous"
+                earlier = [m for m in messages[1:-1] if m["role"] in ("user", "assistant")]
+                judge_message = user_message
+                if earlier:
+                    transcript = "\n\n".join(f"{m['role'].upper()}: {m['content']}" for m in earlier)
+                    judge_message = (
+                        f"[Earlier in this conversation]\n{transcript}\n\n[Current question]\n{user_message}"
+                    )
+                messages.append({"role": "assistant", "content": response_text})
+
                 result = evaluator.evaluate_response(
-                    test_name=test_case["name"],
+                    test_name=test_name,
                     test_category=test_case["category"],
                     context=context,
-                    user_message=user_message,
+                    user_message=judge_message,
                     actual_response=response_text,
                     criteria=criteria,
                     model_tested=self.model_tested,
@@ -375,7 +395,7 @@ class TestGoldenConversations:
 
         # Agentic loop
         for _iteration in range(max_rounds):
-            response = model_client.complete(messages, tools=tools_litellm)
+            response = model_client.complete(messages, tools=tools_litellm, max_tokens=self.max_tokens)
             choice = response.choices[0]
 
             # Accumulate token usage
@@ -455,6 +475,7 @@ class TestGoldenConversations:
             expected_themes=evaluation.get("expected_themes", []),
             min_length=evaluation.get("min_length"),
             max_length=evaluation.get("max_length"),
+            required_verbatim=evaluation.get("required_verbatim", []),
         )
 
         # Use transcript as actual_response for judge
@@ -559,6 +580,14 @@ class TestGoldenConversations:
     def test_12_tool_termination(self, evaluator, evaluation_config, result_storage):
         """Test that model answers directly without unnecessary tool calls."""
         self._run_golden_test("12_tool_termination.yaml", evaluator, evaluation_config, result_storage)
+
+    def test_13_review_language_errors(self, evaluator, evaluation_config, result_storage):
+        """Language review: fix typos and German placeholders, keep voice markers."""
+        self._run_golden_test("13_review_language_errors.yaml", evaluator, evaluation_config, result_storage)
+
+    def test_14_edit_preserves_links(self, evaluator, evaluation_config, result_storage):
+        """Full-file edit keeps frontmatter and every link byte-identical."""
+        self._run_golden_test("14_edit_preserves_links.yaml", evaluator, evaluation_config, result_storage)
 
 
 # Helper function for manual golden test evaluation (to be used in Phase 2)

@@ -16,6 +16,8 @@ from judge_prompts import build_judge_prompt
 from packages.core.llm_client import LLMClient
 from packages.core.pricing import get_model_pricing
 
+JUDGE_MAX_TOKENS = 4096
+
 
 @dataclass
 class EvaluationCriteria:
@@ -29,6 +31,8 @@ class EvaluationCriteria:
         expected_themes: List of themes that should be present
         min_length: Minimum character length (optional)
         max_length: Maximum character length (optional)
+        required_verbatim: Strings that must appear exactly (case-sensitive), e.g. URLs an
+            edit must not touch. A missing one caps the score like a forbidden pattern.
     """
 
     qualities: dict[str, bool | str | int] = field(default_factory=dict)
@@ -37,6 +41,7 @@ class EvaluationCriteria:
     expected_themes: list[str] = field(default_factory=list)
     min_length: int | None = None
     max_length: int | None = None
+    required_verbatim: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -251,7 +256,7 @@ class JudgeEvaluator:
         """
         self.judge_client = judge_client
         self.quality_threshold = config.get("quality_threshold", 0.70)
-        self.judge_model = config.get("judge_model", "anthropic/claude-opus-4.5")
+        self.judge_model = config.get("judge_model", "anthropic/claude-opus-5.5")
         self.judge_pricing = get_model_pricing(f"openrouter/{self.judge_model}")
 
     def evaluate_response(
@@ -382,7 +387,8 @@ class JudgeEvaluator:
         )
 
         # Call judge via streaming
-        stream = self.judge_client.chat_stream(messages)
+        # Cap output: a judge verdict is short, and an uncapped request is rejected on a low balance
+        stream = self.judge_client.chat_stream(messages, max_tokens=JUDGE_MAX_TOKENS)
 
         # Collect full response
         judge_output = ""
@@ -483,8 +489,8 @@ class JudgeEvaluator:
 
         # Conservative score since judge failed
         overall_score = 0.5
-        if basic_checks["forbidden_patterns_found"]:
-            overall_score = 0.3  # Penalize forbidden patterns
+        if basic_checks["forbidden_patterns_found"] or basic_checks["verbatim_missing"]:
+            overall_score = 0.3  # Penalize forbidden patterns / altered verbatim text
         elif basic_checks["content_checks_passed"]:
             overall_score = 0.6  # Slight bonus if content present
 
@@ -520,6 +526,9 @@ class JudgeEvaluator:
 
         content_checks_passed = len(content_found) == len(criteria.expected_content)
 
+        # Exact-match check: a one-character change to a URL must fail
+        verbatim_missing = [s for s in criteria.required_verbatim if s not in actual_response]
+
         # Check length constraints
         response_length = len(actual_response)
         length_ok = True
@@ -530,6 +539,7 @@ class JudgeEvaluator:
 
         return {
             "forbidden_patterns_found": forbidden_found,
+            "verbatim_missing": verbatim_missing,
             "content_checks_passed": content_checks_passed,
             "content_found": content_found,
             "length_ok": length_ok,
@@ -556,6 +566,12 @@ class JudgeEvaluator:
             overall_score = min(overall_score, 0.3)
             reasoning += f"\n\nForbidden patterns detected: {', '.join(forbidden_found)}"
             failed_criteria.append("no_forbidden_patterns")
+
+        verbatim_missing = basic_checks.get("verbatim_missing", [])
+        if verbatim_missing:
+            overall_score = min(overall_score, 0.3)
+            reasoning += f"\n\nRequired verbatim text altered or missing: {', '.join(verbatim_missing)}"
+            failed_criteria.append("required_verbatim")
 
         if not basic_checks["content_checks_passed"]:
             reasoning += f"\n\nExpected content missing: {basic_checks.get('content_found', [])}"

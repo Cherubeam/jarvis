@@ -1,0 +1,34 @@
+name: "review_language_errors"
+description: >
+  Language review against a writer's voice rules: typos, then/than, its/it's,
+  German word order and German placeholder words are errors to fix or flag;
+  commas before subordinate clauses, semicolons and text emoticons are voice to
+  keep. Synthetic text — modeled on a 2026-09 /review run where the default
+  model praised typos and German placeholder words as "voice".
+category: "personalization"
+context:
+  voice_rules: |
+    The writer is a German professional writing in English.
+    Keep as voice (never "fix"): commas before subordinate clauses, semicolons
+    joining clauses, text emoticons like :).
+    Errors to fix: typos, then/than, its/it's, German word order.
+    German words in English text are placeholders for an English word the writer
+    could not find in the moment: flag each one and suggest an English word.
+conversation:
+  - role: "user"
+    content: |
+      Check the language of this paragraph. List each error with its fix, and don't touch anything that is my voice.
+
+      Last week I tried to explain my team what are actually the implications of using LLMs in our daily work. Most people see an assistant that is mimicing a colleague, but its a text predictor with impressive cabailities, not more then that. I rewrote my notes twice, so they sound more like me; the second version was better. We need to abwägen costs and benefits before we roll this out further :)
+  - role: "assistant"
+    expected_content:
+      - "mimicking"
+      - "capabilities"
+      - "than"
+    expected_qualities:
+      flags_all_spelling_errors: "mimicing -> mimicking, cabailities -> capabilities, its -> it's, then -> than"
+      fixes_german_word_order: "'what are actually the implications' is rewritten into natural English order, e.g. 'what the implications actually are'"
+      flags_german_placeholder_word: "'abwägen' is flagged as a placeholder and an English word is suggested (e.g. 'weigh'); it is NOT praised or kept as voice"
+      never_calls_errors_voice: "No typo, German word or German word order is described as voice, style, charm or authenticity"
+      keeps_voice_markers: "The comma before 'so they sound', the semicolon and the ':)' are left alone and not listed as errors"
+      no_full_rewrite: "Lists targeted fixes instead of rewriting the paragraph in a different style"
