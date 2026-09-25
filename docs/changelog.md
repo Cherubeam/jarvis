@@ -22,8 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the create tools) and `suggest_improvements` refuse with a "changed on disk
   since you read it — read it again" error when the file differs. `write_note()`
   also re-checks after approval, so edits saved while the prompt is open aren't
-  overwritten either. Data integrity and human oversight (EU AI Act Art. 14):
-  the approver can't catch a revert that looks like the agent's own change.
+  overwritten either. Human oversight (EU AI Act Art. 14(4)(c), applied
+  voluntarily: JARVIS isn't a high-risk system): the approver can't correctly
+  interpret a revert that looks like the agent's own change. OWASP LLM06
+  Excessive Agency: an agent with write access must not overwrite data it
+  never saw.
 
 ### Changed — Model refresh: GPT-6 Luna default, Opus 5.5 quality (2026-09-25)
 
