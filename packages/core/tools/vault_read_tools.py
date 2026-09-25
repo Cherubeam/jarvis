@@ -13,6 +13,7 @@ from packages.integrations.obsidian.vault import (
     get_daily_note_path,
     list_notes,
     read_note,
+    record_read,
 )
 
 MAX_CONTENT_SIZE = 50_000  # 50KB cap for note content
@@ -39,6 +40,7 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
             return f"Error: {e}"
         except FileNotFoundError:
             return f"Error: File not found: {path}"
+        record_read(full_path, content, vault_config)
 
         if len(content) > MAX_CONTENT_SIZE:
             content = content[:MAX_CONTENT_SIZE] + "\n\n[Truncated — content exceeds 50KB]"
@@ -142,6 +144,7 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
         except FileNotFoundError:
             display_date = date if date else "today"
             return f"Error: Daily note not found for {display_date}."
+        record_read(note_path, content, vault_config)
 
         if len(content) > MAX_CONTENT_SIZE:
             content = content[:MAX_CONTENT_SIZE] + "\n\n[Truncated — content exceeds 50KB]"

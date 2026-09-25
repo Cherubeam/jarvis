@@ -303,7 +303,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 - Compute and format diffs (CLI and API output)
 - Orchestrate write operations with diff → confirm → write flow
 **Key Modules:**
-- `vault.py`: `VaultConfig`, path validation, read/list/get daily note
+- `vault.py`: `VaultConfig`, path validation, read/list/get daily note, read ledger (`record_read()`, `changed_since_read()`)
 - `callout.py`: `CalloutBlock`, `find_jarvis_callout()`, `build_updated_content()` (no I/O)
 - `diff.py`: `VaultDiff`, `compute_diff()`, CLI/API formatters
 - `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`, `write_note()`
@@ -313,6 +313,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 - **ConfirmationHandler ABC**: CLI and future GUI each implement this interface
 - **Pure string callout parsing**: No I/O in callout module, testable in isolation
 - **Path validation**: All vault I/O goes through `vault.py`, uses `Path.resolve()` to block traversal
+- **No stale writes**: agent-facing read tools record a hash of what the agent saw on `VaultConfig.read_hashes` (per session). `write_note()` and `suggest_improvements` refuse when the note changed on disk since that read, and `write_note()` re-checks after approval, so a full-file proposal can't revert edits made in Obsidian meanwhile. Notes the agent never read aren't tracked
 - **Prompts on demand**: Not in system prompt, loaded only for `/daily-summary` command via `JarvisAgent.load_prompt()`
 
 **CLI Command**: `/daily-summary`
