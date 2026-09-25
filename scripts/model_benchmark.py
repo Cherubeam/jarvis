@@ -15,18 +15,22 @@ from typing import Any
 
 from packages.core.benchmark_costs import estimate_benchmark_costs, get_run_dir
 from packages.core.pricing import format_cost
+from packages.core.settings import load_config
 
+# 2026-09 refresh shortlist (see docs/research/models.md). Current default first as baseline.
 DEFAULT_MODELS = [
-    "anthropic/claude-sonnet-4.5",
-    "anthropic/claude-opus-4.5",
-    "openai/gpt-oss-120b",
-    "openai/gpt-5.2",
-    "openai/gpt-5.2-codex",
-    "openai/gpt-5.2-pro",
-    "google/gemini-3-flash-preview",
-    "google/gemini-3-pro-preview",
+    "qwen/qwen3.5-flash-02-23",
+    "deepseek/deepseek-v4.1-flash",
+    "openai/gpt-5.6-luna",
+    "openai/gpt-6-luna",
+    "z-ai/glm-5.3-flash",
+    "qwen/qwen3.7-flash",
+    "google/gemini-3.5-flash-lite",
+    "z-ai/glm-5.3",
+    "anthropic/claude-sonnet-5",
+    "anthropic/claude-opus-5.5",
 ]
-DEFAULT_JUDGE_MODEL = "anthropic/claude-opus-4.5"
+DEFAULT_JUDGE_MODEL = load_config().evaluation.judge_model
 DEFAULT_RESULTS_DIR = "tests/golden/results"
 
 

@@ -4,7 +4,7 @@ This directory contains the LLM-as-judge evaluation system for golden test conve
 
 ## Overview
 
-The evaluation system automatically assesses the quality of AI assistant responses using a high-quality LLM (Claude Opus 4.5) as a judge. This enables:
+The evaluation system automatically assesses the quality of AI assistant responses using a high-quality LLM (`evaluation.judge_model`, currently Claude Opus 5.5) as a judge. This enables:
 
 - Automated quality evaluation of responses
 - Regression detection across code changes
@@ -23,13 +23,13 @@ pytest tests/golden/
 pytest tests/golden/test_golden_conversations.py::TestGoldenConversationStructure -v
 ```
 
-### Run Golden Tests With Evaluation (Costs ~$0.41)
+### Run Golden Tests With Evaluation (Costs ~$0.20–0.50 per model)
 
 ```bash
 # Requires OPENROUTER_API_KEY environment variable
 export OPENROUTER_API_KEY="your-key-here"
 
-# Run all 8 golden tests with evaluation
+# Run all 14 golden tests with evaluation
 pytest tests/golden/ --evaluate -v
 
 # Run specific test
@@ -41,6 +41,23 @@ pytest tests/golden/ --evaluate --judge-model=anthropic/claude-sonnet-4 -v
 # Adjust quality threshold
 pytest tests/golden/ --evaluate --quality-threshold=0.80 -v
 ```
+
+### Benchmarking Several Models
+
+Run models **one at a time**. Parallel runs share one OpenRouter in-flight credit
+budget and fail with 402 `in_flight_budget_exhausted`. On a low balance, every call
+must fit the remaining credit, so the harness caps output (`models.default_max_tokens`
+for the model under test, 4,096 for the judge).
+
+```bash
+DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate
+```
+
+### Exact-Match Checks
+
+An assistant turn can list `required_verbatim` strings (URLs, frontmatter lines).
+They must appear case-sensitively in the answer; a missing one caps the score at
+0.3, like a forbidden pattern. Test 14 uses it for link preservation.
 
 ## File Structure
 
@@ -87,7 +104,7 @@ tests/golden/
 
 - **Cost Optimization**:
   - Use cheaper judge model: `--judge-model=anthropic/claude-sonnet-4`
-  - Run specific tests instead of all 8
+  - Run specific tests instead of all 14
   - Skip evaluation in CI, run manually for important changes
 
 ## Configuration
@@ -96,7 +113,7 @@ Edit `config.yaml` to adjust settings:
 
 ```yaml
 evaluation:
-  judge_model: "anthropic/claude-opus-4.5"
+  judge_model: "anthropic/claude-opus-5.5"
   quality_threshold: 0.70
 
   category_thresholds:

@@ -357,11 +357,14 @@ def pytest_addoption(parser):
         default=False,
         help="Run actual LLM calls and judge evaluation for golden tests (incurs cost)",
     )
+    from packages.core.settings import load_config
+
+    judge_default = load_config().evaluation.judge_model
     parser.addoption(
         "--judge-model",
         action="store",
-        default="anthropic/claude-opus-4.5",
-        help="Model to use as judge (default: claude-opus-4.5)",
+        default=judge_default,
+        help=f"Model to use as judge (default: evaluation.judge_model = {judge_default})",
     )
     parser.addoption(
         "--quality-threshold",

@@ -194,6 +194,46 @@ class TestJudgeEvaluator:
         assert "bad phrase" in result.evaluation.forbidden_patterns_found
         assert result.passed is False  # Forbidden patterns cause failure
 
+    def _evaluate(self, client, response: str, criteria):
+        evaluator = JudgeEvaluator(judge_client=client, config={"quality_threshold": 0.70})
+        return evaluator.evaluate_response(
+            test_name="test",
+            test_category="personalization",
+            context={},
+            user_message="Test?",
+            actual_response=response,
+            criteria=criteria,
+            model_tested="test-model",
+            response_metrics={"latency_ms": 100, "tokens": {}, "cost_usd": 0.005},
+        )
+
+    def test_required_verbatim_present_passes(self, mock_judge_client):
+        criteria = EvaluationCriteria(qualities={}, required_verbatim=["https://i.ytimg.com/vi/x.jpg"])
+        result = self._evaluate(mock_judge_client, "image: https://i.ytimg.com/vi/x.jpg", criteria)
+        assert result.passed is True
+        assert "required_verbatim" not in result.evaluation.failed_criteria
+
+    def test_required_verbatim_altered_caps_score(self, mock_judge_client):
+        """A one-character URL change fails even when the judge scores it high."""
+        criteria = EvaluationCriteria(qualities={}, required_verbatim=["https://i.ytimg.com/vi/x.jpg"])
+        result = self._evaluate(mock_judge_client, "image: https://i.yimg.com/vi/x.jpg", criteria)
+        assert result.passed is False
+        assert result.evaluation.overall_score <= 0.3
+        assert "required_verbatim" in result.evaluation.failed_criteria
+        assert "https://i.ytimg.com/vi/x.jpg" in result.evaluation.reasoning
+
+    def test_required_verbatim_is_case_sensitive(self, mock_judge_client):
+        criteria = EvaluationCriteria(qualities={}, required_verbatim=["status: draft"])
+        result = self._evaluate(mock_judge_client, "Status: Draft", criteria)
+        assert result.passed is False
+
+    def test_required_verbatim_caps_fallback_score(self):
+        mock_client = Mock()
+        mock_client.chat_stream.side_effect = Exception("API error")
+        criteria = EvaluationCriteria(qualities={}, required_verbatim=["keep me"])
+        result = self._evaluate(mock_client, "changed", criteria)
+        assert result.evaluation.overall_score == 0.3
+
     def test_multiple_forbidden_patterns(self, mock_judge_client):
         """Test detection of multiple forbidden patterns."""
         evaluator = JudgeEvaluator(judge_client=mock_judge_client, config={"quality_threshold": 0.70})
