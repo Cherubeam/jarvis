@@ -65,8 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shown above the diff in the CLI and on the GUI approval card, and
   `suggest_improvements` puts the list in its tool result so the agent can
   explain or undo it. New files are skipped. Human oversight (EU AI Act
-  Art. 14): a one-character URL change is easy to miss in a long diff.
-  Integrity of vault content; OWASP LLM09 (misinformation).
+  Art. 14(4)(c), applied voluntarily: JARVIS isn't a high-risk system): a
+  one-character URL change is easy to miss in a long diff. OWASP LLM05
+  Improper Output Handling: model output is checked before it's written.
 
 ### Fixed — GUI approval card showed no diff (2026-09-24)
 
@@ -75,8 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   have, so every approval card rendered the dataclass repr as one context line
   and an empty path. It now maps `VaultDiff.diff_lines` and `file_path`. The
   tests had used a stand-in object with the wrong field names; they now build
-  real diffs. Human oversight (EU AI Act Art. 14): an approval gate is only as
-  good as what the approver can see.
+  real diffs. Human oversight (EU AI Act Art. 14(4)(c), applied voluntarily:
+  JARVIS isn't a high-risk system): an approval gate is only as good as what
+  the approver can see.
 
 ### Fixed — Default model answered with its own thinking (2026-09-24)
 
