@@ -3,17 +3,19 @@
 
 # Model configuration
 # Model IDs use full LiteLLM-routable format (provider prefix included).
-# Default: Qwen 3.5 Flash — 100% pass rate (0.925 avg score), 66x cheaper than
-# Sonnet 4.6, with confirmed tool-use support and 1M context.
-# See docs/research/models.md "Default Model Recommendation" for decision matrix.
+# Default: GPT-6 Luna — the only low-cost model to pass all 15 golden tests
+# (2026-09 refresh, avg 0.907 under an Opus 5.5 judge), ~3 s median latency,
+# $0.10/$0.50 per 1M tokens. fast/balanced use it too: no faster candidate was
+# reliable with tools. quality: Opus 5.5 (15/15, highest score).
+# See docs/research/models.md "Default Model Recommendation" for the decision matrix.
 models:
-  default: "openrouter/qwen/qwen3.5-flash-02-23"
+  default: "openrouter/openai/gpt-6-luna"
   default_max_tokens: 16384
   streaming: true  # Set to false for non-streaming mode (enables prompt caching via OpenRouter)
   presets:
-    fast: "openrouter/google/gemini-2.5-flash"
-    quality: "openrouter/anthropic/claude-opus-4.6"
-    balanced: "openrouter/qwen/qwen3.5-flash-02-23"
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
   # Per-model request body fields, keyed by full model id and sent on every call
   # made with that model. Qwen 3.5 Flash otherwise returns its thinking as the answer.
   extra_body:
@@ -41,7 +43,7 @@ things3:
 
 # LLM-as-judge evaluation settings
 evaluation:
-  judge_model: "anthropic/claude-opus-4.6"
+  judge_model: "anthropic/claude-opus-5.5"  # read by tests/golden and scripts/model_benchmark.py
   quality_threshold: 0.70  # Minimum score to pass
 
   # Category-specific thresholds (optional overrides)

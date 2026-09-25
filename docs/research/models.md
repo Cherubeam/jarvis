@@ -13,6 +13,8 @@ Choosing the right model is a cost/quality tradeoff. No single model is best for
 
 **Key Insight**: Provider independence (via LiteLLM) means we can switch models anytime to optimize for the task at hand.
 
+> **Current results:** see [Benchmark Results](#benchmark-results) and [Default Model Recommendation](#default-model-recommendation) (2026-09 refresh). The comparison table, cost examples and model notes below describe the April 2026 landscape and are kept for history.
+
 ---
 
 ## Model Comparison Table
@@ -262,16 +264,9 @@ Golden tests are defined; use them to benchmark models:
 
 ### Measure
 
-- **Quality**: Manual scoring (0-10) on:
-  - Accuracy
-  - Relevance
-  - Personalization
-  - Helpfulness
-  - Tone
-
-- **Cost**: Per test case
-
-- **Latency**: Time to first token (TTFT)
+- **Quality**: LLM-as-judge score (0–1) per test against the YAML criteria, plus rule-based caps (forbidden patterns, `required_verbatim`) at 0.3; pass threshold 0.70
+- **Cost**: Per test case, from token usage and litellm prices
+- **Latency**: Total response time per test
 
 ### Document Findings
 
@@ -285,65 +280,125 @@ Golden tests are defined; use them to benchmark models:
 ## Benchmark Results
 
 <!-- BENCHMARK_TABLE_START -->
-Generated: 2026-04-07 UTC
-Judge model: anthropic/claude-opus-4.5
-Test suite: 12 golden tests (8 conversation + 4 agentic tool-use)
+Generated: 2026-09-25 (runs 2026-09-24/25)
+Judge model: anthropic/claude-opus-5.5
+Test suite: 14 golden tests = 15 results per model (8 conversation, with the multi-turn test scored per turn; 2 writing; 4 agentic tool-use)
 
-| Model | Avg score | Pass rate | Avg response latency | Cost per request |
-| --- | --- | --- | --- | --- |
-| qwen/qwen3.5-plus-02-15 | 0.959 | 100% | 16,225 ms | $0.0006 |
-| qwen/qwen3.5-122b-a10b-20260224 | 0.954 | 100% | 9,864 ms | $0.0007 |
-| qwen/qwen3.5-flash-02-23 | 0.925 | 100% | 8,118 ms | $0.0001 |
-| anthropic/claude-sonnet-4.6 | 0.918 | 92% | 9,686 ms | $0.0066 |
-| google/gemini-2.5-flash | 0.874 | 92% | 4,289 ms | $0.0009 |
-| nvidia/nemotron-3-super-120b-a12b | 0.863 | 92% | 11,145 ms | $0.0002 |
-| google/gemini-2.5-flash-lite | 0.819 | 75% | 3,426 ms | $0.0002 |
+| Model | Passed | Avg score | Avg / median latency | Cost per request | $ in/out per 1M |
+| --- | --- | --- | --- | --- | --- |
+| anthropic/claude-opus-5.5 | 15/15 | 0.923 | 13.6 s / 11.2 s | $0.0139 | 4 / 20 |
+| **openai/gpt-6-luna** | **15/15** | 0.907 | **4.3 s / 3.0 s** | **$0.00014** | 0.10 / 0.50 |
+| openai/gpt-5.6-luna | 14/15 | 0.889 | 6.2 s / 3.3 s | $0.00049 | 0.20 / 1.20 |
+| z-ai/glm-5.3-flash | 14/15 | 0.883 | 25.0 s / 11.3 s | $0.00026 | 0.15 / 0.50 |
+| deepseek/deepseek-v4.1-flash | 13/15 | 0.881 | 25.3 s / 9.8 s | $0.00050 | 0.14 / 0.42 |
+| z-ai/glm-5.3 | 14/15 | 0.875 | 10.5 s / 6.8 s | $0.00170 | 0.84 / 2.64 |
+| google/gemini-3.5-flash-lite | 13/15 ¹ | 0.866 | 2.3 s / 1.9 s | $0.00096 | 0.30 / 2.50 |
+| qwen/qwen3.7-flash | 12/15 | 0.855 | 20.9 s / 21.9 s | $0.00008 | 0.03 / 0.13 |
+| anthropic/claude-sonnet-5 | 12/15 | 0.807 | 9.0 s / 7.5 s | $0.00573 | 2 / 10 |
+| qwen/qwen3.5-flash-02-23 (previous default) | 11/15 ² | 0.796 | 3.1 s / 3.2 s | $0.00013 | 0.065 / 0.26 |
 <!-- BENCHMARK_TABLE_END -->
 
-Notes:
-- All three Qwen 3.5 models achieved 100% pass rate, including the new agentic tool-use tests.
-- Claude Sonnet 4.6 failed `preferences_adherence` (too verbose for "max 3 sentences" constraint).
-- Gemini 2.5 Flash failed `tool_termination` (called tools unnecessarily on a general knowledge question).
-- Nemotron 3 Super failed `delegation` (hallucinated a non-existent tool name instead of using `delegate_to_agent`).
-- Gemini 2.5 Flash Lite failed 4 tests (25%) — too weak for agentic tasks.
-- Qwen 3.5 Flash is the best cost/quality balance: 100% pass, 0.925 score, 66x cheaper than Sonnet.
+¹ `delegation_to_developer` returned `finish_reason: error` / `MALFORMED_FUNCTION_CALL` in 3 of 3 attempts, which litellm cannot parse; counted as a fail, not scored.
+² `multi_step_search_then_read` did not converge within its 3 tool rounds; counted as a fail, not scored. Qwen 3.5 ran with `reasoning: {effort: "none"}` (see `models.extra_body`).
+
+Failures (Opus 5.5 judge):
+- **GPT-5.6 Luna:** multi-turn follow-up (turn 2).
+- **GLM 5.3 Flash:** multi-step search-then-read.
+- **DeepSeek V4.1 Flash:** ambiguous query, multi-turn turn 2.
+- **GLM 5.3:** delegation.
+- **Gemini 3.5 Flash-Lite:** multi-turn turn 2, delegation (malformed tool call).
+- **Qwen 3.7 Flash:** ambiguous query, multi-turn turn 2, technical deep dive.
+- **Claude Sonnet 5:** ambiguous query, delegation, tool termination (called a tool for a general-knowledge question).
+- **Qwen 3.5 Flash:** ambiguous query, `edit_preserves_links` (0.55: changed text it was only asked to copy), multi-turn turn 2, multi-step did not converge.
+
+### Second judge (google/gemini-3.8-flash)
+
+The stored answers of the 11 conversation results per model were re-scored by a second judge from
+neither the Anthropic nor the OpenAI family. The agentic tests weren't re-scored: their tool
+transcripts aren't stored.
+
+| Model | Gemini 3.8 Flash avg (pass) | Opus 5.5 avg (pass), same set |
+| --- | --- | --- |
+| anthropic/claude-opus-5.5 | 0.997 (100%) | 0.921 (100%) |
+| z-ai/glm-5.3-flash | 0.994 (100%) | 0.899 (100%) |
+| z-ai/glm-5.3 | 0.991 (100%) | 0.915 (100%) |
+| qwen/qwen3.7-flash | 0.984 (100%) | 0.841 (73%) |
+| openai/gpt-6-luna | 0.971 (100%) | 0.904 (100%) |
+| deepseek/deepseek-v4.1-flash | 0.964 (91%) | 0.870 (82%) |
+| openai/gpt-5.6-luna | 0.948 (91%) | 0.878 (91%) |
+| google/gemini-3.5-flash-lite | 0.944 (100%) | 0.849 (91%) |
+| anthropic/claude-sonnet-5 | 0.923 (91%) | 0.848 (91%) |
+| qwen/qwen3.5-flash-02-23 | 0.984 (100%) on 8 of 11 ³ | 0.841 on the same 8 |
+
+³ The second judge returned no usable verdict for 3 Qwen 3.5 answers (`ambiguous_query`,
+`context_recall_profile`, `edit_preserves_links`), even with a 16k output cap; they are left out.
+
+Reading the two judges together:
+- Gemini 3.8 Flash is lenient (0.92–1.00) and separates the models less than Opus does.
+- They agree on the top (Opus 5.5) and on GPT-6 Luna passing every conversation test.
+- They disagree in the middle. Gemini rates Qwen 3.7 Flash and GLM 5.3 well above Opus's scores,
+  so the middle ranks are judge-dependent and shouldn't carry a decision alone.
+- The Opus-judged ranking could favour Claude-like answers; Sonnet 5 placing second-to-last
+  under an Anthropic judge argues against a strong same-family bias, but doesn't rule it out.
+
+### Method and changes since April
+
+- **Judge:** `evaluation.judge_model` (now read by `tests/conftest.py` and `scripts/model_benchmark.py`), Claude Opus 5.5, output capped at 4,096 tokens.
+- **Model under test:** called through `LLMClient` with the configured `models.extra_body` and `models.default_max_tokens`, not through the full agent stack.
+- **Multi-turn fixed:** follow-up turns now include the conversation so far (for the model and the judge), and each turn is scored separately. Before, the follow-up was sent without history and overwrote the first turn's result, so April's `multi_turn_reasoning` scores aren't comparable.
+- **New writing cases (synthetic):** `13_review_language_errors` (typos, German word order and German placeholder words are errors; commas, semicolons and emoticons are voice) and `14_edit_preserves_links` (a full-file edit must keep frontmatter, wikilinks and URLs byte-identical, enforced by the new `required_verbatim` check, which caps the score at 0.3).
+- **Known limit of 13 and 14:** every model except Qwen 3.5 passed both. The short synthetic texts don't reproduce the long full-file rewrite in which the original problems appeared.
+- **Stricter judge:** scores aren't comparable with April's Opus 4.5 run; Qwen 3.5 Flash dropped from 0.925 to 0.796 on largely the same tests.
+- **Cost:** about $4.50 for the whole refresh, including runs lost to OpenRouter's in-flight credit limit when the ten models first ran in parallel and to uncapped `max_tokens` on a low balance (both fixed: run models sequentially; the harness now caps tokens).
+
+### Live check in the real agent stack
+
+The golden harness doesn't exercise JARVIS's agents, so `/review` of a real vault draft was run with GPT-6 Luna as content_reviewer:
+- It found the draft, read it, ran `evaluate_content` and proposed a small, targeted diff (+4/−6 lines; Qwen 3.5 had proposed a +37/−40 rewrite).
+- It noticed the draft breaks off mid-sentence, which Qwen 3.5 hadn't.
+- It needed 7 tool rounds; content_reviewer's limit of 5 cut the first attempt short. The limit is now 10, and a model that runs out is told the tools still exist (`TOOL_LIMIT_NOTE`) instead of concluding they are missing.
 
 ---
 
 ## Default Model Recommendation
 
-Based on golden test benchmarks across 7 models with 12 tests (8 conversation + 4 agentic tool-use), we recommend **Qwen 3.5 Flash** as the default model.
+Based on the 2026-09 refresh (10 models, 15 results each, two judges), **GPT-6 Luna** replaces Qwen 3.5 Flash as the default.
 
 ### Decision Matrix
 
-| Criteria | Qwen 3.5 Flash | Qwen 3.5 Plus | Claude Sonnet 4.6 | Gemini 2.5 Flash |
+| Criteria | GPT-6 Luna | Opus 5.5 | GPT-5.6 Luna | Qwen 3.5 Flash (previous) |
 | --- | --- | --- | --- | --- |
-| **Avg Score** | 0.925 | 0.959 | 0.918 | 0.874 |
-| **Pass Rate** | 100% | 100% | 92% | 92% |
-| **Avg Latency** | 8,118 ms | 16,225 ms | 9,686 ms | 4,289 ms |
-| **Cost/Request** | $0.0001 | $0.0006 | $0.0066 | $0.0009 |
-| **Tool Use** | 100% pass | 100% pass | 100% pass | 92% pass |
+| **Passed (Opus judge)** | 15/15 | 15/15 | 14/15 | 11/15 |
+| **Avg score** | 0.907 | 0.923 | 0.889 | 0.796 |
+| **Conversation tests, second judge** | 100% | 100% | 91% | 100% on 8 of 11 |
+| **Median latency** | 3.0 s | 11.2 s | 3.3 s | 3.2 s |
+| **Cost/request** | $0.00014 | $0.0139 | $0.00049 | $0.00013 |
 
-### Rationale
+### Presets
 
-1. **100% pass rate** — all 12 golden tests pass including all 4 agentic tool-use tests
-2. **Higher quality than Sonnet** (0.925 vs 0.918) at **66x lower cost**
-3. **Confirmed tool use** — correct tool calling, delegation, multi-step chaining, and termination
-4. **1M context window** — larger than Sonnet's 200K, useful for long conversations
-5. **Good latency** — 8.1s average, comparable to Sonnet (9.7s)
+| Preset | Model | Why |
+| --- | --- | --- |
+| `default` | `openrouter/openai/gpt-6-luna` | Only low-cost model with 15/15; about the same price as Qwen 3.5 Flash |
+| `balanced` | `openrouter/openai/gpt-6-luna` | The router sends most turns here; no mid-priced model beat it |
+| `fast` | `openrouter/openai/gpt-6-luna` | The only faster candidate, Gemini 3.5 Flash-Lite, sends malformed tool calls, and routed short turns still carry tools. Replaces `google/gemini-2.5-flash`, which OpenRouter retires on 2026-10-20 |
+| `quality` | `openrouter/anthropic/claude-opus-5.5` | Highest score, 15/15; cheaper than Opus 4.6 ($4/$20 vs $5/$25) |
 
 ### When to Override
 
-- **Maximum quality**: Use `quality` preset (Claude Opus 4.6) for complex multi-step reasoning
-- **Lowest latency**: Use `fast` preset (Gemini 2.5 Flash, ~4.3s avg) when speed matters most
-- **Higher quality at low cost**: Use `qwen/qwen3.5-plus-02-15` (0.959 score) at $0.0006/request
+- **Maximum quality:** `quality` preset (Opus 5.5), about 100× the cost per request.
+- **Lowest latency without tools:** Gemini 3.5 Flash-Lite (1.9 s median), but not for turns that call tools.
+- **Watch list:** GLM 5.3 Flash and DeepSeek V4.1 Flash score close to GPT-5.6 Luna at similar prices, but reason by default and are slow (25 s average). Re-test with lower reasoning effort if latency matters less than price.
 
 ### Configuration
 
 Set in `config/default.yaml`:
 ```yaml
 models:
-  default: "openrouter/qwen/qwen3.5-flash-02-23"
+  default: "openrouter/openai/gpt-6-luna"
+  presets:
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
 ```
 
 Override per-session via `--model` flag or `/model` command.
@@ -377,11 +432,11 @@ Override per-session via `--model` flag or `/model` command.
 Edit `config/default.yaml` (or override in `config/local.yaml`):
 ```yaml
 models:
-  default: "openrouter/anthropic/claude-sonnet-4.6"
+  default: "openrouter/openai/gpt-6-luna"
   presets:
-    fast: "openrouter/google/gemini-2.5-flash"
-    quality: "openrouter/anthropic/claude-opus-4.6"
-    balanced: "openrouter/anthropic/claude-sonnet-4.6"
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
 ```
 
 ### Via CLI Flag

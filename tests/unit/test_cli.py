@@ -33,7 +33,7 @@ class TestLoadConfig:
         settings = load_config()
 
         assert isinstance(settings, Settings)
-        assert settings.models.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.models.default == "openrouter/openai/gpt-6-luna"
         assert settings.outcomes.enabled is True
         assert settings.jarvis_dir == tmp_path
 

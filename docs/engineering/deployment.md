@@ -167,8 +167,8 @@ Model IDs use full LiteLLM-routable format with provider prefix (e.g. `openroute
 
 ```bash
 # Use a preset
-uv run python -m apps.cli.main --model quality   # → openrouter/anthropic/claude-opus-4.6
-uv run python -m apps.cli.main --model fast       # → openrouter/google/gemini-2.5-flash
+uv run python -m apps.cli.main --model quality   # → openrouter/anthropic/claude-opus-5.5
+uv run python -m apps.cli.main --model fast       # → openrouter/openai/gpt-6-luna
 
 # Use a literal model ID
 uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
@@ -187,11 +187,11 @@ uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
 Edit `config/default.yaml` (or `config/local.yaml`):
 ```yaml
 models:
-  default: "openrouter/anthropic/claude-sonnet-4.6"
+  default: "openrouter/openai/gpt-6-luna"
   presets:
-    fast: "openrouter/google/gemini-2.5-flash"
-    quality: "openrouter/anthropic/claude-opus-4.6"
-    balanced: "openrouter/anthropic/claude-sonnet-4.6"
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
 ```
 
 ### Per-Model Request Fields
