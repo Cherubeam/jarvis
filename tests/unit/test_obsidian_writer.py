@@ -6,12 +6,13 @@ import pytest
 
 from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemGuard
 from packages.integrations.obsidian.diff import VaultDiff
-from packages.integrations.obsidian.vault import VaultConfig
+from packages.integrations.obsidian.vault import VaultConfig, record_read
 from packages.integrations.obsidian.writer import (
     CLIConfirmationHandler,
     ConfirmationHandler,
     append_to_daily_note,
     append_to_note,
+    write_note,
 )
 
 # ==================== Test Helpers ====================
@@ -251,3 +252,94 @@ class TestCLIConfirmationHandler:
 
         monkeypatch.setattr("builtins.input", raise_eof)
         assert handler.get_confirmation() is False
+
+
+# ==================== Stale writes (file changed since the agent read it) ====================
+
+
+class _EditWhileWaiting(ConfirmationHandler):
+    """Approves, but the user saves the note while the approval prompt is open."""
+
+    def __init__(self, note: Path, new_text: str | None):
+        self.note, self.new_text = note, new_text
+        self.presented_diff: VaultDiff | None = None
+
+    def present_diff(self, diff: VaultDiff) -> None:
+        self.presented_diff = diff
+
+    def get_confirmation(self, prompt: str = "Apply this change?") -> bool:
+        if self.new_text is not None:
+            self.note.write_text(self.new_text, encoding="utf-8")
+        return True
+
+
+@pytest.fixture
+def writable_note(tmp_path):
+    notes = tmp_path / "Notes"
+    notes.mkdir()
+    note = notes / "draft.md"
+    note.write_text("version 1\n", encoding="utf-8")
+    config = VaultConfig(vault_path=tmp_path, filesystem_guard=_guard((notes, AccessLevel.READ_WRITE)))
+    return config, note
+
+
+class TestStaleWrites:
+    def test_refuses_when_note_changed_since_read(self, writable_note):
+        config, note = writable_note
+        record_read(note, "version 1\n", config)
+        note.write_text("version 2 — edited in Obsidian\n", encoding="utf-8")
+        handler = MockConfirmationHandler(confirm=True)
+
+        result = write_note(note, "version 1, improved\n", config, handler)
+
+        assert result.success is False
+        assert result.action == "stale"
+        assert result.message.startswith("Error: Notes/draft.md changed on disk since you read it")
+        assert handler.presented_diff is None  # never shown for approval
+        assert note.read_text(encoding="utf-8") == "version 2 — edited in Obsidian\n"
+
+    def test_writes_when_unchanged_since_read(self, writable_note):
+        config, note = writable_note
+        record_read(note, "version 1\n", config)
+
+        result = write_note(note, "version 1, improved\n", config, MockConfirmationHandler(confirm=True))
+
+        assert result.success is True
+        assert note.read_text(encoding="utf-8") == "version 1, improved\n"
+
+    def test_untracked_note_is_not_blocked(self, writable_note):
+        config, note = writable_note
+        result = write_note(note, "blind edit\n", config, MockConfirmationHandler(confirm=True))
+        assert result.success is True
+
+    def test_successful_write_becomes_the_new_baseline(self, writable_note):
+        """A follow-up edit on the agent's own write must not be flagged as stale."""
+        config, note = writable_note
+        record_read(note, "version 1\n", config)
+        write_note(note, "second\n", config, MockConfirmationHandler(confirm=True))
+
+        result = write_note(note, "third\n", config, MockConfirmationHandler(confirm=True))
+
+        assert result.success is True
+        assert note.read_text(encoding="utf-8") == "third\n"
+
+    def test_refuses_when_note_changed_during_approval(self, writable_note):
+        config, note = writable_note
+        handler = _EditWhileWaiting(note, "user saved meanwhile\n")
+
+        result = write_note(note, "agent version\n", config, handler)
+
+        assert result.success is False
+        assert result.action == "stale"
+        assert "changed on disk while waiting for approval" in result.message
+        assert note.read_text(encoding="utf-8") == "user saved meanwhile\n"
+
+    def test_refuses_when_new_file_appears_during_approval(self, writable_note):
+        config, note = writable_note
+        new_note = note.parent / "new.md"
+        handler = _EditWhileWaiting(new_note, "created by the user meanwhile\n")
+
+        result = write_note(new_note, "agent version\n", config, handler)
+
+        assert result.action == "stale"
+        assert new_note.read_text(encoding="utf-8") == "created by the user meanwhile\n"

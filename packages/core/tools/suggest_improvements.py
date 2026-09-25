@@ -7,7 +7,7 @@ Uses the closure pattern to capture VaultConfig and ConfirmationHandler.
 
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.diff import compute_diff
-from packages.integrations.obsidian.vault import VaultConfig, read_note
+from packages.integrations.obsidian.vault import STALE_READ_MESSAGE, VaultConfig, changed_since_read, read_note
 from packages.integrations.obsidian.writer import ConfirmationHandler
 
 
@@ -37,6 +37,8 @@ def make_suggest_improvements_tool(
             return f"Error: {e}"
 
         rel_path = str(full_path.relative_to(vault_config.vault_path))
+        if changed_since_read(full_path, original, vault_config):
+            return STALE_READ_MESSAGE.format(path=rel_path)
         diff = compute_diff(rel_path, original, improved_content)
 
         if not diff.diff_lines:

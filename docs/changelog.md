@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Vault edits could revert changes made in Obsidian meanwhile (2026-09-25)
+
+- **Edits refuse to overwrite a note that changed since the agent read it.**
+  Vault edit tools take the whole file as new content and compared it with
+  the note as it was at write time, not as the agent read it. In a live
+  `/review` the draft was saved in Obsidian mid-run, and the suggested diff
+  showed the newer text and refreshed link-card URLs as things to undo;
+  approving `edit_blog_post` would have reverted them silently. The read tools
+  (`read_note`, `read_blog_post`, `read_daily_note`) now record a hash of what
+  the agent saw, and `write_note()` (behind `edit_blog_post`, `edit_note` and
+  the create tools) and `suggest_improvements` refuse with a "changed on disk
+  since you read it — read it again" error when the file differs. `write_note()`
+  also re-checks after approval, so edits saved while the prompt is open aren't
+  overwritten either. Data integrity and human oversight (EU AI Act Art. 14):
+  the approver can't catch a revert that looks like the agent's own change.
+
 ### Changed — Model refresh: GPT-6 Luna default, Opus 5.5 quality (2026-09-25)
 
 - **New default and presets.** A 10-model benchmark (15 golden results each,

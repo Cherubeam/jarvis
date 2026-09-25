@@ -8,10 +8,12 @@ from packages.core.filesystem_access import AccessLevel, AccessRule, FilesystemG
 from packages.core.settings import ObsidianDailyNotesSettings, ObsidianSettings
 from packages.integrations.obsidian.vault import (
     VaultConfig,
+    changed_since_read,
     get_daily_note_path,
     list_notes,
     load_vault_config,
     read_note,
+    record_read,
     validate_read,
     validate_write,
 )
@@ -263,3 +265,35 @@ class TestGetDailyNotePath:
         )
         result = get_daily_note_path(config, target_date="2026-02-09")
         assert result == tmp_path / "Journals" / "2026" / "2026-02" / "2026-02-09.md"
+
+
+# ==================== read ledger ====================
+
+
+class TestReadLedger:
+    def _config(self, tmp_path):
+        return VaultConfig(vault_path=tmp_path, filesystem_guard=_guard())
+
+    def test_untracked_note_is_not_changed(self, tmp_path):
+        assert changed_since_read(tmp_path / "a.md", "anything", self._config(tmp_path)) is False
+
+    def test_same_content_is_not_changed(self, tmp_path):
+        config = self._config(tmp_path)
+        record_read(tmp_path / "a.md", "text", config)
+        assert changed_since_read(tmp_path / "a.md", "text", config) is False
+
+    def test_different_content_is_changed(self, tmp_path):
+        config = self._config(tmp_path)
+        record_read(tmp_path / "a.md", "text", config)
+        assert changed_since_read(tmp_path / "a.md", "text edited", config) is True
+
+    def test_paths_are_normalized(self, tmp_path):
+        config = self._config(tmp_path)
+        (tmp_path / "sub").mkdir()
+        record_read(tmp_path / "sub" / ".." / "a.md", "text", config)
+        assert changed_since_read(tmp_path / "a.md", "other", config) is True
+
+    def test_ledger_is_per_vault_config(self, tmp_path):
+        first, second = self._config(tmp_path), self._config(tmp_path)
+        record_read(tmp_path / "a.md", "text", first)
+        assert changed_since_read(tmp_path / "a.md", "other", second) is False

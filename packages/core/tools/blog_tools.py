@@ -7,7 +7,7 @@ to capture VaultConfig and ConfirmationHandler.
 """
 
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note, validate_write
+from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note, record_read, validate_write
 from packages.integrations.obsidian.writer import ConfirmationHandler, WriteResult, write_note
 
 
@@ -75,6 +75,7 @@ def make_blog_tools(
             return f"Error: {e}"
         except FileNotFoundError:
             return f"Error: File not found: {path}"
+        record_read(full_path, content, vault_config)
         return content
 
     read_tool = ToolDefinition(

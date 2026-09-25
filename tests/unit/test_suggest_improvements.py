@@ -107,6 +107,19 @@ class TestSuggestImprovements:
         result = tool.execute(path="content/post.md", improved_content="# Hello\n\nImproved.\n")
         assert "Warning" not in result
 
+    def test_refuses_when_file_changed_since_read(self, vault, tool_and_handler):
+        from packages.integrations.obsidian.vault import record_read
+
+        config, _, sample = vault
+        tool, handler, _ = tool_and_handler
+        record_read(sample, sample.read_text(encoding="utf-8"), config)
+        sample.write_text("# Hello\n\nEdited in Obsidian meanwhile.\n", encoding="utf-8")
+
+        result = tool.execute(path="content/post.md", improved_content="# Hello\n\nImproved.\n")
+
+        assert result.startswith("Error: content/post.md changed on disk since you read it")
+        assert handler.presented_diff is None
+
     def test_diff_summary_in_result(self, tool_and_handler):
         tool, handler, _ = tool_and_handler
         result = tool.execute(

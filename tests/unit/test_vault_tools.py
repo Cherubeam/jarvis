@@ -418,3 +418,34 @@ class TestReadDailyNote:
 
         assert result.endswith("\n\n[Truncated — content exceeds 50KB]")
         assert len(result) == MAX_CONTENT_SIZE + len("\n\n[Truncated — content exceeds 50KB]")
+
+
+# ==================== read ledger ====================
+
+
+@pytest.mark.unit
+class TestReadToolsRecordWhatTheAgentSaw:
+    def test_read_note_records(self, tools):
+        from packages.integrations.obsidian.vault import changed_since_read
+
+        tool_list, vault_path, config = tools
+        note = vault_path / "Notes" / "seen.md"
+        note.write_text("as read")
+        _get_tool(tool_list, "read_note").execute(path="Notes/seen.md")
+        assert changed_since_read(note, "as read", config) is False
+        assert changed_since_read(note, "edited later", config) is True
+
+    def test_read_daily_note_records(self, tools):
+        from packages.integrations.obsidian.vault import changed_since_read
+
+        tool_list, vault_path, config = tools
+        today = date.today().strftime("%Y-%m-%d")
+        note = vault_path / "Daily Notes" / f"{today}.md"
+        note.write_text("today")
+        _get_tool(tool_list, "read_daily_note").execute()
+        assert changed_since_read(note, "today, edited", config) is True
+
+    def test_failed_read_records_nothing(self, tools):
+        tool_list, _, config = tools
+        _get_tool(tool_list, "read_note").execute(path="Notes/missing.md")
+        assert config.read_hashes == {}

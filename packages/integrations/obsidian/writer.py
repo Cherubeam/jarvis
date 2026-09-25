@@ -21,7 +21,13 @@ from packages.integrations.obsidian.diff import (
     compute_diff,
     format_diff_for_cli,
 )
-from packages.integrations.obsidian.vault import VaultConfig, validate_write
+from packages.integrations.obsidian.vault import (
+    STALE_READ_MESSAGE,
+    VaultConfig,
+    changed_since_read,
+    record_read,
+    validate_write,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +70,7 @@ class WriteResult:
 
     success: bool
     file_path: str
-    action: str  # "appended", "rejected", "no_callout", "error"
+    action: str  # "appended", "written", "created", "rejected", "stale", "no_callout", "error"
     message: str
     diff: VaultDiff | None = None
 
@@ -116,6 +122,15 @@ def write_note(
                 action="error",
                 message=str(e),
             )
+        # The agent's full-file proposal is based on what it read; if the note moved on
+        # since, writing it would silently revert the newer edits.
+        if changed_since_read(note_path, original, vault_config):
+            return WriteResult(
+                success=False,
+                file_path=rel_path,
+                action="stale",
+                message=STALE_READ_MESSAGE.format(path=rel_path),
+            )
 
     # Compute diff
     diff = compute_diff(rel_path, original, proposed_content)
@@ -135,12 +150,27 @@ def write_note(
             diff=diff,
         )
 
+    # The approval prompt can stay open for a while; don't overwrite edits made meanwhile
+    current = note_path.read_text(encoding="utf-8") if note_path.exists() else None
+    if current != (None if is_new else original):
+        return WriteResult(
+            success=False,
+            file_path=rel_path,
+            action="stale",
+            message=(
+                f"Error: {rel_path} changed on disk while waiting for approval. Nothing was written. "
+                "Read it again and redo the change on the current version."
+            ),
+            diff=diff,
+        )
+
     # Create parent directories if needed
     note_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write the file
     try:
         note_path.write_text(proposed_content, encoding="utf-8")
+        record_read(note_path, proposed_content, vault_config)
         action = "created" if is_new else "written"
         logger.info(f"{'Created' if is_new else 'Wrote'} {rel_path}")
         return WriteResult(

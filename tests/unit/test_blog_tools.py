@@ -438,3 +438,41 @@ class TestEditBlogPost:
 
         assert "cancelled" in result.lower()
         assert post.read_text(encoding="utf-8") == "original content"
+
+
+# ==================== stale edits ====================
+
+
+@pytest.mark.unit
+class TestEditAfterConcurrentChange:
+    """read_blog_post → user edits in Obsidian → edit_blog_post must not revert it."""
+
+    def test_edit_refused_when_post_changed_since_read(self, tools):
+        tool_list, blog_dir, _, handler = tools
+        post = blog_dir / "post.md"
+        post.write_text("draft v1\n", encoding="utf-8")
+        _get_tool(tool_list, "read_blog_post").execute(path="03 – Areas/02 – Substack/post.md")
+        post.write_text("draft v2 from Obsidian\n", encoding="utf-8")
+
+        result = _get_tool(tool_list, "edit_blog_post").execute(
+            path="03 – Areas/02 – Substack/post.md", new_content="draft v1, polished\n"
+        )
+
+        assert result.startswith("Error: 03 – Areas/02 – Substack/post.md changed on disk since you read it")
+        assert post.read_text(encoding="utf-8") == "draft v2 from Obsidian\n"
+
+    def test_edit_allowed_after_re_reading(self, tools):
+        tool_list, blog_dir, _, _ = tools
+        post = blog_dir / "post.md"
+        post.write_text("draft v1\n", encoding="utf-8")
+        read = _get_tool(tool_list, "read_blog_post")
+        read.execute(path="03 – Areas/02 – Substack/post.md")
+        post.write_text("draft v2 from Obsidian\n", encoding="utf-8")
+        read.execute(path="03 – Areas/02 – Substack/post.md")
+
+        result = _get_tool(tool_list, "edit_blog_post").execute(
+            path="03 – Areas/02 – Substack/post.md", new_content="draft v2, polished\n"
+        )
+
+        assert result.startswith("Successfully wrote")
+        assert post.read_text(encoding="utf-8") == "draft v2, polished\n"
