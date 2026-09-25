@@ -802,9 +802,13 @@ class TestStreamHandlerAgenticLoop:
         assert client.stream_with_tool_detection.call_count == max_iter
         # All iterations consumed — final chat_stream called with tools=None
         client.chat_stream.assert_called_once()
-        _, kwargs = client.chat_stream.call_args
+        args, kwargs = client.chat_stream.call_args
         assert kwargs.get("tools") is None
         assert result.text == "forced text"
+        # The forced call tells the model why tools are missing, as the last message
+        from packages.core.stream_handler import TOOL_LIMIT_NOTE
+
+        assert args[0][-1] == {"role": "user", "content": TOOL_LIMIT_NOTE}
 
     def test_default_max_iterations_is_5(self):
         """Without explicit max_iterations, the loop runs up to _MAX_AGENTIC_ITERATIONS=5."""
@@ -1050,6 +1054,31 @@ class TestStreamHandlerNonStreaming:
         assert result.tool_messages == []
         client.complete.assert_called_once()
         client.chat_stream.assert_not_called()
+
+    def test_nonstreaming_exhausted_loop_adds_tool_limit_note(self):
+        """Non-streaming path: the forced final call carries the tool-limit note and no tools."""
+        from packages.core.stream_handler import TOOL_LIMIT_NOTE
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
+
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok"))
+        call = _make_tool_call_obj("tc1", "my_tool", "{}")
+
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = [
+            _make_complete_response(tool_calls=[call]),
+            _make_complete_response(tool_calls=[call]),
+            _make_complete_response("forced text"),
+        ]
+        handler = StreamHandler(
+            client, MetricsTracker(), ModelPricing(prompt_cost=0, completion_cost=0, model_id="t"), "m", streaming=False
+        )
+        result = handler.stream([{"role": "user", "content": "hi"}], tool_registry=registry, max_iterations=2)
+
+        assert result.text == "forced text"
+        final_args, final_kwargs = client.complete.call_args
+        assert final_kwargs.get("tools") is None
+        assert final_args[0][-1] == {"role": "user", "content": TOOL_LIMIT_NOTE}
 
     def test_nonstreaming_cache_tokens_propagated(self):
         """Cache tokens are extracted and passed to pricing in non-streaming mode."""

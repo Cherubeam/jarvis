@@ -31,6 +31,14 @@ from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 _MAX_AGENTIC_ITERATIONS = 5
 _MIN_USEFUL_TOKENS = 256
 
+# Sent with the forced text-only answer once the tool loop runs out. Without it,
+# models see no tools in that call and tell the user the tools don't exist.
+TOOL_LIMIT_NOTE = (
+    "[System note: the tool-call limit for this turn is reached, so no tools are available for this "
+    "reply. They still exist and work in the next turn. Answer with what you have, and say which "
+    "step you would take next.]"
+)
+
 
 @dataclass
 class StreamResult:
@@ -359,6 +367,7 @@ class StreamHandler:
         else:
             # Loop exhausted all iterations — force text-only final response
             tools_format = None
+            messages = [*messages, {"role": "user", "content": TOOL_LIMIT_NOTE}]
 
         # Store accumulated intermediate usage so _stream_simple can add to it
         self._intermediate_usage = accumulated_usage
@@ -619,6 +628,7 @@ class StreamHandler:
         else:
             # Loop exhausted all iterations — force text-only final response
             tools_format = None
+            messages = [*messages, {"role": "user", "content": TOOL_LIMIT_NOTE}]
 
         self._intermediate_usage = accumulated_usage
         self._tool_messages = tool_messages
