@@ -220,7 +220,7 @@ Layout:
 - `TOOLS` chips (or "no tools · pure reasoning agent" when empty).
 - `RECENT SESSIONS` — up to 6 rows from `recent_sessions_for_agent(index, agent_id)` (4-column grid: date / title / msg count / cost).
 - `COST · LAST 14 DAYS` — agent-hue sparkline via `Cost14dSparkline`. 14 days, not 30 — reads closer to `CostCard`'s 7-day aesthetic and avoids too many zero bars for infrequently-used agents.
-- `CONFIGURATION` — model ("(inherits from session)"), `prompt_path`, `prompt_includes_count`, optional `temperature`, `max_iterations`, `skills`. JARVIS's `prompt_path` is `null`; UI shows `(assembled from ~/.jarvis/context/)` because `build_system_prompt()` composes it from soul.md + personal/professional/preferences/focus/tasks/reading profile files at turn time.
+- `CONFIGURATION` — model (the `model:` from meta.yaml, else "(inherits from session)"), `prompt_path`, `prompt_includes_count`, optional `temperature`, `max_iterations`, `skills`. JARVIS's `prompt_path` is `null`; UI shows `(assembled from ~/.jarvis/context/)` because `build_system_prompt()` composes it from soul.md + personal/professional/preferences/focus/tasks/reading profile files at turn time.
 
 ### Endpoints
 

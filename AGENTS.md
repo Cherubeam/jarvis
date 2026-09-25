@@ -225,6 +225,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
    name: my_agent
    description: What this agent does
    command: /my-agent
+   model: quality            # optional: preset name or model id; default = session model
    temperature: 0.7          # optional (default 0.7)
    max_tokens: 4096           # optional (default: provider decides)
    max_iterations: 20         # optional: for multi-step agentic loops

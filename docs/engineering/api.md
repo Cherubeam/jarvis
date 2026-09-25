@@ -455,6 +455,9 @@ All delegate agents are configured via a `meta.yaml` file in their directory:
 name: agent-name           # required — agent identifier
 description: What it does   # required — shown in help/registry
 command: /agent-name        # required — slash command to invoke
+model: quality              # optional — preset name or model id; the agent always runs on it
+                            #   (tool loop, final answer, nested tool calls, pricing);
+                            #   omit to use the session model (default, /model, routing)
 temperature: 0.7            # optional, default 0.7
 max_tokens: 4096            # optional (default: provider decides)
 max_iterations: 20          # optional — for multi-step agentic loops

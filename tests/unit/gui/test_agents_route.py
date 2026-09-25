@@ -120,9 +120,13 @@ def test_detail_writer_shape(client):
     assert j["name"] == "writer"
     assert j["command"] == "/write"
     assert j["prompt_path"] == "packages/agents/writer/prompts/system.md"
-    assert j["model"] is None
+    assert j["model"] == "quality"  # writer names its own model in meta.yaml
     assert isinstance(j["cost_14d"], list)
     assert len(j["cost_14d"]) == 14
+
+
+def test_detail_model_is_none_when_agent_inherits_session_model(client):
+    assert client.get("/api/agents/content_reviewer").json()["model"] is None
 
 
 def test_detail_writer_meta_yaml_fields_populated(client):

@@ -32,4 +32,5 @@ def build_delegate_agent(
         all_tools,
         skill_registry=c.skill_registry,
         card_search_tool=c.card_search_tool,
+        models=c.settings.models,
     )

@@ -5,7 +5,8 @@ Extracts streaming, metrics tracking, and cost calculation into a
 reusable class shared by all agents.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -25,7 +26,7 @@ from packages.core.llm_client import (
     TokenUsage,
     _extract_cache_tokens,
 )
-from packages.core.pricing import ModelPricing, calculate_cost_from_litellm
+from packages.core.pricing import ModelPricing, calculate_cost_from_litellm, get_model_pricing
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
 _MAX_AGENTIC_ITERATIONS = 5
@@ -88,6 +89,24 @@ class StreamHandler:
         self._intermediate_usage: TokenUsage | None = None
         self._tool_messages: list[dict[str, Any]] = []
         self._terminal_tool_fired: bool = False
+
+    @contextmanager
+    def using_model(self, model_id: str) -> Iterator[None]:
+        """Run with ``model_id`` (client default, reported model, pricing), then restore.
+
+        Nested model calls made through the same client in the meantime — e.g. a tool
+        like ``evaluate_content`` — follow the switch too.
+        """
+        saved = (self.client.default_model, self.model_id, self.pricing)
+        if model_id != self.model_id:
+            self.client.set_model(model_id)
+            self.model_id = model_id
+            self.pricing = get_model_pricing(model_id)
+        try:
+            yield
+        finally:
+            self.client.set_model(saved[0])
+            self.model_id, self.pricing = saved[1], saved[2]
 
     def _emit(self, event: Event) -> None:
         """Emit a typed event to the event callback if registered."""
