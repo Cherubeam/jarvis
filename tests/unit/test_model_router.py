@@ -69,23 +69,6 @@ class TestClassifyQuery:
         assert reason == "moderate complexity"
         assert confidence == 0.6
 
-    def test_developer_agent_always_quality(self):
-        preset, reason, confidence = classify_query("hi", _SAMPLE_SETTINGS, agent_name="developer")
-        assert preset == "quality"
-        assert reason == "agent 'developer' always uses quality model"
-        assert confidence == 0.95
-
-    def test_writer_agent_always_quality(self):
-        preset, reason, confidence = classify_query("hi", _SAMPLE_SETTINGS, agent_name="writer")
-        assert preset == "quality"
-        assert reason == "agent 'writer' always uses quality model"
-        assert confidence == 0.95
-
-    def test_researcher_agent_not_forced_to_quality(self):
-        preset, reason, _ = classify_query("hi", _SAMPLE_SETTINGS, agent_name="researcher")
-        assert preset == "fast"  # short query, no special agent override
-        assert reason == "short simple query"
-
     def test_custom_thresholds_respected(self):
         custom = _SAMPLE_SETTINGS.model_copy(
             update={"routing": RoutingSettings(simple_threshold=10, complex_threshold=50)}
@@ -134,12 +117,6 @@ class TestClassifyQuery:
         preset, _, _ = classify_query("hi", defaults)
         assert preset == "fast"
 
-    def test_all_quality_agents(self):
-        """All agents in the quality set route to quality."""
-        for agent in ("developer", "writer", "content_reviewer", "substack_publisher"):
-            preset, _, _ = classify_query("hi", _SAMPLE_SETTINGS, agent_name=agent)
-            assert preset == "quality", f"{agent} should route to quality"
-
 
 @pytest.mark.unit
 class TestRouteQuery:
@@ -157,11 +134,11 @@ class TestRouteQuery:
         assert decision.confidence == 0.8
 
     def test_quality_preset_resolves_to_quality_model(self):
-        decision = route_query("hi", _SAMPLE_SETTINGS, agent_name="developer")
+        decision = route_query("x" * 1000, _SAMPLE_SETTINGS)
         assert decision.preset == "quality"
         assert decision.resolved.model_id == "openrouter/anthropic/claude-opus-4.6"
-        assert decision.reason == "agent 'developer' always uses quality model"
-        assert decision.confidence == 0.95
+        assert decision.reason == "complex query detected"
+        assert decision.confidence == 0.8
 
     def test_balanced_preset_resolves_to_balanced_model(self):
         query = "Can you explain how the agent framework works in this project and how agents are discovered? " * 3

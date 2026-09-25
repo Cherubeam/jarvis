@@ -31,7 +31,7 @@ from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
 from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import Settings
+from packages.core.settings import ModelsSettings, Settings
 from packages.core.stream_handler import StreamHandler
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -151,9 +151,18 @@ def instantiate_agent(
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
+    models: ModelsSettings | None = None,
 ) -> Any:
+    """Create an agent from its meta.yaml.
+
+    An agent that names a ``model`` (preset or model id) runs on it; all others run on
+    ``model_id``, the session model. Presets resolve against ``models`` (the loaded
+    config), falling back to the built-in defaults.
+    """
     if meta.meta_path is None:
         raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
+    if meta.model:
+        model_id = resolve_model(meta.model, models or ModelsSettings()).model_id
     return agent_from_meta(
         meta.meta_path,
         client,
@@ -163,6 +172,7 @@ def instantiate_agent(
         card_search_tool=card_search_tool,
         skill_names_override=skill_names_override,
         prompt_includes_override=prompt_includes_override,
+        model_pinned=bool(meta.model),
     )
 
 
@@ -327,7 +337,7 @@ def build_session(
 
             voice_profile = read_canonical_include(skill_dir, "voice-profile")
             tool_groups["content_evaluator"] = [
-                make_content_evaluator_tool(skill_dir, client, model_id, voice_profile=voice_profile)
+                make_content_evaluator_tool(skill_dir, client, voice_profile=voice_profile)
             ]
             voice_note = "with voice profile" if voice_profile else "without voice profile (generic voice lens)"
             print_system(f"[Tools] Content evaluator loaded {voice_note}.")
@@ -470,6 +480,7 @@ def build_session(
             all_agent_tools,
             skill_registry=skill_registry,
             card_search_tool=card_search_tool,
+            models=settings.models,
         )
         agent_name = meta.name
     else:

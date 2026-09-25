@@ -31,7 +31,6 @@ from apps.cli.display import (
     start_live_stream,
     start_waiting_spinner,
 )
-from packages.agents.base import agent_from_meta
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, validate_agent_includes
 from packages.agents.registry import AgentMeta, get_by_command
@@ -46,7 +45,7 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import Settings, load_config
+from packages.core.settings import ModelsSettings, Settings, load_config
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -91,19 +90,21 @@ def _instantiate_agent(
     card_search_tool: ToolDefinition | None = None,
     skill_names_override: list[str] | None = None,
     prompt_includes_override: dict[str, str] | None = None,
+    models: ModelsSettings | None = None,
 ) -> Any:
-    """Create an agent from AgentMeta via agent_from_meta()."""
-    if meta.meta_path is None:
-        raise ValueError(f"AgentMeta {meta.name!r} has no meta_path; cannot instantiate")
-    return agent_from_meta(
-        meta.meta_path,
+    """Create an agent from AgentMeta (see apps.cli.session_factory.instantiate_agent)."""
+    from apps.cli.session_factory import instantiate_agent
+
+    return instantiate_agent(
+        meta,
         client,
         model_id,
-        extra_tools=extra_tools or None,
+        extra_tools,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
         skill_names_override=skill_names_override,
         prompt_includes_override=prompt_includes_override,
+        models=models,
     )
 
 
@@ -326,6 +327,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _pinned_model_label(agent: Any) -> str | None:
+    """'claude-opus-5.5 via openrouter' for an agent that names its own model, else None."""
+    config = getattr(agent, "config", None)
+    model = getattr(config, "model", None)
+    if getattr(config, "model_pinned", False) is not True or not isinstance(model, str):
+        return None
+    provider, _, rest = model.partition("/")
+    return f"{rest.split('/')[-1]} via {provider}" if rest else model
+
+
 def _run_agent_session(
     agent: Any,
     agent_name: str,
@@ -351,7 +362,9 @@ def _run_agent_session(
     Returns:
         The session history (list of user/assistant message dicts).
     """
-    print_system(f"\nEntering {agent_name} session. Type /exit or /back to return to JARVIS.\n")
+    model_label = _pinned_model_label(agent)
+    on_model = f" on {model_label}" if model_label else ""
+    print_system(f"\nEntering {agent_name} session{on_model}. Type /exit or /back to return to JARVIS.\n")
 
     session_history: list[dict[str, Any]] = []
 
@@ -376,7 +389,7 @@ def _run_agent_session(
             messages_override=trim_tool_results(session_history[:-1]),
         )
 
-        print_usage_stats(result)
+        print_usage_stats(result, routed_model=model_label)
         print_separator()
 
         # Persist tool call context before the final assistant message
@@ -506,6 +519,7 @@ def _handle_agent_command(
         all_tools or None,
         skill_registry=skill_registry,
         card_search_tool=card_search_tool,
+        models=settings.models if settings is not None else None,
     )
 
     if not payload:
@@ -517,7 +531,7 @@ def _handle_agent_command(
     print_agent_prefix(meta.name)
     result = _run_with_display(stream_handler, agent, payload)
 
-    print_usage_stats(result)
+    print_usage_stats(result, routed_model=_pinned_model_label(agent))
     print_separator()
 
     logger.add_message(
@@ -726,8 +740,10 @@ def main(argv: list[str] | None = None) -> None:
             # Intelligent model routing (opt-in via config)
             routed_model_id = None
             routed_display: str | None = None
-            if settings.routing.enabled:
-                decision = route_query(user_input, settings, agent_name=agent_name)
+            # Agents that name their own model in meta.yaml keep it; only the rest are routed
+            agent_pins_model = getattr(getattr(active_agent, "config", None), "model_pinned", False) is True
+            if settings.routing.enabled and not agent_pins_model:
+                decision = route_query(user_input, settings)
                 if decision.resolved.model_id != model_id:
                     routed_model_id = model_id  # save original to restore
                     routed_display = decision.resolved.display_name
@@ -791,6 +807,7 @@ def main(argv: list[str] | None = None) -> None:
                     all_delegate_tools,
                     skill_registry=skill_registry,
                     card_search_tool=card_search_tool,
+                    models=settings.models,
                 )
                 agent_session = _run_agent_session(
                     delegate_agent,

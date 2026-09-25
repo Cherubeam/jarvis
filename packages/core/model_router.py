@@ -23,9 +23,6 @@ class RoutingDecision:
     confidence: float  # 0.0-1.0
 
 
-# Agents that always get the quality model
-_QUALITY_AGENTS = {"developer", "writer", "content_reviewer", "substack_publisher"}
-
 # Patterns that indicate complexity
 _CODE_BLOCK_RE = re.compile(r"```")
 _MULTI_PART_RE = re.compile(r"\b(additionally|furthermore|also|and also|moreover)\b", re.IGNORECASE)
@@ -35,7 +32,6 @@ _NUMBERED_LIST_RE = re.compile(r"^\s*\d+\.\s", re.MULTILINE)
 def classify_query(
     query: str,
     settings: Settings,
-    agent_name: str | None = None,
 ) -> tuple[str, str, float]:
     """Classify query complexity and return (preset, reason, confidence).
 
@@ -44,10 +40,6 @@ def classify_query(
     """
     simple_threshold = settings.routing.simple_threshold
     complex_threshold = settings.routing.complex_threshold
-
-    # Agent-specific overrides
-    if agent_name and agent_name in _QUALITY_AGENTS:
-        return ("quality", f"agent '{agent_name}' always uses quality model", 0.95)
 
     query_len = len(query)
 
@@ -74,19 +66,19 @@ def classify_query(
 def route_query(
     query: str,
     settings: Settings,
-    agent_name: str | None = None,
 ) -> RoutingDecision:
     """Route a query to the appropriate model based on complexity.
+
+    Agents that name their own model in meta.yaml aren't routed; the caller skips them.
 
     Args:
         query: The user's input text.
         settings: Typed JARVIS settings.
-        agent_name: Optional agent name for agent-specific routing.
 
     Returns:
         RoutingDecision with the selected preset and resolved model.
     """
-    preset, reason, confidence = classify_query(query, settings, agent_name)
+    preset, reason, confidence = classify_query(query, settings)
     resolved = resolve_model(preset, settings.models)
     return RoutingDecision(
         preset=preset,

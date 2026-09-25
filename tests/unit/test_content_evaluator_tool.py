@@ -159,3 +159,10 @@ class TestContentEvaluatorTool:
 
         system_content = mock_client.complete.call_args[0][0][0]["content"]
         assert system_content == "# Content Evaluator\n\nEvaluate content through five lenses."
+
+
+def test_without_model_follows_the_clients_current_model(skill_dir, mock_client):
+    """model=None lets the call use whatever model the running agent switched the client to."""
+    tool = make_content_evaluator_tool(skill_dir, mock_client)
+    tool.execute(content="Draft text")
+    assert mock_client.complete.call_args.kwargs["model"] is None

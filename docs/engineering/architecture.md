@@ -520,6 +520,7 @@ rag:
 
 **Key Components:**
 
+- **Per-agent model**: `meta.yaml` may name a `model` (preset or model id). `instantiate_agent()` resolves it against the loaded `models` config and marks the agent `model_pinned`; `BaseAgent.run()` then wraps the turn in `StreamHandler.using_model()`, which switches the client default, the reported model and pricing, and restores them afterwards. Tools that call a model themselves (`evaluate_content`) use the client's current model, so they follow the running agent. The heuristic router skips pinned agents; unpinned agents run on the session model. Pinned today: `writer`, `substack_publisher` → `quality`
 - **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` and `run()` using only `meta.yaml` + `prompts/system.md`. Supports `max_iterations` for extended agentic loops. No per-agent Python code needed.
 - **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, resolves `prompt_includes` placeholders, binds skills, and returns a configured `DataDrivenAgent`.
 - **`AgentMeta`** dataclass: Contains `meta_path`, `vault_writing`, `tool_groups` (named tool groups from CLI registry), and `skills` (skill names to bind).

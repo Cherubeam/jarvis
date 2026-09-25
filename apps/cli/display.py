@@ -156,7 +156,7 @@ def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> 
     """Print dim-styled token usage, cost, and latency stats.
 
     Args:
-        routed_model: If set, the model was changed by routing — show it.
+        routed_model: If set, the turn ran on a non-session model (routing or the agent's own) — show it.
     """
     ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms" if result.metrics.ttft_ms > 0 else "TTFT: N/A (tool call)"
     latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"

@@ -1,6 +1,7 @@
 name: writer
 description: Draft and edit blog posts in Marco's authentic voice
 command: /write
+model: quality  # preset or model id; runs on it instead of the session model
 prompt_includes:
   voice_profile: voice-profile
   anti_patterns: anti-patterns

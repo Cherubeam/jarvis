@@ -201,7 +201,8 @@ async def get_agent_detail(agent_id: str, request: Request) -> dict[str, Any]:
         "skills": list(meta.skills or []),
         "prompt_path": f"packages/agents/{agent_id}/prompts/system.md",
         "prompt_includes_count": len(meta_dict.get("prompt_includes") or {}),
-        "model": None,
+        # As written in meta.yaml (preset name or model id); None = inherits the session model
+        "model": meta.model,
         "last_used": last_used,
         "recent_sessions": recent,
         "cost_14d": cost["days"],

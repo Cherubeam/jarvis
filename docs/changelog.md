@@ -17,6 +17,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   voice-profile work, so the profile isn't re-derived from the assistant's
   own habits (engineering practice P7).
 
+### Added — Agents can name their own model (2026-09-25)
+
+- **`model:` in `meta.yaml`** (preset name or model id). A delegated or
+  slash-command agent used to run on the session model no matter what: the
+  router's hard-coded "quality agents" list only applied when that agent was
+  the active top-level agent, and `AgentConfig.model` was only a label.
+  Now `instantiate_agent()` resolves the agent's model against the loaded
+  config, and `BaseAgent.run()` runs the whole turn on it via
+  `StreamHandler.using_model()` — tool loop, final answer, pricing — then
+  restores the session model. `evaluate_content` follows the running agent's
+  model instead of the one fixed at startup.
+- **`writer` and `substack_publisher` run on `quality` (Opus 5.5).**
+  `content_reviewer` and `developer` stay on the default (GPT-6 Luna), which
+  handled a live `/review` well at about 1/40 of the cost.
+- **Router:** the hard-coded `_QUALITY_AGENTS` list is gone; agents that name a
+  model are not routed. **CLI and GUI** show the agent's model ("Entering writer
+  session on claude-opus-5.5 via openrouter", the stats line, the agent panel).
+- **Fixed:** an agent's `max_tokens` (e.g. developer's 4,096) stayed on the
+  shared stream handler after its turn and capped later JARVIS answers. It is
+  now restored, keeping any credit-fallback reduction made during the turn.
+
 ### Fixed — Vault edits could revert changes made in Obsidian meanwhile (2026-09-25)
 
 - **Edits refuse to overwrite a note that changed since the agent read it.**

@@ -36,7 +36,7 @@ def _import_skill_module(skill_dir: Path) -> Any:
 def make_content_evaluator_tool(
     skill_dir: Path,
     llm_client: LLMClient,
-    model: str,
+    model: str | None = None,
     voice_profile: str | None = None,
 ) -> ToolDefinition:
     """Create a content evaluation tool from the content-evaluator skill.
@@ -44,7 +44,8 @@ def make_content_evaluator_tool(
     Args:
         skill_dir: Path to the content-evaluator skill directory.
         llm_client: LLM client for API calls.
-        model: Model ID to use for evaluation.
+        model: Model ID to use for evaluation. None (the default) uses the client's current
+            model, so the evaluation follows whichever agent is running.
         voice_profile: The writer's voice profile. When non-blank it is appended
             to the system prompt, so the Voice Authenticity lens judges against
             the writer instead of a generic checklist.
