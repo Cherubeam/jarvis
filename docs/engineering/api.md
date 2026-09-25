@@ -479,11 +479,11 @@ The system prompt is loaded from `prompts/system.md` in the same directory as `m
 **Structure:**
 ```yaml
 models:
-  default: "openrouter/anthropic/claude-sonnet-4.6"
+  default: "openrouter/openai/gpt-6-luna"
   presets:
-    fast: "openrouter/google/gemini-2.5-flash"
-    quality: "openrouter/anthropic/claude-opus-4.6"
-    balanced: "openrouter/anthropic/claude-sonnet-4.6"
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
   extra_body:                    # per-model request fields, keyed by full model id
     "openrouter/qwen/qwen3.5-flash-02-23":
       reasoning: {effort: "none"}

@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Model refresh: GPT-6 Luna default, Opus 5.5 quality (2026-09-25)
+
+- **New default and presets.** A 10-model benchmark (15 golden results each,
+  Opus 5.5 judge, Gemini 3.8 Flash as second judge on the conversation tests)
+  replaced Qwen 3.5 Flash (11/15, 0.796) with `openai/gpt-6-luna` (15/15, 0.907,
+  3 s median, $0.10/$0.50 per 1M) as `default`, `balanced` and `fast`, and
+  `anthropic/claude-opus-5.5` (15/15, 0.923) as `quality`. `fast` no longer uses
+  `google/gemini-2.5-flash`, which OpenRouter retires on 2026-10-20. Details and
+  both judges' tables: `docs/research/models.md`.
+- **Tool-limit note on forced answers.** When an agent runs out of tool rounds,
+  the final text-only call now tells the model the tools still exist and asks
+  for the next step. Before, models saw no tools and told the user they were
+  missing. content_reviewer's limit goes from 5 to 10 rounds: GPT-6 Luna needed
+  7 to find, read, evaluate and review a real draft.
+- **Golden harness.** The judge comes from `evaluation.judge_model` (now Opus
+  5.5; the setting was never read before). Multi-turn tests send the earlier
+  conversation to the model and the judge and score each turn; before, the
+  follow-up went out without history and overwrote the first turn's result.
+  Output is capped (the model under test uses `models.default_max_tokens`, the
+  judge 4,096), so runs don't fail on a low OpenRouter balance. New
+  `required_verbatim` check (exact text, score capped at 0.3 if missing) and
+  two synthetic writing cases: `13_review_language_errors` and
+  `14_edit_preserves_links`. Evaluation per NIST AI RMF Measure; known limit:
+  every model but Qwen 3.5 passes 13 and 14, which don't reproduce long
+  full-file rewrites.
+
 ### Added — Link-change warnings on vault diffs (2026-09-24)
 
 - **Every vault diff now lists links that changed.** `suggest_improvements`

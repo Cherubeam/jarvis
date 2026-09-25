@@ -46,15 +46,15 @@ from packages.core.settings import (
 class TestModelsSettings:
     def test_defaults_match_default_yaml(self) -> None:
         settings = ModelsSettings()
-        assert settings.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.default == "openrouter/openai/gpt-6-luna"
         assert settings.default_max_tokens == 16384
         assert settings.streaming is True
 
     def test_presets_default_factory_runs(self) -> None:
         presets = ModelsSettings().presets
-        assert presets.fast == "openrouter/google/gemini-2.5-flash"
-        assert presets.quality == "openrouter/anthropic/claude-opus-4.6"
-        assert presets.balanced == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert presets.fast == "openrouter/openai/gpt-6-luna"
+        assert presets.quality == "openrouter/anthropic/claude-opus-5.5"
+        assert presets.balanced == "openrouter/openai/gpt-6-luna"
 
     def test_extra_body_turns_off_qwen_reasoning_by_default(self) -> None:
         extra_body = ModelsSettings().extra_body
@@ -80,7 +80,7 @@ class TestModelsSettings:
     def test_presets_overrideable_per_field(self) -> None:
         presets = ModelPresets(fast="openrouter/test/fast")
         assert presets.fast == "openrouter/test/fast"
-        assert presets.quality == "openrouter/anthropic/claude-opus-4.6"
+        assert presets.quality == "openrouter/anthropic/claude-opus-5.5"
 
 
 class TestPathsSettings:
@@ -182,7 +182,7 @@ class TestThings3Settings:
 class TestEvaluationSettings:
     def test_defaults_match_default_yaml(self) -> None:
         e = EvaluationSettings()
-        assert e.judge_model == "anthropic/claude-opus-4.6"
+        assert e.judge_model == "anthropic/claude-opus-5.5"
         assert e.quality_threshold == 0.70
         assert e.results_dir == "tests/golden/results"
         assert e.max_cost_per_run == 1.00
@@ -526,7 +526,7 @@ class TestLoadConfigFunction:
 
     def test_missing_config_dir_returns_defaults(self, tmp_path: Path) -> None:
         settings = load_config(tmp_path)
-        assert settings.models.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.models.default == "openrouter/openai/gpt-6-luna"
         assert settings.outcomes.enabled is True
         assert settings.jarvis_dir == tmp_path
 
@@ -555,12 +555,12 @@ class TestLoadConfigFunction:
 class TestSettingsAggregator:
     def test_empty_construction_uses_section_defaults(self) -> None:
         settings = Settings()
-        assert settings.models.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.models.default == "openrouter/openai/gpt-6-luna"
         assert settings.paths.context_dir == "data/context"
         assert settings.cli.colors is True
         assert settings.outcomes.enabled is True
         assert settings.things3.enabled is True
-        assert settings.evaluation.judge_model == "anthropic/claude-opus-4.6"
+        assert settings.evaluation.judge_model == "anthropic/claude-opus-5.5"
         assert settings.rag.enabled is True
         assert settings.routing.enabled is False
         assert settings.summarization.enabled is False
@@ -575,7 +575,7 @@ class TestSettingsAggregator:
     def test_partial_section_override_via_dict(self) -> None:
         settings = Settings(models={"streaming": False})  # type: ignore[arg-type]
         assert settings.models.streaming is False
-        assert settings.models.default == "openrouter/qwen/qwen3.5-flash-02-23"
+        assert settings.models.default == "openrouter/openai/gpt-6-luna"
 
     def test_model_dump_round_trip(self) -> None:
         original = Settings()

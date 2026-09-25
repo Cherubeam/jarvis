@@ -58,15 +58,15 @@ class ModelPresets(BaseModel):
     """Named model aliases used across agents."""
 
     fast: str = Field(
-        default="openrouter/google/gemini-2.5-flash",
+        default="openrouter/openai/gpt-6-luna",
         description="Cheap, low-latency model for simple turns.",
     )
     quality: str = Field(
-        default="openrouter/anthropic/claude-opus-4.6",
+        default="openrouter/anthropic/claude-opus-5.5",
         description="Highest-capability model for complex reasoning.",
     )
     balanced: str = Field(
-        default="openrouter/qwen/qwen3.5-flash-02-23",
+        default="openrouter/openai/gpt-6-luna",
         description="Mid-tier model balancing cost and quality.",
     )
 
@@ -75,7 +75,7 @@ class ModelsSettings(BaseModel):
     """LLM model defaults and named presets."""
 
     default: str = Field(
-        default="openrouter/qwen/qwen3.5-flash-02-23",
+        default="openrouter/openai/gpt-6-luna",
         description="LiteLLM-routable model id used when no preset is requested.",
     )
     default_max_tokens: int = Field(
@@ -169,8 +169,8 @@ class EvaluationSettings(BaseModel):
     """LLM-as-judge evaluation settings."""
 
     judge_model: str = Field(
-        default="anthropic/claude-opus-4.6",
-        description="LiteLLM-routable model id used for grading golden conversations.",
+        default="anthropic/claude-opus-5.5",
+        description="OpenRouter model id (no openrouter/ prefix) used for grading golden conversations.",
     )
     quality_threshold: float = Field(
         default=0.70,
