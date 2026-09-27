@@ -26,7 +26,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │                     │                  │                        │
 │  • LLM Client       │ • Base Agent     │ • Things 3             │
 │  • Context Builder  │ • JARVIS Agent   │ • Obsidian             │
-│  • Memory           │ • Writer Agent   │ • Cortex (semantic)    │
+│  • Memory           │ • Writer Agent   │ • Cortex (via MCP)     │
 │  • Pricing          │ • Tactics Coach  │ • Readwise             │
 │  • Stream Handler   │ • Developer      │ • MCP (client)         │
 │  • Settings (typed) │ • Data-driven    │                        │
@@ -156,7 +156,7 @@ See [docs/engineering/gui.md](gui.md) for the full per-phase architecture and th
 5. `tasks.md` - Current tasks from Things 3 (auto-generated)
 
 **Project Knowledge:**
-Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on demand via `search_vault_semantic` and `read_note` tools, rather than being statically loaded into the system prompt. This keeps the prompt lean and ensures project knowledge is always up to date with the single source of truth in the vault.
+Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on demand via `mcp_cortex__search_knowledge` (Cortex over MCP), `search_notes` and `read_note` tools, rather than being statically loaded into the system prompt. This keeps the prompt lean and ensures project knowledge is always up to date with the single source of truth in the vault.
 
 ---
 
@@ -634,7 +634,8 @@ skills:
    ↓
 2. Collect API keys from env (collect_api_keys())
    ↓
-3. Resolve model: --model flag > config models.default
+3. Resolve session model: --model flag > "auto" if models.auto_router.enabled > models.default
+   (agents with meta.yaml `model:` override this per agent)
    ↓
 4. Sync Things 3 tasks → tasks.md
    ↓
@@ -651,12 +652,8 @@ skills:
 7b. Blog tools initialization (if obsidian.enabled: true)
    └─ make_blog_tools(vault_config, ...) → agent_only_tools
    ↓
-7c. Cortex initialization (if cortex.enabled: true)
-   ├─ CortexClient(base_url, timeout)
-   ├─ make_cortex_search_tool() → shared_tools
-   └─ Health check: print connected/unreachable status
-   ↓
-7d. MCP client initialization (if settings.mcp.enabled)
+7c. MCP client initialization (if settings.mcp.enabled) — Cortex arrives here
+    as a shared MCP server (HUB-01)
    ├─ MCPManager.start(settings.mcp.servers) → connect to servers, discover tools
    └─ MCP tool groups → tool_groups dict
    ↓
@@ -679,10 +676,11 @@ jarvis/
 ├── apps/                           # Deployable applications
 │   ├── cli/                        # CLI entry point
 │   │   ├── main.py                 # CLI application
+│   │   ├── session_factory.py      # build_session(): shared CLI/GUI bootstrap, tool groups
 │   │   └── display.py              # Rich terminal formatting
-│   └── web/                        # Web application (WEB)
-│       ├── backend/                # FastAPI backend
-│       └── frontend/               # React frontend
+│   └── gui/                        # Web GUI (WEB)
+│       ├── server/                 # FastAPI backend (routes, bridge, auth)
+│       └── web/                    # React frontend (committed dist/)
 │
 ├── packages/                       # Shared libraries (reusable)
 │   ├── core/                       # Core JARVIS functionality
@@ -692,7 +690,9 @@ jarvis/
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
-│   │   ├── app.py                  # Shared bootstrap (config, init)
+│   │   ├── settings.py             # Typed config (pydantic-settings, ADR-032)
+│   │   ├── model_resolver.py       # Presets, `auto` alias, per-session extra_body
+│   │   ├── model_router.py         # Heuristic complexity routing (opt-in)
 │   │   ├── filesystem_access.py    # Filesystem access control (FilesystemGuard)
 │   │   ├── card_renderer.py         # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
@@ -711,7 +711,6 @@ jarvis/
 │   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
 │   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
 │   │   │   ├── git_tools.py            # git_status, git_diff, git_branch, git_add, git_commit, git_log
-│   │   │   ├── cortex_search.py          # make_cortex_search_tool() (vault semantic search)
 │   │   │   ├── project_write_tools.py  # write_file, edit_file, create_directory (scoped, guarded)
 │   │   │   └── test_tools.py           # run_tests via subprocess
 │   │   └── importers/              # Conversation importers
@@ -729,7 +728,7 @@ jarvis/
 │   │   ├── jarvis/                 # Main JARVIS orchestrator
 │   │   │   ├── agent.py
 │   │   │   └── prompts/            # Daily summary + writing prompts
-│   │   ├── content_reviewer/       # Data-driven agent (/content-review)
+│   │   ├── content_reviewer/       # Data-driven agent (/review)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── developer/              # Data-driven agent (/develop)
@@ -751,6 +750,9 @@ jarvis/
 │   │   ├── pattern_card_generator/ # Data-driven agent (/pattern-cards)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
+│   │   ├── reading_assistant/      # Data-driven agent (/reading)
+│   │   │   ├── meta.yaml
+│   │   │   └── prompts/system.md
 │   │   ├── researcher/             # Data-driven agent (/research)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
@@ -763,13 +765,13 @@ jarvis/
 │   │   ├── substack_image_creator/ # Data-driven agent (/substack-image)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   ├── substack_publisher/     # Data-driven agent (/substack-publish)
+│   │   ├── substack_publisher/     # Data-driven agent (/publish, model: quality)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
 │   │   ├── tactics_coach/          # Data-driven agent (/tactics)
 │   │   │   ├── meta.yaml
 │   │   │   └── prompts/system.md
-│   │   └── writer/                 # Data-driven agent (/write)
+│   │   └── writer/                 # Data-driven agent (/write, model: quality)
 │   │       ├── meta.yaml
 │   │       └── prompts/system.md
 │   ├── skills/                     # Skills (passive knowledge packs)
@@ -780,10 +782,8 @@ jarvis/
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync
 │   │   │   └── task_sync.py        # ~520 lines
-│   │   ├── cortex/                 # Cortex semantic search client
-│   │   │   └── client.py           # CortexClient (HTTP)
+│   │   ├── readwise/               # Readwise / Reader client (/reading)
 │   │   ├── mcp/                    # MCP client integration
-│   │   │   ├── config.py           # Config parsing + validation
 │   │   │   ├── client.py           # Connection lifecycle + async/sync bridge
 │   │   │   └── bridge.py           # MCP Tool → ToolDefinition conversion
 │   │   └── obsidian/               # Obsidian vault integration

@@ -364,7 +364,7 @@ The Settings tab is a form-based editor for every field in `packages.core.settin
 
 ### No in-process rebind
 
-Deliberate. `build_session()` captures settings values into `LLMClient`, tool closures, `FilesystemGuard`, `CortexClient`, and MCP subprocesses at startup. Only three code paths re-read `components.settings.*` per request: `outcomes.*`, `summarization.*` (in `bridge.py`), and `paths.prompt_history_dir` (in `agents.py`). Rebinding `components.settings` after PUT would give a false impression of hot-apply for ~95% of fields. Instead PUT always returns `restart_required: true` and the footer banner says so. Per-field hot-apply gating is a follow-up once real usage identifies which toggles users flip most.
+Deliberate. `build_session()` captures settings values into `LLMClient`, tool closures, `FilesystemGuard`, and MCP subprocesses (Cortex included, via MCP) at startup. Only three code paths re-read `components.settings.*` per request: `outcomes.*`, `summarization.*` (in `bridge.py`), and `paths.prompt_history_dir` (in `agents.py`). Rebinding `components.settings` after PUT would give a false impression of hot-apply for ~95% of fields. Instead PUT always returns `restart_required: true` and the footer banner says so. Per-field hot-apply gating is a follow-up once real usage identifies which toggles users flip most.
 
 ### Known limitations (WEB-08b)
 

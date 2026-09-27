@@ -85,7 +85,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 - [x] Auto-sync tasks to tasks.md on startup
 - [x] 5-minute task cache to optimize performance
 - [x] Grouped markdown output (area > project > tasks)
-- [ ] Interactive management (Things 3 write ops) — tracked under `CAP` extended tools
+- [x] Write tools (`create_task`, `complete_task`, `update_task` in the `things3_tools` group; not bound to a delegate agent yet)
 
 #### Metrics Implementation
 
@@ -99,7 +99,8 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 - [x] Benchmark 3-5 models on golden test suite
 - [x] Compare quality vs. cost tradeoffs
 - [x] Document model-specific behaviors
-- [x] Default model recommendation (Claude Sonnet 4.5)
+- [x] Default model recommendation (Claude Sonnet 4.5; superseded — see below)
+- [x] **2026-09 model refresh** — 10 models × 15 golden results, Opus 5.5 judge + Gemini 3.8 Flash second judge; default → GPT-6 Luna, `quality` → Opus 5.5 ([models.md](../research/models.md)). Harness fixes: multi-turn history, judge from config, token caps, `required_verbatim`, writing cases 13–14 — 2026-09-25
 
 ---
 
@@ -248,7 +249,7 @@ packages/skills/
 
 Opt-in semantic search over the Obsidian vault via the external Cortex service (`cherubeam/cortex`). See ADR-029.
 
-- [x] Vault-Only MVP — `CortexClient`, `search_vault_semantic` tool, graceful degradation, 14 tests
+- [x] Vault-Only MVP — `CortexClient`, `search_vault_semantic` tool, graceful degradation, 14 tests *(retired by HUB-01: Cortex is now consumed as an MCP server, `mcp_cortex__search_knowledge`)*
 - [x] `refresh_index()` method for on-demand reindexing
 - [x] Project knowledge migrated to Obsidian — context_builder no longer loads `projects/` statically
 
@@ -308,14 +309,16 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 - [ ] Playwright-based fetch for JS-rendered pages
 - [ ] Tool approval/permission UI
-- [ ] Things 3 write operations as tools (simpler now with SQLite read access)
+- [x] Things 3 write operations as tools (`things3_tools`)
 - [x] Obsidian write operations as tools (implemented in 0.10.0)
-- [ ] Web search integration
+- [x] Web search integration (`web_search`, DuckDuckGo, in `web_tools`)
 
 ### Intelligent Model Routing *(legacy 5D)*
 
-- [ ] Task complexity classification
-- [ ] Route simple tasks → cheap models, complex → expensive models
+- [x] Task complexity classification (heuristic, `packages/core/model_router.py`, opt-in via `routing.enabled`)
+- [x] Route simple tasks → cheap models, complex → expensive models (presets `fast`/`balanced`/`quality`)
+- [x] Per-agent models (`meta.yaml` `model:`; writer and substack_publisher → `quality`) — 2026-09-27
+- [x] OpenRouter Auto Router as an opt-in session model (`models.auto_router`, ADR-036) — 2026-09-27
 - [ ] Cost savings tracking
 
 ---
@@ -384,7 +387,7 @@ per ADR-033. Each landed on its own feature branch, merged via
 
 ## AON — Always-On & Loop Engineering
 
-**Status**: 🔄 Planned — Kickoff 2026-07
+**Status**: 🔄 In progress — AON-01 underway (GUI auth shipped 2026-09-05)
 **Motivation**: 2026-07-04 deep-research review (codebase audit + verified web research), amended 2026-07-31 by an adversarial re-check against newer developments (loop-engineering discipline, cache-economics results, memory-benchmark audits). See ADR-033 for the naming scheme this initiative introduces.
 
 **Goal**: Make JARVIS safe to leave running, reachable without a terminal, and
@@ -394,11 +397,12 @@ stable and will not be renumbered as the plan evolves.
 
 ### AON-01 — Harden (safety rails & shared core)
 
-**Status**: ⏳ Next up · **Effort**: M · **Risk**: Low
+**Status**: 🔄 In progress · **Effort**: M · **Risk**: Low
 
 Make the existing system safe to leave running and cheap to extend. Each item is one feature branch / PR (`feat/aon-01-<slug>`).
 
 - [x] **WebSocket origin allowlist + token auth** — one ASGI middleware gates every `/api/*` route, `/ws/chat`, and `/docs`; derived-value cookie for browsers, `Authorization: Bearer` for scripts ([ADR-035](decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)). Also fixed two approval-hijack holes in `confirmation.py` and closed the `app.py`/`state.py`/`chat_ws.py` mutation blind spot (115 unkilled mutants → 84 new tests) *(S)* ✅ 2026-09-05
+- [x] **Vault-write oversight fixes** (found during the 2026-09 model refresh, not originally planned): the GUI approval card now shows the real diff and path (it showed nothing); changed links are listed above every vault diff; writes and previews are refused when the note changed on disk since the agent read it (Art. 14(4)(c), OWASP LLM05/LLM06) *(S)* ✅ 2026-09-25
 - [ ] Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py` (currently runs arbitrary Python via conftest with no confirmation) *(S)*
 - [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
 - [ ] Fix the confirmation deadlock: add a timeout to `apps/gui/server/confirmation.py`, move approval handling out of the blocked receive loop in `chat_ws.py` *(M)*
@@ -469,7 +473,7 @@ Do this only when AON-01…04 feel boring.
 
 ## HUB — Context Hub (Cortex/Memory via MCP)
 
-**Status**: 📋 Planned — allocated 2026-08-19
+**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; allocated 2026-08-19
 **Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
 
 **Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
@@ -631,4 +635,4 @@ The rule for "should Cortex integrate source X?":
 
 ---
 
-*Last updated: 2026-08-20*
+*Last updated: 2026-09-27*

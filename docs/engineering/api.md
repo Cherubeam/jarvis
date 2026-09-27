@@ -22,6 +22,11 @@ Dataclass storing token usage statistics.
 - `total_tokens: int` - Sum of prompt + completion
 - `cache_read_tokens: int` - Tokens served from cache (default 0)
 - `cache_write_tokens: int` - Tokens written to cache (default 0)
+- `reported_cost: float | None` - Exact billed cost reported by the provider (OpenRouter `usage.cost`, non-streaming only); `StreamHandler` prefers it over the price table. `None` when not reported
+
+`TokenUsage + TokenUsage` sums all fields; `reported_cost` is summed over the parts that carry one and stays `None` only if none did.
+
+Helpers: `reported_cost(usage)` and `served_model(response)` read those values from a LiteLLM response defensively (non-numeric / non-string → `None`).
 
 ---
 
@@ -124,7 +129,7 @@ Load a single markdown file, return empty string if missing.
 
 ### `build_system_prompt(context_dir: Path) -> str`
 
-Assemble full system prompt from context files. Identity is sourced from `soul.md` (if present) and placed first. Project knowledge is no longer loaded statically from `projects/*.md` — it now lives in the Obsidian vault and is reached via `search_vault_semantic` / vault read tools.
+Assemble full system prompt from context files. Identity is sourced from `soul.md` (if present) and placed first. Project knowledge is no longer loaded statically from `projects/*.md` — it now lives in the Obsidian vault and is reached via `mcp_cortex__search_knowledge` (Cortex over MCP) and the vault read tools.
 
 **Parameters:**
 - `context_dir` - Directory containing context/*.md files
@@ -394,7 +399,7 @@ Subclass of `BaseAgent` for agents defined entirely via `meta.yaml` + `prompts/s
 #### `__init__(config: AgentConfig, llm_client: LLMClient)`
 
 **Parameters:**
-- `config: AgentConfig` — Agent configuration (name, model, temperature, max_tokens, max_iterations, tools)
+- `config: AgentConfig` — Agent configuration (name, model, temperature, max_tokens, max_iterations, tools, `model_pinned`: the model came from meta.yaml and `run()` switches to it via `StreamHandler.using_model()`)
 - `llm_client: LLMClient` — Shared LLM client for API calls
 
 **Methods:**
@@ -405,7 +410,7 @@ Append the user message to conversation history and return a streamed response f
 
 ---
 
-### `agent_from_meta(meta_path, llm_client, model, extra_tools=None, skill_registry=None, card_search_tool=None, skill_names_override=None, prompt_includes_override=None) -> DataDrivenAgent`
+### `agent_from_meta(meta_path, llm_client, model, extra_tools=None, skill_registry=None, card_search_tool=None, skill_names_override=None, prompt_includes_override=None, model_pinned=False) -> DataDrivenAgent`
 
 Factory function that builds an agent instance from a `meta.yaml` file.
 
@@ -418,6 +423,7 @@ Factory function that builds an agent instance from a `meta.yaml` file.
 - `card_search_tool: ToolDefinition | None` — Card search tool for deck-skills
 - `skill_names_override: list[str] | None` — If set, replaces the `skills:` list from `meta.yaml`
 - `prompt_includes_override: dict[str, str] | None` — Per-placeholder overrides applied before normal expansion
+- `model_pinned: bool` — `model` comes from the agent's own `meta.yaml`; callers normally go through `apps.cli.session_factory.instantiate_agent()`, which resolves `meta.yaml` `model:` against the loaded presets and sets this
 
 **Returns:**
 - `DataDrivenAgent` — A fully configured agent instance
@@ -444,6 +450,7 @@ Dataclass describing a discovered agent for registry purposes.
 - `vault_writing: str | None` — Config section key for scoped vault write tools
 - `tool_groups: tuple[str, ...]` — Named tool groups from CLI registry
 - `skills: tuple[str, ...]` — Skill names to bind into the agent
+- `model: str | None` — `meta.yaml` `model:` as written (preset name or model id); `None` = session model
 
 ---
 
@@ -623,49 +630,9 @@ Estimate costs for a benchmark run using LiteLLM pricing data and the latest gol
 
 ---
 
-## Module: `integrations.cortex.client` — Cortex Semantic Search
+## Cortex (vault semantic search)
 
-### `class CortexClient`
-
-Synchronous HTTP client for the Cortex semantic search API.
-
-**Constructor:**
-
-#### `__init__(base_url: str = "http://127.0.0.1:8100", timeout: float = 10.0)`
-
-**Parameters:**
-- `base_url` - Cortex service URL
-- `timeout` - Read timeout in seconds (connect timeout is fixed at 3s)
-
-**Methods:**
-
-#### `search(query: str, n_results: int = 5, path_prefix: str | None = None) -> dict | None`
-
-POST `/search`. Returns response dict or `None` on any failure (connection, timeout, HTTP error, malformed JSON).
-
-**Parameters:**
-- `query` - Natural language search query
-- `n_results` - Number of results to return
-- `path_prefix` - Optional path filter (e.g. `"Projects/"`)
-
-#### `is_available() -> bool`
-
-GET `/status`. Returns `True` if Cortex responds with HTTP 200.
-
-#### `close() -> None`
-
-Close the underlying httpx connection pool.
-
----
-
-### `make_cortex_search_tool(client: CortexClient) -> ToolDefinition`
-
-Factory that wraps a `CortexClient` in a `search_vault_semantic` tool.
-
-**Behavior:**
-- Clamps `n_results` to 1–20
-- Truncates output to 6,000 characters
-- Returns fallback message (suggesting `search_notes`) when Cortex is unreachable
+Consumed over MCP since `HUB-01` (ADR-034): the `cortex` server in `mcp.servers` with `shared: true` exposes `mcp_cortex__search_knowledge` and `mcp_cortex__index_status` to every agent. The bespoke `integrations.cortex.client` / `make_cortex_search_tool` / `search_vault_semantic` path was retired with HUB-01.
 
 ---
 

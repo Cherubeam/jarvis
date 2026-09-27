@@ -218,11 +218,11 @@ class EvaluationSettings(BaseModel):
     )
     max_cost_per_run: float = Field(
         default=1.00,
-        description="USD ceiling above which an evaluation run aborts mid-flight.",
+        description="Intended USD ceiling per evaluation run. Not enforced by the golden harness yet.",
     )
     warn_cost_threshold: float = Field(
         default=0.50,
-        description="USD threshold that triggers a warning but continues the run.",
+        description="Intended USD warning threshold per evaluation run. Not enforced by the golden harness yet.",
     )
 
 

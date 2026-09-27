@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Documentation brought up to date (2026-09-27)
+
+- **A staleness sweep across 14 docs.** It removed the retired Cortex HTTP path
+  (`search_vault_semantic`, `CortexClient`, `cortex:` config), which five docs
+  still described as live. It ticks done roadmap items (heuristic routing, web
+  search, Things 3 write tools) and adds the model refresh, per-agent models,
+  the Auto Router and the vault oversight fixes to the roadmap. It also fixes
+  config examples that used keys that don't exist, stale test counts and judge
+  models, broken links, and the model-selection order in `deployment.md` (a
+  pinned agent's `model:` beats `--model`).
+- **Named, not yet fixed:** `meta.yaml` `temperature` is stored but never sent
+  to the model, and `evaluation.max_cost_per_run` / `warn_cost_threshold` are
+  declared but not enforced. The docs and setting descriptions now say so.
+
 ### Added — OpenRouter Auto Router as an opt-in mode (2026-09-27)
 
 - **`models.auto_router`** (`enabled: false` by default, `cost_tier`,
