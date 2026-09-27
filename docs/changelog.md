@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   config examples that used keys that don't exist, stale test counts and judge
   models, broken links, and the model-selection order in `deployment.md` (a
   pinned agent's `model:` beats `--model`).
+- **One topic, one home.** Each topic is now described in exactly one doc and
+  linked from everywhere else: config values in `config/default.yaml`, model
+  how-to in `deployment.md`, agents and tools in `agents.md`, the `meta.yaml`
+  schema in `api.md`, the golden suite in its README, status in `roadmap.md`.
+  The rule is in AGENTS.md. This removed about 2,000 duplicated lines, 15 of
+  which already contradicted each other (RAG default, agent counts,
+  cost-limit behaviour, install instructions).
 - **Named, not yet fixed:** `meta.yaml` `temperature` is stored but never sent
   to the model, and `evaluation.max_cost_per_run` / `warn_cost_threshold` are
   declared but not enforced. The docs and setting descriptions now say so.
