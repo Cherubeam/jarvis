@@ -30,7 +30,7 @@ Jarvis follows a modular, scalable architecture designed for multi-agent support
 │  • Pricing          │ • Tactics Coach  │ • Readwise             │
 │  • Stream Handler   │ • Developer      │ • MCP (client)         │
 │  • Settings (typed) │ • Data-driven    │                        │
-│  • Frontmatter      │   agents (×13)   │                        │
+│  • Frontmatter      │   agents         │                        │
 │  • Date utils       │ • Registry       │                        │
 │  • Daily summary    │ • _shared/       │                        │
 │  • Tools / RAG      │   prompt incl.   │                        │
@@ -149,11 +149,13 @@ See [docs/engineering/gui.md](gui.md) for the full per-phase architecture and th
 - `build_system_prompt(context_dir, prefix)`: Assemble full prompt with tiered project loading
 
 **Context Loading Order:**
-1. `personal_context.md` - Who the user is (personal background)
-2. `professional_context.md` - Professional background and skills
-3. `preferences.md` - How to behave
-4. `current_focus.md` - What's currently relevant (includes project names and Obsidian vault pointer)
-5. `tasks.md` - Current tasks from Things 3 (auto-generated)
+1. `soul.md` - JARVIS's identity (placed first)
+2. `personal_context.md` - Who the user is (personal background)
+3. `professional_context.md` - Professional background and skills
+4. `preferences.md` - How to behave
+5. `current_focus.md` - What's currently relevant (includes project names and Obsidian vault pointer)
+6. `tasks.md` - Current tasks from Things 3 (auto-generated)
+7. `reader_persona.md` - Reading profile (Readwise)
 
 **Project Knowledge:**
 Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on demand via `mcp_cortex__search_knowledge` (Cortex over MCP), `search_notes` and `read_note` tools, rather than being statically loaded into the system prompt. This keeps the prompt lean and ensures project knowledge is always up to date with the single source of truth in the vault.
@@ -309,11 +311,10 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 - `writer.py`: `ConfirmationHandler` ABC, `CLIConfirmationHandler`, `append_to_daily_note()`, `write_note()`
 
 **Key Design Decisions:**
-- **FilesystemGuard**: Per-path access control layer replacing flat `allowed_dirs`. Rules use `AccessLevel` (read/write/deny) with most-specific-path-wins resolution. Shared across all vault tools for consistent enforcement. See ADR-021.
-- **ConfirmationHandler ABC**: CLI and future GUI each implement this interface
+- **Vault safety** (FilesystemGuard access rules, diff approval, changed-link list, stale-write guard): described in [obsidian-integration.md](obsidian-integration.md#data-flow-summary); access rules per ADR-021.
+- **ConfirmationHandler ABC**: the CLI (`CLIConfirmationHandler`) and the GUI (`WebConfirmationHandler`) each implement this interface
 - **Pure string callout parsing**: No I/O in callout module, testable in isolation
 - **Path validation**: All vault I/O goes through `vault.py`, uses `Path.resolve()` to block traversal
-- **No stale writes**: agent-facing read tools record a hash of what the agent saw on `VaultConfig.read_hashes` (per session). `write_note()` and `suggest_improvements` refuse when the note changed on disk since that read, and `write_note()` re-checks after approval, so a full-file proposal can't revert edits made in Obsidian meanwhile. Notes the agent never read aren't tracked
 - **Prompts on demand**: Not in system prompt, loaded only for `/daily-summary` command via `JarvisAgent.load_prompt()`
 
 **CLI Command**: `/daily-summary`
@@ -335,18 +336,7 @@ User types: /daily-summary
 
 **How**: Since `HUB-01` (ADR-034), JARVIS consumes Cortex through the generic MCP client (§6c) instead of a bespoke HTTP integration — the same `cortex-mcp` stdio server that Claude Code and other MCP clients use. One integration surface, maintained in the Cortex repo.
 
-**Configuration** (`config/local.yaml`):
-```yaml
-mcp:
-  enabled: true
-  servers:
-    cortex:
-      transport: stdio
-      tool_group: cortex
-      shared: true          # every agent gets the tools automatically
-      command: uv
-      args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
-```
+**Configuration**: a `cortex` entry under `mcp.servers` in `config/local.yaml`; the example is in [deployment.md](deployment.md#example-cortex-vault-search).
 
 The `shared: true` flag (introduced for this integration, generic to any MCP server) routes the server's tools into every agent's shared toolset instead of an opt-in tool group. Tools arrive namespaced: `mcp_cortex__search_knowledge`, `mcp_cortex__index_status`. When the Cortex service is down, the tools return an actionable error and agents fall back to `search_notes`.
 
@@ -373,16 +363,9 @@ The `shared: true` flag (introduced for this integration, generic to any MCP ser
 - `MCPManager`: Manages all connections, background event loop, and sync/async bridge
 - `mcp_tools_to_tool_definitions()`: Converts MCP tools to namespaced `ToolDefinition` instances
 
-**Configuration** (`config/default.yaml`):
-```yaml
-mcp:
-  enabled: false              # Set to true in local.yaml
-  servers: {}                 # Declare servers in local.yaml
-```
+**Transports**: stdio, SSE, streamable HTTP. Each server's tools become a named tool group that agents reference in `meta.yaml`; a server marked `shared: true` joins every agent's shared toolset instead.
 
-**Transports**: stdio, SSE, streamable HTTP. Each server's tools become a named tool group that agents reference in `meta.yaml`.
-
-**Opt-in**: Disabled by default. Adding/removing servers is a config-only change.
+**Opt-in**: Disabled by default (`mcp.enabled`). Adding/removing servers is a config-only change — setup guide in [deployment.md](deployment.md#connecting-mcp-servers).
 
 ---
 
@@ -404,14 +387,18 @@ mcp:
 - `project_write_tools.py`: `write_file`, `edit_file`, `create_directory` — guarded file write tools with confirmation handler and scope restrictions (`DEV-01`: `.md`, `.yaml`, `.yml` only)
 - `test_tools.py`: `run_tests` — runs the test suite via subprocess with timeout
 
-**Agentic Loop** (in `StreamHandler`):
+#### Agentic Loop
+
+Runs in `StreamHandler` (`packages/core/stream_handler.py`):
 1. `LLMClient.complete(tools=...)` (non-streaming) — check if LLM wants to call a tool
 2. If `finish_reason == "tool_calls"` → execute tool, append result, loop
-3. After at most `max_iterations` iterations → stream final answer as usual
-   - Default: 5 (all agents except developer)
-   - Developer Agent: 20 (multi-step edit-test-fix cycles)
+3. After at most `max_iterations` rounds → stream final answer as usual. When the limit is hit, the model is told the tools still exist (`TOOL_LIMIT_NOTE`) and asked for its next step.
 
-StreamHandler supports both streaming and non-streaming modes (`streaming` flag). Non-streaming mode uses `LLMClient.complete()` for all API calls, enabling prompt caching via OpenRouter. Toggle at runtime with `/stream` or via `models.streaming` config.
+`max_iterations` defaults to `_MAX_AGENTIC_ITERATIONS` in `stream_handler.py`; an agent overrides it with `max_iterations:` in its `meta.yaml`. Per-agent values are in [agents.md](agents.md#agents).
+
+#### Streaming and Prompt Caching
+
+StreamHandler supports both streaming and non-streaming modes (`streaming` flag). Non-streaming mode uses `LLMClient.complete()` for all API calls, enabling prompt caching via OpenRouter (blocked in streaming mode by an upstream LiteLLM format inconsistency). Toggle at runtime with `/stream` or via `models.streaming` config. Auto Router turns never stream (see [Model Selection](#model-selection)). Cache breakpoints are described under [LLM Client](#3-llm-client-packagescorellm_clientpy).
 
 **Key Design Choices:**
 - Non-streaming intermediate calls (simpler delta parsing, no user-visible cost)
@@ -419,21 +406,15 @@ StreamHandler supports both streaming and non-streaming modes (`streaming` flag)
 - `ToolRegistry` built per-agent from `AgentConfig.tools` (no global singleton)
 - 50KB cap on extracted web content with truncation notice
 
-**Tool Scoping for Agent Delegation:**
+**Tool Scoping:**
 
-Tools are split into three categories at startup, each with different forwarding rules:
+`build_session()` (`apps/cli/session_factory.py`) sorts tools into three kinds at startup:
 
-| List | Examples | Given to JARVIS | Standalone `--agent` | Delegated agent |
-|---|---|---|---|---|
-| `extra_tools` | `recall_conversations`, vault read tools | Yes | Yes | Yes (via delegation fix) |
-| `agent_only_tools` | blog tools, `evaluate_content` | **No** | Yes | Yes |
-| Per-agent vault tools | `create_note`, `edit_note` (scoped to agent's dir) | **No** | Yes | Yes |
+- **Shared tools** — go to JARVIS and to every agent (e.g. vault read tools, `recall_conversations`, outcome tools, shared MCP servers). Each is only registered when its feature is enabled.
+- **Named tool groups** — an agent gets a group only if its `meta.yaml` lists it under `tools:`. JARVIS gets a fixed subset (`jarvis_tools`) so it delegates specialist work instead of doing it itself.
+- **Per-agent vault write tools** — created by `make_agent_vault_tools()` from the agent's `vault_writing:` key (an `obsidian.writing.<key>` section), scoped to that directory. No name collisions because each agent gets its own `ToolRegistry`.
 
-- **`extra_tools`** — Orchestration tools (conversation recall, card search). Wired at startup, passed to `JarvisAgent`. These are NOT forwarded when JARVIS delegates to a specialist agent, because JARVIS already gathered context before delegating.
-- **`agent_only_tools`** — Specialist tools (blog tools, content evaluator). NOT given to JARVIS (so it delegates content work instead of handling it directly). Forwarded to delegated agents via the `extra_tools` parameter.
-- **Per-agent vault tools** — Created by `_make_agent_vault_tools()` based on `vault_writing` in the agent's `meta.yaml`. Each agent declares which `obsidian.writing.<key>` config section it uses (e.g. `patterns`, `slip_box`), and gets vault write tools scoped to that directory. No name collisions because each agent gets its own `ToolRegistry`.
-- **Standalone `--agent` mode** — Receives `extra_tools + agent_only_tools + agent_vault_tools`.
-- **Delegation path** — Receives `extra_tools + agent_only_tools + agent_vault_tools`.
+`assemble_agent_tools()` combines them the same way for standalone `--agent` mode and for delegation (CLI and GUI). JARVIS alone gets `delegate_to_agent`. Which tools and groups each agent has is in [agents.md](agents.md#tool-distribution).
 
 ---
 
@@ -467,15 +448,9 @@ Message-pair chunks (user + assistant turns together) preserve conversational co
 | `metadata.assistant_snippet` | first 200 chars of assistant turn |
 | `metadata.title` | conversation title or `""` |
 
-**Configuration** (`config/default.yaml`):
-```yaml
-rag:
-  enabled: false
-  db_path: "data/rag/chroma"
-  embedding_model: "openrouter/openai/text-embedding-3-small"
-```
+**Configuration**: the `rag:` section of [`config/default.yaml`](../../config/default.yaml) (store path, embedding model, card indexing).
 
-**Opt-in**: Disabled by default. Enable with `rag.enabled: true` in `local.yaml` and `uv add chromadb`.
+**On by default**: `rag.enabled` is `true` and `chromadb` is a regular dependency, so recall works after `uv sync`. Embeddings go through the same `OPENROUTER_API_KEY` as chat. Set `rag.enabled: false` in `config/local.yaml` to turn it off; if ChromaDB fails at startup, recall is disabled with a warning and the session continues. When `outcomes.enabled` is also on, scored outcomes are indexed and searchable via `recall_outcomes`.
 
 ---
 
@@ -520,8 +495,6 @@ rag:
 
 **Key Components:**
 
-- **Auto Router mode** (ADR-036): `models.auto_router.enabled` makes the session model `openrouter/openrouter/auto` (`AUTO_MODEL_ID`); `session_extra_body()` adds the `auto-router` plugin block and a per-session `session_id` to the client's per-model `extra_body` (never mutating settings). `StreamHandler` doesn't stream auto calls (LiteLLM drops the picked model and cost from streams), records the picked models in `StreamResult.served_models`, and prefers the provider-reported `usage.cost` (`TokenUsage.reported_cost`) over the price table. Heuristic routing skips auto; pinned agents keep their model
-- **Per-agent model**: `meta.yaml` may name a `model` (preset or model id). `instantiate_agent()` resolves it against the loaded `models` config and marks the agent `model_pinned`; `BaseAgent.run()` then wraps the turn in `StreamHandler.using_model()`, which switches the client default, the reported model and pricing, and restores them afterwards. Tools that call a model themselves (`evaluate_content`) use the client's current model, so they follow the running agent. The heuristic router skips pinned agents; unpinned agents run on the session model. Pinned today: `writer`, `substack_publisher` → `quality`
 - **`DataDrivenAgent`** (in `base.py`): Subclass of `BaseAgent` that implements `process_message()` and `run()` using only `meta.yaml` + `prompts/system.md`. Supports `max_iterations` for extended agentic loops. No per-agent Python code needed.
 - **`agent_from_meta()`** (in `base.py`): Factory function that builds an agent from a `meta.yaml` path. Reads the YAML, loads `prompts/system.md`, resolves `prompt_includes` placeholders, binds skills, and returns a configured `DataDrivenAgent`.
 - **`AgentMeta`** dataclass: Contains `meta_path`, `vault_writing`, `tool_groups` (named tool groups from CLI registry), and `skills` (skill names to bind).
@@ -529,9 +502,18 @@ rag:
 - **`instantiate_agent()`** (in `apps/cli/session_factory.py`): Thin wrapper around `agent_from_meta()`.
 - **`build_session()`** (in `apps/cli/session_factory.py`): Shared factory that assembles the `SessionComponents` both the CLI and the GUI need (client, agent registry, tool groups, logger, stream handler, vault, MCP). Parameterized on a `ConfirmationHandler` injection — the CLI passes `CLIConfirmationHandler()`; the GUI passes a `WebConfirmationHandler` rebound per turn. See [gui.md](gui.md) for GUI architecture details.
 
-**Data-driven delegate agents** (13 total): content_reviewer, developer, navigator, obsidian_note_creator, okr_architect, pattern_language_expert, researcher, simplifier, strategyzer, substack_image_creator, substack_publisher, tactics_coach, writer.
+**Agents**: every delegate agent is data-driven (a `meta.yaml` directory under `packages/agents/`); the list with commands, models and tools is in [agents.md](agents.md#agents). The `meta.yaml` fields are documented in [api.md](api.md#metayaml-schema).
 
 **Python-class agent**: jarvis (orchestrator with delegation logic — the only agent with custom Python code).
+
+### Model Selection
+
+Which model a turn runs on (the user-facing order and how to change it: [deployment.md](deployment.md#model-selection-order)):
+
+- **Session model**: resolved at startup by `resolve_model()` (`packages/core/model_resolver.py`) from `--model`, else `auto` if `models.auto_router.enabled`, else `models.default`; `/model` switches it mid-session. Preset names resolve through `models.presets`.
+- **Heuristic routing** (opt-in, `routing.enabled`): `packages/core/model_router.py` classifies each query by length and markers and picks the `fast`, `balanced` or `quality` preset. It skips pinned agents and the Auto Router.
+- **Auto Router mode** (ADR-036): `models.auto_router.enabled` makes the session model `openrouter/openrouter/auto` (`AUTO_MODEL_ID`); `session_extra_body()` adds the `auto-router` plugin block and a per-session `session_id` to the client's per-model `extra_body` (never mutating settings). `StreamHandler` doesn't stream auto calls (LiteLLM drops the picked model and cost from streams), records the picked models in `StreamResult.served_models`, and prefers the provider-reported `usage.cost` (`TokenUsage.reported_cost`) over the price table.
+- **Per-agent model**: `meta.yaml` may name a `model` (preset or model id). `instantiate_agent()` resolves it against the loaded `models` config and marks the agent `model_pinned`; `BaseAgent.run()` then wraps the turn in `StreamHandler.using_model()`, which switches the client default, the reported model and pricing, and restores them afterwards. Tools that call a model themselves (`evaluate_content`) use the client's current model, so they follow the running agent. Unpinned agents run on the session model. Which agents are pinned: [agents.md](agents.md#agents).
 
 ### 11. Agent-Skill Binding (`packages/skills/resolver.py`)
 
@@ -540,18 +522,18 @@ rag:
 Agents can declare `skills:` in their `meta.yaml` to bind skills:
 
 ```yaml
-name: pattern-language-expert
+name: pattern_language_expert
 command: /pattern-language-expert
 skills:
   - pattern-language-expert
 ```
 
 **Resolution logic** (`resolve_skills()`):
-- **Simple skills** (SKILL.md only): Body text is appended to the agent's system prompt.
+- **Simple skills** (SKILL.md only): Body text (frontmatter stripped) is appended to the agent's system prompt.
 - **Deck-skills** (has `deck.yaml`): Name is added to a deck-skill hint section; if `card_search_tool` is available, it's included in the agent's tools.
 - Unknown skill names are logged as warnings and skipped.
 
-**Wiring**: `agent_from_meta()` accepts `skill_registry` and `card_search_tool` parameters. The CLI threads these from `discover_skills()` and RAG card indexing.
+**Wiring**: `agent_from_meta()` accepts `skill_registry` and `card_search_tool` parameters. `build_session()` threads these from `discover_skills()` and RAG card indexing. The skills-vs-agents distinction is in [skills-vs-agents.md](skills-vs-agents.md).
 
 ### 12. Agent-to-Agent Handoff
 
@@ -630,12 +612,11 @@ skills:
 ### Startup Flow
 
 ```
-1. Load config.yaml + .env
+1. Load config/default.yaml + config/local.yaml + .env
    ↓
 2. Collect API keys from env (collect_api_keys())
    ↓
-3. Resolve session model: --model flag > "auto" if models.auto_router.enabled > models.default
-   (agents with meta.yaml `model:` override this per agent)
+3. Resolve session model (see Model Selection above)
    ↓
 4. Sync Things 3 tasks → tasks.md
    ↓
@@ -644,18 +625,18 @@ skills:
    ↓
 6. Initialize LLM client (api_keys dict, resolved model)
    ↓
-7. RAG initialization (if rag.enabled: true)
+7. RAG initialization (if rag.enabled)
    ├─ ConversationIndexer.index_new(conversations_dir)
    │   Embed + upsert any new conversation files
-   └─ make_conversation_recall_tool() → extra_tools
+   └─ make_conversation_recall_tool() → shared_tools
    ↓
-7b. Blog tools initialization (if obsidian.enabled: true)
-   └─ make_blog_tools(vault_config, ...) → agent_only_tools
+7b. Blog tools initialization (if obsidian.enabled and blog_dir set)
+   └─ make_blog_tools(vault_config, ...) → tool_groups["blog_tools"]
    ↓
 7c. MCP client initialization (if settings.mcp.enabled) — Cortex arrives here
     as a shared MCP server (HUB-01)
    ├─ MCPManager.start(settings.mcp.servers) → connect to servers, discover tools
-   └─ MCP tool groups → tool_groups dict
+   └─ MCP tool groups → tool_groups dict (shared: true servers → shared_tools)
    ↓
 8. Agent discovery (meta.yaml registry)
    └─ Scan agent directories for meta.yaml (all agents discovered via meta.yaml)
@@ -671,48 +652,59 @@ skills:
 
 ## File Structure
 
+This is the canonical project tree; other docs show only the top level and link here. The layout
+of `tests/` is in [tests/README.md](../../tests/README.md), of `tests/golden/` in
+[tests/golden/README.md](../../tests/golden/README.md).
+
 ```
 jarvis/
 ├── apps/                           # Deployable applications
-│   ├── cli/                        # CLI entry point
-│   │   ├── main.py                 # CLI application
+│   ├── cli/                        # CLI entry point (`uv run jarvis`)
+│   │   ├── main.py                 # Chat loop + slash-command routing
 │   │   ├── session_factory.py      # build_session(): shared CLI/GUI bootstrap, tool groups
+│   │   ├── review.py               # /outcomes scoring helpers (reused by the GUI)
 │   │   └── display.py              # Rich terminal formatting
-│   └── gui/                        # Web GUI (WEB)
-│       ├── server/                 # FastAPI backend (routes, bridge, auth)
-│       └── web/                    # React frontend (committed dist/)
+│   └── gui/                        # Web GUI (`uv run jarvis-gui`, see gui.md)
+│       ├── main.py                 # Entry: uvicorn + browser open
+│       ├── server/                 # FastAPI backend: app, auth, bridge, state, streaming,
+│       │                           #   confirmation, protocol, resume; routes/, agents/, home/, history/
+│       └── web/                    # React 18 + Vite + TypeScript (src/ + committed dist/)
 │
 ├── packages/                       # Shared libraries (reusable)
 │   ├── core/                       # Core JARVIS functionality
 │   │   ├── llm_client.py           # LLM API abstraction
 │   │   ├── context_builder.py      # System prompt assembly
-│   │   ├── memory.py               # Conversation logging
+│   │   ├── memory.py               # Conversation logging (schema v1.0.0)
+│   │   ├── history.py              # History summarization
 │   │   ├── pricing.py              # Cost tracking
-│   │   ├── stream_handler.py       # Streaming + metrics + cost + event emission
+│   │   ├── stream_handler.py       # Streaming + agentic loop + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
 │   │   ├── settings.py             # Typed config (pydantic-settings, ADR-032)
 │   │   ├── model_resolver.py       # Presets, `auto` alias, per-session extra_body
 │   │   ├── model_router.py         # Heuristic complexity routing (opt-in)
 │   │   ├── filesystem_access.py    # Filesystem access control (FilesystemGuard)
-│   │   ├── card_renderer.py         # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
+│   │   ├── frontmatter.py          # YAML frontmatter parse/dump + atomic write
+│   │   ├── date_utils.py           # parse_relative_date ("next week", ISO dates, …)
+│   │   ├── daily_summary.py        # /daily-summary request builder (CLI + GUI)
+│   │   ├── card_renderer.py        # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
 │   │   │   ├── indexer.py          # ConversationIndexer
+│   │   │   ├── outcome_indexer.py  # OutcomeIndexer (scored outcomes)
+│   │   │   ├── card_indexer.py     # CardIndexer (deck-skill cards)
 │   │   │   └── searcher.py         # ConversationSearcher + SearchResult
-│   │   ├── tools/                  # Function calling tools
+│   │   ├── tools/                  # Function calling tools (groups: agents.md)
 │   │   │   ├── base.py             # ToolDefinition + ToolRegistry
 │   │   │   ├── executor.py         # execute_tool_calls()
-│   │   │   ├── web_fetch.py        # fetch_url tool
-│   │   │   ├── conversation_recall.py  # make_conversation_recall_tool()
-│   │   │   ├── delegate.py             # delegate_to_agent tool
-│   │   │   ├── vault_read_tools.py     # Obsidian vault read tools (read_note, search_notes, read_daily_note)
-│   │   │   ├── blog_tools.py           # make_blog_tools() for Writing Agent
-│   │   │   ├── card_generator_tools.py # make_card_generator_tools() for Pattern Card Generator
-│   │   │   ├── vault_write_tools.py    # make_vault_write_tools() for any agent
-│   │   │   ├── codebase_tools.py       # read_source_file, search_code, list_directory, read_architecture_map
-│   │   │   ├── git_tools.py            # git_status, git_diff, git_branch, git_add, git_commit, git_log
-│   │   │   ├── project_write_tools.py  # write_file, edit_file, create_directory (scoped, guarded)
-│   │   │   └── test_tools.py           # run_tests via subprocess
+│   │   │   ├── delegate.py         # delegate_to_agent (JARVIS only)
+│   │   │   ├── conversation_recall.py, outcome_tools.py, outcome_recall.py
+│   │   │   ├── vault_read_tools.py, vault_write_tools.py
+│   │   │   ├── web_fetch.py, web_search.py
+│   │   │   ├── blog_tools.py, content_evaluator.py, suggest_improvements.py
+│   │   │   ├── card_generator_tools.py, card_search.py
+│   │   │   ├── codebase_tools.py, git_tools.py, project_write_tools.py,
+│   │   │   │   test_tools.py, mutation_tools.py        # developer agent (dev_tools)
+│   │   │   └── things3_tools.py, readwise_tools.py
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
@@ -721,68 +713,19 @@ jarvis/
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
 │   │   ├── registry.py             # Agent discovery (meta.yaml) + slash-command lookup
-│   │   ├── _shared/                # Shared prompt includes
-│   │   │   └── prompts/
-│   │   │       ├── voice-profile.md
-│   │   │       └── anti-patterns.md
-│   │   ├── jarvis/                 # Main JARVIS orchestrator
-│   │   │   ├── agent.py
-│   │   │   └── prompts/            # Daily summary + writing prompts
-│   │   ├── content_reviewer/       # Data-driven agent (/review)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── developer/              # Data-driven agent (/develop)
-│   │   │   ├── meta.yaml
-│   │   │   ├── confirmation.py
-│   │   │   └── prompts/system.md
-│   │   ├── navigator/              # Data-driven agent (/navigator)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── obsidian_note_creator/  # Data-driven agent (/obsidian-note-creator)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── okr_architect/          # Data-driven agent (/okr-architect)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── pattern_language_expert/ # Data-driven agent (/pattern-language-expert)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── pattern_card_generator/ # Data-driven agent (/pattern-cards)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── reading_assistant/      # Data-driven agent (/reading)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── researcher/             # Data-driven agent (/research)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── simplifier/             # Data-driven agent (/simplify)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── strategyzer/            # Data-driven agent (/strategize)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── substack_image_creator/ # Data-driven agent (/substack-image)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── substack_publisher/     # Data-driven agent (/publish, model: quality)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   ├── tactics_coach/          # Data-driven agent (/tactics)
-│   │   │   ├── meta.yaml
-│   │   │   └── prompts/system.md
-│   │   └── writer/                 # Data-driven agent (/write, model: quality)
-│   │       ├── meta.yaml
-│   │       └── prompts/system.md
+│   │   ├── prompt_includes.py      # prompt_includes resolution chain
+│   │   ├── _shared/prompts/        # Shared prompt includes (anti-patterns.md, voice-profile.md.example)
+│   │   ├── jarvis/                 # Orchestrator (Python class: agent.py + prompts/)
+│   │   └── <name>/                 # One directory per data-driven agent: meta.yaml + prompts/system.md
+│   │                               #   (list: docs/engineering/agents.md)
 │   ├── skills/                     # Skills (passive knowledge packs)
 │   │   ├── base.py                 # BaseSkill (parses SKILL.md, optional skill.py)
 │   │   ├── registry.py             # Filesystem-based skill discovery
 │   │   ├── resolver.py             # Skill resolution and binding for agents
-│   │   └── .../                    # Individual skills (each has SKILL.md)
+│   │   └── <skill-name>/           # One kebab-case directory per skill (SKILL.md), e.g. content-evaluator/
 │   ├── integrations/               # External service integrations
-│   │   ├── things3/                # Things 3 task sync
-│   │   │   └── task_sync.py        # ~520 lines
-│   │   ├── readwise/               # Readwise / Reader client (/reading)
+│   │   ├── things3/task_sync.py    # Things 3 task sync (SQLite via things.py)
+│   │   ├── readwise/client.py      # Readwise / Reader client (/reading)
 │   │   ├── mcp/                    # MCP client integration
 │   │   │   ├── client.py           # Connection lifecycle + async/sync bridge
 │   │   │   └── bridge.py           # MCP Tool → ToolDefinition conversion
@@ -794,28 +737,24 @@ jarvis/
 │   └── telemetry/                  # Metrics and monitoring
 │       └── metrics.py              # TTFT, response metrics
 │
-├── data/                           # User data
-│   ├── context/                    # Personal context (markdown)
-│   │   ├── personal_context.md     # Personal background
-│   │   ├── professional_context.md # Professional background
-│   │   ├── preferences.md
-│   │   ├── current_focus.md
-│   │   └── tasks.md                # Auto-generated from Things 3
-│   ├── conversations/              # Session logs (gitignored)
-│   │   └── YYYY/                   # Year-based subdirectories
-│   │       └── YYYY-MM-DD_HH-MM-SS.json
-│   ├── rag/                        # RAG vector store (gitignored)
-│   │   └── chroma/                 # ChromaDB persistent data
-│   ├── codebase_map.md             # Auto-generated by scripts/generate_codebase_map.py
-│   └── learned_facts.md            # (Future) Extracted facts
+├── data/                           # User data (gitignored except codebase_map.md)
+│   ├── context/                    # Personal context (markdown; load order in §2 above)
+│   ├── conversations/YYYY/         # Session logs, YYYY-MM-DD_HH-MM-SS.json
+│   ├── outcomes/                   # Tracked recommendations + reviews
+│   ├── prompt-history/             # Per-agent prompt snapshots (GUI prompt editor)
+│   ├── rag/chroma/                 # ChromaDB persistent data
+│   └── codebase_map.md             # Auto-generated by scripts/generate_codebase_map.py
 │
 ├── config/                         # Configuration
-│   ├── default.yaml                # Default configuration
+│   ├── default.yaml                # Default configuration (reference for all defaults)
 │   └── local.yaml                  # Local overrides (gitignored)
 │
-├── tests/                          # Test suite
-├── docs/                           # Documentation
-├── scripts/                        # Utility scripts
+├── scripts/                        # Importers (import_*.py), model_benchmark.py, benchmark_report.py,
+│                                   #   analyze_costs.py, analyze_context.py, generate_codebase_map.py,
+│                                   #   link_skills.sh (symlink private skills), one-off migrations
+├── tests/                          # Test suite (layout: tests/README.md)
+├── docs/                           # Documentation (product/, engineering/, research/, design/)
+├── jarvis_cli.py, jarvis_gui.py    # Script entry points
 ├── .env                            # API keys (gitignored)
 └── pyproject.toml                  # Project configuration
 ```
@@ -873,8 +812,8 @@ jarvis/
 - `python-dotenv` - Environment variables
 - `things.py` - Things 3 task sync via SQLite
 
-**Optional:**
-- `chromadb` - Vector storage for conversation recall (via `uv add chromadb`, `rag.enabled: true`)
+**Also core** (listed in `pyproject.toml`):
+- `chromadb` - Vector storage for conversation recall (`rag.enabled`, on by default)
 
 **Future:**
 - `sentence-transformers` - Local embeddings (alternative to API embeddings)
@@ -899,7 +838,9 @@ See `docs/engineering/multi-agent-architecture.md` for the full multi-agent arch
 - **Single machine**: Distributed execution (Scenario B) is vision-only
 - **In-memory history**: Full conversation in context window (mitigated by history summarization — see below)
 
-History summarization (`summarize_history()` in `history.py`) compresses old conversation turns using the fast model when history exceeds ~40K tokens. Uses a `[JARVIS_SUMMARY]` marker to avoid re-summarizing every turn.
+### History Summarization
+
+Opt-in via `summarization.enabled` (threshold and number of kept messages in the `summarization:` section of [`config/default.yaml`](../../config/default.yaml)). `summarize_history()` in `packages/core/history.py` compresses old conversation turns with the `fast` preset once history exceeds the token threshold, keeping the most recent messages intact. A `[JARVIS_SUMMARY]` marker avoids re-summarizing every turn. The setting is hot-applied in the GUI (`HOT_APPLY_PATHS`).
 
 ---
 
@@ -909,7 +850,7 @@ History summarization (`summarize_history()` in `history.py`) compresses old con
 
 - ✅ API keys in `.env` (not committed)
 - ✅ Local data only (no cloud sync)
-- ✅ No user authentication (single-user)
+- ✅ Single user; the GUI requires a token and checks the request origin ([gui.md](gui.md#authentication), ADR-035)
 - ⚠️ Conversation logs contain sensitive data (user responsible for security)
 
 ### Best Practices
@@ -929,9 +870,7 @@ History summarization (`summarize_history()` in `history.py`) compresses old con
 
 ## Testing Strategy
 
-See [docs/engineering/testing.md](testing.md) for current test counts, coverage details, and the full testing strategy.
-
-**Quick summary**: Comprehensive automated test suite with 97.5% coverage on core modules. Unit, integration, and golden tests with LLM-as-judge evaluation.
+Unit, integration and golden tests (LLM-as-judge). Strategy and mutation testing: [testing.md](testing.md); commands: [tests/README.md](../../tests/README.md).
 
 ---
 
@@ -958,7 +897,7 @@ See [docs/engineering/testing.md](testing.md) for current test counts, coverage 
 
 1. **New providers**: Just configure LiteLLM
 2. **New context files**: Add to `context/` directory
-3. **Custom prompts**: Edit `config.yaml`
+3. **Custom prompts**: Edit an agent's `prompts/system.md` or the context files in `data/context/`
 4. **Alternative UIs**: Import and use existing modules
 
 ### Future Extensibility
