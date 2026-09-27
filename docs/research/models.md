@@ -82,9 +82,11 @@ For a typical Jarvis conversation:
 
 ---
 
-## Model Recommendations
+## Model Recommendations (April 2026, historical)
 
-### Default Choice: Claude Sonnet 4.5
+> Superseded by [Default Model Recommendation](#default-model-recommendation).
+
+### Then-default: Claude Sonnet 4.5
 
 **Why:**
 - ✅ Best quality/cost ratio
@@ -393,17 +395,9 @@ Based on the 2026-09 refresh (10 models, 15 results each, two judges), **GPT-6 L
 
 ### Configuration
 
-Set in `config/default.yaml`:
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"
-  presets:
-    fast: "openrouter/openai/gpt-6-luna"
-    quality: "openrouter/anthropic/claude-opus-5.5"
-    balanced: "openrouter/openai/gpt-6-luna"
-```
-
-Override per-session via `--model` flag or `/model` command.
+The values live in `models:` in [`config/default.yaml`](../../config/default.yaml). How to change
+them, switch per session (`--model`, `/model`) or pin a model per agent is in
+[deployment.md](../engineering/deployment.md#switching-models-and-providers).
 
 ---
 
@@ -444,32 +438,8 @@ Override per-session via `--model` flag or `/model` command.
 
 ## Switching Models
 
-### Via Config
-
-Edit `config/default.yaml` (or override in `config/local.yaml`):
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"
-  presets:
-    fast: "openrouter/openai/gpt-6-luna"
-    quality: "openrouter/anthropic/claude-opus-5.5"
-    balanced: "openrouter/openai/gpt-6-luna"
-```
-
-### Via CLI Flag
-
-```bash
-uv run python -m apps.cli.main --model quality            # Use a preset
-uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6  # Direct provider
-```
-
-### Mid-Session
-
-```
-/model              # Show current model + presets
-/model fast         # Switch to fast preset
-/model openai/gpt-4o  # Switch to literal model
-```
+How to switch models (config, `--model`, `/model`, presets, per-agent models, Auto Router,
+selection order) is in [deployment.md](../engineering/deployment.md#switching-models-and-providers).
 
 ---
 
