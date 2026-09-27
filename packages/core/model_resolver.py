@@ -7,8 +7,26 @@ Translates user-facing model names (presets like "fast" or literal IDs like
 
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from packages.core.settings import ModelsSettings
+
+# OpenRouter's Auto Router in LiteLLM format; "auto" resolves to it (see models.auto_router)
+AUTO_MODEL_ID = "openrouter/openrouter/auto"
+
+
+def session_extra_body(models: ModelsSettings, session_id: str) -> dict[str, dict[str, Any]]:
+    """Per-model request fields for a session: models.extra_body plus the Auto Router block.
+
+    Returns a new dict; ``models.extra_body`` is never modified (the GUI saves settings back).
+    The auto block is present whether or not auto_router.enabled, so ``/model auto`` works too.
+    """
+    auto = models.auto_router
+    plugin: dict[str, Any] = {"id": "auto-router", "cost_tier": auto.cost_tier}
+    if auto.excluded_models:
+        plugin["excluded_models"] = list(auto.excluded_models)
+    auto_body = {"plugins": [plugin], "session_id": session_id}
+    return {**models.extra_body, AUTO_MODEL_ID: {**models.extra_body.get(AUTO_MODEL_ID, {}), **auto_body}}
 
 
 @dataclass
@@ -51,7 +69,7 @@ def resolve_model(name_or_preset: str, models: ModelsSettings) -> ResolvedModel:
     presets = models.presets.model_dump()
 
     # Check if it's a preset name
-    model_id = presets.get(name_or_preset, name_or_preset)
+    model_id = AUTO_MODEL_ID if name_or_preset == "auto" else presets.get(name_or_preset, name_or_preset)
 
     provider = infer_provider(model_id)
 

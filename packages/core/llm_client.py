@@ -119,6 +119,32 @@ class TokenUsage:
     total_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
+    # Exact billed cost reported by the provider (OpenRouter `usage.cost`, non-streaming
+    # only); None when not reported. Takes precedence over price-table estimates.
+    reported_cost: float | None = None
+
+    def __add__(self, other: "TokenUsage") -> "TokenUsage":
+        costs = [c for c in (self.reported_cost, other.reported_cost) if c is not None]
+        return TokenUsage(
+            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+            completion_tokens=self.completion_tokens + other.completion_tokens,
+            total_tokens=self.total_tokens + other.total_tokens,
+            cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
+            cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
+            reported_cost=sum(costs) if costs else None,
+        )
+
+
+def reported_cost(usage: Any) -> float | None:
+    """The provider-reported cost on a response's usage object, if it carries one."""
+    cost = getattr(usage, "cost", None)
+    return float(cost) if isinstance(cost, int | float) and not isinstance(cost, bool) else None
+
+
+def served_model(response: Any) -> str | None:
+    """The model that actually answered (differs from the request for routers like openrouter/auto)."""
+    model = getattr(response, "model", None)
+    return model if isinstance(model, str) and model else None
 
 
 @dataclass
@@ -237,7 +263,13 @@ class LLMClient:
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
 
-        return litellm.completion(**kwargs)
+        try:
+            return litellm.completion(**kwargs)
+        except litellm.APIError as e:  # type: ignore[attr-defined]
+            credit_err = _parse_credit_error(e, kwargs.get("max_tokens"))
+            if credit_err:
+                raise credit_err from e
+            raise
 
     def chat_stream(
         self,

@@ -42,11 +42,11 @@ from packages.core.filesystem_access import load_filesystem_guard
 from packages.core.history import summarize_history, trim_tool_results
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger
-from packages.core.model_resolver import get_api_key, resolve_model
+from packages.core.model_resolver import AUTO_MODEL_ID, get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.settings import ModelsSettings, Settings, load_config
-from packages.core.stream_handler import StreamHandler, StreamResult
+from packages.core.stream_handler import StreamHandler, StreamResult, served_metadata
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
@@ -231,6 +231,7 @@ def handle_daily_summary(
         cost_usd=result.cost_usd,
         ttft_ms=result.metrics.ttft_ms,
         total_latency_ms=result.metrics.total_latency_ms,
+        metadata=served_metadata(result),
         agent_name="JARVIS",
     )
 
@@ -293,12 +294,7 @@ def handle_model_command(
     stream_handler.model_id = resolved.model_id
     stream_handler.pricing = new_pricing
 
-    if new_pricing:
-        price_info = (
-            f"${new_pricing.prompt_cost * 1_000_000:.2f}/${new_pricing.completion_cost * 1_000_000:.2f} per 1M tokens"
-        )
-    else:
-        price_info = "pricing unavailable"
+    price_info = _price_info(resolved.model_id, new_pricing)
 
     print_system(f"\nSwitched to {resolved.display_name} ({price_info})\n")
     return resolved.model_id, new_pricing
@@ -325,6 +321,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Auto-approve file writes within developer.scope (for CI/unattended runs)",
     )
     return parser.parse_args(argv)
+
+
+def _price_info(model_id: str, pricing: ModelPricing | None) -> str:
+    """Per-1M price text; the Auto Router has no price of its own (LiteLLM lists it as $0)."""
+    if model_id == AUTO_MODEL_ID:
+        return "priced per chosen model"
+    if pricing:
+        return f"${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens"
+    return "pricing unavailable"
+
+
+def _should_route(settings: Settings, model_id: str, active_agent: Any) -> bool:
+    """Heuristic routing applies unless an agent pins its model or the Auto Router already routes."""
+    agent_pins_model = getattr(getattr(active_agent, "config", None), "model_pinned", False) is True
+    return settings.routing.enabled and not agent_pins_model and model_id != AUTO_MODEL_ID
 
 
 def _pinned_model_label(agent: Any) -> str | None:
@@ -409,6 +420,7 @@ def _run_agent_session(
             cost_usd=result.cost_usd,
             ttft_ms=result.metrics.ttft_ms,
             total_latency_ms=result.metrics.total_latency_ms,
+            metadata=served_metadata(result),
             agent_name=agent_name,
         )
 
@@ -545,6 +557,7 @@ def _handle_agent_command(
         cost_usd=result.cost_usd,
         ttft_ms=result.metrics.ttft_ms,
         total_latency_ms=result.metrics.total_latency_ms,
+        metadata=served_metadata(result),
         agent_name=meta.name,
     )
     return True
@@ -607,12 +620,7 @@ def main(argv: list[str] | None = None) -> None:
         return make_agent_vault_tools(meta, _settings, _vc, confirmation_handler)
 
     # Pricing display string for the startup banner.
-    if pricing:
-        price_info = (
-            f"(${pricing.prompt_cost * 1_000_000:.2f}/${pricing.completion_cost * 1_000_000:.2f} per 1M tokens)"
-        )
-    else:
-        price_info = "(pricing unavailable)"
+    price_info = f"({_price_info(model_id, pricing)})"
 
     # Print startup info
     commands = None
@@ -740,9 +748,7 @@ def main(argv: list[str] | None = None) -> None:
             # Intelligent model routing (opt-in via config)
             routed_model_id = None
             routed_display: str | None = None
-            # Agents that name their own model in meta.yaml keep it; only the rest are routed
-            agent_pins_model = getattr(getattr(active_agent, "config", None), "model_pinned", False) is True
-            if settings.routing.enabled and not agent_pins_model:
+            if _should_route(settings, model_id, active_agent):
                 decision = route_query(user_input, settings)
                 if decision.resolved.model_id != model_id:
                     routed_model_id = model_id  # save original to restore
@@ -783,6 +789,7 @@ def main(argv: list[str] | None = None) -> None:
                 cost_usd=result.cost_usd,
                 ttft_ms=result.metrics.ttft_ms,
                 total_latency_ms=result.metrics.total_latency_ms,
+                metadata=served_metadata(result),
                 agent_name=agent_name,
             )
 

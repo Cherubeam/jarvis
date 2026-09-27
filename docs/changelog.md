@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — OpenRouter Auto Router as an opt-in mode (2026-09-27)
+
+- **`models.auto_router`** (`enabled: false` by default, `cost_tier`,
+  `excluded_models`): when enabled, the session model is `openrouter/auto` and
+  JARVIS's heuristic routing is skipped. Also `/model auto` / `--model auto`.
+  Agents with `model:` in `meta.yaml` keep theirs. ADR-036.
+- **You see what auto picked.** The stats line shows `auto → <model>` and the
+  conversation log stores `metadata.served_models` (record-keeping, EU AI Act
+  Art. 12, applied voluntarily). Auto calls don't stream, because LiteLLM drops
+  the picked model and its cost from streams.
+- **Billed costs.** Non-streaming OpenRouter calls now use the provider-reported
+  `usage.cost` ahead of the price table (LiteLLM lists auto at $0). This also
+  makes `models.streaming: false` costs exact for fixed models. `TokenUsage`
+  merges now go through one `__add__`.
+- **`LLMClient.complete()` converts 402s** to the credit-limit errors the
+  streaming paths already raised, so the reduced-`max_tokens` retry works on the
+  non-streaming path too.
+- **Golden harness:** `DEFAULT_MODEL=auto` runs the Auto Router with the
+  configured settings. Result at `cost_tier: low`: 13/15, avg 0.855 (GPT-6 Luna:
+  15/15, 0.907), so auto stays opt-in. NIST AI RMF Measure.
+
 ### Changed — Writer tags the prose it writes (2026-09-25)
 
 - **The writer adds `prose` to a note's `assist` frontmatter list** when it

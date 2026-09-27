@@ -11,6 +11,9 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['presets', 'fast'], label: 'presets.fast' },
     { path: ['presets', 'quality'], label: 'presets.quality' },
     { path: ['presets', 'balanced'], label: 'presets.balanced' },
+    { path: ['auto_router', 'enabled'], label: 'auto_router.enabled' },
+    { path: ['auto_router', 'cost_tier'], label: 'auto_router.cost_tier' },
+    { path: ['auto_router', 'excluded_models'], label: 'auto_router.excluded_models' },
   ],
   paths: [
     { path: ['context_dir'], label: 'context_dir' },

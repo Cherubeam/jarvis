@@ -29,6 +29,7 @@ from packages.core.daily_summary import (
 )
 from packages.core.history import summarize_history, trim_tool_results
 from packages.core.model_resolver import resolve_model
+from packages.core.stream_handler import served_metadata
 from packages.integrations.obsidian.writer import append_to_daily_note
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,7 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
         cost_usd=result.cost_usd,
         ttft_ms=getattr(result.metrics, "ttft_ms", 0),
         total_latency_ms=getattr(result.metrics, "total_latency_ms", 0),
+        metadata=served_metadata(result),
         agent_name=agent_name,
     )
     if components.context_metadata and result.text:
@@ -256,6 +258,7 @@ async def _run_delegation(session: GuiSession, queue: Queue[dict[str, Any]], tur
         cost_usd=delegate_result.cost_usd,
         ttft_ms=getattr(delegate_result.metrics, "ttft_ms", 0),
         total_latency_ms=getattr(delegate_result.metrics, "total_latency_ms", 0),
+        metadata=served_metadata(delegate_result),
         agent_name=delegate_id,
     )
 
@@ -400,6 +403,7 @@ async def _run_daily_summary_turn(session: GuiSession, user_text: str, queue: Qu
         cost_usd=result.cost_usd,
         ttft_ms=getattr(result.metrics, "ttft_ms", 0),
         total_latency_ms=getattr(result.metrics, "total_latency_ms", 0),
+        metadata=served_metadata(result),
         agent_name=agent_name,
     )
 

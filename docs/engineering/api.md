@@ -490,6 +490,10 @@ models:
   extra_body:                    # per-model request fields, keyed by full model id
     "openrouter/qwen/qwen3.5-flash-02-23":
       reasoning: {effort: "none"}
+  auto_router:                   # OpenRouter Auto Router, opt-in (ADR-036)
+    enabled: false
+    cost_tier: "low"
+    excluded_models: []
 
 paths:
   context_dir: "data/context"
