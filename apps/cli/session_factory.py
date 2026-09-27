@@ -29,7 +29,7 @@ from packages.core.context_builder import build_system_prompt_with_metadata, par
 from packages.core.filesystem_access import load_filesystem_guard
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
-from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model
+from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model, session_extra_body
 from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.settings import ModelsSettings, Settings
 from packages.core.stream_handler import StreamHandler
@@ -176,6 +176,11 @@ def instantiate_agent(
     )
 
 
+def session_model_source(cli_model: str | None, models: ModelsSettings) -> str:
+    """--model wins; otherwise the Auto Router when enabled, else models.default."""
+    return cli_model or ("auto" if models.auto_router.enabled else models.default)
+
+
 def build_session(
     args: Any,
     settings: Settings,
@@ -203,7 +208,7 @@ def build_session(
     jarvis_dir = settings.jarvis_dir
     api_keys = collect_api_keys()
 
-    model_source = getattr(args, "model", None) or settings.models.default
+    model_source = session_model_source(getattr(args, "model", None), settings.models)
     resolved = resolve_model(model_source, settings.models)
     model_id = resolved.model_id
 
@@ -219,13 +224,16 @@ def build_session(
 
     system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
 
-    client = LLMClient(api_keys=api_keys, default_model=model_id, extra_body=settings.models.extra_body)
+    conversation_id = generate_conversation_id()
+    client = LLMClient(
+        api_keys=api_keys,
+        default_model=model_id,
+        extra_body=session_extra_body(settings.models, session_id=conversation_id),
+    )
 
     agent_registry = discover_agents()
     skill_registry = discover_skills()
     _warn_on_prompt_include_issues(agent_registry)
-
-    conversation_id = generate_conversation_id()
 
     shared_tools: list[Any] = []
     tool_groups: dict[str, list[Any]] = {}

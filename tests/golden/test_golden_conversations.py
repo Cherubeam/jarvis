@@ -184,16 +184,21 @@ class TestGoldenConversations:
         except ImportError:
             from llm_client import LLMClient
 
-        model_id = (
-            f"openrouter/{self.model_tested}" if not self.model_tested.startswith("openrouter/") else self.model_tested
-        )
+        from packages.core.model_resolver import AUTO_MODEL_ID, session_extra_body
         from packages.core.settings import load_config
+
+        if self.model_tested == "auto":
+            model_id = AUTO_MODEL_ID  # OpenRouter Auto Router with models.auto_router settings
+        elif self.model_tested.startswith("openrouter/"):
+            model_id = self.model_tested
+        else:
+            model_id = f"openrouter/{self.model_tested}"
 
         settings = load_config()
         model_client = LLMClient(
             api_keys={"openrouter": api_key},
             default_model=model_id,
-            extra_body=settings.models.extra_body,
+            extra_body=session_extra_body(settings.models, session_id=f"golden-{self.run_id}"),
         )
         # Same output cap JARVIS uses; an uncapped request is rejected on a low OpenRouter balance
         self.max_tokens = settings.models.default_max_tokens

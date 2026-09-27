@@ -2472,3 +2472,72 @@ The chosen design touches no file under `apps/gui/web/src/`.
 - ADR-033 (initiative naming) — `AON-01`.
 - ADR-034 (context hub) — the vault is the moat, which is what makes the GUI
   worth protecting.
+
+---
+
+## ADR-036: OpenRouter Auto Router as an Opt-In Session Model
+
+**Date**: 2026-09-27
+**Status**: Accepted
+
+### Context
+
+JARVIS picks models itself: `models.default`, presets, `meta.yaml` `model:` per
+agent (ADR-less, PR #50), and a length/keyword heuristic router. OpenRouter now
+offers an Auto Router (`openrouter/auto`) that classifies each prompt into a task
+type and picks from the models the OpenRouter market spends most on for it, within
+a cost band. It could replace both the fixed default and the heuristic router.
+
+Three facts shaped the decision (probes, 2026-09-25):
+- Through LiteLLM, **streamed** auto responses report `model = "openrouter/auto"`
+  and no cost; the raw OpenRouter stream has both, LiteLLM drops them. The
+  generation-stats endpoint still returned 404 after 5.5 s. Non-streaming
+  responses carry the chosen model and the exact billed `usage.cost`.
+- LiteLLM prices `openrouter/openrouter/auto` at $0, so price-table cost is wrong.
+- On JARVIS's golden suite, auto at `cost_tier: low` scored 13/15 (0.855) vs the
+  fixed default GPT-6 Luna's 15/15 (0.907).
+
+### Decision
+
+Add auto as an **opt-in** mode (`models.auto_router.enabled`, default `false`),
+not as the default:
+
+- When enabled, the session model is `openrouter/openrouter/auto` (also reachable
+  via `/model auto`, `--model auto`) and JARVIS's heuristic routing is skipped for
+  it. Agents with `model:` in `meta.yaml` keep their model. Summarization and the
+  golden judge are unaffected.
+- Auto calls never stream (`StreamHandler`); everything else streams as before.
+- Costs use the provider-reported `usage.cost` whenever present (all non-streaming
+  OpenRouter calls), ahead of the price table.
+- The models auto picked are shown per turn (`auto → …`) and written to the
+  conversation log as `metadata.served_models`.
+- Settings: `cost_tier`, `excluded_models`. `allowed_models` is trigger-gated.
+
+### Provider independence
+
+Auto exists only on OpenRouter. Keeping it opt-in, keeping the fixed default and
+the heuristic router, and keeping `session_id`/plugin fields inside the per-model
+`extra_body` means switching providers still means changing config, not code.
+
+### Alternatives Considered
+
+- **Auto as the default** — rejected on the benchmark result and because model
+  choice becomes opaque and changes with the market week to week.
+- **Stream anyway and look up model/cost afterwards** via `/api/v1/generation` —
+  too slow (404 after 5.5 s).
+- **Parse OpenRouter's raw stream instead of LiteLLM's** — bypasses the client
+  abstraction for one model; trigger-gated on the non-streaming UX being a problem.
+
+### Consequences
+
+- Auto turns show a spinner instead of streamed text.
+- Model-id-keyed behaviour doesn't reach the picked model: no Anthropic
+  `cache_control` breakpoints, no per-model `extra_body` (e.g. Qwen reasoning-off).
+- One `session_id` per `build_session`; GUI conversations resumed in the same
+  server process share it (a routing hint only).
+- Non-streaming costs for fixed models now use the billed amount too, which
+  changes reported numbers for `models.streaming: false` users (more accurate).
+
+### Related ADRs
+- ADR-032 (typed settings) — `AutoRouterSettings` lives in `ModelsSettings`.
+- ADR-034 (context hub) — JARVIS rents models; owning the choice logic stays optional.

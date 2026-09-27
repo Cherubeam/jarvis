@@ -7,7 +7,7 @@ reusable class shared by all agents.
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, cast
 
 from packages.core.events import (
@@ -25,7 +25,10 @@ from packages.core.llm_client import (
     StreamToolResult,
     TokenUsage,
     _extract_cache_tokens,
+    reported_cost,
+    served_model,
 )
+from packages.core.model_resolver import AUTO_MODEL_ID
 from packages.core.pricing import ModelPricing, calculate_cost_from_litellm, get_model_pricing
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
@@ -53,6 +56,14 @@ class StreamResult:
     delegate_to: str | None = None
     delegate_task: str | None = None
     delegate_context: str | None = None
+    # Models the Auto Router picked for this turn, in order; empty unless the model is openrouter/auto
+    served_models: list[str] = field(default_factory=list)
+
+
+def served_metadata(result: Any) -> dict[str, Any] | None:
+    """Conversation-log metadata naming the models the Auto Router picked (record-keeping)."""
+    models = getattr(result, "served_models", None)
+    return {"served_models": list(models)} if isinstance(models, list) and models else None
 
 
 class StreamHandler:
@@ -89,6 +100,7 @@ class StreamHandler:
         self._intermediate_usage: TokenUsage | None = None
         self._tool_messages: list[dict[str, Any]] = []
         self._terminal_tool_fired: bool = False
+        self._served_models: list[str] = []
 
     @contextmanager
     def using_model(self, model_id: str) -> Iterator[None]:
@@ -107,6 +119,14 @@ class StreamHandler:
         finally:
             self.client.set_model(saved[0])
             self.model_id, self.pricing = saved[1], saved[2]
+
+    def _record_served_model(self, response: Any) -> None:
+        """Remember which model the Auto Router picked (only recorded while auto is active)."""
+        if self.model_id != AUTO_MODEL_ID:
+            return
+        model = served_model(response)
+        if model and model not in self._served_models:
+            self._served_models.append(model)
 
     def _emit(self, event: Event) -> None:
         """Emit a typed event to the event callback if registered."""
@@ -134,7 +154,9 @@ class StreamHandler:
             print(f"[Tool: {call.function.name}]")
 
     def _calculate_cost(self, usage: TokenUsage, raw_response: Any = None) -> float:
-        """Calculate cost using pricing, LiteLLM fallback, or zero."""
+        """Calculate cost: provider-reported cost, else pricing, else LiteLLM fallback, else zero."""
+        if usage.reported_cost is not None:
+            return usage.reported_cost
         if self.pricing:
             return self.pricing.calculate_cost(
                 usage.prompt_tokens,
@@ -201,9 +223,12 @@ class StreamHandler:
         self._streaming_response = None
         final_text = None  # Set by non-streaming agentic loop
         final_usage = None
+        self._served_models = []
+        # LiteLLM's stream drops the model the Auto Router picked and its cost, so auto never streams
+        use_streaming = self.streaming and self.model_id != AUTO_MODEL_ID
         self.metrics_tracker.start_request()
         if tool_registry is not None and not tool_registry.is_empty():
-            if self.streaming:
+            if use_streaming:
                 messages, tools_format = self._run_agentic_loop(
                     messages,
                     tool_registry,
@@ -253,6 +278,7 @@ class StreamHandler:
                 cost_usd=cost_usd,
                 metrics=response_metrics,
                 tool_messages=tool_messages,
+                served_models=list(self._served_models),
             )
 
         # If the agentic loop already received a streaming content response,
@@ -269,7 +295,7 @@ class StreamHandler:
             return self._complete_from_text(final_text, final_usage or TokenUsage())
 
         # Final response (no agentic loop, or loop exhausted iterations)
-        if self.streaming:
+        if use_streaming:
             return self._stream_simple(messages, print_chunks, tools=tools_format)
         return self._complete_simple(messages, tools=tools_format)
 
@@ -326,13 +352,10 @@ class StreamHandler:
                 usage=tool_result.usage,
             )
 
-            accumulated_usage = TokenUsage(
-                prompt_tokens=accumulated_usage.prompt_tokens + tool_result.usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens + tool_result.usage.completion_tokens,
-                total_tokens=accumulated_usage.total_tokens
-                + (tool_result.usage.prompt_tokens + tool_result.usage.completion_tokens),
-                cache_read_tokens=accumulated_usage.cache_read_tokens + tool_result.usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens + tool_result.usage.cache_write_tokens,
+            # Streamed tool-call usage can omit total_tokens; count prompt + completion instead
+            call = tool_result.usage
+            accumulated_usage = accumulated_usage + replace(
+                call, total_tokens=call.prompt_tokens + call.completion_tokens
             )
 
             # UX feedback for each tool call
@@ -413,13 +436,7 @@ class StreamHandler:
         # Add any accumulated intermediate usage
         intermediate = getattr(self, "_intermediate_usage", None)
         if intermediate is not None:
-            usage = TokenUsage(
-                prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
-                completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
-                total_tokens=usage.total_tokens + intermediate.total_tokens,
-                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
-                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
-            )
+            usage = usage + intermediate
             self._intermediate_usage = None
 
         cost_usd = self._calculate_cost(usage, response.raw_response)
@@ -453,6 +470,7 @@ class StreamHandler:
             cost_usd=cost_usd,
             metrics=response_metrics,
             tool_messages=tool_messages,
+            served_models=list(self._served_models),
         )
 
     def _stream_simple(
@@ -481,13 +499,7 @@ class StreamHandler:
         # Add any accumulated intermediate usage
         intermediate = getattr(self, "_intermediate_usage", None)
         if intermediate is not None:
-            usage = TokenUsage(
-                prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
-                completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
-                total_tokens=usage.total_tokens + intermediate.total_tokens,
-                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
-                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
-            )
+            usage = usage + intermediate
             self._intermediate_usage = None
 
         cost_usd = self._calculate_cost(usage, response.raw_response)
@@ -522,6 +534,7 @@ class StreamHandler:
             cost_usd=cost_usd,
             metrics=response_metrics,
             tool_messages=tool_messages,
+            served_models=list(self._served_models),
         )
 
     # ------------------------------------------------------------------
@@ -567,7 +580,9 @@ class StreamHandler:
                 total_tokens=getattr(usage_obj, "total_tokens", 0) or 0,
                 cache_read_tokens=cache_read,
                 cache_write_tokens=cache_write,
+                reported_cost=reported_cost(usage_obj),
             )
+            self._record_served_model(response)
 
             # Content response — no tool calls
             if not choice.message.tool_calls:
@@ -578,13 +593,7 @@ class StreamHandler:
                 break
 
             # Tool calls detected
-            accumulated_usage = TokenUsage(
-                prompt_tokens=accumulated_usage.prompt_tokens + call_usage.prompt_tokens,
-                completion_tokens=accumulated_usage.completion_tokens + call_usage.completion_tokens,
-                total_tokens=accumulated_usage.total_tokens + call_usage.total_tokens,
-                cache_read_tokens=accumulated_usage.cache_read_tokens + call_usage.cache_read_tokens,
-                cache_write_tokens=accumulated_usage.cache_write_tokens + call_usage.cache_write_tokens,
-            )
+            accumulated_usage = accumulated_usage + call_usage
 
             tool_calls = choice.message.tool_calls
 
@@ -671,18 +680,14 @@ class StreamHandler:
             total_tokens=getattr(usage_obj, "total_tokens", 0) or 0,
             cache_read_tokens=cache_read,
             cache_write_tokens=cache_write,
+            reported_cost=reported_cost(usage_obj),
         )
+        self._record_served_model(response)
 
         # Add accumulated intermediate usage from agentic loop
         intermediate = getattr(self, "_intermediate_usage", None)
         if intermediate is not None:
-            usage = TokenUsage(
-                prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
-                completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
-                total_tokens=usage.total_tokens + intermediate.total_tokens,
-                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
-                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
-            )
+            usage = usage + intermediate
             self._intermediate_usage = None
 
         # Emit full text as a single event (for event subscribers)
@@ -723,6 +728,7 @@ class StreamHandler:
             cost_usd=cost_usd,
             metrics=response_metrics,
             tool_messages=tool_messages,
+            served_models=list(self._served_models),
         )
 
     def _complete_from_text(self, text: str, usage: TokenUsage) -> StreamResult:
@@ -730,13 +736,7 @@ class StreamHandler:
         # Add accumulated intermediate usage
         intermediate = getattr(self, "_intermediate_usage", None)
         if intermediate is not None:
-            usage = TokenUsage(
-                prompt_tokens=usage.prompt_tokens + intermediate.prompt_tokens,
-                completion_tokens=usage.completion_tokens + intermediate.completion_tokens,
-                total_tokens=usage.total_tokens + intermediate.total_tokens,
-                cache_read_tokens=usage.cache_read_tokens + intermediate.cache_read_tokens,
-                cache_write_tokens=usage.cache_write_tokens + intermediate.cache_write_tokens,
-            )
+            usage = usage + intermediate
             self._intermediate_usage = None
 
         if text:
@@ -775,4 +775,5 @@ class StreamHandler:
             cost_usd=cost_usd,
             metrics=response_metrics,
             tool_messages=tool_messages,
+            served_models=list(self._served_models),
         )

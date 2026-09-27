@@ -199,6 +199,7 @@ class TestHandleAgentCommand:
             cost_usd=0.001,
             ttft_ms=50,
             total_latency_ms=200,
+            metadata=None,
             agent_name="writer",
         )
 

@@ -405,6 +405,21 @@ Override per-session via `--model` flag or `/model` command.
 
 ---
 
+## Auto Router mode (opt-in)
+
+`models.auto_router.enabled: true` replaces `models.default` and JARVIS's heuristic routing with OpenRouter's Auto Router (`openrouter/auto`). See ADR-036.
+
+**Golden suite, 2026-09-27** (Opus 5.5 judge, `cost_tier: low`, no exclusions): **13/15 passed, avg 0.855**, median latency 3.8 s. Failures: multi-turn follow-up (turn 2) and ambiguous query. GPT-6 Luna, the fixed default, scores 15/15 and 0.907 on the same suite, so auto stays off by default. The run's total credit delta was $0.47 including the judge; the harness streams conversation tests, so the answer cost can't be separated from the judge cost.
+
+**Live checks (2026-09-27):**
+- A JARVIS turn picked `deepseek/deepseek-v4-flash-0731`, which isn't in the benchmark above; the per-turn reported cost matched the OpenRouter credit delta exactly once the balance updated (~45 s lag).
+- A two-turn `/review` picked DeepSeek V4 Flash for all 10 tool rounds and GLM 5.3 Flash for the forced final answer, with ~20 `search_notes` calls. One run returned an empty final answer (not reproduced); the rerun answered correctly that the draft title no longer existed (the draft had been renamed).
+- `writer` (pinned to `quality`) stayed on Opus 5.5 and kept streaming.
+
+**Trade-offs:** auto turns don't stream; model-id-keyed handling (Anthropic cache breakpoints, per-model `extra_body`) doesn't reach the picked model; the choice changes as the OpenRouter market does. Consider `excluded_models: ["google/gemini-3.5-flash-lite"]` (malformed tool calls in our benchmark).
+
+---
+
 ## Model Selection TODOs
 
 **Phase 2-3:**

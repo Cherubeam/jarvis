@@ -164,8 +164,9 @@ def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> 
         line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"
     else:
         line = f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]"
-    if routed_model:
-        line = f"[Model: {routed_model}] {line}"
+    label = routed_model or (f"auto → {', '.join(result.served_models)}" if result.served_models else None)
+    if label:
+        line = f"[Model: {label}] {line}"
     console.print()
     console.print(line, style="stats")
 

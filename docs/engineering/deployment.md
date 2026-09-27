@@ -212,6 +212,29 @@ models:
 
 See OpenRouter's reasoning-tokens guide for the `reasoning` fields.
 
+### OpenRouter Auto Router (opt-in)
+
+Let OpenRouter pick the model per turn instead of `models.default` and JARVIS's
+own routing:
+
+```yaml
+models:
+  auto_router:
+    enabled: true
+    cost_tier: "low"          # low | medium | high | xhigh | max
+    excluded_models: []       # e.g. ["google/gemini-3.5-flash-lite"]
+```
+
+Or per session: `--model auto` / `/model auto`. Each turn shows which model
+answered (`[Model: auto → deepseek/…]`) and its exact billed cost; the
+conversation log records it under `metadata.served_models`. Auto turns don't
+stream. Agents with `model:` in `meta.yaml` (writer, substack_publisher) keep
+their model. Settings saved on OpenRouter's routing page apply too; per-request
+settings win unless "prevent overrides" is on there. Restart after changing it.
+
+Model selection order: `--model`/`/model` → agent `model:` → `auto_router.enabled`
+→ `models.default` (+ heuristic routing if `routing.enabled`).
+
 ### Using Different Providers
 
 1. Add the provider's API key to `.env`:

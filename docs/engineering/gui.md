@@ -369,6 +369,7 @@ Deliberate. `build_session()` captures settings values into `LLMClient`, tool cl
 ### Known limitations (WEB-08b)
 
 - **No file-watching / hot-reload** of external `config/local.yaml` edits. The managed-header guard on PUT helps — a user who hand-edits sees a 409 on their next save — but a GET/PUT cycle in the GUI won't pick up disk-side changes until restart.
+- **Models section** also carries `auto_router.enabled`, `auto_router.cost_tier` (enum → segmented control) and `auto_router.excluded_models` (list). They are restart-required like the other `models.*` fields. `models.extra_body` (open-keyed map) is not rendered; edit it in `config/local.yaml`.
 - **`evaluation.category_thresholds` (a `dict[str, float]`) is not rendered** — skipped from the scalar-section field list because it's a rare-edit open-keyed map. Edit directly in `config/local.yaml` for now.
 - **No diff view before save.** The footer says "unsaved changes" but doesn't list which fields changed. Low priority while the working set is small.
 - ~~**No field-level restart-vs-hot-apply classification.**~~ Closed by the field-level hot-apply gating follow-up — see below.

@@ -71,6 +71,29 @@ class ModelPresets(BaseModel):
     )
 
 
+class AutoRouterSettings(BaseModel):
+    """OpenRouter Auto Router (`openrouter/auto`) as an opt-in session model."""
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Use OpenRouter's Auto Router instead of models.default and JARVIS's own routing. "
+            "Agents that name a model in meta.yaml keep it. Auto turns don't stream."
+        ),
+    )
+    cost_tier: Literal["low", "medium", "high", "xhigh", "max"] = Field(
+        default="low",
+        description=(
+            "OpenRouter cost band the router picks from (a band, not a ceiling). "
+            "Values per openrouter.ai/docs/guides/routing/auto-model-selection; OpenRouter's own default ≈ low."
+        ),
+    )
+    excluded_models: list[str] = Field(
+        default_factory=list,
+        description='OpenRouter model patterns the router must never pick, e.g. "google/gemini-3.5-flash-lite".',
+    )
+
+
 class ModelsSettings(BaseModel):
     """LLM model defaults and named presets."""
 
@@ -96,6 +119,10 @@ class ModelsSettings(BaseModel):
             "Per-model request fields sent verbatim in the provider request body, keyed by full "
             "model id (e.g. OpenRouter's `reasoning`). Applies to every call made with that model."
         ),
+    )
+    auto_router: AutoRouterSettings = Field(
+        default_factory=AutoRouterSettings,
+        description="OpenRouter Auto Router mode (off by default).",
     )
 
 
