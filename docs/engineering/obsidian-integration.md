@@ -131,12 +131,18 @@ flowchart TD
 
 ## Data Flow Summary
 
+This section is the reference for vault safety behaviour; other docs link here.
+
 - **Reading** — Any agent can read notes, search by filename glob, or query semantically via Cortex (MCP). Read tools record a hash of what the agent saw.
 - **Writing** — Only explicitly authorized agents can write, and only to their scoped directory. Every write shows a diff for user confirmation first. The diff lists any URL, `[[wikilink]]` or markdown link that differs between the two versions above the diff. A write (or `suggest_improvements` preview) is refused if the note changed on disk since the agent read it, and re-checked after approval, so edits made in Obsidian meanwhile are never reverted.
 - **Provenance** — The writer agent adds `prose` to a note's `assist:` frontmatter list when it writes sentences into it (engineering practice P7); other kinds of help are tagged by hand.
 - **Daily notes** — `/daily-summary` appends to the `> [!JARVIS]` callout block inside the daily note, summarizing conversations as first-person bullet points with `[[wikilinks]]`.
-- **Security** — `FilesystemGuard` enforces per-path permissions; no agent can escape its allowed directories.
-- **Semantic search** — When the Cortex MCP server is configured (`mcp.servers.cortex`, `shared: true`), every agent gets `mcp_cortex__search_knowledge` for meaning-based vault queries; otherwise they fall back to glob-based `search_notes`. The earlier HTTP tool (`search_vault_semantic`, `cortex.*` settings) was retired with HUB-01.
+- **Security** — `FilesystemGuard` (`packages/core/filesystem_access.py`, ADR-021) enforces per-path permissions for every vault tool; no agent can escape its allowed directories. Rules:
+  - Configured as `filesystem.access_rules` (a list of `path` + `access`) in `config/local.yaml`; the framework's own default rule is in [`config/default.yaml`](../../config/default.yaml).
+  - `access` is one of `deny`, `read`, `write`, `read-write`. `write` alone does not grant reads; use `read-write` for folders an agent both reads and edits.
+  - The most specific (deepest) matching path wins; a path no rule covers is denied.
+  - Paths are expanded (`~`) and resolved (`..`, symlinks) before matching, so traversal can't sidestep a rule.
+- **Semantic search** — When the Cortex MCP server is configured (`mcp.servers.cortex`, `shared: true`), every agent gets `mcp_cortex__search_knowledge` for meaning-based vault queries; otherwise they fall back to glob-based `search_notes`. Setup: [deployment.md](deployment.md#example-cortex-vault-search).
 
 ---
 
@@ -150,7 +156,7 @@ flowchart TD
 | `search_notes` | List notes matching glob patterns, sorted by name or modification time |
 | `read_daily_note` | Read today's or a specified date's daily note |
 | `mcp_cortex__search_knowledge` | Meaning-based search via the Cortex MCP server (optional) |
-| `recall_conversations` | Semantic search across past JARVIS conversations |
+| `recall_conversations` | Semantic search across past JARVIS conversations (`rag.enabled`) |
 
 ### Scoped Write Tools (per agent, declared in `meta.yaml`)
 
@@ -167,7 +173,7 @@ Currently authorized writers:
 
 ### Configuration
 
-All Obsidian settings live in `config/local.yaml`:
+Obsidian settings go in `config/local.yaml` (keys and defaults: `obsidian:` in [`config/default.yaml`](../../config/default.yaml)). Example with real vault paths:
 
 ```yaml
 obsidian:
@@ -182,16 +188,15 @@ obsidian:
     patterns:
       target_dir: "04 – Resources/06 – Patterns"
 
-mcp:
-  enabled: true
-  servers:
-    cortex:                   # semantic vault search (HUB-01)
-      transport: stdio
-      tool_group: cortex
-      shared: true            # goes to every agent
-      command: uv
-      args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
+filesystem:
+  access_rules:
+    - path: "/path/to/vault"
+      access: read
+    - path: "/path/to/vault/05 – Slip-Box"
+      access: read-write
 ```
+
+Semantic search needs the Cortex MCP server; its config is in [deployment.md](deployment.md#example-cortex-vault-search).
 
 ### Source Layout
 

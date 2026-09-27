@@ -5,15 +5,15 @@ shipped. They are the eight chronological GUI sub-phases (labelled "GUI Phase
 1–8" in changelog history — see [ADR-033](../product/decisions.md#adr-033-initiative--milestone-naming-scheme)).
 The GUI provides:
 
-- **`WEB-01` — Chat shell** (FastAPI + WebSocket + React; CLI parity)
-- **`WEB-02` — Conversations browser** (live Sidebar + two-pane History view)
+- **`WEB-01` — Chat shell** (FastAPI + WebSocket + React; CLI parity: streaming, tool cards, vault-write approval diffs, command palette, Tweaks panel with light/dark + accent swap)
+- **`WEB-02` — Conversations browser** (live Sidebar + two-pane History view with per-conversation hard-delete and one-click resume)
 - **`WEB-03` — Dashboard / Home** (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start)
 - **`WEB-04` — Sidebar Timeline mode** (togglable day-axis variant)
 - **`WEB-05` — Agents Overview + Detail** (categorized grid, 14-day cost sparkline, "start session →")
 - **`WEB-06` — Agent Prompt Editor** (Prompt / Versions / Stats / Context tabs with snapshot history)
 - **`WEB-06` follow-up — Prompt-include editor** (Includes tab with shared-write modal confirm)
 - **`WEB-07` — `/daily-summary` and `/outcomes` GUI handlers** (Outcomes view + bridge wiring)
-- **`WEB-08` — Settings editor** (every typed field across 16 sections with managed-header guard + field-level hot-apply gating)
+- **`WEB-08` — Settings editor** (every field of the typed `Settings` model, one tab per top-level section, with inline descriptions, managed-header guard + field-level hot-apply gating)
 
 Per-milestone architecture and decision notes live in their own sections
 below. The release-version mapping lives in
@@ -353,12 +353,12 @@ The Settings tab is a form-based editor for every field in `packages.core.settin
 
 ### Frontend architecture
 
-2-pane layout: left nav (`SettingsNav.tsx`) + right panel + sticky footer (`SettingsShell.tsx` → `SettingsFooter` + `OverwriteDialog`). Not a 16-wide tab bar — flat tabs at this scale are a known UX anti-pattern.
+2-pane layout: left nav (`SettingsNav.tsx`) + right panel + sticky footer (`SettingsShell.tsx` → `SettingsFooter` + `OverwriteDialog`). Not a flat tab bar — flat tabs at this scale are a known UX anti-pattern.
 
 - **`SettingsView.tsx`** — fetches both endpoints on mount via `AbortController`, holds `original` (server state) + `working` (user edits) + `errors: SettingsValidationError[]`. `isDirty` is a deep-equality check. Save does `doSave(working, false)`; 409 pops the overwrite dialog; 422 populates errors and auto-scrolls the first erroring section into view.
 - **`SettingField.tsx`** — single generic row: label + hover-tooltip (description from schema) + input appropriate for the scalar type. Bool → toggle. Enum → segmented control (from `enumChoices`). Int/float → `<input type="number">`. Lists → one-per-line textarea (trim + drop blanks). String / unknown → `<input type="text">`.
 - **`SectionCardError.tsx`** — red banner shown above any panel with `kind: "model_validator"` errors attached at its `card_loc`. Used on `McpServersPanel`'s per-server cards.
-- **`ScalarPanel.tsx`** — drives 12 of the 16 sections from a `FieldSpec[]` list declared in `scalarSections.ts`. Paths tab is the only scalar panel with a `PanelWarning` banner (editing paths while JARVIS is running can leave data inconsistent).
+- **`ScalarPanel.tsx`** — drives every section without a custom panel from a `FieldSpec[]` list declared in `scalarSections.ts`. Paths tab is the only scalar panel with a `PanelWarning` banner (editing paths while JARVIS is running can leave data inconsistent).
 - **Custom panels:** `ObsidianPanel` (nested daily_notes + writing with pattern/slip_box sub-sections), `PatternCardsPanel` (nested image_generation), `McpServersPanel` (dict editor with transport-switched field sets, inline rename, DictField for env/headers, "add server" form forcing a transport pick), `FilesystemPanel` (access-rules table + `deny|read|write|read-write` dropdown).
 - **`helpers.ts`** — immutable `setAt / getAt / deleteAt` for path-based state updates, `pathsEqual / pathStartsWith / deepEqual`, `fieldErrorAt / cardErrorsAt / sectionHasErrors` for error dispatch, and `schemaAt / fieldType / fieldDescription / enumChoices` for walking the dereferenced JSON schema (including `additionalProperties` for dict-keyed dynamic sections).
 

@@ -1,241 +1,137 @@
 # Setup & Deployment
 
-> How to install, configure, and run Jarvis.
+> How to configure and run Jarvis once it is installed.
 
----
-
-## Prerequisites
-
-### System Requirements
-
-- **OS**: macOS, Linux, or WSL2 on Windows
-- **Python**: 3.13 or higher
-- **Package Manager**: [uv](https://github.com/astral-sh/uv) (recommended)
-
-### API Keys
-
-- **Required**: [OpenRouter API key](https://openrouter.ai/)
-- **Optional**: Direct provider keys (Anthropic, OpenAI)
-
----
-
-## Installation
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/yourusername/jarvis.git
-cd jarvis
-```
-
-### 2. Install Dependencies
-
-**Using uv (recommended):**
-```bash
-uv sync
-```
-
-**Using pip:**
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment
-
-Create `.env` file:
-```bash
-echo "OPENROUTER_API_KEY=your_key_here" > .env
-```
-
-**Security Note**: Never commit `.env` to git (already in `.gitignore`).
-
-### 4. Configure Personal Context
-
-Edit files in `data/context/`:
-
-**`personal_context.md`** - Who you are:
-```markdown
-# About Me
-
-I am a software engineer learning AI engineering.
-I work primarily with Python and enjoy building tools.
-```
-
-**`preferences.md`** - How the assistant should behave:
-```markdown
-# Communication Preferences
-
-- Be concise and technical
-- Provide code examples when relevant
-- Ask clarifying questions when ambiguous
-```
-
-**`current_focus.md`** - What you're working on:
-```markdown
-# Current Focus
-
-Working on:
-- Building Jarvis, a personal AI assistant
-- Learning about RAG and vector databases
-- Exploring agentic AI frameworks
-```
+Installation (clone, `uv sync`, `.env`, personal context files) is in the
+[README's Getting Started section](../../README.md#getting-started). Dev tooling
+(uv, ruff, mypy, pre-commit) is in [AGENTS.md](../../AGENTS.md#build-and-test-commands).
 
 ---
 
 ## Configuration
 
-### Configuration Files
+Configuration lives in two YAML files that are deep-merged at startup:
 
-Configuration is stored in `config/`:
+- **[`config/default.yaml`](../../config/default.yaml)** — committed defaults, with a comment on
+  every section. This is the reference for current default values; the docs link to it instead of
+  copying it.
+- **`config/local.yaml`** — your overrides (gitignored). Write only the keys you want to change:
 
-**`config/default.yaml`** - Default configuration:
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"
-  presets:
-    fast: "openrouter/openai/gpt-6-luna"
-    quality: "openrouter/anthropic/claude-opus-5.5"
-    balanced: "openrouter/openai/gpt-6-luna"
+  ```yaml
+  # config/local.yaml
+  models:
+    default: "openrouter/anthropic/claude-opus-5.5"
+  ```
 
-paths:
-  context_dir: "data/context"
-  conversations_dir: "data/conversations"  # files stored in YYYY/ subdirs
-  learned_facts: "data/learned_facts.md"
-```
+The merged result is validated by the typed `Settings` model in
+[`packages/core/settings.py`](../../packages/core/settings.py); every field carries a description,
+and the GUI's Settings view edits the same model. Lists replace wholesale when overridden; dicts
+merge key by key.
 
-**`config/local.yaml`** - Local overrides (gitignored):
-```yaml
-# Override any settings from default.yaml (deep-merged)
-models:
-  default: "openrouter/anthropic/claude-opus-5.5"
-```
-
-**Key Settings:**
-
-- `models.default` / `models.presets`: LLM models to use (see [Model Comparison](../research/models.md) for why these)
-- `paths`: Where to find context files and save conversations
-- The system prompt is assembled from `data/context/*.md` (identity from `soul.md`), not from config
+API keys come from `.env`, never from the YAML files. The system prompt is assembled from
+`data/context/*.md` (identity from `soul.md`), not from config — see
+[architecture.md](architecture.md#2-context-builder-packagescorecontext_builderpy).
 
 ---
 
 ## Running Jarvis
 
-### Start CLI
+### CLI
 
 ```bash
-# Using uv (recommended)
-uv run python -m apps.cli.main
-
-# Or using the installed script
-uv run jarvis
+uv run jarvis                      # or: uv run python -m apps.cli.main
+uv run jarvis --agent writer       # run one specialist agent directly
+uv run jarvis --model quality      # start on a preset or model id (see below)
+uv run jarvis --auto-confirm       # auto-approve developer-agent writes within developer.scope
 ```
 
-Or with activated virtual environment:
-```bash
-source .venv/bin/activate
-python -m apps.cli.main
-```
+In a session, type a message and press Enter; `quit` or `exit` ends it, `Ctrl+C` interrupts.
+Slash commands are listed in the [README](../../README.md#usage) and per agent in
+[agents.md](agents.md#agents).
 
-### Usage
+### GUI
 
-```
-Personal Assistant
-Model: openrouter/openai/gpt-6-luna ($0.10/$0.50 per 1M tokens)
-Type 'quit' or 'exit' to end. Ctrl+C also works.
+Run commands, authentication and the surfaces it offers are in [gui.md](gui.md#run).
 
-You: Hello!
-Assistant: Hi! How can I help you today?
+### Docker (not implemented)
 
-You: quit
-[15,234 tokens | $0.0456]
-Goodbye!
-```
-
-**Commands:**
-- Type message and press Enter
-- `quit` or `exit` to end session
-- `Ctrl+C` to interrupt
+There is no container image yet.
 
 ---
 
 ## Switching Models and Providers
 
-Model IDs use full LiteLLM-routable format with provider prefix (e.g. `openrouter/anthropic/claude-sonnet-4.6`). The provider is inferred from the prefix — no code changes needed.
+Current defaults and presets are in the `models:` section of
+[`config/default.yaml`](../../config/default.yaml); why those models were chosen is in
+[models.md](../research/models.md#default-model-recommendation).
+
+Model IDs use the full LiteLLM-routable format with a provider prefix (e.g.
+`openrouter/anthropic/claude-sonnet-4.6`). The provider is inferred from the prefix — no code
+changes needed. A preset name (`fast`, `balanced`, `quality`) resolves through `models.presets`.
 
 ### At Startup (CLI Flag)
 
 ```bash
-# Use a preset
-uv run python -m apps.cli.main --model quality   # → openrouter/anthropic/claude-opus-5.5
-uv run python -m apps.cli.main --model fast       # → openrouter/openai/gpt-6-luna
-
-# Use a literal model ID
-uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
+uv run jarvis --model quality                          # a preset
+uv run jarvis --model openrouter/openai/gpt-6-luna     # a model id via OpenRouter
+uv run jarvis --model anthropic/claude-sonnet-4.6      # direct to Anthropic (needs ANTHROPIC_API_KEY)
+uv run jarvis --model auto                             # OpenRouter Auto Router (see below)
 ```
 
 ### Mid-Session (`/model` Command)
 
 ```
-/model                    # Show current model + available presets
-/model fast               # Switch to fast preset
-/model openai/gpt-4o      # Switch to a specific model
+/model                    # show current model + available presets
+/model fast               # switch to a preset
+/model openai/gpt-4o      # switch to a model id
+/model auto               # switch to the OpenRouter Auto Router
 ```
 
-### Configuring Presets
+### Presets and the Default
 
-Edit `config/default.yaml` (or `config/local.yaml`):
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"
-  presets:
-    fast: "openrouter/openai/gpt-6-luna"
-    quality: "openrouter/anthropic/claude-opus-5.5"
-    balanced: "openrouter/openai/gpt-6-luna"
-```
+Change `models.default` or a preset in `config/local.yaml`. Opt-in heuristic routing
+(`routing.enabled`) sends short queries to the `fast` preset, complex ones to `quality` and the
+rest to `balanced` (`packages/core/model_router.py`).
+
+### Per-Agent Models
+
+An agent can name its own model with `model:` in its `meta.yaml` (a preset or a model id). It then
+always runs on it, whatever the session model is. The `meta.yaml` schema is in
+[api.md](api.md#metayaml-schema); which agents are pinned is in [agents.md](agents.md#agents).
 
 ### Per-Model Request Fields
 
-`models.extra_body` sends extra fields in the request body for one model, on
-every call made with it (chat, tool loop, summarization, nested tool calls).
-Keys are full model IDs; values go to the provider unchanged. The default
-config uses it to switch off Qwen 3.5 Flash's thinking, which OpenRouter
-otherwise returns as the answer text:
-
-```yaml
-models:
-  extra_body:
-    "openrouter/qwen/qwen3.5-flash-02-23":
-      reasoning:
-        effort: "none"
-```
-
-See OpenRouter's reasoning-tokens guide for the `reasoning` fields.
+`models.extra_body` sends extra fields in the request body for one model, on every call made with
+it (chat, tool loop, summarization, nested tool calls). Keys are full model IDs; values go to the
+provider unchanged. The default config uses it to switch off Qwen 3.5 Flash's thinking, which
+OpenRouter otherwise returns as the answer text (see `models.extra_body` in
+[`config/default.yaml`](../../config/default.yaml)). See OpenRouter's reasoning-tokens guide for
+the `reasoning` fields.
 
 ### OpenRouter Auto Router (opt-in)
 
-Let OpenRouter pick the model per turn instead of `models.default` and JARVIS's
-own routing:
+Let OpenRouter pick the model per turn instead of `models.default` and JARVIS's own routing: set
+`models.auto_router.enabled: true` (plus `cost_tier` and `excluded_models`, documented in
+[`config/default.yaml`](../../config/default.yaml)), or per session `--model auto` / `/model auto`.
 
-```yaml
-models:
-  auto_router:
-    enabled: true
-    cost_tier: "low"          # low | medium | high | xhigh | max
-    excluded_models: []       # e.g. ["google/gemini-3.5-flash-lite"]
-```
+Each turn shows which model answered (`[Model: auto → deepseek/…]`) and its exact billed cost; the
+conversation log records it under `metadata.served_models`. Auto turns don't stream. Agents with
+`model:` in `meta.yaml` keep their model. Settings saved on OpenRouter's routing page apply too;
+per-request settings win unless "prevent overrides" is on there. Restart after changing the config.
+Benchmark results and trade-offs: [models.md](../research/models.md#auto-router-mode-opt-in);
+decision: ADR-036.
 
-Or per session: `--model auto` / `/model auto`. Each turn shows which model
-answered (`[Model: auto → deepseek/…]`) and its exact billed cost; the
-conversation log records it under `metadata.served_models`. Auto turns don't
-stream. Agents with `model:` in `meta.yaml` (writer, substack_publisher) keep
-their model. Settings saved on OpenRouter's routing page apply too; per-request
-settings win unless "prevent overrides" is on there. Restart after changing it.
+### Model Selection Order
 
-Model selection order: an agent's own `model:` in `meta.yaml` always wins for that
-agent. Everything else runs on the session model: `--model`/`/model` →
-`auto_router.enabled` → `models.default` (+ heuristic routing if `routing.enabled`).
+An agent's own `model:` in `meta.yaml` always wins for that agent. Everything else runs on the
+session model, chosen in this order:
+
+1. `--model` at startup, or `/model` mid-session
+2. `models.auto_router.enabled` → the Auto Router
+3. `models.default`, adjusted per turn by heuristic routing if `routing.enabled`
+
+How this is wired (`StreamHandler.using_model()`, `model_pinned`) is in
+[architecture.md](architecture.md#model-selection).
 
 ### Using Different Providers
 
@@ -246,19 +142,120 @@ agent. Everything else runs on the session model: `--model`/`/model` →
    OPENAI_API_KEY=your_key_here        # Direct OpenAI
    GOOGLE_API_KEY=your_key_here        # Direct Google
    ```
-2. Use the corresponding model prefix:
-   ```bash
-   uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6
-   uv run python -m apps.cli.main --model openai/gpt-4o
-   ```
+2. Use the corresponding model prefix, e.g. `--model anthropic/claude-sonnet-4.6`.
 
 Only the API key for the resolved provider is required.
 
 ---
 
+## Connecting MCP Servers
+
+JARVIS connects to external [MCP](https://modelcontextprotocol.io/) servers and uses their tools
+alongside native ones. Adding or removing a server is a config-only change. How the client works
+internally is in [architecture.md](architecture.md#6c-mcp-client-integration-packagesintegrationsmcp).
+
+**Step 1: Enable MCP and declare servers** in `config/local.yaml`:
+
+```yaml
+mcp:
+  enabled: true
+  servers:
+    # Local server via stdio
+    filesystem:
+      transport: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Documents"]
+      tool_group: fs_tools           # name used in agent meta.yaml
+      timeout_seconds: 30            # per-call timeout (default: 30)
+
+    # Remote server via SSE
+    github:
+      transport: sse
+      url: "http://localhost:3001/sse"
+      headers:
+        Authorization: "Bearer your-token-here"
+      tool_group: github_tools
+
+    # Remote server via streamable HTTP
+    my_api:
+      transport: streamable_http
+      url: "http://localhost:8080/mcp"
+      tool_group: my_api_tools
+```
+
+Each server key (e.g. `filesystem`) is used for tool namespacing — MCP tool `read_file` from server
+`filesystem` becomes `mcp_filesystem__read_file` in JARVIS, so server names must not contain `__`.
+The `tool_group` field (defaults to the server key if omitted) is the name you reference from agents.
+
+**Step 2: Assign tool groups to agents.** Add the `tool_group` name to the agent's `meta.yaml`:
+
+```yaml
+# packages/agents/researcher/meta.yaml
+tools:
+  - web_tools
+  - fs_tools        # MCP server tool group
+```
+
+Or mark the server `shared: true`: its tools then skip the tool group and go to every agent,
+including the JARVIS orchestrator, automatically.
+
+**Step 3: Restart JARVIS.** The startup output reports what loaded:
+
+```
+[MCP] 5 tool(s) from 2 server(s).
+```
+
+**Giving an opt-in MCP tool group to the JARVIS orchestrator:** the orchestrator gets the shared
+tools plus a fixed list of groups (`jarvis_tools` in `build_session()`,
+[`apps/cli/session_factory.py`](../../apps/cli/session_factory.py)). Either mark the server
+`shared: true`, or add the group to that list.
+
+**Transport reference:**
+
+| Transport | Required fields | Use case |
+|---|---|---|
+| `stdio` | `command`, `args` (optional) | Local servers launched as child processes |
+| `sse` | `url` | Remote servers with Server-Sent Events |
+| `streamable_http` | `url` | Remote servers with HTTP streaming |
+
+Optional fields for all transports: `tool_group`, `shared`, `timeout_seconds`; `headers` (SSE/HTTP
+only); `env`, `cwd` (stdio only). The schema with descriptions is `MCPServerSettings` in
+[`packages/core/settings.py`](../../packages/core/settings.py).
+
+### Example: Cortex vault search
+
+Semantic search over the Obsidian vault comes from the Cortex MCP server (`cherubeam/cortex`,
+`HUB-01`, ADR-034). Run the Cortex service (`uv run cortex` in the Cortex repo) and declare it as a
+shared server:
+
+```yaml
+mcp:
+  enabled: true
+  servers:
+    cortex:
+      transport: stdio
+      tool_group: cortex
+      shared: true          # every agent gets the tools automatically
+      command: uv
+      args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
+```
+
+Tools arrive as `mcp_cortex__search_knowledge` and `mcp_cortex__index_status`. When the service is
+down, the tools return an actionable error and agents fall back to `search_notes`.
+
+### Troubleshooting MCP
+
+- If a server fails to connect at startup, JARVIS logs a warning and continues — other servers and
+  native tools are unaffected.
+- If a tool call fails at runtime, the error is returned to the LLM as tool output so it can adapt.
+- stdio servers need the command on your `PATH` (e.g. `npx` requires Node.js).
+- To verify which tools loaded, check the `[MCP]` line in the startup output.
+
+---
+
 ## File Structure
 
-See [docs/engineering/architecture.md](architecture.md#file-structure) for the full project structure.
+See [architecture.md](architecture.md#file-structure) for the project structure.
 
 ---
 
@@ -266,29 +263,22 @@ See [docs/engineering/architecture.md](architecture.md#file-structure) for the f
 
 ### Conversation Logs
 
-Saved to `data/conversations/YYYY/`:
-- Format: `YYYY/YYYY-MM-DD_HH-MM-SS.json` (organized by year)
-- **Gitignored by default** (contain sensitive data)
+Saved to `data/conversations/YYYY/YYYY-MM-DD_HH-MM-SS.json` (by year). **Gitignored** — they
+contain sensitive data.
 
 ### Backup Strategy
 
 **What to back up:**
-- ✅ `data/context/*.md` (your context files)
-- ✅ `config/default.yaml` (your configuration)
-- ✅ `data/conversations/YYYY/*.json` (optional, if you want history)
+- `data/context/*.md` (your context files)
+- `config/local.yaml` (your configuration)
+- `data/conversations/` and `data/outcomes/` (optional, if you want history)
 
 **How to back up:**
 ```bash
-# Simple: Copy data directory
+# Simple: copy the data directory
 cp -r data/ ~/backups/jarvis-data-$(date +%Y%m%d)/
 
-# Better: Use git for context files
-cd data/context
-git init
-git add *.md
-git commit -m "Update context"
-
-# Best: Encrypted backup of everything
+# Better: encrypted backup of data and config
 tar -czf - data/ config/ | gpg -c > jarvis-backup-$(date +%Y%m%d).tar.gz.gpg
 ```
 
@@ -296,25 +286,22 @@ tar -czf - data/ config/ | gpg -c > jarvis-backup-$(date +%Y%m%d).tar.gz.gpg
 
 ## Troubleshooting
 
-### Common Issues
-
 #### "OPENROUTER_API_KEY not found"
 
-**Solution**: Create `.env` file with your API key:
+Create `.env` with your API key:
 ```bash
 echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
 ```
 
-#### "Import litellm could not be resolved"
+#### "Import litellm could not be resolved" / `ModuleNotFoundError`
 
-**Solution**: Install dependencies:
-```bash
-uv sync
-```
+Install dependencies with `uv sync`. For `No module named 'apps'` on macOS, see the
+[README troubleshooting note](../../README.md#troubleshooting).
 
-#### "File does not exist: context/personal_context.md"
+#### Missing context files
 
-**Solution**: Create context files:
+`data/context/` is not tracked in git. Create the files listed in the
+[README](../../README.md#installation):
 ```bash
 mkdir -p data/context
 echo "# About Me" > data/context/personal_context.md
@@ -323,165 +310,44 @@ echo "# Preferences" > data/context/preferences.md
 echo "# Current Focus" > data/context/current_focus.md
 ```
 
-#### Slow responses
+#### Slow responses or high costs
 
-**Causes:**
-- Model is slow (Opus takes longer than Haiku)
-- Network latency to API
-- Large context window
-
-**Solutions:**
-- Switch to faster model (Haiku, GPT-4o-mini)
-- Check internet connection
-- Reduce context size
-
-#### High costs
-
-**Solutions:**
-- Use cheaper model (see [Model Comparison](../research/models.md))
-- Implement context truncation (future)
-- Add model routing (`CAP`)
-
----
-
-## Development Setup
-
-### For Contributors
-
-1. Clone with git hooks:
-   ```bash
-   git clone https://github.com/yourusername/jarvis.git
-   cd jarvis
-   ```
-
-2. Install dev dependencies:
-   ```bash
-   uv sync --extra test
-   ```
-
-3. Run type checking:
-   ```bash
-   mypy packages/ apps/
-   ```
-
-4. Run tests:
-   ```bash
-   uv run pytest
-   ```
-
-5. Run tests with coverage:
-   ```bash
-   uv run pytest --cov=packages --cov=apps --cov-report=html
-   ```
-
----
-
-## Deployment Modes
-
-### Local CLI (Current)
-
-```bash
-uv run python -m apps.cli.main
-# Or
-uv run jarvis
-```
-
-### Web Interface (WEB)
-
-```bash
-# Backend
-cd apps/web/backend
-uvicorn main:app --reload
-
-# Frontend (in separate terminal)
-cd apps/web/frontend
-npm run dev
-```
-
-### Docker (Future)
-
-```bash
-# Not yet implemented
-docker build -t jarvis .
-docker run -it -v $(pwd)/data:/app/data jarvis
-```
+Switch model or preset (see [Switching Models and Providers](#switching-models-and-providers));
+latency and cost per model are in [models.md](../research/models.md#benchmark-results). Long
+sessions can turn on history summarization (`summarization.enabled`, see
+[architecture.md](architecture.md#history-summarization)).
 
 ---
 
 ## Security Best Practices
 
-### API Keys
-
-- ✅ Store in `.env` file (gitignored)
-- ✅ Never commit to version control
-- ✅ Use environment-specific keys (dev/prod)
-- ❌ Don't hardcode in source files
-
-### Conversation Logs
-
-- ⚠️ Contain sensitive personal data
-- ✅ Gitignored by default
-- ✅ Consider encrypted backups
-- ✅ Review before sharing
-
-### Context Files
-
-- ⚠️ May contain personal information
-- ✅ Think before committing to git
-- ✅ Use private repository if needed
+- **API keys**: store in `.env` (gitignored); never hardcode or commit them.
+- **Conversation logs**: contain personal data; gitignored by default; prefer encrypted backups and
+  review before sharing.
+- **Context files**: may contain personal information; think before committing them anywhere.
+- **GUI**: token + origin allowlist; see [gui.md](gui.md#authentication) before binding past
+  loopback with `--host`.
 
 ---
 
 ## Updates & Maintenance
 
-### Updating Dependencies
-
 ```bash
-# Update a specific package
-uv add --upgrade litellm
-
-# Or update all
-uv sync --upgrade
-```
-
-### Checking for Updates
-
-```bash
-# Pull latest changes
 git pull origin main
-
-# Review changelog
-cat docs/changelog.md
+uv sync                  # install the locked dependencies
+uv sync --upgrade        # or: update all dependencies
 ```
 
-### Migration Guide
-
-**When updating Jarvis:**
-1. Read [changelog.md](../changelog.md) for breaking changes
-2. Back up your `data/` directory
-3. Pull updates: `git pull`
-4. Update dependencies: `uv sync`
-5. Test with a simple conversation
+Read [changelog.md](../changelog.md) for breaking changes and back up `data/` before updating.
 
 ---
 
-## Support
+## Reporting Bugs
 
-### Getting Help
-
-1. Check [Documentation](../../README.md)
-2. Review [Troubleshooting](#troubleshooting)
-3. Open [GitHub Issue](https://github.com/yourusername/jarvis/issues)
-
-### Reporting Bugs
-
-Include:
-- Python version (`python --version`)
-- OS and version
-- Steps to reproduce
-- Error messages
-- Relevant config (redact API keys!)
+Open an issue at [github.com/Cherubeam/jarvis/issues](https://github.com/Cherubeam/jarvis/issues)
+with the Python version, OS, steps to reproduce, error messages and relevant config (redact API
+keys).
 
 ---
 
-*Last updated: 2026-02-07*
+*Last updated: 2026-09-27*
