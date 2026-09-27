@@ -76,7 +76,10 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Obsidian Note Creator, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer, Reading Assistant)
 - **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
-- **Tool Calling**: Agentic loop with tool execution (max 5 iterations per request)
+- **Tool Calling**: Agentic loop with tool execution (5 rounds per request by default; agents set their own `max_iterations`). When the limit is hit, the model is told the tools still exist and asked for its next step
+- **Model Choice**: Defaults and presets in config (GPT-6 Luna default, Opus 5.5 `quality`, from the 2026-09 benchmark in [docs/research/models.md](docs/research/models.md)); agents can pin their own model in `meta.yaml` (`model: quality`); per-model request fields via `models.extra_body`
+- **Model Routing** (opt-in): heuristic routing by query complexity (`routing.enabled`), or OpenRouter's Auto Router picking the model per turn (`models.auto_router.enabled`, `/model auto`; ADR-036). The model that answered and its billed cost are shown and logged
+- **Safe Vault Edits**: Every write shows a diff for approval, lists changed links above it, and is refused if the note changed on disk since the agent read it
 - **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
 - **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
 - **Vault Semantic Search**: Meaning-based search over the Obsidian vault via the Cortex MCP server (opt-in, HUB-01)
@@ -85,7 +88,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
 - **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
 - **Non-Streaming Mode** (opt-in): Toggle with `/stream` or configure via `models.streaming`. Enables prompt caching via OpenRouter (blocked in streaming mode due to upstream LiteLLM format inconsistency)
-- **History Summarization** (opt-in): Compresses old conversation turns when history exceeds ~40K tokens, using Gemini Flash to reduce costs in long sessions. Enable via `summarization.enabled` in config.
+- **History Summarization** (opt-in): Compresses old conversation turns when history exceeds ~40K tokens, using the `fast` preset to reduce costs in long sessions. Enable via `summarization.enabled` in config.
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Latency Metrics**: TTFT and total latency captured per response
@@ -200,6 +203,8 @@ During a chat session, you can use slash commands:
 /develop                Enters Developer agent session (codebase, git, tests)
 /daily-summary [date]   Generates an Obsidian daily note summary (default: today)
 /outcomes               Reviews pending tracked recommendations (score + retrospective)
+/reading                Enters Reading Assistant session (Readwise library)
+/model [name]           Shows or switches the session model (preset, model id, or `auto`)
 /stream                 Toggles between streaming and non-streaming response modes
 ```
 
@@ -324,7 +329,7 @@ Edit `config/default.yaml` or `config/local.yaml`:
 
 ```yaml
 models:
-  default: "openrouter/anthropic/claude-sonnet-4.6"  # Change to desired model
+  default: "openrouter/openai/gpt-6-luna"  # Change to desired model
 ```
 
 See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration.
@@ -423,7 +428,6 @@ jarvis/
 │   ├── integrations/                   # External service integrations
 │   │   ├── things3/                    # Things 3 task sync + write tools
 │   │   ├── mcp/                        # MCP client integration
-│   │   │   ├── config.py               # Config parsing + validation
 │   │   │   ├── client.py               # Connection lifecycle + async/sync bridge
 │   │   │   └── bridge.py               # MCP Tool → ToolDefinition conversion
 │   │   └── obsidian/                   # Obsidian vault integration
@@ -520,7 +524,8 @@ initiative/milestone naming scheme ([ADR-033](docs/product/decisions.md#adr-033-
 - [x] Outcome tracking (`track_recommendation`, `/outcomes`, `recall_outcomes` — closed loop on advice)
 - [x] Readwise / Reading Assistant integration (`/reading`)
 - [ ] Extended tools — Playwright browser automation
-- [ ] Intelligent model routing (task complexity → model selection)
+- [x] Model routing — heuristic complexity routing (opt-in) and OpenRouter Auto Router (opt-in, ADR-036)
+- [x] Per-agent models (`meta.yaml` `model:`) and per-model request fields (`models.extra_body`)
 
 **`WEB` — Web Interface (Complete ✅ — `WEB-01`…`WEB-08` shipped)**
 - [x] Event decoupling prerequisite (typed events, StreamHandler emission) + typed configuration (`packages/core/settings.py` + in-GUI Settings editor)

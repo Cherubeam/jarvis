@@ -13,7 +13,7 @@ Choosing the right model is a cost/quality tradeoff. No single model is best for
 
 **Key Insight**: Provider independence (via LiteLLM) means we can switch models anytime to optimize for the task at hand.
 
-> **Current results:** see [Benchmark Results](#benchmark-results) and [Default Model Recommendation](#default-model-recommendation) (2026-09 refresh). The comparison table, cost examples and model notes below describe the April 2026 landscape and are kept for history.
+> **Current results:** see [Benchmark Results](#benchmark-results) and [Default Model Recommendation](#default-model-recommendation) (2026-09 refresh). The comparison table, cost examples, "Model Recommendations" (Sonnet 4.5 era) and model notes below describe the April 2026 landscape and are kept for history.
 
 ---
 
@@ -200,7 +200,9 @@ For a typical Jarvis conversation:
 
 ## Model Selection Strategy
 
-### Current (Phase 1)
+> **Historical (April 2026 and earlier).** Today: presets plus opt-in heuristic routing (`packages/core/model_router.py`), per-agent `model:` in `meta.yaml`, and the opt-in OpenRouter Auto Router (ADR-036). See [Default Model Recommendation](#default-model-recommendation) and [Auto Router mode](#auto-router-mode-opt-in).
+
+### Phase 1 (historical)
 
 **Single model**: Claude Sonnet 4.5 for everything
 
@@ -215,7 +217,7 @@ For a typical Jarvis conversation:
 
 ---
 
-### Future (Phase 5): Intelligent Model Routing
+### Phase 5 plan (historical; implemented as heuristic routing)
 
 **Goal**: Route tasks to appropriate models based on complexity.
 
@@ -429,8 +431,8 @@ Override per-session via `--model` flag or `/model` command.
 - [x] Document quality vs. cost tradeoffs ✅
 
 **Phase 5:**
-- [ ] Implement task complexity classifier
-- [ ] Model routing based on complexity
+- [x] Implement task complexity classifier (heuristic, `model_router.py`)
+- [x] Model routing based on complexity (opt-in `routing.enabled`; plus OpenRouter Auto Router, ADR-036)
 - [ ] Track cost savings from routing
 
 **Phase 7:**
@@ -509,7 +511,7 @@ uv run python -m apps.cli.main --model anthropic/claude-sonnet-4.6  # Direct pro
 
 ## Future Considerations
 
-### Model Routing Algorithm
+### Model Routing Algorithm (early sketch; superseded by `model_router.py` and ADR-036)
 
 ```python
 def select_model(query: str, history: list) -> str:
@@ -548,4 +550,4 @@ Use data to refine routing algorithm.
 
 ---
 
-*Last updated: 2026-04-07*
+*Last updated: 2026-09-27*

@@ -75,15 +75,15 @@ uv run python scripts/analyze_costs.py --by all
 
 | Metric | Target | Current | Notes |
 |--------|--------|---------|-------|
-| Daily cost (heavy use) | <$0.50 | ~$0.30 | 40-50 requests/day with Sonnet 4.5 |
+| Daily cost (heavy use) | <$0.50 | not re-measured | Was ~$0.30 with Sonnet 4.5; the default is now GPT-6 Luna (~$0.00014/request in the 2026-09 benchmark); writer/publisher run on Opus 5.5 |
 | Monthly cost | <$15 | ~$10 | Below any single-provider subscription |
 | Cost per task type | Varies | Tracked | `scripts/analyze_costs.py --by all` — by source, model, length |
 
 ### Cost Optimization Opportunities
 
-- **Model routing**: Use Haiku/GPT-4o-mini for simple tasks (save 80%)
-- **Prompt caching**: Reuse system prompt across requests (coming soon)
-- **Context management**: Truncate old history intelligently
+- **Model routing**: in place (opt-in): heuristic `routing.enabled`, or the OpenRouter Auto Router (`models.auto_router`, ADR-036). Savings not tracked yet
+- **Prompt caching**: available in non-streaming mode (`models.streaming: false`) via OpenRouter; Anthropic cache breakpoints are added automatically
+- **Context management**: in place — old tool results are trimmed, and history summarization is opt-in (`summarization.enabled`)
 - **Provider arbitrage**: Switch to cheapest provider for task
 
 ---

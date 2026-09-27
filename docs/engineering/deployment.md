@@ -92,11 +92,12 @@ Configuration is stored in `config/`:
 
 **`config/default.yaml`** - Default configuration:
 ```yaml
-openrouter:
-  default_model: "anthropic/claude-sonnet-4.5"
-
-system_prompt_prefix: |
-  You are a helpful personal assistant.
+models:
+  default: "openrouter/openai/gpt-6-luna"
+  presets:
+    fast: "openrouter/openai/gpt-6-luna"
+    quality: "openrouter/anthropic/claude-opus-5.5"
+    balanced: "openrouter/openai/gpt-6-luna"
 
 paths:
   context_dir: "data/context"
@@ -106,16 +107,16 @@ paths:
 
 **`config/local.yaml`** - Local overrides (gitignored):
 ```yaml
-# Override any settings from default.yaml
-openrouter:
-  default_model: "anthropic/claude-3-5-haiku-20241022"
+# Override any settings from default.yaml (deep-merged)
+models:
+  default: "openrouter/anthropic/claude-opus-5.5"
 ```
 
 **Key Settings:**
 
-- `default_model`: LLM model to use (see [Model Comparison](../research/models.md))
-- `system_prompt_prefix`: Base instruction for the assistant
+- `models.default` / `models.presets`: LLM models to use (see [Model Comparison](../research/models.md) for why these)
 - `paths`: Where to find context files and save conversations
+- The system prompt is assembled from `data/context/*.md` (identity from `soul.md`), not from config
 
 ---
 
@@ -141,7 +142,7 @@ python -m apps.cli.main
 
 ```
 Personal Assistant
-Model: anthropic/claude-sonnet-4.5 ($3.00/$15.00 per 1M tokens)
+Model: openrouter/openai/gpt-6-luna ($0.10/$0.50 per 1M tokens)
 Type 'quit' or 'exit' to end. Ctrl+C also works.
 
 You: Hello!
@@ -232,8 +233,9 @@ stream. Agents with `model:` in `meta.yaml` (writer, substack_publisher) keep
 their model. Settings saved on OpenRouter's routing page apply too; per-request
 settings win unless "prevent overrides" is on there. Restart after changing it.
 
-Model selection order: `--model`/`/model` → agent `model:` → `auto_router.enabled`
-→ `models.default` (+ heuristic routing if `routing.enabled`).
+Model selection order: an agent's own `model:` in `meta.yaml` always wins for that
+agent. Everything else runs on the session model: `--model`/`/model` →
+`auto_router.enabled` → `models.default` (+ heuristic routing if `routing.enabled`).
 
 ### Using Different Providers
 
@@ -467,7 +469,7 @@ cat docs/changelog.md
 
 ### Getting Help
 
-1. Check [Documentation](../README.md)
+1. Check [Documentation](../../README.md)
 2. Review [Troubleshooting](#troubleshooting)
 3. Open [GitHub Issue](https://github.com/yourusername/jarvis/issues)
 

@@ -165,7 +165,7 @@ Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](doc
 |--------|---------|---------|
 | Agent directory | `snake_case` | `writer/`, `content_reviewer/` |
 | Agent name (meta.yaml `name:`) | `snake_case` | `writer`, `content_reviewer` |
-| Agent command (meta.yaml `command:`) | `/kebab-case` | `/write`, `/content-review` |
+| Agent command (meta.yaml `command:`) | `/kebab-case` | `/write`, `/pattern-cards` |
 | Skill directory | `kebab-case` | `substack-prepare-to-publish/` |
 | Skill name (in meta.yaml `skills:`) | `kebab-case` | `substack-prepare-to-publish` |
 | Tool group key (in main.py) | `snake_case` | `blog_tools`, `content_evaluator` |
@@ -241,7 +241,7 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 3. Add `prompts/system.md` with the system prompt
 4. Done — the registry discovers it automatically
 
-**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/main.py`. Available groups: `blog_tools`, `card_generator` (only registered when `settings.pattern_cards.enabled`), `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`, `things3_tools`, `readwise_tools`, plus any MCP server tool groups declared in `config/local.yaml` under `mcp.servers` (each server's `tool_group` name becomes available; a server marked `shared: true` skips the group and joins every agent's shared toolset instead). Shared tools (vault read, recall conversations, `track_recommendation`, `recall_outcomes`, and shared MCP servers such as cortex) go to all agents automatically.
+**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/session_factory.py` (`build_session`). Available groups: `blog_tools`, `card_generator` (only registered when `settings.pattern_cards.enabled`), `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`, `things3_tools`, `readwise_tools`, plus any MCP server tool groups declared in `config/local.yaml` under `mcp.servers` (each server's `tool_group` name becomes available; a server marked `shared: true` skips the group and joins every agent's shared toolset instead). Shared tools (vault read, recall conversations, `track_recommendation`, `recall_outcomes`, and shared MCP servers such as cortex) go to all agents automatically.
 
 **Cortex semantic search** (`mcp_cortex__search_knowledge`): Vault search by meaning, consumed via MCP since `HUB-01` (ADR-034) — declare the `cortex` server under `mcp.servers` in `config/local.yaml` with `shared: true` (stdio, command `uv --directory <cortex repo> run cortex-mcp`) and have the Cortex service running (`cherubeam/cortex`, `uv run cortex`). Degrades gracefully when unreachable (agents fall back to `search_notes`). The bespoke `search_vault_semantic` HTTP tool and `cortex.*` settings were retired with HUB-01.
 
@@ -478,4 +478,4 @@ While pre-1.0, minor bumps may include breaking changes.
 
 ---
 
-*Last updated: 2026-07-05*
+*Last updated: 2026-09-27*

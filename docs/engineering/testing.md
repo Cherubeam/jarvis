@@ -9,7 +9,7 @@
 **Phase**: 1 Complete ✅ + Phase 2 Complete ✅
 **Status**: 🟢 Comprehensive automated testing + LLM-as-judge evaluation
 **Coverage**: 97.5% on core modules
-**Tests**: 2,602 collected as of 0.21.0 (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git). The growth since ~1,790 reflects the GUI, outcome-tracking, pydantic-settings, conversation-lifecycle, and GUI mutation-test sweep suites added in 0.16.0–0.21.0.
+**Tests**: 2,894 collected on 2026-09-27 (run `uv run pytest` for exact counts; skips relate to user-local skill symlinks not in git). The growth since ~1,790 reflects the GUI, outcome-tracking, pydantic-settings, conversation-lifecycle, and GUI mutation-test sweep suites added in 0.16.0–0.21.0.
 **Documentation**: [tests/README.md](../../tests/README.md), [tests/golden/README.md](../../tests/golden/README.md), [tests/TESTING_PLAN.md](../../tests/TESTING_PLAN.md)
 
 ---
@@ -95,8 +95,6 @@ tests/
 - ✅ `analyze_context.py` - 31 tests (context utilization analysis)
 - ✅ `analyze_costs.py` - 32 tests (cost-by-type analysis)
 - ✅ `filesystem_access` - 24 tests (FilesystemGuard access control)
-- ✅ `cortex_client` - 8 tests (HTTP client: success, errors, timeouts, health check)
-- ✅ `cortex_search` - 6 tests (tool: formatting, fallback, clamping, truncation, path_prefix)
 
 **Integration Tests:**
 - ✅ Full conversation flow (5 tests)
@@ -106,17 +104,12 @@ tests/
 - ✅ Configuration integration (2 tests)
 
 **Golden Test Cases:**
-- ✅ 8 conversation scenarios (YAML format):
-  - Basic Q&A without context
-  - Profile information recall
-  - Multi-turn technical reasoning
-  - Tone matching from preferences
-  - Complex technical deep-dives
-  - Current focus awareness
-  - Ambiguous query handling
-  - Multiple preference adherence
+- ✅ 14 golden cases (YAML), 15 scored results per model (the multi-turn case is scored per turn):
+  - 01–08 conversation: basic Q&A, profile recall, multi-turn reasoning, tone matching, technical deep-dive, current focus, ambiguous query, preference adherence
+  - 09–12 agentic tool use: tool calling, delegation, multi-step search-then-read, tool termination
+  - 13–14 writing: language review against voice rules, full-file edit that must keep links byte-identical (`required_verbatim`)
 - ✅ 2 structure validation tests (free, always run)
-- ✅ 8 LLM-as-judge evaluation tests (requires `--evaluate` flag)
+- ✅ 14 LLM-as-judge evaluation tests (requires `--evaluate` flag)
 - ✅ 8 helper function tests
 
 ### Test Execution Performance
@@ -139,7 +132,7 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 uv run pytest tests/golden/ -v  # Structure validation only (free)
 
-# Run golden tests WITH evaluation (costs ~$0.41, requires API key)
+# Run golden tests WITH evaluation (costs ~$0.20–0.50, requires API key)
 export OPENROUTER_API_KEY="your-key"
 uv run pytest tests/golden/ --evaluate -v
 
@@ -189,11 +182,11 @@ See [tests/README.md](../../tests/README.md) and [tests/golden/README.md](../../
 
 **Goal**: Automated quality assessment of golden test conversations
 **Status**: ✅ Implemented 2026-01-20
-**Cost**: ~$0.41 per full run (8 tests)
+**Cost**: roughly $0.20–0.50 per model per full run (judge included); see [models.md](../research/models.md) for the 2026-09 benchmark
 
 ### System Architecture
 
-The LLM-as-judge system uses Claude Opus 4.5 as an expert evaluator to assess response quality against defined criteria.
+The LLM-as-judge system uses `evaluation.judge_model` (currently Claude Opus 5.5, output capped at 4,096 tokens) as an expert evaluator to assess response quality against defined criteria.
 
 **Components:**
 - **evaluator.py**: Core evaluation engine with `JudgeEvaluator` class
@@ -203,19 +196,20 @@ The LLM-as-judge system uses Claude Opus 4.5 as an expert evaluator to assess re
 
 ### Test Categories
 
-1. **Reasoning** (2 tests): Technical accuracy and clarity
-2. **Context Recall** (2 tests): Personal context awareness
-3. **Personalization** (2 tests): Tone and preference adherence
-4. **Edge Cases** (2 tests): Ambiguity handling
+1. **Reasoning**: Technical accuracy and clarity (multi-turn scored per turn)
+2. **Context Recall**: Personal context awareness
+3. **Personalization**: Tone, preference adherence, and the two writing cases (13–14)
+4. **Edge Cases**: Ambiguity handling
+5. **Tool Use**: Agentic cases 09–12 (tool choice, delegation, chaining, stopping)
 
 ### Evaluation Workflow
 
 ```
 1. Load YAML test case
    ↓
-2. Execute conversation with model under test (e.g., Sonnet 4.5)
+2. Execute conversation with model under test (`DEFAULT_MODEL`, e.g. `openai/gpt-6-luna` or `auto`)
    ↓
-3. Send to judge (Opus 4.5) with evaluation criteria
+3. Send to judge (`evaluation.judge_model`) with evaluation criteria
    ↓
 4. Judge returns structured JSON with scores + reasoning
    ↓
@@ -233,7 +227,7 @@ The LLM-as-judge system uses Claude Opus 4.5 as an expert evaluator to assess re
 pytest tests/golden/  # Structure validation only, tests skip
 ```
 
-**Run With Evaluation (~$0.41):**
+**Run With Evaluation (~$0.20–0.50 per model):**
 ```bash
 export OPENROUTER_API_KEY="your-key"
 pytest tests/golden/ --evaluate -v
@@ -288,16 +282,16 @@ pytest tests/golden/ --evaluate \
 **Budget Configuration** (in `config.yaml`):
 ```yaml
 evaluation:
-  judge_model: "anthropic/claude-opus-4.5"
+  judge_model: "anthropic/claude-opus-5.5"
   quality_threshold: 0.70
   max_cost_per_run: 1.00  # Hard limit (aborts)
   warn_cost_threshold: 0.50  # Soft limit (warns)
 ```
 
-**Expected Costs per Run:**
-- Response generation (Sonnet 4.5): ~$0.05 (8 tests × $0.006)
-- Judge evaluation (Opus 4.5): ~$0.36 (8 tests × $0.045)
-- **Total**: ~$0.41 per full run
+**Expected Costs per Run** (2026-09 measurements, 15 results):
+- Judge (Opus 5.5): ~$0.15–0.25
+- Responses: from well under $0.01 (GPT-6 Luna) to ~$0.20 (Opus 5.5)
+- Run models one at a time: parallel runs share OpenRouter's in-flight credit budget and fail with 402
 
 ### Quality Scoring
 

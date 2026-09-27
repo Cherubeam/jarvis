@@ -18,7 +18,7 @@ flowchart TD
         READ["read_note"]
         SEARCH["search_notes (glob)"]
         DAILYR["read_daily_note"]
-        SEMSEARCH["search_vault_semantic<br/>(optional)"]
+        SEMSEARCH["mcp_cortex__search_knowledge<br/>(optional, via MCP)"]
         RECALL["recall_conversations"]
     end
 
@@ -36,7 +36,7 @@ flowchart TD
 
     VAULT[("Obsidian Vault<br/>local filesystem<br/><br/>06 – Journals/01 Daily/<br/>05 – Slip-Box/<br/>04 – Resources/06 – Patterns/")]
 
-    CORTEX[["Cortex Service<br/>(optional, localhost:8100)<br/>semantic vector search"]]
+    CORTEX[["Cortex MCP server<br/>(optional, stdio, shared: true)<br/>semantic vector search"]]
 
     ORCH --> SHARED
     DAILY --> SHARED
@@ -51,7 +51,7 @@ flowchart TD
     DIFF --> GUARD
     CALLOUT --> GUARD
 
-    SEMSEARCH -.HTTP POST /search.-> CORTEX
+    SEMSEARCH -.MCP (stdio).-> CORTEX
     CORTEX -.reads.-> VAULT
 ```
 
@@ -82,7 +82,7 @@ flowchart TD
 |  |  read_note            read note   |  |                         | |
 |  |  search_notes         glob search |  |  create_note   new file | |
 |  |  read_daily_note      today's     |  |  edit_note     replace  | |
-|  |  search_vault_semantic (optional) |  |  list_notes_in_dir      | |
+|  |  mcp_cortex__search_knowledge     |  |  list_notes_in_dir      | |
 |  |  recall_conversations             |  |                         | |
 |  |                                   |  |  Scoped to:             | |
 |  |                                   |  |    slip_box  -> Slip-Box| |
@@ -116,14 +116,14 @@ flowchart TD
 |                                                                     |
 +---------------------------------------------------------------------+
             ^
-            | HTTP POST /search
+            | MCP (stdio)
 +-----------+--------------+
-| Cortex Service           |
-| (optional, localhost)    |
+| Cortex MCP server        |
+| (optional, shared: true) |
 |                          |
 | Semantic vector search   |
 | over vault content       |
-| http://127.0.0.1:8100    |
+| cortex-mcp (stdio)       |
 +--------------------------+
 ```
 
@@ -131,11 +131,12 @@ flowchart TD
 
 ## Data Flow Summary
 
-- **Reading** — Any agent can read notes, search by filename glob, or query semantically via Cortex.
-- **Writing** — Only explicitly authorized agents can write, and only to their scoped directory. Every write shows a diff for user confirmation first.
+- **Reading** — Any agent can read notes, search by filename glob, or query semantically via Cortex (MCP). Read tools record a hash of what the agent saw.
+- **Writing** — Only explicitly authorized agents can write, and only to their scoped directory. Every write shows a diff for user confirmation first. The diff lists any URL, `[[wikilink]]` or markdown link that differs between the two versions above the diff. A write (or `suggest_improvements` preview) is refused if the note changed on disk since the agent read it, and re-checked after approval, so edits made in Obsidian meanwhile are never reverted.
+- **Provenance** — The writer agent adds `prose` to a note's `assist:` frontmatter list when it writes sentences into it (engineering practice P7); other kinds of help are tagged by hand.
 - **Daily notes** — `/daily-summary` appends to the `> [!JARVIS]` callout block inside the daily note, summarizing conversations as first-person bullet points with `[[wikilinks]]`.
 - **Security** — `FilesystemGuard` enforces per-path permissions; no agent can escape its allowed directories.
-- **Semantic search** — When the optional Cortex service is running, agents get `search_vault_semantic` for meaning-based vault queries; otherwise they fall back to glob-based `search_notes`.
+- **Semantic search** — When the Cortex MCP server is configured (`mcp.servers.cortex`, `shared: true`), every agent gets `mcp_cortex__search_knowledge` for meaning-based vault queries; otherwise they fall back to glob-based `search_notes`. The earlier HTTP tool (`search_vault_semantic`, `cortex.*` settings) was retired with HUB-01.
 
 ---
 
@@ -148,7 +149,7 @@ flowchart TD
 | `read_note` | Read a markdown note's content (50 KB cap) |
 | `search_notes` | List notes matching glob patterns, sorted by name or modification time |
 | `read_daily_note` | Read today's or a specified date's daily note |
-| `search_vault_semantic` | Meaning-based search via Cortex API (optional) |
+| `mcp_cortex__search_knowledge` | Meaning-based search via the Cortex MCP server (optional) |
 | `recall_conversations` | Semantic search across past JARVIS conversations |
 
 ### Scoped Write Tools (per agent, declared in `meta.yaml`)
@@ -181,10 +182,15 @@ obsidian:
     patterns:
       target_dir: "04 – Resources/06 – Patterns"
 
-cortex:
+mcp:
   enabled: true
-  base_url: "http://127.0.0.1:8100"
-  timeout_seconds: 10
+  servers:
+    cortex:                   # semantic vault search (HUB-01)
+      transport: stdio
+      tool_group: cortex
+      shared: true            # goes to every agent
+      command: uv
+      args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
 ```
 
 ### Source Layout
@@ -197,5 +203,4 @@ cortex:
 | `packages/integrations/obsidian/diff.py` | Unified diff computation and formatting |
 | `packages/core/tools/vault_read_tools.py` | Shared read tools factory |
 | `packages/core/tools/vault_write_tools.py` | Scoped write tools factory |
-| `packages/core/tools/cortex_search.py` | Semantic search tool (Cortex client wrapper) |
 | `packages/core/filesystem_access.py` | `FilesystemGuard` per-path ACL enforcement |

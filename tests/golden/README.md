@@ -36,7 +36,7 @@ pytest tests/golden/ --evaluate -v
 pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_01_basic_qa --evaluate -v
 
 # Use different judge model
-pytest tests/golden/ --evaluate --judge-model=anthropic/claude-sonnet-4 -v
+pytest tests/golden/ --evaluate --judge-model=google/gemini-3.8-flash -v
 
 # Adjust quality threshold
 pytest tests/golden/ --evaluate --quality-threshold=0.80 -v
@@ -63,15 +63,10 @@ They must appear case-sensitively in the answer; a missing one caps the score at
 
 ```
 tests/golden/
-├── conversations/              # 8 YAML test cases
-│   ├── 01_basic_qa.yaml
-│   ├── 02_context_recall.yaml
-│   ├── 03_multi_turn_reasoning.yaml
-│   ├── 04_personalization_tone.yaml
-│   ├── 05_technical_deep_dive.yaml
-│   ├── 06_current_focus_aware.yaml
-│   ├── 07_ambiguous_query.yaml
-│   └── 08_preferences_adherence.yaml
+├── conversations/              # 14 YAML test cases (15 scored results; 03 is scored per turn)
+│   ├── 01–08_*.yaml            # conversation cases
+│   ├── 09–12_*.yaml            # agentic tool-use cases
+│   └── 13–14_*.yaml            # writing cases (voice rules, link preservation)
 ├── results/                    # Evaluation results storage
 │   ├── runs/                   # Individual run results (JSON)
 │   ├── reports/                # Human-readable markdown reports
@@ -86,7 +81,7 @@ tests/golden/
 
 1. **Load Test Case**: Read YAML file with expected qualities and context
 2. **Execute Conversation**: Call model under test with context
-3. **Judge Evaluation**: Send response + criteria to judge (Claude Opus 4.5)
+3. **Judge Evaluation**: Send response + criteria to judge (`evaluation.judge_model`, currently Claude Opus 5.5)
 4. **Basic Checks**: Pattern matching, length validation, content verification
 5. **Store Results**: Save individual result + aggregate run summary
 6. **Generate Report**: Create markdown report with analysis and recommendations
@@ -94,22 +89,18 @@ tests/golden/
 
 ## Cost Management
 
-- **Expected Cost**: ~$0.41 per full run (8 tests)
-  - Response generation: ~$0.05 (Sonnet 4.5)
-  - Judge evaluation: ~$0.36 (Opus 4.5)
+- **Expected Cost**: roughly $0.20–0.50 per model per full run (Opus 5.5 judge ~$0.15–0.25 of it; 2026-09 measurements)
 
-- **Budget Limits** (in config.yaml):
-  - `max_cost_per_run: 1.00` - Hard limit, aborts if exceeded
-  - `warn_cost_threshold: 0.50` - Soft limit, warns but continues
+- **Budget Limits** (`evaluation.*` in `config/default.yaml`): `max_cost_per_run` and `warn_cost_threshold` are declared but **not enforced by the harness yet**. Check the OpenRouter balance before and after a run instead.
 
 - **Cost Optimization**:
-  - Use cheaper judge model: `--judge-model=anthropic/claude-sonnet-4`
+  - Use cheaper judge model: `--judge-model=google/gemini-3.8-flash`
   - Run specific tests instead of all 14
   - Skip evaluation in CI, run manually for important changes
 
 ## Configuration
 
-Edit `config.yaml` to adjust settings:
+Edit `config/local.yaml` (overrides `config/default.yaml`) to adjust settings:
 
 ```yaml
 evaluation:
@@ -212,9 +203,9 @@ pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_
 export OPENROUTER_API_KEY="your-key-here"
 ```
 
-### "Cost budget exceeded"
+### 402 "in_flight_budget_exhausted" or "can only afford N tokens"
 
-**Solution**: Adjust limits in config.yaml or run fewer tests.
+**Solution**: Run one model at a time (parallel runs share OpenRouter's in-flight credit budget), and top up when the balance is low: every call must fit the remaining credit.
 
 ### Judge evaluation fails
 
@@ -240,10 +231,10 @@ For continuous integration, consider:
 
 ## Further Reading
 
-- [Implementation Plan](/Users/marcobraun/.claude/plans/majestic-soaring-quasar.md)
-- [Testing Documentation](../docs/engineering/testing.md)
-- [Product Roadmap](../docs/product/roadmap.md)
+- [Testing Documentation](../../docs/engineering/testing.md)
+- [Product Roadmap](../../docs/product/roadmap.md)
+- [Model benchmark results](../../docs/research/models.md)
 
 ---
 
-**Questions?** Check the implementation plan or open an issue on GitHub.
+**Questions?** Check the testing documentation or open an issue on GitHub.
