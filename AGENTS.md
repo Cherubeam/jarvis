@@ -118,24 +118,10 @@ CI runs `ruff check` and `ruff format --check` on every push/PR via
 
 ### Testing
 
-```bash
-# Run all tests (free, no LLM calls)
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=packages --cov=apps --cov-report=html
-
-# Unit tests only
-uv run pytest tests/unit/ -v
-
-# Mutation testing — find weak or redundant tests
-# Set paths_to_mutate in pyproject.toml to target a module, then:
-uv run mutmut run
-uv run mutmut results
-uv run mutmut show <mutant_name>
-```
-
-Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](docs/engineering/testing.md) for test statistics, strategy, and the full command reference. See [tests/README.md](tests/README.md) for quick-reference test commands.
+Test commands (by category, coverage, mutation testing, golden tests) are in
+[tests/README.md](tests/README.md); strategy and mutation testing are in
+[docs/engineering/testing.md](docs/engineering/testing.md). The minimum before a commit is in
+[Before Committing Code](#before-committing-code).
 
 ---
 
@@ -168,7 +154,7 @@ Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](doc
 | Agent command (meta.yaml `command:`) | `/kebab-case` | `/write`, `/pattern-cards` |
 | Skill directory | `kebab-case` | `substack-prepare-to-publish/` |
 | Skill name (in meta.yaml `skills:`) | `kebab-case` | `substack-prepare-to-publish` |
-| Tool group key (in main.py) | `snake_case` | `blog_tools`, `content_evaluator` |
+| Tool group key (in `session_factory.py`) | `snake_case` | `blog_tools`, `content_evaluator` |
 | Tool name (ToolDefinition `name=`) | `snake_case` | `evaluate_content`, `read_note` |
 | Tool file | `snake_case.py` | `vault_read_tools.py` |
 | Prompt include files | `kebab-case.md` | `voice-profile.md` |
@@ -219,47 +205,24 @@ See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the
 
 ### Data-Driven Agent (all delegate agents use this)
 
-1. Create a directory under `packages/agents/<name>/`
-2. Add `meta.yaml`:
+1. Create a directory under `packages/agents/<name>/` (snake_case)
+2. Add `meta.yaml` with at least `name`, `description` and `command`:
    ```yaml
    name: my_agent
    description: What this agent does
    command: /my-agent
-   model: quality            # optional: preset name or model id; default = session model
-   temperature: 0.7          # optional (default 0.7)
-   max_tokens: 4096           # optional (default: provider decides)
-   max_iterations: 20         # optional: for multi-step agentic loops
-   vault_writing: slip_box    # optional: scoped vault write tools from obsidian.writing.<key>
-   skills:                    # optional: bind skill knowledge into the agent
-     - my-skill-name
-   tools:                     # optional: named tool groups from CLI registry
-     - blog_tools
-     - content_evaluator
-   prompt_includes:           # optional: replace {placeholder} in system.md
-     voice_profile: voice-profile   # loads prompts/voice-profile.md
    ```
 3. Add `prompts/system.md` with the system prompt
 4. Done — the registry discovers it automatically
 
-**Tool groups**: The `tools:` field lists named tool groups registered in `apps/cli/session_factory.py` (`build_session`). Available groups: `blog_tools`, `card_generator` (only registered when `settings.pattern_cards.enabled`), `content_evaluator`, `suggest_improvements`, `dev_tools`, `card_search`, `web_tools`, `things3_tools`, `readwise_tools`, plus any MCP server tool groups declared in `config/local.yaml` under `mcp.servers` (each server's `tool_group` name becomes available; a server marked `shared: true` skips the group and joins every agent's shared toolset instead). Shared tools (vault read, recall conversations, `track_recommendation`, `recall_outcomes`, and shared MCP servers such as cortex) go to all agents automatically.
-
-**Cortex semantic search** (`mcp_cortex__search_knowledge`): Vault search by meaning, consumed via MCP since `HUB-01` (ADR-034) — declare the `cortex` server under `mcp.servers` in `config/local.yaml` with `shared: true` (stdio, command `uv --directory <cortex repo> run cortex-mcp`) and have the Cortex service running (`cherubeam/cortex`, `uv run cortex`). Degrades gracefully when unreachable (agents fall back to `search_notes`). The bespoke `search_vault_semantic` HTTP tool and `cortex.*` settings were retired with HUB-01.
-
-**Shared prompt includes**: Each `prompt_include` filename is resolved in this order, and the first hit wins:
-
-1. `<agent_dir>/prompts/<filename>.md` — personal override, may be gitignored
-2. `packages/agents/_shared/prompts/<filename>.md` — framework default (`anti-patterns.md` ships here; `voice-profile.md` is gitignored personal content, created from the committed `.example`)
-3. `<agent_dir>/prompts/<filename>.md.example` — committed starter template (triggers a startup warning when used)
-4. `packages/agents/_shared/prompts/<filename>.md.example` — shared starter template (also warns)
-5. Missing → startup warning, placeholder renders as empty string.
-
-The CLI runs a validation pass at startup (see `_warn_on_prompt_include_issues` in `apps/cli/main.py`) that prints a warning whenever an agent's `prompt_include` resolves via a `.md.example` fallback or can't be resolved at all. Canonical hits (levels 1 or 2) are silent.
-
-On a fresh clone the `voice-profile.md.example` under `packages/agents/writer/prompts/` serves as a starter template; copy it to `voice-profile.md` to personalize (the copy is gitignored).
-
-**Skill binding**: The `skills:` field lists skill names from `packages/skills/`. Simple skills have their SKILL.md body appended to the system prompt. Deck-skills get a card search tool (if RAG is enabled). See `packages/agents/pattern_language_expert/meta.yaml` for an example.
-
-**Prompt includes**: The `prompt_includes:` field maps placeholder names to filenames in `prompts/` (agent-local first, then `_shared/prompts/` fallback). Each `{placeholder}` in `system.md` is replaced with the file content. See `packages/agents/writer/meta.yaml`.
+All optional fields (`model`, `max_iterations`, `vault_writing`, `skills`, `tools`,
+`prompt_includes`, …) and how prompt includes such as the voice profile are resolved are documented
+in the [`meta.yaml` schema in api.md](docs/engineering/api.md#metayaml-schema). Available tool
+groups and which agent uses which are in
+[docs/engineering/agents.md](docs/engineering/agents.md#tool-distribution); MCP servers (including
+Cortex vault search) are set up as described in
+[docs/engineering/deployment.md](docs/engineering/deployment.md#connecting-mcp-servers).
+After adding an agent, add its row to the agents.md matrix.
 
 ### Python-Class Agent (escape hatch)
 
@@ -287,15 +250,12 @@ See [docs/engineering/testing.md](docs/engineering/testing.md) for the full muta
 ## Before Committing Code
 
 ```bash
-# Quick check (unit tests only, < 1 second)
-uv run pytest tests/unit/
-
-# Full test suite (< 2 seconds)
-uv run pytest
-
-# With coverage report
-uv run pytest --cov=packages --cov=apps --cov-report=term
+uv run pytest                      # full suite (free, no LLM calls)
+uv run ruff check && uv run ruff format --check
+uv run mypy packages apps scripts jarvis_cli.py jarvis_gui.py
 ```
+
+These are the same checks CI runs. More test commands: [tests/README.md](tests/README.md).
 
 ---
 
@@ -316,16 +276,29 @@ uv run pytest --cov=packages --cov=apps --cov-report=term
 
 ## Documentation Updates
 
-After any implementation, review and update **all** relevant documentation — not just changelog. Check each of these:
+After any implementation, review and update **all** relevant documentation — not just changelog.
 
-- **[README.md](README.md)** — features list, usage examples, slash commands, project structure, roadmap summary
+**One topic, one home.** Each topic is described fully in exactly one doc; everywhere else, write one
+sentence and link to it (`file.md#anchor`). Homes: README = overview + quickstart; AGENTS.md = agent
+workflow and conventions; `docs/engineering/*` = technical reference (agents.md = agent/tool matrix,
+api.md = `meta.yaml`/settings schema, architecture.md = file tree and design, deployment.md =
+configuration how-to, obsidian-integration.md = vault safety, gui.md = GUI); tests/README.md = test
+commands, tests/golden/README.md = golden suite; docs/research/models.md = model evaluation;
+docs/product/roadmap.md = status. Don't copy config values, YAML defaults, counts or file trees —
+link to `config/default.yaml` or the code. Before adding a paragraph, grep the docs for the topic
+and edit its home instead.
+
+Check each of these:
+
+- **[README.md](README.md)** — only if the overview or quickstart changed (a new major feature, a new install step); details go to the topic's home
+- **[docs/engineering/agents.md](docs/engineering/agents.md)** — if an agent, command, model pin or tool group changed
 - **[docs/changelog.md](docs/changelog.md)** — always update (new entry under `[Unreleased]`)
 - **[docs/engineering/architecture.md](docs/engineering/architecture.md)** — if project structure or components changed
 - **[docs/engineering/api.md](docs/engineering/api.md)** — if public interfaces changed
 - **[docs/engineering/gui.md](docs/engineering/gui.md)** — if any GUI surface, route, or per-phase architecture changed
 - **[docs/product/roadmap.md](docs/product/roadmap.md)** — if a roadmap item was completed or added
 - **[docs/product/decisions.md](docs/product/decisions.md)** — if an architectural decision was made (new ADR)
-- **[AGENTS.md](AGENTS.md)** — if agents, commands, or development workflow changed
+- **[AGENTS.md](AGENTS.md)** — if the development workflow or a convention changed
 
 ---
 
@@ -347,11 +320,10 @@ After any implementation, review and update **all** relevant documentation — n
 ### Before Committing
 
 1. Dependencies added via `uv add` (NEVER pip)
-2. Tests pass: `uv run pytest`
+2. Checks pass (see [Before Committing Code](#before-committing-code))
 3. Code works after clean setup: `rm -rf .venv && uv sync`
-4. Type checking passes (if applicable)
-5. Documentation updated
-6. No API keys or secrets in code
+4. Documentation updated (see [Documentation Updates](#documentation-updates))
+5. No API keys or secrets in code
 
 ---
 
