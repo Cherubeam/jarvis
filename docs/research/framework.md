@@ -116,8 +116,7 @@ Prompts are code. They need:
 - ✅ System prompt in version control
 - ✅ Context files versioned
 - ✅ LLM-as-judge evaluation framework implemented
-- ✅ Golden test suite (10 cases) with historical trend tracking
-- ✅ Cost management (~$0.41/run) with --evaluate flag
+- ✅ Golden test suite with historical trend tracking, run on demand with `--evaluate` (cases and cost: [tests/golden/README.md](../../tests/golden/README.md))
 - ✅ ChatGPT & Claude conversation import
 - ✅ Conversation schema v1.0.0 (structured logging with migration)
 

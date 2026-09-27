@@ -1,6 +1,8 @@
 # Jarvis Testing Suite
 
-Comprehensive testing framework for the Jarvis personal AI assistant.
+Test commands and the layout of `tests/`. Strategy, test layers and mutation testing are in
+[docs/engineering/testing.md](../docs/engineering/testing.md); the golden (LLM-as-judge) suite is in
+[golden/README.md](golden/README.md).
 
 ## Quick Start
 
@@ -24,17 +26,14 @@ open htmlcov/index.html
 
 ```
 tests/
-├── unit/              # Fast, isolated unit tests
+├── unit/              # Fast, isolated unit tests (one file per module)
+│   └── gui/           # GUI server tests (routes, bridge, history, home, settings)
 ├── integration/       # Integration tests with mocked dependencies
-├── golden/           # Golden conversation test cases + LLM-as-judge
-│   ├── conversations/ # YAML test cases
-│   ├── results/       # Evaluation results
-│   ├── evaluator.py   # Core evaluation engine
-│   ├── judge_prompts.py # Judge prompt templates
-│   └── result_storage.py # Storage & reporting
-├── fixtures/         # Test data and fixtures
-├── conftest.py       # Shared pytest fixtures
-└── TESTING_PLAN.md   # Comprehensive testing plan
+├── golden/            # Golden conversations + LLM-as-judge (layout: golden/README.md)
+├── fixtures/          # Test data (sample exports, context files, mock responses, config)
+├── conftest.py        # Shared pytest fixtures + the --evaluate / --judge-model options
+├── TESTING_PLAN.md    # Original Phase 1 testing plan (historical)
+└── TEST_RESULTS.md    # Phase 1 results snapshot (historical)
 ```
 
 ---
@@ -53,9 +52,9 @@ uv run pytest tests/integration/ -v
 # Golden test structure validation (free)
 uv run pytest tests/golden/ -v
 
-# Golden tests WITH evaluation (costs ~$0.41, requires API key)
-export OPENROUTER_API_KEY="your-key"
-uv run pytest tests/golden/ --evaluate -v
+# Golden tests WITH evaluation: paid, needs OPENROUTER_API_KEY and DEFAULT_MODEL
+# (cost and options: golden/README.md)
+DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate -v
 
 # Exclude slow/manual tests
 uv run pytest -m "not slow"
@@ -107,6 +106,9 @@ uv run pytest --lf
 ```
 
 ### Mutation Testing
+
+mutmut currently only works on Linux; use the CI workflow on macOS (see
+[testing.md](../docs/engineering/testing.md#running-mutation-tests-in-ci-required)).
 
 ```bash
 # Run mutation tests (set paths_to_mutate in pyproject.toml first)
@@ -162,30 +164,12 @@ uv run pytest -m "not slow"
 
 ---
 
-## Test Statistics
-
-Run `uv run pytest` to see current counts. See [docs/engineering/testing.md](../docs/engineering/testing.md) for test statistics and strategy.
-
----
-
 ## Writing New Tests
 
 ### Mutation-Resistant Assertions
 
-Every assertion should survive mutation testing. The rule: **assert on values, not existence**.
-
-```python
-# BAD — mutants survive
-assert result is not None
-assert "key" in result_dict
-
-# GOOD — mutants killed
-assert result == "expected output"
-assert result_dict["key"] == "expected_value"
-assert set(result_dict.keys()) == {"key1", "key2"}
-```
-
-For tool factories, always add schema validation and output content checks. See [docs/engineering/testing.md](../docs/engineering/testing.md#writing-mutation-resistant-tests) for the full checklist.
+Assert on values, not existence. The rules and the checklist (including tool-factory tests) are in
+[docs/engineering/testing.md](../docs/engineering/testing.md#writing-mutation-resistant-tests).
 
 ### Unit Test Template
 
@@ -239,7 +223,7 @@ class TestIntegration:
             result = run_full_flow()
 
             # Verify
-            assert result is not None
+            assert result == expected_result
             mock_llm.assert_called_once()
 ```
 
@@ -247,51 +231,17 @@ class TestIntegration:
 
 ## Golden Tests
 
-Golden tests are defined in YAML format:
-
-```yaml
-name: "test_name"
-description: "What this test validates"
-category: "reasoning"  # or context_recall, personalization, edge_cases
-context:
-  profile: |
-    User profile information
-  preferences: |
-    User preferences
-conversation:
-  - role: "user"
-    content: "User question"
-  - role: "assistant"
-    expected_themes:
-      - "theme1"
-      - "theme2"
-    expected_qualities:
-      accurate: true
-      concise: true
-```
-
-See [tests/golden/README.md](golden/README.md) for the full golden test guide including LLM-as-judge evaluation.
+Case format, running with evaluation, cost, adding cases and benchmarking models are in
+[golden/README.md](golden/README.md).
 
 ---
 
 ## Continuous Integration
 
-Ready for GitHub Actions:
-
-```yaml
-# .github/workflows/test.yml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync --extra test
-      - run: uv run pytest --cov=packages --cov=apps --cov-report=xml
-      - uses: codecov/codecov-action@v3
-```
+`.github/workflows/test.yml` runs ruff, mypy and `uv run pytest` on pushes to `main` and on PRs;
+golden tests run without `--evaluate` there, so CI never spends money.
+`.github/workflows/mutation.yml` runs mutmut weekly and on demand
+([details](../docs/engineering/testing.md#running-mutation-tests-in-ci-required)).
 
 ---
 
@@ -325,6 +275,6 @@ Ensure files follow naming conventions:
 
 ## Documentation
 
-- [TESTING_PLAN.md](TESTING_PLAN.md) - Comprehensive testing plan and architecture
-- [../docs/engineering/testing.md](../docs/engineering/testing.md) - Testing strategy, statistics, and philosophy
+- [../docs/engineering/testing.md](../docs/engineering/testing.md) - Testing strategy, layers, mutation testing
+- [TESTING_PLAN.md](TESTING_PLAN.md) - Original Phase 1 testing plan (historical)
 - [golden/README.md](golden/README.md) - Golden test guide with LLM-as-judge details

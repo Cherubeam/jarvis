@@ -48,7 +48,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
          ▼
 ┌─────────────────┐
 │     Tools       │  Web fetch, conversation recall, etc.
-│  (Agentic Loop) │  Max 5 iterations per request
+│  (Agentic Loop) │  Iteration limit per agent
 └────────┬────────┘
          │
          ▼
@@ -59,8 +59,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
          ▼
 ┌─────────────────┐     ┌─────────────────┐
 │ Conversation    │────▶│   RAG Index     │  Semantic search over history
-│ Memory          │     │  (ChromaDB,     │  (optional, opt-in)
-│                 │     │   optional)     │
+│ Memory          │     │  (ChromaDB)     │  (on by default)
+│                 │     │                 │
 └─────────────────┘     └─────────────────┘
 ```
 
@@ -73,30 +73,30 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing to specialist agents (Writer, Researcher, Simplifier, Navigator, Tactics Coach, Content Reviewer, Substack Publisher, Substack Image Creator, OKR Architect, Obsidian Note Creator, Pattern Language Expert, Pattern Card Generator, Strategyzer, Developer, Reading Assistant)
-- **Data-Driven Agents**: Most agents defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
+- **Agent Framework**: Slash-command routing from the JARVIS orchestrator to specialist agents (Writer, Researcher, Content Reviewer, Developer, Reading Assistant and more — full list with commands and tools in [docs/engineering/agents.md](docs/engineering/agents.md))
+- **Data-Driven Agents**: Delegate agents are defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
-- **Tool Calling**: Agentic loop with tool execution (5 rounds per request by default; agents set their own `max_iterations`). When the limit is hit, the model is told the tools still exist and asked for its next step
-- **Model Choice**: Defaults and presets in config (GPT-6 Luna default, Opus 5.5 `quality`, from the 2026-09 benchmark in [docs/research/models.md](docs/research/models.md)); agents can pin their own model in `meta.yaml` (`model: quality`); per-model request fields via `models.extra_body`
+- **Tool Calling**: Agentic loop with tool execution and a per-agent iteration limit ([how it works](docs/engineering/architecture.md#agentic-loop))
+- **Model Choice**: Presets in [`config/default.yaml`](config/default.yaml), chosen by benchmark ([docs/research/models.md](docs/research/models.md)); agents can pin their own model in `meta.yaml`; per-model request fields via `models.extra_body` ([how to switch](docs/engineering/deployment.md#switching-models-and-providers))
 - **Model Routing** (opt-in): heuristic routing by query complexity (`routing.enabled`), or OpenRouter's Auto Router picking the model per turn (`models.auto_router.enabled`, `/model auto`; ADR-036). The model that answered and its billed cost are shown and logged
-- **Safe Vault Edits**: Every write shows a diff for approval, lists changed links above it, and is refused if the note changed on disk since the agent read it
-- **Web Fetch Tool**: URL fetching with content extraction (httpx + trafilatura)
-- **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (opt-in)
+- **Safe Vault Edits**: Every write shows a diff for approval, lists changed links above it, and is refused if the note changed on disk since the agent read it ([details](docs/engineering/obsidian-integration.md#data-flow-summary))
+- **Web Fetch & Search Tools**: URL fetching with content extraction (httpx + trafilatura) and DuckDuckGo search
+- **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (on by default; `rag.enabled`)
 - **Vault Semantic Search**: Meaning-based search over the Obsidian vault via the Cortex MCP server (opt-in, HUB-01)
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
-- **Streaming Responses**: Real-time token-by-token output for a responsive chat experience
-- **Non-Streaming Mode** (opt-in): Toggle with `/stream` or configure via `models.streaming`. Enables prompt caching via OpenRouter (blocked in streaming mode due to upstream LiteLLM format inconsistency)
-- **History Summarization** (opt-in): Compresses old conversation turns when history exceeds ~40K tokens, using the `fast` preset to reduce costs in long sessions. Enable via `summarization.enabled` in config.
+- **Streaming Responses**: Real-time token-by-token output; `/stream` toggles non-streaming mode, which enables prompt caching ([details](docs/engineering/architecture.md#streaming-and-prompt-caching))
+- **History Summarization** (opt-in): Compresses old conversation turns in long sessions with the `fast` preset ([details](docs/engineering/architecture.md#history-summarization))
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
-- **Obsidian Integration**: Generate daily note summaries from conversation history
-- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses. Write tools (`create_task`, `complete_task`, `update_task`) available via `things3_tools` group.
-- **MCP Client Integration**: Connect to external MCP (Model Context Protocol) servers. MCP server tools are bridged into the ToolDefinition system and appear as regular tool groups. Supports stdio, SSE, and streamable HTTP transports. Config-only setup via `mcp.servers` in `config/local.yaml`.
-- **Comprehensive Testing**: Automated test suite with high code coverage + mutation testing via mutmut
+- **Obsidian Integration**: Vault read/write tools and daily note summaries from conversation history
+- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses; write tools (`create_task`, `complete_task`, `update_task`) in the `things3_tools` group
+- **MCP Client Integration**: Connect external MCP (Model Context Protocol) servers over stdio, SSE or streamable HTTP; their tools appear as regular tool groups. Config-only setup ([guide](docs/engineering/deployment.md#connecting-mcp-servers))
+- **GUI**: A browser-based peer to the CLI with the same agents, tools and conversation files ([docs/engineering/gui.md](docs/engineering/gui.md))
+- **Testing**: Unit, integration and LLM-as-judge golden tests, plus mutation testing via mutmut ([docs/engineering/testing.md](docs/engineering/testing.md))
 - **Benchmark Cost Estimation**: Estimate golden test run costs per model before evaluation
 - **Conversation Import**: Import ChatGPT and Claude exports into Jarvis format
 
@@ -121,12 +121,16 @@ uv sync
 echo "OPENROUTER_API_KEY=your_key_here" > .env
 
 # Configure your personal context
-# Edit the files in data/context/:
+# Create the files in data/context/ (not tracked in git):
+# - soul.md (JARVIS's identity, placed first in the prompt)
 # - personal_context.md (who you are)
 # - professional_context.md (professional background)
 # - preferences.md (how the assistant should behave)
 # - current_focus.md (what you're working on)
 ```
+
+Configuration (models, integrations, MCP servers) is covered in
+[docs/engineering/deployment.md](docs/engineering/deployment.md).
 
 ### Usage
 
@@ -137,78 +141,35 @@ uv run jarvis
 # Run a specialist agent directly
 uv run jarvis --agent writer
 uv run jarvis --agent researcher
-uv run jarvis --agent simplifier
-uv run jarvis --agent navigator
-uv run jarvis --agent tactics_coach
-uv run jarvis --agent developer
+
+# Start on another model (preset or model id)
+uv run jarvis --model quality
 ```
 
-### GUI (Phases 1–8)
+During a chat session, JARVIS delegates to specialist agents on its own, or you enter one with its
+slash command, for example `/write` (Writer) or `/research` (Researcher). Every agent's command is
+in [docs/engineering/agents.md](docs/engineering/agents.md#agents). Commands that aren't agents:
 
-A graphical peer to the CLI, sharing the same agents, tools, conversation
-files, and approval flow:
+```
+/model [name]           Shows or switches the session model (preset, model id, or `auto`)
+/stream                 Toggles between streaming and non-streaming response modes
+/daily-summary [date]   Generates an Obsidian daily note summary (default: today)
+/outcomes               Reviews pending tracked recommendations (score + retrospective)
+```
+
+Type `quit` or `exit` to end the session.
+
+### GUI
 
 ```bash
 uv sync --extra web
 uv run jarvis-gui              # prints a "Sign in:" URL and opens it
-uv run jarvis-gui --no-browser # just serve — open the printed URL yourself
 ```
 
-The GUI requires authentication. Opening the printed `Sign in:` URL once signs
-that browser in; the token lives in `data/.gui_token`. Scripts can use
-`Authorization: Bearer $(cat data/.gui_token)` instead. See
-[docs/engineering/gui.md#authentication](docs/engineering/gui.md#authentication).
-
-Shipped surfaces: **Chat** (streaming, tool cards, vault-write approval
-diffs, command palette, Tweaks panel, light/dark + accent swap, click a
-sidebar row to **resume** that conversation in-place — your next message
-appends to the same JSON file), **Home**
-(greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start),
-**History** (two-pane filterable conversation browser with per-conversation
-**hard-delete** and one-click resume from the detail pane), **Sidebar Timeline
-mode** (togglable day-axis variant), **Agents** (categorized grid +
-per-agent detail with tools, recent sessions, 14-day cost sparkline, and
-"start session →" launcher), the **Agent Prompt Editor** (Prompt /
-Versions / Stats / Context tabs on each agent — edit `system.md`,
-snapshot-on-save history with restore, resolved-prompt preview), the
-**Includes editor** (Includes tab — edit shared and local prompt
-fragments like `voice-profile.md` in place, with shared-write modal
-confirm + per-include snapshot history), **Outcomes** (score pending
-recommendations — happened / didn't / partial + quality 1-5 + note),
-and **Settings** (every field in the typed `Settings` model editable
-across 16 sections with inline descriptions, customized-dot overrides,
-model-validator error display, field-level hot-apply gating that
-reports which changes took effect live vs. need a restart, and a
-managed-header guard that prevents first-save from overwriting a
-hand-edited `config/local.yaml`). See
-[docs/engineering/gui.md](docs/engineering/gui.md) for architecture +
-rebuild instructions.
-
-During a chat session, you can use slash commands:
-
-```
-/write <text>           Delegates to Writer agent (prose, editing, rewriting)
-/research <text>        Delegates to Researcher agent (analysis, synthesis)
-/simplify <text>        Delegates to Simplifier agent (explains complex ideas simply)
-/review                 Enters Content Reviewer session (structured evaluation)
-/publish                Enters Substack Publisher session (pre-pub workflow)
-/substack-image         Enters Substack Image Creator session (header image prompts)
-/navigator              Enters Navigator agent session (alignment, weekly reviews)
-/tactics                Enters Tactics Coach agent session (Pip Decks coaching)
-/okr-architect          Enters OKR Architect agent session
-/obsidian-note-creator  Enters Obsidian Note Creator session (evergreen note extraction)
-/pattern-language-expert  Enters Pattern Language Expert session
-/pattern-cards          Enters Pattern Card Generator session (visual cards from patterns)
-/strategize             Enters Strategyzer session (competitive analysis, growth, pricing)
-/develop                Enters Developer agent session (codebase, git, tests)
-/daily-summary [date]   Generates an Obsidian daily note summary (default: today)
-/outcomes               Reviews pending tracked recommendations (score + retrospective)
-/reading                Enters Reading Assistant session (Readwise library)
-/model [name]           Shows or switches the session model (preset, model id, or `auto`)
-/stream                 Toggles between streaming and non-streaming response modes
-```
-
-Type `quit` or `exit` to end the session.
+The GUI is a browser-based peer to the CLI: same agents, tools, conversation files and approval
+flow, plus Home, History, Agents (with a prompt editor), Outcomes and Settings views. It requires
+the printed sign-in link once per browser. Surfaces, authentication and rebuild instructions are in
+[docs/engineering/gui.md](docs/engineering/gui.md).
 
 ### Troubleshooting
 
@@ -247,318 +208,55 @@ Imports are idempotent — re-running safely updates existing conversations with
 
 ### Connecting MCP Servers
 
-JARVIS can connect to external [MCP](https://modelcontextprotocol.io/) servers and use their tools alongside native ones. Adding or removing a server is a config-only change — no code edits required.
-
-**Step 1: Enable MCP and declare servers** in `config/local.yaml`:
-
-```yaml
-mcp:
-  enabled: true
-  servers:
-    # Example: filesystem access via stdio
-    filesystem:
-      transport: stdio
-      command: npx
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Documents"]
-      tool_group: fs_tools           # name used in agent meta.yaml
-      timeout_seconds: 30            # per-call timeout (default: 30)
-
-    # Example: remote server via SSE
-    github:
-      transport: sse
-      url: "http://localhost:3001/sse"
-      headers:
-        Authorization: "Bearer your-token-here"
-      tool_group: github_tools
-
-    # Example: remote server via streamable HTTP
-    my_api:
-      transport: streamable_http
-      url: "http://localhost:8080/mcp"
-      tool_group: my_api_tools
-```
-
-Each server key (e.g. `filesystem`) is used for tool namespacing — MCP tool `read_file` from server `filesystem` becomes `mcp_filesystem__read_file` in JARVIS. The `tool_group` field (defaults to the server key if omitted) is the name you reference from agents.
-
-**Step 2: Assign tool groups to agents.** Add the `tool_group` name to the agent's `meta.yaml`:
-
-```yaml
-# packages/agents/researcher/meta.yaml
-tools:
-  - web_tools
-  - fs_tools        # MCP server tool group
-  - github_tools    # another MCP server tool group
-```
-
-**Step 3: Restart JARVIS.** You should see the tools load at startup:
-
-```
-[MCP] 5 tool(s) from 2 server(s).
-```
-
-**Giving MCP tools to the JARVIS orchestrator:** By default, only delegate agents receive MCP tools (via `meta.yaml`). To make MCP tools available to the JARVIS orchestrator itself, add the tool group to `jarvis_tools` in `apps/cli/main.py`:
-
-```python
-jarvis_tools = (
-    list(shared_tools)
-    + tool_groups.get("web_tools", [])
-    + tool_groups.get("things3_tools", [])
-    + tool_groups.get("fs_tools", [])       # add your MCP tool group here
-)
-```
-
-**Transport reference:**
-
-| Transport | Required fields | Use case |
-|---|---|---|
-| `stdio` | `command`, `args` (optional) | Local servers launched as child processes |
-| `sse` | `url` | Remote servers with Server-Sent Events |
-| `streamable_http` | `url` | Remote servers with HTTP streaming |
-
-Optional fields for all transports: `tool_group`, `timeout_seconds`, `headers` (SSE/HTTP only), `env`, `cwd` (stdio only).
-
-**Troubleshooting:**
-- If a server fails to connect at startup, JARVIS logs a warning and continues — other servers and native tools are unaffected.
-- If a tool call fails at runtime, the error is returned to the LLM as tool output so it can adapt.
-- stdio servers require the command to be available on your `PATH` (e.g. `npx` requires Node.js).
-- To verify which tools loaded, check the `[MCP]` line in startup output.
+JARVIS can connect to external [MCP](https://modelcontextprotocol.io/) servers and give their tools
+to agents; it's a config-only change in `config/local.yaml`. The step-by-step guide (including the
+Cortex vault-search server) is in [docs/engineering/deployment.md](docs/engineering/deployment.md#connecting-mcp-servers).
 
 ### Switching LLM Providers
 
-Edit `config/default.yaml` or `config/local.yaml`:
-
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"  # Change to desired model
-```
-
-See [docs/engineering/deployment.md](docs/engineering/deployment.md) for full provider configuration.
+Change `models.default` or a preset in `config/local.yaml`, or use `--model` / `/model`. See
+[docs/engineering/deployment.md](docs/engineering/deployment.md#switching-models-and-providers).
 
 ## Project Structure
 
 ```
 jarvis/
-├── apps/                               # Deployable applications
-│   ├── cli/                            # CLI entry point
-│   │   ├── main.py                     # Command-line interface + slash-command loop
-│   │   ├── display.py                  # Rich terminal formatting
-│   │   ├── session_factory.py          # build_session() — shared CLI/GUI bootstrap
-│   │   └── review.py                   # /outcomes scoring helpers (public API for GUI)
-│   └── gui/                            # JARVIS GUI (Phases 1–8)
-│       ├── main.py                     # Entry: uvicorn.run + webbrowser.open
-│       ├── server/                     # FastAPI backend
-│       │   ├── app.py                  # Factory + lifespan (MCP start/stop, logger save)
-│       │   ├── state.py                # GuiSession + per-turn handlers
-│       │   ├── protocol.py             # WebSocket TypedDicts (server ↔ client)
-│       │   ├── streaming.py            # WebStreamHandler — on_event → queue events
-│       │   ├── confirmation.py         # WebConfirmationHandler — diff buffer + threaded wait
-│       │   ├── bridge.py               # Per-turn orchestration (agent.run in to_thread)
-│       │   ├── agents/                 # Agent detail + prompt-history helpers
-│       │   ├── home/                   # cost_week + task_links rollups
-│       │   ├── history/                # Conversations index + derive helpers
-│       │   └── routes/                 # api · chat_ws · agents · agent_includes ·
-│       │                               #   conversations · home · outcomes · settings
-│       └── web/                        # React 18 + Vite + TypeScript frontend
-│           ├── src/                    # React + TypeScript source
-│           └── dist/                   # Built bundle (committed; rebuild with `npm run build`)
-│
-├── packages/                           # Shared libraries
-│   ├── core/                           # Core functionality
-│   │   ├── llm_client.py               # Unified LLM provider interface
-│   │   ├── context_builder.py          # Assembles system prompts from context
-│   │   ├── stream_handler.py           # Streaming response handler with agentic loop
-│   │   ├── memory.py                   # Conversation logging (schema v1.0.0)
-│   │   ├── pricing.py                  # Cost calculation and tracking
-│   │   ├── settings.py                 # Typed pydantic-settings model + load_config() + classify_changes
-│   │   ├── frontmatter.py              # YAML frontmatter parse/dump + atomic write
-│   │   ├── date_utils.py               # parse_relative_date (ISO + "next week", "1 month", etc.)
-│   │   ├── daily_summary.py            # /daily-summary request builder (CLI + GUI shared)
-│   │   ├── events.py                   # Typed event dataclasses for streaming decoupling
-│   │   ├── filesystem_access.py        # Filesystem access control (FilesystemGuard)
-│   │   ├── card_renderer.py             # Pattern card rendering (HTML/PNG via WeasyPrint)
-│   │   ├── benchmark_costs.py          # Benchmark cost estimation
-│   │   ├── importers/                  # Conversation importers (ChatGPT, Claude)
-│   │   ├── rag/                        # Conversation recall (optional, ChromaDB)
-│   │   │   ├── indexer.py              # Startup scan, message-pair chunking
-│   │   │   └── searcher.py             # Cosine similarity search with date filters
-│   │   └── tools/                      # Tool calling infrastructure
-│   │       ├── base.py                 # ToolDefinition + ToolRegistry
-│   │       ├── executor.py             # Tool call execution
-│   │       ├── web_fetch.py            # URL fetch (httpx + trafilatura)
-│   │       ├── conversation_recall.py  # RAG search tool
-│   │       ├── delegate.py             # Agent delegation tool
-│   │       ├── vault_read_tools.py     # Obsidian vault read tools
-│   │       ├── vault_write_tools.py    # Obsidian vault write tools (scoped per agent)
-│   │       ├── web_search.py            # DuckDuckGo web search tool
-│   │       ├── blog_tools.py           # Blog management tools
-│   │       ├── card_generator_tools.py # Pattern card generator tools
-│   │       ├── things3_tools.py        # Things 3 task management tools
-│   │       ├── codebase_tools.py       # Codebase analysis tools
-│   │       ├── git_tools.py            # Git operations tools
-│   │       ├── project_write_tools.py  # Project file write tools
-│   │       ├── test_tools.py           # Test runner tool
-│   │       ├── mutation_tools.py       # Mutation testing tools (mutmut)
-│   │       ├── suggest_improvements.py # Content improvement suggestions
-│   │       └── content_evaluator.py    # LLM-as-judge evaluation tool
-│   ├── agents/                         # Agent implementations
-│   │   ├── base.py                     # Base agent class + DataDrivenAgent
-│   │   ├── registry.py                 # Filesystem-based agent auto-discovery
-│   │   ├── jarvis/                     # Main JARVIS orchestrator agent (Python class)
-│   │   ├── _shared/                    # Shared prompt includes (voice-profile, anti-patterns)
-│   │   ├── writer/                     # Writer — drafting & editing
-│   │   ├── content_reviewer/           # Content Reviewer — structured evaluation
-│   │   ├── substack_publisher/         # Substack Publisher — pre-pub workflow
-│   │   ├── substack_image_creator/     # Substack Image Creator — header image prompts
-│   │   ├── researcher/                 # Researcher — analysis, synthesis
-│   │   ├── simplifier/                 # Simplifier — explains complex ideas simply
-│   │   ├── tactics_coach/              # Tactics Coach — Pip Decks coaching
-│   │   ├── navigator/                  # Navigator — alignment, weekly reviews
-│   │   ├── okr_architect/              # OKR Architect
-│   │   ├── obsidian_note_creator/      # Obsidian Note Creator
-│   │   ├── pattern_language_expert/    # Pattern Language Expert
-│   │   ├── pattern_card_generator/    # Pattern Card Generator (visual cards)
-│   │   ├── strategyzer/              # Strategyzer (competitive analysis, growth)
-│   │   └── developer/                 # Developer agent (git sandbox, code tools)
-│   ├── skills/                         # Skills (passive knowledge packs for card indexing)
-│   │   ├── base.py                     # BaseSkill (parses SKILL.md, optional skill.py)
-│   │   ├── registry.py                 # Filesystem-based skill discovery
-│   │   ├── resolver.py                 # Skill resolution and binding for agents
-│   │   ├── content-evaluator/          # Content evaluation (SKILL.md + skill.py)
-│   │   └── .../                        # Additional skills (each has SKILL.md)
-│   ├── integrations/                   # External service integrations
-│   │   ├── things3/                    # Things 3 task sync + write tools
-│   │   ├── mcp/                        # MCP client integration
-│   │   │   ├── client.py               # Connection lifecycle + async/sync bridge
-│   │   │   └── bridge.py               # MCP Tool → ToolDefinition conversion
-│   │   └── obsidian/                   # Obsidian vault integration
-│   │       ├── vault.py                # Vault reader with symlink protection
-│   │       ├── callout.py              # Callout block parser
-│   │       ├── diff.py                 # Diff computation and formatting
-│   │       └── writer.py               # Note writer with confirmation
-│   └── telemetry/                      # Metrics and evaluation
-│
-├── data/                               # User data
-│   ├── context/                        # Your personal context files
-│   │   ├── personal_context.md         # Who you are
-│   │   ├── professional_context.md     # Professional background
-│   │   ├── preferences.md              # Assistant behavior preferences
-│   │   ├── current_focus.md            # Current projects and priorities
-│   │   ├── tasks.md                    # Auto-synced from Things 3
-│   │   └── projects/                   # Project-specific context
-│   ├── conversations/                  # Timestamped conversation logs (by year)
-│   │   ├── 2024/                      # e.g. 2024-02-10_17-50-05.json
-│   │   ├── 2025/
-│   │   └── 2026/
-│   └── rag/                            # ChromaDB vector store (runtime, gitignored)
-│
-├── scripts/                            # Utility scripts
-│   ├── import_chatgpt.py               # ChatGPT conversation importer
-│   ├── import_claude.py                # Claude conversation importer
-│   ├── import_claude_context.py        # Claude context importer
-│   ├── model_benchmark.py              # Model benchmark runner
-│   ├── benchmark_report.py             # Benchmark report generator
-│   ├── analyze_costs.py                # Cost analysis
-│   ├── analyze_context.py              # Context utilization analyzer
-│   └── link_skills.sh                  # Symlink private skills repo
-│
-├── config/                             # Configuration
-│   ├── default.yaml                    # Default configuration
-│   └── local.yaml                      # Local overrides (gitignored)
-│
-├── tests/                              # Comprehensive test suite
-│   ├── unit/                           # Unit tests
-│   ├── integration/                    # Integration tests
-│   ├── golden/                         # Golden test conversations + LLM-as-judge
-│   └── README.md                       # Testing guide
-│
-├── docs/                               # Documentation
-│   ├── product/                        # Product specs and roadmap
-│   ├── engineering/                    # Technical documentation
-│   └── research/                       # AI engineering research
-│
-└── pyproject.toml                      # Project configuration
+├── apps/          # Deployable applications: cli/ (terminal) and gui/ (FastAPI + React)
+├── packages/      # Shared libraries: core/, agents/, skills/, integrations/, telemetry/
+├── config/        # default.yaml (defaults) + local.yaml (your overrides, gitignored)
+├── data/          # Your context files, conversations, outcomes, RAG store (gitignored)
+├── scripts/       # Importers, benchmarks, analysis tools
+├── tests/         # Unit, integration and golden (LLM-as-judge) tests
+├── docs/          # Product, engineering, research and design docs
+└── pyproject.toml
 ```
+
+The full tree is in [docs/engineering/architecture.md](docs/engineering/architecture.md#file-structure).
 
 ## Roadmap
 
 This is a learning project, and I'm building it iteratively. Workstreams use the
-initiative/milestone naming scheme ([ADR-033](docs/product/decisions.md#adr-033-initiative--milestone-naming-scheme)); current priorities:
+initiative/milestone naming scheme ([ADR-033](docs/product/decisions.md#adr-033-initiative--milestone-naming-scheme)):
 
-**`FND` — Foundation & Metrics (Complete ✅)**
-- [x] Basic chat interface with persistent context
-- [x] Conversation logging and history
-- [x] Token usage tracking and cost calculation
-- [x] LiteLLM integration for provider flexibility
-- [x] **Comprehensive testing framework**
+- **`FND`** — Foundation & Metrics: complete
+- **`EVAL`** — Evaluation & Quality Metrics: complete
+- **`CTX`** — Context & Integrations: complete
+- **`AGENT`** — Agent Framework: complete
+- **`CAP`** — Agent Capabilities: in progress
+- **`WEB`** — Web Interface: core shipped
+- **`TOK`** — Context-Window Management & Search: in progress
+- **`AON`** — Always-On & Loop Engineering: in progress
+- **`HUB`** — Context Hub (Cortex via MCP): in progress
+- **`OPS`**, **`UX`**, **`TUNE`**: not started
 
-**`EVAL` — Evaluation & Quality Metrics (Complete ✅)**
-- [x] 10 golden test conversations defined
-- [x] **LLM-as-judge automated evaluation (~$0.41/run)**
-- [x] **Things 3 integration** (SQLite-based task sync via `things.py`)
-- [x] Latency tracking (TTFT)
-- [x] Model comparison benchmarks
-- [x] Benchmark cost estimation per model
-- [x] Conversation schema v1.0.0 (structured logging with migration support)
-- [x] ChatGPT conversation import (bulk import with filters)
-- [x] Claude conversation import (bulk import with date filters)
-
-**`CTX` — Context & Integrations (Complete ✅)**
-- [x] Context builder with frontmatter selective loading
-- [x] Obsidian daily note integration (`/daily-summary`)
-
-**`AGENT` — Agent Framework (Complete ✅)**
-- [x] Base agent class with prompt loading
-- [x] Agent registry with filesystem-based auto-discovery
-- [x] Specialist agents: Writing, Research, Clarity
-- [x] Slash-command routing and standalone `--agent` mode
-- [x] StreamHandler extraction from CLI
-
-**`CAP` — Agent Capabilities (In Progress)**
-- [x] Tool calling infrastructure (`ToolDefinition`, `ToolRegistry`, agentic loop)
-- [x] Web fetch tool (httpx + trafilatura)
-- [x] Conversation recall via RAG (ChromaDB, opt-in)
-- [x] Enhanced CLI UX (rich rendering, prompt_toolkit)
-- [x] Skills framework (SKILL.md-driven, vendor-portable, used as passive knowledge packs)
-- [x] JARVIS delegation (orchestrator auto-routes to specialists)
-- [x] Extended tools — web search (DuckDuckGo + URL fetch via `web_tools` group)
-- [x] Outcome tracking (`track_recommendation`, `/outcomes`, `recall_outcomes` — closed loop on advice)
-- [x] Readwise / Reading Assistant integration (`/reading`)
-- [ ] Extended tools — Playwright browser automation
-- [x] Model routing — heuristic complexity routing (opt-in) and OpenRouter Auto Router (opt-in, ADR-036)
-- [x] Per-agent models (`meta.yaml` `model:`) and per-model request fields (`models.extra_body`)
-
-**`WEB` — Web Interface (Complete ✅ — `WEB-01`…`WEB-08` shipped)**
-- [x] Event decoupling prerequisite (typed events, StreamHandler emission) + typed configuration (`packages/core/settings.py` + in-GUI Settings editor)
-- [x] Chat shell + Conversations browser + Home + Sidebar Timeline (0.17.0)
-- [x] Agents overview + Agent Detail + Prompt Editor + Outcomes view (0.19.0)
-- [x] Settings editor + Prompt-include editor + hot-apply gating (0.20.0)
-- [ ] Interactive delegation sub-loops (deferred)
-- [ ] Move print statements from StreamHandler into CLI adapter
-
-**`AON` — Always-On & Loop Engineering (Planned)**
-- [ ] Safety rails + shared TurnRunner, scheduled briefing, Telegram, headless Mac host, eval hardening (`AON-01`…`AON-05`)
-
-**Later initiatives:**
-- [x] `TOK` — context-window management: history summarization (opt-in, ~40K threshold) and tool result trimming
-- [ ] `OPS` — system monitoring and optimization
-
-See [docs/product/roadmap.md](docs/product/roadmap.md) for detailed plans.
+Status, milestones and later initiatives are in [docs/product/roadmap.md](docs/product/roadmap.md).
 
 ## Benchmarking
 
-Estimate benchmark costs anytime (uses latest golden run baseline):
-
-```bash
-uv run python scripts/model_benchmark.py
-```
-
-To run evaluations after the estimate (paid), add `--evaluate`.
-
-Generate the benchmark comparison table in docs:
-
-```bash
-uv run python scripts/benchmark_report.py
-```
+The golden test suite doubles as a model benchmark. Running it, estimating its cost per model
+(`scripts/model_benchmark.py`) and regenerating the results table (`scripts/benchmark_report.py`)
+are described in [tests/golden/README.md](tests/golden/README.md#benchmarking-models); the results
+are in [docs/research/models.md](docs/research/models.md).
 
 ## What I'm Learning
 
@@ -588,7 +286,7 @@ This project demonstrates several things I value as an engineer:
 - **GUI Backend**: FastAPI + WebSockets (uvicorn)
 - **GUI Frontend**: React 18 + Vite + TypeScript (built bundle committed)
 - **Storage**: Local filesystem (markdown + JSON)
-- **Vector DB**: ChromaDB (optional, for conversation recall / RAG)
+- **Vector DB**: ChromaDB (conversation recall / RAG)
 - **HTTP**: httpx + trafilatura (web fetch tool)
 - **Configuration**: YAML + `pydantic-settings` (typed) + environment variables
 - **Code Quality**: ruff (lint + format) + mypy (`strict=true`); CI + pre-commit hooks
