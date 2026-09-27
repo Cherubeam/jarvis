@@ -1,6 +1,9 @@
 # LLM-as-Judge Golden Test Evaluation
 
-This directory contains the LLM-as-judge evaluation system for golden test conversations.
+This directory contains the LLM-as-judge evaluation system for golden test conversations. This
+README is the reference for the golden suite (cases, judge, cost, running, adding tests, scoring,
+benchmarking); other docs link here. Testing strategy overall is in
+[docs/engineering/testing.md](../../docs/engineering/testing.md).
 
 ## Overview
 
@@ -16,42 +19,31 @@ The evaluation system automatically assesses the quality of AI assistant respons
 ### Run Golden Tests Without Evaluation (Free)
 
 ```bash
-# Skip golden tests (they won't run by default)
-pytest tests/golden/
+# Structure validation runs; the evaluation tests skip without --evaluate
+uv run pytest tests/golden/
 
 # Run only structure validation tests
-pytest tests/golden/test_golden_conversations.py::TestGoldenConversationStructure -v
+uv run pytest tests/golden/test_golden_conversations.py::TestGoldenConversationStructure -v
 ```
 
-### Run Golden Tests With Evaluation (Costs ~$0.20–0.50 per model)
+### Run Golden Tests With Evaluation (Paid — see [Cost Management](#cost-management))
 
 ```bash
-# Requires OPENROUTER_API_KEY environment variable
-export OPENROUTER_API_KEY="your-key-here"
-
-# Run all 14 golden tests with evaluation
-pytest tests/golden/ --evaluate -v
+# Requires OPENROUTER_API_KEY (e.g. in .env). DEFAULT_MODEL is the model under test;
+# without it the harness falls back to a hard-coded anthropic/claude-sonnet-4.5, not models.default.
+DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate -v
 
 # Run specific test
-pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_01_basic_qa --evaluate -v
+uv run --env-file .env pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_01_basic_qa --evaluate -v
 
 # Use different judge model
-pytest tests/golden/ --evaluate --judge-model=google/gemini-3.8-flash -v
+uv run --env-file .env pytest tests/golden/ --evaluate --judge-model=google/gemini-3.8-flash -v
 
 # Adjust quality threshold
-pytest tests/golden/ --evaluate --quality-threshold=0.80 -v
+uv run --env-file .env pytest tests/golden/ --evaluate --quality-threshold=0.80 -v
 ```
 
-### Benchmarking Several Models
-
-Run models **one at a time**. Parallel runs share one OpenRouter in-flight credit
-budget and fail with 402 `in_flight_budget_exhausted`. On a low balance, every call
-must fit the remaining credit, so the harness caps output (`models.default_max_tokens`
-for the model under test, 4,096 for the judge).
-
-```bash
-DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate
-```
+`DEFAULT_MODEL` also accepts `auto` (OpenRouter Auto Router) or an `openrouter/…` id.
 
 ### Exact-Match Checks
 
@@ -77,47 +69,80 @@ tests/golden/
 └── test_golden_conversations.py  # Test runner
 ```
 
+## Test Categories
+
+Each case YAML has a `category`, which selects the judge prompt (`judge_prompts.py`):
+
+1. **Reasoning**: technical accuracy and clarity (the multi-turn case is scored per turn)
+2. **Context Recall**: personal context awareness
+3. **Personalization**: tone, preference adherence, and the two writing cases (13–14)
+4. **Edge Cases**: ambiguity handling
+5. **Tool Use**: agentic cases 09–12 (tool choice, delegation, chaining, stopping)
+
 ## How It Works
 
 1. **Load Test Case**: Read YAML file with expected qualities and context
 2. **Execute Conversation**: Call model under test with context
-3. **Judge Evaluation**: Send response + criteria to judge (`evaluation.judge_model`, currently Claude Opus 5.5)
+3. **Judge Evaluation**: Send response + criteria to the judge (`evaluation.judge_model`, currently Claude Opus 5.5, output capped at 4,096 tokens); it returns structured JSON with scores and reasoning
 4. **Basic Checks**: Pattern matching, length validation, content verification
 5. **Store Results**: Save individual result + aggregate run summary
 6. **Generate Report**: Create markdown report with analysis and recommendations
-7. **Assert Quality**: Fail test if score < threshold (default 0.70)
+7. **Assert Quality**: Fail test if score < `--quality-threshold` (default 0.70)
 
 ## Cost Management
 
-- **Expected Cost**: roughly $0.20–0.50 per model per full run (Opus 5.5 judge ~$0.15–0.25 of it; 2026-09 measurements)
+- **Expected Cost**: roughly $0.20–0.50 per model per full run (2026-09 measurements): the Opus 5.5
+  judge is ~$0.15–0.25 of it; responses range from well under $0.01 (GPT-6 Luna) to ~$0.20
+  (Opus 5.5). Per-model numbers are in
+  [docs/research/models.md](../../docs/research/models.md#benchmark-results).
 
-- **Budget Limits** (`evaluation.*` in `config/default.yaml`): `max_cost_per_run` and `warn_cost_threshold` are declared but **not enforced by the harness yet**. Check the OpenRouter balance before and after a run instead.
+- **Budget Limits**: `evaluation.max_cost_per_run` and `evaluation.warn_cost_threshold` are declared
+  in config but **not enforced by the harness yet** (neither is read). Check the OpenRouter balance
+  before and after a run instead.
 
 - **Cost Optimization**:
   - Use cheaper judge model: `--judge-model=google/gemini-3.8-flash`
-  - Run specific tests instead of all 14
+  - Run specific tests instead of all of them
   - Skip evaluation in CI, run manually for important changes
+  - Estimate first with `scripts/model_benchmark.py` (see [Benchmarking Models](#benchmarking-models))
 
 ## Configuration
 
-Edit `config/local.yaml` (overrides `config/default.yaml`) to adjust settings:
+The harness reads one value from config: `evaluation.judge_model` in
+[`config/default.yaml`](../../config/default.yaml) (override in `config/local.yaml`, or per run
+with `--judge-model`). The pass mark comes from `--quality-threshold` (default 0.70). The other
+`evaluation.*` fields (`quality_threshold`, `category_thresholds`, `results_dir`, budget limits) are
+declared in the typed settings but **not read by the harness yet**; results always go to
+`tests/golden/results/`.
 
-```yaml
-evaluation:
-  judge_model: "anthropic/claude-opus-5.5"
-  quality_threshold: 0.70
+## Benchmarking Models
 
-  category_thresholds:
-    reasoning: 0.75        # Higher bar for reasoning
-    context_recall: 0.70
-    personalization: 0.70
-    edge_cases: 0.65       # Lower bar for edge cases
+Run models **one at a time**. Parallel runs share one OpenRouter in-flight credit
+budget and fail with 402 `in_flight_budget_exhausted`. On a low balance, every call
+must fit the remaining credit, so the harness caps output (`models.default_max_tokens`
+for the model under test, 4,096 for the judge).
 
-  max_cost_per_run: 1.00
-  warn_cost_threshold: 0.50
+```bash
+# Estimate the cost of a full run per model (free; uses the latest run as token baseline)
+uv run python scripts/model_benchmark.py
+
+# Estimate, then run the evaluation for each model sequentially (paid)
+uv run python scripts/model_benchmark.py --evaluate --models openai/gpt-6-luna anthropic/claude-opus-5.5
+
+# Regenerate the results table between the BENCHMARK_TABLE markers in docs/research/models.md
+uv run python scripts/benchmark_report.py
 ```
 
+The estimate takes token counts from the most recent run in `results/runs/` (or `--run-id`) and
+prices from LiteLLM's cost map; models without pricing are skipped with a warning. The default model
+shortlist is `DEFAULT_MODELS` in `scripts/model_benchmark.py`.
+
 ## Viewing Results
+
+Each evaluated run writes one JSON file per test (overall and per-dimension scores, judge
+reasoning, passed/failed criteria, response and judge cost), a `run_summary.json`, a markdown
+report (pass rate, average scores, costs, failed tests with the judge's reasoning), and appends to
+`history.json` for trends across runs.
 
 ### Markdown Reports
 
@@ -166,18 +191,19 @@ conversation:
       - "expected keyword"
 ```
 
-2. Add test method to `test_golden_conversations.py`:
+2. Add a test method to `TestGoldenConversations` in `test_golden_conversations.py`, and the file
+   name to `expected_files` in `TestGoldenConversationStructure.test_all_golden_files_exist`:
 
 ```python
-def test_09_my_new_test(self, evaluator, evaluation_config, result_storage):
+def test_15_my_new_test(self, evaluator, evaluation_config, result_storage):
     """Test description."""
-    self._run_golden_test("09_my_new_test.yaml", evaluator, evaluation_config, result_storage)
+    self._run_golden_test("15_my_new_test.yaml", evaluator, evaluation_config, result_storage)
 ```
 
 3. Run evaluation:
 
 ```bash
-pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_09_my_new_test --evaluate -v
+uv run --env-file .env pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_15_my_new_test --evaluate -v
 ```
 
 ## Understanding Scores
@@ -215,15 +241,13 @@ The system will fall back to basic checks (pattern matching, length validation) 
 
 For continuous integration, consider:
 
-1. **Run structure tests only** (free):
-   ```bash
-   pytest tests/golden/test_golden_conversations.py::TestGoldenConversationStructure
-   ```
+1. **Run structure tests only** (free) — this is what CI does today, since `uv run pytest` skips
+   the evaluation tests without `--evaluate`.
 
 2. **Run evaluation on main branch only** (costs money):
    ```bash
    if [ "$BRANCH" = "main" ]; then
-     pytest tests/golden/ --evaluate
+     uv run pytest tests/golden/ --evaluate
    fi
    ```
 

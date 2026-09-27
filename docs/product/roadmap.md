@@ -54,7 +54,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 - [x] Testing framework setup (pytest, coverage, fixtures)
 - [x] Comprehensive test suite (run `uv run pytest` for current counts)
 - [x] Mutation testing via mutmut (test quality auditing)
-- [x] 8 golden test conversations defined
+- [x] 8 golden test conversations defined (initial set; current suite: [tests/golden/README.md](../../tests/golden/README.md))
 
 ---
 
@@ -69,13 +69,13 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 #### Testing Infrastructure
 
-- [x] Golden test conversation suite (8 cases)
+- [x] Golden test conversation suite (initially 8 cases)
 - [x] Automated test runner (pytest)
 - [x] LLM-as-judge for automated quality evaluation
   - 33 unit tests (evaluator + storage)
   - Structured JSON results + markdown reports
   - Historical trend tracking
-  - Cost management (~$0.41/run)
+  - Cost management (~$0.41/run at the time; current cost: [tests/golden/README.md](../../tests/golden/README.md#cost-management))
   - On-demand via `--evaluate` flag
 - [x] Baseline quality metrics across different models
 
@@ -195,9 +195,9 @@ Vendor-portable, SKILL.md-driven task specifications. Skills use markdown as the
 packages/skills/
   base.py              # BaseSkill class (parses SKILL.md, optional skill.py)
   registry.py          # Discovery: scans for SKILL.md files (not Python imports)
-  nano_banana_pro/
+  <skill-name>/         # kebab-case, e.g. obsidian-note-creator/
     SKILL.md           # Capability spec — the portable artifact (Mode 1: SKILL.md only)
-  content_evaluator/
+  content-evaluator/
     SKILL.md           # Capability spec
     skill.py           # Optional: JARVIS execution config (Mode 2: SKILL.md + skill.py)
     resources/
@@ -441,7 +441,7 @@ Change loop code without flying blind.
 - [ ] **Harness evals**: does a checkpointed loop survive a kill? does trimming preserve task intent? Plus injection-containment tests (did the *guards* hold, not did the model notice) — cheap additions, prerequisites for AON-04's longer loops *(S)*
 - [ ] Automate the outcome-review loop (`apps/cli/review.py`) as the second scheduled job, with typed fact extraction into the vault. **Quarantine the writes**: extractions land in a staging file requiring human approval before entering prompt-feeding paths (`context_builder.py` feeds vault markdown straight into system prompts — unquarantined auto-writes are a self-reinforcing injection channel). Fact frontmatter gets temporal fields (`valid_at`/`superseded_by`) and extraction is wikilink-aware — the vault already is a graph *(M)*
 
-*Token impact: ~$0.41/eval run + pennies for judges — negligible.*
+*Token impact: one golden eval run per change ([cost](../../tests/golden/README.md#cost-management)) + pennies for judges — negligible.*
 
 ### AON-04 — Host (headless Mac + deeper autonomy)
 
