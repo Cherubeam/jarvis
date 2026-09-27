@@ -38,13 +38,13 @@ An agent is a stateful, multi-turn entity that maintains conversation history, s
 Most agents are now defined declaratively via a `meta.yaml` file and a `prompts/system.md` prompt. No Python class is needed. The `agent_from_meta()` factory creates a `DataDrivenAgent` instance at runtime.
 
 ```
-clarity/
+simplifier/
   meta.yaml         # name, description, command, model (optional)
   prompts/
     system.md       # system prompt
 ```
 
-This is the preferred approach for agents that follow the standard pattern: load a system prompt, maintain conversation history, stream responses. Nine delegate agents use this pattern: Clarity, Developer, Navigator, Obsidian Note Creator, OKR Architect, Pattern Language Expert, Research, Tactics, and Writing.
+This is the preferred approach for agents that follow the standard pattern: load a system prompt, maintain conversation history, stream responses. Every delegate agent uses it; the list is in [agents.md](agents.md#agents).
 
 ### Python-Class Agent (JarvisAgent only)
 
@@ -63,7 +63,7 @@ Agents can also **bind skills** by declaring `skills:` in their `meta.yaml`. Thi
 
 Agents can declare **vault write tool routing** via `vault_writing: <config_key>` in `meta.yaml`. This gives the agent scoped vault write tools (create_note, edit_note, list_notes_in_dir) pointing at the configured directory. Each agent gets its own tools — no name collisions.
 
-**Examples in JARVIS:** TacticsAgent (`/tactics`), Writing (`/write`), Research (`/research`), Clarity (`/clarity`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
+**Examples in JARVIS:** Tactics Coach (`/tactics`), Writer (`/write`), Researcher (`/research`), Simplifier (`/simplify`), Pattern Language Expert (`/pattern-language-expert`), OKR Architect (`/okr-architect`), Navigator (`/navigator`).
 
 ## The Key Difference
 
@@ -144,16 +144,7 @@ packages/agents/<name>/
     system.md       # can reuse or extend the SKILL.md content
 ```
 
-Example `meta.yaml`:
-
-```yaml
-name: my-agent
-description: "A short description of what this agent does"
-command: /my-agent
-# model: anthropic/claude-sonnet-4.6  # optional, uses default if omitted
-```
-
-The `agent_from_meta()` factory will create a `DataDrivenAgent` instance automatically.
+The steps are in [AGENTS.md](../../AGENTS.md#creating-a-new-agent) and the fields in the [`meta.yaml` schema](api.md#metayaml-schema). The `agent_from_meta()` factory creates a `DataDrivenAgent` instance automatically.
 
 ### Step 3: Use a Python Class (Escape Hatch)
 
@@ -192,18 +183,14 @@ The content evaluator also receives the writer's voice profile: the CLI resolves
 Agents can declare which skills they consume via the `skills:` field in `meta.yaml`:
 
 ```yaml
-name: pattern-language-expert
-description: Design, evolve, and apply pattern languages
+name: pattern_language_expert
+description: Design, evolve, and apply pattern languages and pattern libraries
 command: /pattern-language-expert
 skills:
   - pattern-language-expert
 ```
 
-When `agent_from_meta()` builds the agent, it calls `resolve_skills()` to:
-
-1. **Simple skills** (no `deck.yaml`): Read the SKILL.md body (frontmatter stripped) and append it to the agent's system prompt.
-2. **Deck-skills** (has `deck.yaml`): Add the deck name to a prompt hint section and include the card search tool (if RAG is enabled).
-3. **Unknown skills**: Log a warning and skip gracefully.
+When `agent_from_meta()` builds the agent, `resolve_skills()` appends a simple skill's SKILL.md body to the system prompt and gives a deck-skill the card search tool; the resolution rules are in [architecture.md](architecture.md#11-agent-skill-binding-packagesskillsresolverpy).
 
 This keeps the SKILL.md as the canonical knowledge specification while letting agents automatically consume it. The skill stays portable; the binding is JARVIS-native.
 

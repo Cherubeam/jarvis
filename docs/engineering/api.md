@@ -324,67 +324,17 @@ Format cost for display with appropriate precision.
 
 ---
 
-## Module: `integrations.obsidian.vault` — Filesystem Access Control
+## Module: `filesystem_access` — Filesystem Access Control
 
-### `class AccessLevel(Enum)`
+`packages/core/filesystem_access.py`. The access rules and how they behave are described in
+[obsidian-integration.md](obsidian-integration.md#data-flow-summary); this is the API.
 
-Access level for a filesystem path.
+- **`AccessLevel(Enum)`** — `DENY`, `READ`, `WRITE`, `READ_WRITE` (values `deny`, `read`, `write`, `read-write`).
+- **`AccessRule`** — frozen dataclass: `path: Path` (absolute, resolved), `access: AccessLevel`.
+- **`FilesystemGuard(rules: list[AccessRule])`** — sorts rules deepest-path first. `check_read(path) -> bool` is true for `READ`/`READ_WRITE`; `check_write(path) -> bool` for `WRITE`/`READ_WRITE`; no matching rule → `False`. `rules` returns the sorted list.
+- **`load_filesystem_guard(filesystem: FilesystemSettings) -> FilesystemGuard`** — builds the guard from the validated `filesystem.access_rules` list (`AccessRuleSettings`: `path`, `access`), expanding `~` and resolving each path.
 
-**Values:**
-- `deny` — No access
-- `read` — Read-only access
-- `write` — Read and write access
-
----
-
-### `class AccessRule`
-
-Dataclass pairing a path with an access level.
-
-**Attributes:**
-- `path: Path` — Absolute resolved path
-- `level: AccessLevel` — Access level for this path and its descendants
-
----
-
-### `class FilesystemGuard`
-
-Per-path access control with most-specific-path-wins resolution.
-
-**Constructor:**
-
-#### `__init__(rules: list[AccessRule])`
-
-**Parameters:**
-- `rules` — Access rules ordered by specificity (ordering is handled internally)
-
-**Methods:**
-
-#### `check_read(path: Path) -> bool`
-
-Return `True` if the path has at least `read` access.
-
-#### `check_write(path: Path) -> bool`
-
-Return `True` if the path has `write` access.
-
----
-
-### `load_filesystem_guard(config: dict) -> FilesystemGuard`
-
-Factory that builds a `FilesystemGuard` from YAML config.
-
-**Parameters:**
-- `config` — Dict with `filesystem_rules` list (each entry has `path` and `access` keys)
-
-**Returns:**
-- `FilesystemGuard` instance
-
----
-
-### Updated `VaultConfig`
-
-The `allowed_dirs: list[Path]` field has been replaced by `filesystem_guard: FilesystemGuard`. All vault I/O methods delegate access checks to the guard.
+`VaultConfig.filesystem_guard` holds the guard (it replaced the old `allowed_dirs` list); all vault I/O delegates access checks to it.
 
 ---
 
@@ -456,68 +406,69 @@ Dataclass describing a discovered agent for registry purposes.
 
 ### `meta.yaml` Schema
 
-All delegate agents are configured via a `meta.yaml` file in their directory:
+This is the reference for agent `meta.yaml` files; [AGENTS.md](../../AGENTS.md#creating-a-new-agent) has the short "add an agent" steps. Every delegate agent is configured via a `meta.yaml` file in its directory (`packages/agents/<name>/`):
 
 ```yaml
-name: agent-name           # required — agent identifier
-description: What it does   # required — shown in help/registry
-command: /agent-name        # required — slash command to invoke
+name: my_agent              # required — agent identifier, snake_case (matches the directory)
+description: What it does   # required — shown in help/registry and to JARVIS for delegation
+command: /my-agent          # required — slash command to invoke, /kebab-case
 model: quality              # optional — preset name or model id; the agent always runs on it
                             #   (tool loop, final answer, nested tool calls, pricing);
                             #   omit to use the session model (default, /model, routing)
-temperature: 0.7            # optional, default 0.7
+temperature: 0.7            # optional, default 0.7 (stored, not sent to the model yet — see agents.md)
 max_tokens: 4096            # optional (default: provider decides)
-max_iterations: 20          # optional — for multi-step agentic loops
-vault_writing: slip_box     # optional — scoped vault write config section
-skills:                     # optional — skill names to bind
+max_iterations: 20          # optional — agentic-loop rounds; default in stream_handler.py
+vault_writing: slip_box     # optional — scoped vault write tools from obsidian.writing.<key>
+skills:                     # optional — skill names (kebab-case) to bind
   - my-skill
-tools:                      # optional — named tool groups from CLI registry
+tools:                      # optional — named tool groups (see agents.md#tool-distribution)
   - blog_tools
-  - dev_tools
-prompt_includes:            # optional — placeholder → filename mapping
-  voice_profile: voice-profile  # loads prompts/voice-profile.md
+  - content_evaluator
+prompt_includes:            # optional — {placeholder} in system.md → include filename
+  voice_profile: voice-profile  # loads voice-profile.md via the resolution chain below
 ```
 
-The system prompt is loaded from `prompts/system.md` in the same directory as `meta.yaml`.
+The system prompt is loaded from `prompts/system.md` in the same directory as `meta.yaml`. The registry discovers the directory automatically; no Python code is needed. Naming conventions are in [AGENTS.md](../../AGENTS.md#naming-conventions-agents--skills).
+
+**`tools:`** lists named tool groups registered in `build_session()` ([`apps/cli/session_factory.py`](../../apps/cli/session_factory.py)), plus the `tool_group` of any MCP server declared under `mcp.servers` ([setup](deployment.md#connecting-mcp-servers)). Shared tools reach every agent without being listed. The groups and which agents use them are in [agents.md](agents.md#tool-distribution).
+
+**`skills:`** lists skill names from `packages/skills/`. A simple skill's SKILL.md body is appended to the system prompt; a deck-skill gets the card search tool (if RAG is enabled). Mechanism: [architecture.md](architecture.md#11-agent-skill-binding-packagesskillsresolverpy); example: `packages/agents/pattern_language_expert/meta.yaml`.
+
+**`prompt_includes:`** maps a `{placeholder}` in `system.md` to an include filename; the placeholder is replaced with the file's content. Example: `packages/agents/writer/meta.yaml`.
+
+#### Prompt-include resolution
+
+Each include filename is resolved in this order (`packages/agents/prompt_includes.py`); the first hit wins:
+
+1. `<agent_dir>/prompts/<filename>.md` — personal override, may be gitignored
+2. `packages/agents/_shared/prompts/<filename>.md` — framework default (`anti-patterns.md` ships here; `voice-profile.md` is gitignored personal content)
+3. `<agent_dir>/prompts/<filename>.md.example` — committed starter template (triggers a startup warning when used)
+4. `packages/agents/_shared/prompts/<filename>.md.example` — shared starter template (also warns)
+5. Missing → startup warning, placeholder renders as empty string.
+
+`build_session()` runs a validation pass at startup (`_warn_on_prompt_include_issues` in `apps/cli/session_factory.py`) that prints a warning whenever an agent's include resolves via a `.md.example` fallback or can't be resolved at all. Canonical hits (levels 1 or 2) are silent.
+
+**Voice profile**: on a fresh clone only `voice-profile.md.example` exists (in `packages/agents/_shared/prompts/` and `packages/agents/writer/prompts/`); copy it to `voice-profile.md` next to it to personalize (the copy is gitignored). The `evaluate_content` tool resolves the same include (canonical `.md` only) and passes it to the skill ([skills-vs-agents.md](skills-vs-agents.md#skills-as-tools)).
 
 ---
 
 ## Configuration
 
-### `config/default.yaml`
-
-**Structure:**
-```yaml
-models:
-  default: "openrouter/openai/gpt-6-luna"
-  presets:
-    fast: "openrouter/openai/gpt-6-luna"
-    quality: "openrouter/anthropic/claude-opus-5.5"
-    balanced: "openrouter/openai/gpt-6-luna"
-  extra_body:                    # per-model request fields, keyed by full model id
-    "openrouter/qwen/qwen3.5-flash-02-23":
-      reasoning: {effort: "none"}
-  auto_router:                   # OpenRouter Auto Router, opt-in (ADR-036)
-    enabled: false
-    cost_tier: "low"
-    excluded_models: []
-
-paths:
-  context_dir: "data/context"
-  conversations_dir: "data/conversations"
-```
-
-Model IDs use full LiteLLM-routable format with provider prefix. API keys are read from environment variables (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, etc.).
+Default values live in [`config/default.yaml`](../../config/default.yaml) (commented per section);
+local overrides go in `config/local.yaml`. How to configure models, providers and MCP servers is in
+[deployment.md](deployment.md#configuration). The typed schema is described below under
+[`settings`](#module-settings--typed-configuration). API keys are read from environment variables
+(see [Environment Variables](#environment-variables)).
 
 ---
 
 ## Module: `settings` — Typed Configuration
 
-Typed `pydantic-settings` model covering all 16 top-level YAML sections. Replaces the legacy `dict[str, Any]` config (see ADR-032).
+Typed `pydantic-settings` model covering every top-level YAML section. Replaces the legacy `dict[str, Any]` config (see ADR-032).
 
 ### `class Settings(BaseSettings)`
 
-Top-level model holding every section. Each section is a separate `BaseSettings` subclass (`ModelsSettings`, `PathsSettings`, `Things3Settings`, `ObsidianSettings`, `EvaluationSettings`, `RagSettings`, `RoutingSettings`, `SummarizationSettings`, `MCPSettings`, `FilesystemSettings`, `CLISettings`, `OutcomesSettings`, `DeveloperSettings`, `CortexSettings`, `ReadwiseSettings`, `PatternCardsSettings`). Every field carries `Field(description=...)` so the JSON schema doubles as docs for the GUI.
+Top-level model holding every section. Each section is a pydantic `BaseModel` (`ModelsSettings`, `RagSettings`, `MCPSettings`, …); the list of sections is the field list of `Settings` in [`packages/core/settings.py`](../../packages/core/settings.py), and their default values are in [`config/default.yaml`](../../config/default.yaml). Every field carries `Field(description=...)` so the JSON schema doubles as docs for the GUI.
 
 ### `load_config(project_root: Path | None = None) -> Settings`
 
@@ -632,7 +583,7 @@ Estimate costs for a benchmark run using LiteLLM pricing data and the latest gol
 
 ## Cortex (vault semantic search)
 
-Consumed over MCP since `HUB-01` (ADR-034): the `cortex` server in `mcp.servers` with `shared: true` exposes `mcp_cortex__search_knowledge` and `mcp_cortex__index_status` to every agent. The bespoke `integrations.cortex.client` / `make_cortex_search_tool` / `search_vault_semantic` path was retired with HUB-01.
+Cortex has no Python API in JARVIS: it is consumed as an MCP server since `HUB-01` (ADR-034). Setup is in [deployment.md](deployment.md#example-cortex-vault-search); the retired HTTP integration is recorded in [architecture.md](architecture.md#6b-cortex-vault-search-via-mcp-hub-01).
 
 ---
 

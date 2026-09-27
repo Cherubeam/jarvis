@@ -85,7 +85,7 @@ Transparency is a core value. If it costs money, the user sees the number.
 
 ## 6. Agents are peers, not tabs
 
-**Derived from**: Agent delegation architecture (JARVIS orchestrator + 12 specialist agents)
+**Derived from**: Agent delegation architecture (JARVIS orchestrator + specialist agents, see [agents.md](../engineering/agents.md))
 
 When JARVIS delegates to a specialist agent, the conversation continues in the same stream. The agent name changes (shown via a badge or label), but the user doesn't navigate anywhere. Handoffs are in-flow events, not navigation actions. The conversation is one continuous thread; the responding agent changes.
 
