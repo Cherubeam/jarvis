@@ -1,6 +1,7 @@
 name: content_reviewer
 description: Structured content evaluation and improvement suggestions
 command: /review
+model: quality  # the evaluate_content call follows the agent model
 prompt_includes:
   voice_profile: voice-profile
   anti_patterns: anti-patterns

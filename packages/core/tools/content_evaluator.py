@@ -58,18 +58,28 @@ def make_content_evaluator_tool(
     raw = skill_md.read_text(encoding="utf-8")
     _, body = parse_frontmatter(raw)
     system_prompt = body.strip()
+    # Reference material the skill ships under resources/ (e.g. the scoring rubric).
+    # SKILL.md points at it, so it goes into the prompt rather than being left behind.
+    resources_dir = skill_dir / "resources"
+    if resources_dir.is_dir():
+        for resource in sorted(resources_dir.glob("*.md")):
+            system_prompt += (
+                f"\n\n## Resource: resources/{resource.name}\n\n" + resource.read_text(encoding="utf-8").strip()
+            )
     profile = (voice_profile or "").strip()
     if profile:
         system_prompt += "\n\n## Writer's Voice Profile\n\n" + profile
 
-    # Load temperature from skill.py SKILL_CONFIG
+    # Load temperature and max_tokens from skill.py SKILL_CONFIG
     temperature = 0.8  # default
+    max_tokens: int | None = None  # None: the client's default
     skill_py = skill_dir / "skill.py"
     if skill_py.is_file():
         try:
             module = _import_skill_module(skill_dir)
             skill_config = getattr(module, "SKILL_CONFIG", {})
             temperature = skill_config.get("temperature", temperature)
+            max_tokens = skill_config.get("max_tokens", max_tokens)
         except Exception:
             pass
 
@@ -88,6 +98,7 @@ def make_content_evaluator_tool(
                 messages,
                 model=model,
                 temperature=temperature,
+                max_tokens=max_tokens,
             )
             return response.choices[0].message.content or "No evaluation generated."
         except Exception as e:

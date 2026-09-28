@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `/review` evaluator gaps (2026-09-28)
+
+- **`content_reviewer` runs on `quality` (Opus 5.5).** The `evaluate_content`
+  call follows the agent's model, so the five-lens review ran on the session
+  model until now.
+- **The skill's `max_tokens` reaches the model.** `evaluate_content` read only
+  `temperature` from the skill's `SKILL_CONFIG`; `max_tokens` (4096) was ignored.
+- **Skill resources go into the evaluator prompt.** `resources/*.md` (the
+  content-evaluator's scoring rubric) was never loaded. The skill now asks for
+  1-5 rubric scores after the five lenses, and flags German words and German
+  word order as errors to fix (skill change in the spec repo, not this repo).
+
 ### Fixed — MCP startup line counts connected servers (2026-09-28)
 
 - **`[MCP] … from N server(s)` counted configured servers**, so a server that
