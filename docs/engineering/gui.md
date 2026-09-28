@@ -13,7 +13,7 @@ The GUI provides:
 - **`WEB-06` — Agent Prompt Editor** (Prompt / Versions / Stats / Context tabs with snapshot history)
 - **`WEB-06` follow-up — Prompt-include editor** (Includes tab with shared-write modal confirm)
 - **`WEB-07` — `/daily-summary` and `/outcomes` GUI handlers** (Outcomes view + bridge wiring)
-- **`WEB-08` — Settings editor** (every field of the typed `Settings` model, one tab per top-level section, with inline descriptions, managed-header guard + field-level hot-apply gating)
+- **`WEB-08` — Settings editor** (one tab per top-level `Settings` section except `gui`, which is edited in `config/local.yaml`, with inline descriptions, managed-header guard + field-level hot-apply gating)
 
 Per-milestone architecture and decision notes live in their own sections
 below. The release-version mapping lives in

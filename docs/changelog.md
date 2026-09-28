@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Settings editor no longer shows the retired Cortex section (2026-09-28)
+
+- **The GUI Settings editor dropped its "Cortex" tab.** `Settings` has had no
+  `cortex` field since HUB-01 retired the HTTP client; Cortex is configured as
+  an MCP server under `mcp.servers.cortex` (MCP tab). The tab rendered three
+  dead fields (`enabled`, `base_url`, `timeout_seconds`); editing one made the
+  save fail with a 422 (`extra_forbidden`), so nothing was ever written to
+  `config/local.yaml`. Removed from `sections.ts` and `scalarSections.ts`; the
+  committed `dist/` bundle is rebuilt.
+- `gui` (`allowed_origins`) stays out of the editor on purpose (restart-only,
+  edited in `config/local.yaml`); `docs/engineering/gui.md` now says so in the
+  `WEB-08` summary instead of claiming every field is editable.
+
 ### Fixed — CLI agent label shows the agent name again (2026-09-28)
 
 - **The CLI label for agent responses printed only `:`.** Rich read

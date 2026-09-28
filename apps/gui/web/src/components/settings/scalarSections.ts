@@ -1,4 +1,4 @@
-// Field lists for the 12 sections that render as plain scalar forms.
+// Field lists for the sections that render as plain scalar forms.
 
 import type { SectionKey } from './sections'
 import type { FieldSpec } from './ScalarPanel'
@@ -59,11 +59,6 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['token_threshold'], label: 'token_threshold' },
     { path: ['keep_recent'], label: 'keep_recent' },
   ],
-  cortex: [
-    { path: ['enabled'], label: 'enabled' },
-    { path: ['base_url'], label: 'base_url' },
-    { path: ['timeout_seconds'], label: 'timeout_seconds' },
-  ],
   readwise: [
     { path: ['enabled'], label: 'enabled' },
     { path: ['cache_ttl_seconds'], label: 'cache_ttl_seconds' },
@@ -88,7 +83,6 @@ export const SECTION_SUBTITLES: Partial<Record<SectionKey, string>> = {
   obsidian: 'Obsidian vault integration — paths, daily notes, writing targets.',
   mcp: 'Model Context Protocol server connections.',
   filesystem: 'Per-path access rules enforced by FilesystemGuard.',
-  cortex: 'Shared semantic vault search service.',
   readwise: 'Readwise reading list, highlights, and persona.',
   pattern_cards: 'Pattern card generator output + image generation.',
   developer: 'Self-improvement agent scope and allowed file types.',

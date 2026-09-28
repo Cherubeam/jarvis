@@ -1,4 +1,5 @@
-// Section registry — one entry per top-level Settings section.
+// Section registry — one entry per top-level Settings section, except `gui`
+// (restart-only origin allowlist, edited in config/local.yaml; see GuiSettings).
 // The order here drives the left nav.
 
 export type SectionKey =
@@ -14,7 +15,6 @@ export type SectionKey =
   | 'obsidian'
   | 'mcp'
   | 'filesystem'
-  | 'cortex'
   | 'readwise'
   | 'pattern_cards'
   | 'developer'
@@ -34,7 +34,6 @@ export const SECTIONS: Section[] = [
   { key: 'obsidian', label: 'Obsidian' },
   { key: 'mcp', label: 'MCP' },
   { key: 'filesystem', label: 'Filesystem' },
-  { key: 'cortex', label: 'Cortex' },
   { key: 'readwise', label: 'Readwise' },
   { key: 'pattern_cards', label: 'Pattern Cards' },
   { key: 'developer', label: 'Developer' },
