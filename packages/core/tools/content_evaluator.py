@@ -5,12 +5,15 @@ Factory function that creates a ToolDefinition backed by the skill's SKILL.md
 system prompt and configured temperature.
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
 from packages.core.context_builder import parse_frontmatter
 from packages.core.llm_client import LLMClient
 from packages.core.tools.base import ToolDefinition
+
+logger = logging.getLogger(__name__)
 
 
 def _import_skill_module(skill_dir: Path) -> Any:
@@ -100,7 +103,13 @@ def make_content_evaluator_tool(
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            return response.choices[0].message.content or "No evaluation generated."
+            choice = response.choices[0]
+            if choice.message.content:
+                return str(choice.message.content)
+            # Say why it's empty: "length" means max_tokens ran out before any text
+            finish_reason = getattr(choice, "finish_reason", None)
+            logger.warning("evaluate_content returned no text (finish_reason=%s)", finish_reason)
+            return f"No evaluation generated (finish_reason: {finish_reason})."
         except Exception as e:
             return f"Content evaluation failed: {e}"
 

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `/review` printed twice, empty evaluation unexplained (2026-09-28)
+
+- **Long answers print once.** Rich's `Live.stop()` redraws its content uncropped,
+  and a transient Live can only erase the rows still on screen. Any streamed
+  answer taller than the terminal left its top part behind, so the start of the
+  answer showed twice. The live display is now emptied before it stops.
+- **An empty `evaluate_content` result says why.** It returned a fixed
+  "No evaluation generated." and dropped the model's `finish_reason`, so running
+  out of `max_tokens` looked like a model failure. The message and a log warning
+  now name the finish reason.
+- **`evaluate_content` gets room to answer.** With the reason visible, a live run
+  on a 3,175-word draft showed `finish_reason: length`: Opus 5.5 reasons by
+  default on OpenRouter, and its reasoning used up the skill's 4,096-token
+  `max_tokens` before any text. Raised to 16,000; the same draft then returned
+  the full five-lens evaluation (skill change in the spec repo, not this repo).
+
 ### Changed — Smaller Things task context (2026-09-28)
 
 - **Task IDs no longer go into `tasks.md`.** Every task carried its Things ID,

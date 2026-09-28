@@ -99,10 +99,20 @@ class TestContentEvaluatorTool:
 
     def test_execute_handles_empty_response(self, skill_dir, mock_client):
         mock_client.complete.return_value.choices[0].message.content = None
+        mock_client.complete.return_value.choices[0].finish_reason = "stop"
         tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
 
         result = tool.execute(content="test")
-        assert result == "No evaluation generated."
+        assert result == "No evaluation generated (finish_reason: stop)."
+
+    def test_execute_empty_response_names_token_limit(self, skill_dir, mock_client):
+        """An evaluation cut off at max_tokens says so instead of looking like a model failure."""
+        mock_client.complete.return_value.choices[0].message.content = ""
+        mock_client.complete.return_value.choices[0].finish_reason = "length"
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
+
+        result = tool.execute(content="test")
+        assert result == "No evaluation generated (finish_reason: length)."
 
     def test_skill_py_temperature_override(self, skill_dir_with_py, mock_client):
         """skill.py SKILL_CONFIG temperature overrides the default 0.8."""
