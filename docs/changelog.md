@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Smaller Things task context (2026-09-28)
+
+- **Task IDs no longer go into `tasks.md`.** Every task carried its Things ID,
+  about 19% of the file (~2.8 KB of 14.7 KB), sent with every request. Nothing
+  reads the IDs until Things writes exist (ADR-037, trigger-gated).
+
 ### Fixed — `/review` evaluator gaps (2026-09-28)
 
 - **`content_reviewer` runs on `quality` (Opus 5.5).** The `evaluate_content`

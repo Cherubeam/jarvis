@@ -87,7 +87,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 - [x] 5-minute task cache to optimize performance
 - [x] Grouped markdown output (area > project > tasks)
 - [x] ~~Write tools (`create_task`, `complete_task`, `update_task`)~~ — removed 2026-09-28: read-only for now (ADR-037). Revisit via the Things URL scheme with the auth token in `.env` when writes are wanted
-- [ ] Shrink the task context: Things tasks are ~51% of the system prompt (~3,600 of ~7,100 tokens, 2026-09-28) and go out with every request. Trim `things3.lists_to_include` or cap upcoming items in `format_tasks_as_markdown` (`packages/integrations/things3/task_sync.py`)
+- [ ] Shrink the task context: Things tasks are ~51% of the system prompt (~3,600 of ~7,100 tokens, 2026-09-28) and go out with every request. Task IDs dropped (~19% of `tasks.md`); next, if still too big: limit Upcoming to the next 14 days, then shorter notes (notes are ~39%) in `format_tasks_as_markdown` (`packages/integrations/things3/task_sync.py`)
 - [ ] Things from a host other than the Things Mac (MCP over HTTP, or a scheduled export to a shared volume). **Trigger:** JARVIS runs off the Mac (e.g. in a container)
 
 #### Metrics Implementation
