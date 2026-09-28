@@ -331,7 +331,10 @@ Check each of these:
 
 ### Branching
 
-Always create a feature branch before starting work. Never commit directly to `main`.
+Always create a feature branch before starting work. Never commit directly to `main`:
+it's protected by the ruleset "Protect main" (a PR plus the four CI checks `lint`,
+`typecheck`, `pytest`, `frontend` are required; linear history; no force-push), so
+direct pushes are rejected. Small fixes get a small PR too.
 
 ```bash
 git switch -c <type>/<short-description>
@@ -410,12 +413,14 @@ A release doesn't need to be large — even a single meaningful feature warrants
 
 ### How to Release
 
-1. **Update changelog**: Move items from `[Unreleased]` into a new `[X.Y.Z] - YYYY-MM-DD` section in `docs/changelog.md`
-2. **Bump version**: Update `version` in `pyproject.toml`
-3. **Commit**: `chore: release vX.Y.Z`
-4. **Tag**: `git tag -a vX.Y.Z -m "Release X.Y.Z - <short description>"`
-5. **Push**: `git push origin main --tags`
-6. **GitHub Release**: `gh release create vX.Y.Z --title "vX.Y.Z - <theme>" --notes-file <changelog_excerpt>`
+1. **Branch**: `git switch -c release/vX.Y.Z` (`main` only accepts PRs)
+2. **Update changelog**: Move items from `[Unreleased]` into a new `[X.Y.Z] - YYYY-MM-DD` section in `docs/changelog.md`, and stage the release notes in `release-notes/vX.Y.Z.md`
+3. **Bump version**: Update `version` in `pyproject.toml`, run `uv lock`, update the README version badge
+4. **Commit and PR**: `chore: release vX.Y.Z`; merge once the checks are green
+5. **Tag the merge commit**: `git switch main && git pull --ff-only && git tag -a vX.Y.Z -m "Release X.Y.Z — <theme>"`, then push only the tag: `git push origin vX.Y.Z` (tags aren't blocked by the ruleset)
+6. **GitHub Release**: `gh release create vX.Y.Z --verify-tag --title "vX.Y.Z — <theme>" --notes-file release-notes/vX.Y.Z.md`
+
+For a wave of several PRs, retroactive tags on earlier merge commits work the same way (step 5 with the commit SHA).
 
 ### Version Numbering (SemVer)
 
