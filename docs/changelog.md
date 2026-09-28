@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — MCP startup line counts connected servers (2026-09-28)
+
+- **`[MCP] … from N server(s)` counted configured servers**, so a server that
+  failed to connect (e.g. n8n when `npx` hit a network error) was still
+  counted. The line now says `from 1 of 2 servers` when some failed.
+  `MCPManager.connected_count` provides the number.
+
 ## [0.26.1] - 2026-09-28
 
 Four fixes: the CLI shows the agent's name again, the GUI Settings editor drops the retired Cortex section, `meta.yaml` `temperature:` finally reaches the model, and the golden harness reads its evaluation settings from config.
