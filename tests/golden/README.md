@@ -29,9 +29,11 @@ uv run pytest tests/golden/test_golden_conversations.py::TestGoldenConversationS
 ### Run Golden Tests With Evaluation (Paid — see [Cost Management](#cost-management))
 
 ```bash
-# Requires OPENROUTER_API_KEY (e.g. in .env). DEFAULT_MODEL is the model under test;
-# without it the harness falls back to a hard-coded anthropic/claude-sonnet-4.5, not models.default.
-DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate -v
+# Requires OPENROUTER_API_KEY (e.g. in .env). The model under test is models.default
+uv run --env-file .env pytest tests/golden/ --evaluate -v
+
+# Test another model: DEFAULT_MODEL overrides models.default
+DEFAULT_MODEL=anthropic/claude-opus-5.5 uv run --env-file .env pytest tests/golden/ --evaluate -v
 
 # Run specific test
 uv run --env-file .env pytest tests/golden/test_golden_conversations.py::TestGoldenConversations::test_01_basic_qa --evaluate -v
@@ -39,11 +41,13 @@ uv run --env-file .env pytest tests/golden/test_golden_conversations.py::TestGol
 # Use different judge model
 uv run --env-file .env pytest tests/golden/ --evaluate --judge-model=google/gemini-3.8-flash -v
 
-# Adjust quality threshold
+# One pass mark for every case (replaces the config thresholds for this run)
 uv run --env-file .env pytest tests/golden/ --evaluate --quality-threshold=0.80 -v
 ```
 
-`DEFAULT_MODEL` also accepts `auto` (OpenRouter Auto Router) or an `openrouter/…` id.
+`DEFAULT_MODEL` (and `models.default`) may be an OpenRouter id (`openai/gpt-6-luna`), an
+`openrouter/…` LiteLLM id, or `auto` (OpenRouter Auto Router). Results label the model without the
+`openrouter/` prefix, so both forms land in the same row.
 
 ### Exact-Match Checks
 
@@ -87,7 +91,7 @@ Each case YAML has a `category`, which selects the judge prompt (`judge_prompts.
 4. **Basic Checks**: Pattern matching, length validation, content verification
 5. **Store Results**: Save individual result + aggregate run summary
 6. **Generate Report**: Create markdown report with analysis and recommendations
-7. **Assert Quality**: Fail test if score < `--quality-threshold` (default 0.70)
+7. **Assert Quality**: Fail test if score < the case's pass mark (see [Configuration](#configuration))
 
 ## Cost Management
 
@@ -96,9 +100,10 @@ Each case YAML has a `category`, which selects the judge prompt (`judge_prompts.
   (Opus 5.5). Per-model numbers are in
   [docs/research/models.md](../../docs/research/models.md#benchmark-results).
 
-- **Budget Limits**: `evaluation.max_cost_per_run` and `evaluation.warn_cost_threshold` are declared
-  in config but **not enforced by the harness yet** (neither is read). Check the OpenRouter balance
-  before and after a run instead.
+- **No budget limit**: the harness does not stop a run on cost. The per-result `total_cost_usd`
+  comes from LiteLLM price tables, not from what OpenRouter billed, and is 0 for a model without a
+  price entry (e.g. `auto`), so a limit on it would undercount. Estimate before a run with
+  `scripts/model_benchmark.py` and check the OpenRouter balance before and after.
 
 - **Cost Optimization**:
   - Use cheaper judge model: `--judge-model=google/gemini-3.8-flash`
@@ -108,12 +113,17 @@ Each case YAML has a `category`, which selects the judge prompt (`judge_prompts.
 
 ## Configuration
 
-The harness reads one value from config: `evaluation.judge_model` in
-[`config/default.yaml`](../../config/default.yaml) (override in `config/local.yaml`, or per run
-with `--judge-model`). The pass mark comes from `--quality-threshold` (default 0.70). The other
-`evaluation.*` fields (`quality_threshold`, `category_thresholds`, `results_dir`, budget limits) are
-declared in the typed settings but **not read by the harness yet**; results always go to
-`tests/golden/results/`.
+The harness reads the `evaluation` section of
+[`config/default.yaml`](../../config/default.yaml) (override in `config/local.yaml`) and
+`models.default`:
+
+- `judge_model`: the judge; per run `--judge-model`.
+- `quality_threshold`: the pass mark for a case; `category_thresholds` overrides it for the
+  categories it lists (a case's `category` in its YAML). `--quality-threshold` sets one pass mark
+  for every case and ignores both. Each result stores the pass mark it was judged against.
+- `results_dir`: where runs are written, relative to the repo root.
+  `scripts/model_benchmark.py` and `scripts/benchmark_report.py` read results from the same place.
+- `models.default`: the model under test; per run `DEFAULT_MODEL`.
 
 ## Benchmarking Models
 
@@ -214,7 +224,7 @@ uv run --env-file .env pytest tests/golden/test_golden_conversations.py::TestGol
 - **0.4-0.5**: Poor - Missing key elements
 - **0.0-0.3**: Failing - Does not meet criteria
 
-**Default threshold**: 0.70 (acceptable minimum)
+**Default threshold**: `evaluation.quality_threshold`, per category `evaluation.category_thresholds`
 
 ## Troubleshooting
 

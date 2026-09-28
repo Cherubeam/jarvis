@@ -201,7 +201,7 @@ class EvaluationSettings(BaseModel):
     )
     quality_threshold: float = Field(
         default=0.70,
-        description="Minimum mean score (0-1) below which a run fails.",
+        description="Pass mark (0-1) for a golden case; default of --quality-threshold.",
     )
     category_thresholds: dict[str, float] = Field(
         default_factory=lambda: {
@@ -210,19 +210,11 @@ class EvaluationSettings(BaseModel):
             "personalization": 0.70,
             "edge_cases": 0.65,
         },
-        description="Per-category overrides for quality_threshold.",
+        description="Per-category pass marks overriding quality_threshold (ignored when --quality-threshold is given).",
     )
     results_dir: str = Field(
         default="tests/golden/results",
-        description="Directory where evaluation runs persist their results.",
-    )
-    max_cost_per_run: float = Field(
-        default=1.00,
-        description="Intended USD ceiling per evaluation run. Not enforced by the golden harness yet.",
-    )
-    warn_cost_threshold: float = Field(
-        default=0.50,
-        description="Intended USD warning threshold per evaluation run. Not enforced by the golden harness yet.",
+        description="Directory (relative to the repo root) where golden evaluation runs persist their results.",
     )
 
 

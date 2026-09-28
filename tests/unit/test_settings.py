@@ -185,8 +185,6 @@ class TestEvaluationSettings:
         assert e.judge_model == "anthropic/claude-opus-5.5"
         assert e.quality_threshold == 0.70
         assert e.results_dir == "tests/golden/results"
-        assert e.max_cost_per_run == 1.00
-        assert e.warn_cost_threshold == 0.50
 
     def test_category_thresholds_defaults(self) -> None:
         e = EvaluationSettings()

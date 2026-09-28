@@ -52,9 +52,9 @@ uv run pytest tests/integration/ -v
 # Golden test structure validation (free)
 uv run pytest tests/golden/ -v
 
-# Golden tests WITH evaluation: paid, needs OPENROUTER_API_KEY and DEFAULT_MODEL
-# (cost and options: golden/README.md)
-DEFAULT_MODEL=openai/gpt-6-luna uv run --env-file .env pytest tests/golden/ --evaluate -v
+# Golden tests WITH evaluation: paid, needs OPENROUTER_API_KEY; tests models.default
+# unless DEFAULT_MODEL is set (cost and options: golden/README.md)
+uv run --env-file .env pytest tests/golden/ --evaluate -v
 
 # Exclude slow/manual tests
 uv run pytest -m "not slow"

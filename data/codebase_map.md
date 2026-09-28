@@ -79,7 +79,7 @@
 - `models:` — {default, presets}
 - `paths:` — {context_dir, conversations_dir, learned_facts}
 - `things3:` — {enabled, sync_on_startup, cache_ttl_seconds, lists_to_include, max_tasks_per_list}
-- `evaluation:` — {judge_model, quality_threshold, category_thresholds, results_dir, max_cost_per_run, warn_cost_threshold}
+- `evaluation:` — {judge_model, quality_threshold, category_thresholds, results_dir}
 - `rag:` — {enabled, db_path, embedding_model, index_cards}
 - `routing:` — {enabled, simple_threshold, complex_threshold}
 - `cli:` — {colors, history_file}

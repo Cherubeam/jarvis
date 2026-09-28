@@ -31,7 +31,7 @@ DEFAULT_MODELS = [
     "anthropic/claude-opus-5.5",
 ]
 DEFAULT_JUDGE_MODEL = load_config().evaluation.judge_model
-DEFAULT_RESULTS_DIR = "tests/golden/results"
+DEFAULT_RESULTS_DIR = str(PROJECT_ROOT / load_config().evaluation.results_dir)
 
 
 def _print_estimates(

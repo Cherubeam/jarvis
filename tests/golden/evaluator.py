@@ -19,6 +19,22 @@ from packages.core.pricing import get_model_pricing
 JUDGE_MAX_TOKENS = 4096
 
 
+def resolve_thresholds(
+    cli_threshold: float | None,
+    config_threshold: float,
+    category_thresholds: dict[str, float],
+) -> tuple[float, dict[str, float]]:
+    """Pick the pass marks for a run: (base threshold, per-category overrides).
+
+    An explicit --quality-threshold is one pass mark for every case. Without it,
+    evaluation.quality_threshold is the base and evaluation.category_thresholds
+    override it for the categories they list.
+    """
+    if cli_threshold is not None:
+        return cli_threshold, {}
+    return config_threshold, dict(category_thresholds)
+
+
 @dataclass
 class EvaluationCriteria:
     """
@@ -252,12 +268,17 @@ class JudgeEvaluator:
 
         Args:
             judge_client: LLMClient configured for judge model
-            config: Configuration dict with quality_threshold, etc.
+            config: Configuration dict with quality_threshold, category_thresholds, etc.
         """
         self.judge_client = judge_client
         self.quality_threshold = config.get("quality_threshold", 0.70)
+        self.category_thresholds: dict[str, float] = config.get("category_thresholds", {})
         self.judge_model = config.get("judge_model", "anthropic/claude-opus-5.5")
         self.judge_pricing = get_model_pricing(f"openrouter/{self.judge_model}")
+
+    def threshold_for(self, test_category: str) -> float:
+        """Pass mark for a category: its override if configured, else the base threshold."""
+        return self.category_thresholds.get(test_category, self.quality_threshold)
 
     def evaluate_response(
         self,
@@ -329,10 +350,8 @@ class JudgeEvaluator:
         evaluation_score = self._combine_evaluations(judge_evaluation, basic_checks)
 
         # Determine pass/fail
-        passed = (
-            evaluation_score.overall_score >= self.quality_threshold
-            and len(evaluation_score.forbidden_patterns_found) == 0
-        )
+        threshold = self.threshold_for(test_category)
+        passed = evaluation_score.overall_score >= threshold and len(evaluation_score.forbidden_patterns_found) == 0
 
         # Build complete result
         result = EvaluationResult(
@@ -346,7 +365,7 @@ class JudgeEvaluator:
             actual_response=actual_response,
             evaluation=evaluation_score,
             passed=passed,
-            quality_threshold=self.quality_threshold,
+            quality_threshold=threshold,
             response_cost_usd=response_metrics.get("cost_usd", 0.0),
             judge_cost_usd=judge_evaluation.get("cost_usd", 0.0),
             total_cost_usd=response_metrics.get("cost_usd", 0.0) + judge_evaluation.get("cost_usd", 0.0),
