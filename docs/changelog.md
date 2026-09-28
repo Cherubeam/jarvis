@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   content-evaluator's scoring rubric) was never loaded. The skill now asks for
   1-5 rubric scores after the five lenses, and flags German words and German
   word order as errors to fix (skill change in the spec repo, not this repo).
+- **`/review` shows all five lenses.** The evaluation went only to the model,
+  which rewrote it into its own review format and dropped lenses such as the
+  Busy Subscriber Test. The agent now presents every lens, the scores and the
+  recommendations, then its own findings labeled as its own.
+- **`/review` no longer rewrites the post unasked.** `suggest_improvements` was
+  a mandatory workflow step, so the agent previewed a full rewrite (and dropped
+  every link) before the user asked for changes. It now runs only on request
+  and changes only the passages asked about.
 
 ### Fixed — MCP startup line counts connected servers (2026-09-28)
 
