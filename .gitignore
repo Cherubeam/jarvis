@@ -3,6 +3,9 @@ __pycache__/
 *.py[oc]
 build/
 dist/
+# ...except the GUI bundle, which is committed so `uv run jarvis-gui` works without Node
+# (CI rebuilds it and fails when it's stale — see .github/workflows/test.yml).
+!apps/gui/web/dist/
 wheels/
 *.egg-info
 
