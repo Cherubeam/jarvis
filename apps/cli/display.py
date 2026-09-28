@@ -129,6 +129,9 @@ def make_live_chunk_handler(live: Live, buf: list[str]) -> Callable[[str], None]
 
 def finish_live_stream(live: Live, full_text: str) -> None:
     """Finish the live display and print the final response."""
+    # Live.stop() re-renders its content uncropped, and a transient Live can only erase the rows
+    # still on screen. Empty it first, or an answer taller than the terminal is printed twice.
+    live.update(Text(""), refresh=True)
     live.stop()
     if full_text.strip():
         console.print(Markdown(full_text))

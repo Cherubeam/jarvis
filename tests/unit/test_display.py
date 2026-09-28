@@ -229,6 +229,26 @@ class TestLiveStreamDisplay:
         mock_live.stop.assert_called_once()
         mock_console.print.assert_called_once()
 
+    def test_finish_live_stream_prints_long_answer_once(self):
+        """An answer taller than the terminal is printed once, not also left behind by Live.stop()."""
+        import io
+
+        from rich.console import Console
+        from rich.live import Live
+        from rich.markdown import Markdown
+
+        out = io.StringIO()
+        term = Console(file=out, force_terminal=True, width=60, height=10)
+        text = "\n\n".join(f"Paragraph {i}" for i in range(40))
+        with patch("apps.cli.display.console", term):
+            live = Live(console=term, auto_refresh=False, transient=True, vertical_overflow="crop")
+            live.start()
+            live.update(Markdown(text), refresh=True)
+            finish_live_stream(live, text)
+
+        # Past the 10-row crop, so it only shows up where the full answer is printed
+        assert out.getvalue().count("Paragraph 39") == 1
+
     @patch("apps.cli.display.Live")
     def test_finish_live_stream_handles_empty_text(self, MockLive):
         mock_live = MagicMock()
