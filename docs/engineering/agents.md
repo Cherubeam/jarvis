@@ -13,7 +13,7 @@ This matrix is the reference list of agents, their slash commands and their tool
 | Agent | Command | Description | Model | Temperature | Max Iterations | Vault Writing | Tool Groups | Skills |
 |-------|---------|-------------|-------|:-----------:|:--------------:|:-------------:|-------------|--------|
 | **jarvis** *(orchestrator)* | — | Default session; answers directly or delegates to the agents below | session / auto | 0.7 | 5 | — | *(see Tier 1)* | — |
-| **content_reviewer** | `/review` | Structured content evaluation and improvement suggestions | session | 0.7 | 10 | — | blog_tools, content_evaluator, suggest_improvements | — |
+| **content_reviewer** | `/review` | Structured content evaluation and improvement suggestions | quality | 0.7 | 10 | — | blog_tools, content_evaluator, suggest_improvements | — |
 | **developer** | `/develop` | Self-improvement: reads the codebase, branches, writes data-driven files, runs tests, commits | session | 0.3 | 20 | — | dev_tools | — |
 | **navigator** | `/navigator` | Personal alignment, goal clarity and structured reviews | session | 0.7 | default | — | — | — |
 | **obsidian_note_creator** | `/obsidian-note-creator` | Extracts atomic evergreen notes into the Slip-Box | session | 0.7 | default | slip_box | — | — |
@@ -82,7 +82,7 @@ Features that would otherwise require a Python class are handled declaratively:
 |---------|-------------------|---------|
 | Prompt composition | `prompt_includes:` | content_reviewer, substack_image_creator, substack_publisher, writer |
 | Extended iterations | `max_iterations:` | developer (20), pattern_card_generator (15), content_reviewer (10), pattern_language_expert (10) |
-| Own model | `model:` (preset or model id) | writer, substack_publisher (`quality`) |
+| Own model | `model:` (preset or model id) | content_reviewer, writer, substack_publisher (`quality`) |
 | Tool wiring | `tools:` (named tool groups) | Most agents |
 | Custom temperature | `temperature:` | developer (0.3), strategyzer and tactics_coach (0.7). Sent on every model call of the agent's turn; agents without it send none (provider default) |
 | Scoped vault writing | `vault_writing:` | obsidian_note_creator (slip_box), pattern_language_expert (patterns) |

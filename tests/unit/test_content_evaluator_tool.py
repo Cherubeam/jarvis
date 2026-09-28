@@ -115,6 +115,32 @@ class TestContentEvaluatorTool:
         call_kwargs = mock_client.complete.call_args
         assert call_kwargs[1]["temperature"] == 0.9
 
+    def test_skill_py_max_tokens_passed(self, skill_dir_with_py, mock_client):
+        """skill.py SKILL_CONFIG max_tokens reaches the model call."""
+        mock_module = MagicMock()
+        mock_module.SKILL_CONFIG = {"temperature": 0.9, "max_tokens": 1234}
+        with patch("packages.core.tools.content_evaluator._import_skill_module", return_value=mock_module):
+            tool = make_content_evaluator_tool(skill_dir_with_py, mock_client, "test-model")
+        tool.execute(content="test")
+
+        assert mock_client.complete.call_args[1]["max_tokens"] == 1234
+
+    def test_max_tokens_defaults_to_client(self, skill_dir, mock_client):
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
+        tool.execute(content="test")
+
+        assert mock_client.complete.call_args[1]["max_tokens"] is None
+
+    def test_resources_appended_to_system_prompt(self, skill_dir, mock_client):
+        (skill_dir / "resources").mkdir()
+        (skill_dir / "resources" / "rubric.md").write_text("# Rubric\n\nHook Quality (1-5)\n")
+        tool = make_content_evaluator_tool(skill_dir, mock_client, "test-model")
+        tool.execute(content="test")
+
+        system = mock_client.complete.call_args[0][0][0]["content"]
+        assert "## Resource: resources/rubric.md" in system
+        assert "Hook Quality (1-5)" in system
+
     def test_model_passed_to_llm_client(self, skill_dir, mock_client):
         tool = make_content_evaluator_tool(skill_dir, mock_client, "gpt-4")
         tool.execute(content="test")
