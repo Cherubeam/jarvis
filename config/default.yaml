@@ -52,22 +52,18 @@ things3:
 # LLM-as-judge evaluation settings
 evaluation:
   judge_model: "anthropic/claude-opus-5.5"  # read by tests/golden and scripts/model_benchmark.py
-  quality_threshold: 0.70  # Minimum score to pass (not read by tests/golden yet: use --quality-threshold)
+  quality_threshold: 0.70  # Pass mark per case; default of --quality-threshold
 
-  # Category-specific thresholds (optional overrides; not read by tests/golden yet)
+  # Per-category pass marks (override quality_threshold; an explicit
+  # --quality-threshold applies one mark to every case instead)
   category_thresholds:
     reasoning: 0.75
     context_recall: 0.70
     personalization: 0.70
     edge_cases: 0.65
 
-  # Results storage
+  # Results storage (relative to the repo root)
   results_dir: "tests/golden/results"
-
-  # Cost management — declared but not enforced by the golden harness yet
-  # (see tests/golden/README.md "Cost Management")
-  max_cost_per_run: 1.00  # USD
-  warn_cost_threshold: 0.50  # USD
 
 # RAG — Conversation recall via ChromaDB + LiteLLM embeddings
 rag:

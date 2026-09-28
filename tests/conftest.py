@@ -359,19 +359,22 @@ def pytest_addoption(parser):
     )
     from packages.core.settings import load_config
 
-    judge_default = load_config().evaluation.judge_model
+    evaluation = load_config().evaluation
     parser.addoption(
         "--judge-model",
         action="store",
-        default=judge_default,
-        help=f"Model to use as judge (default: evaluation.judge_model = {judge_default})",
+        default=evaluation.judge_model,
+        help=f"Model to use as judge (default: evaluation.judge_model = {evaluation.judge_model})",
     )
     parser.addoption(
         "--quality-threshold",
         action="store",
         type=float,
-        default=0.70,
-        help="Minimum quality score to pass (default: 0.70)",
+        default=None,
+        help=(
+            "One pass mark for every golden case (default: evaluation.quality_threshold = "
+            f"{evaluation.quality_threshold}, with evaluation.category_thresholds per category)"
+        ),
     )
 
 
@@ -391,10 +394,22 @@ def pytest_configure(config):
 @pytest.fixture(scope="class")
 def evaluation_config(request):
     """Provide evaluation configuration to tests."""
+    from packages.core.settings import load_config
+
+    sys.path.insert(0, str(Path(__file__).parent / "golden"))
+    from evaluator import resolve_thresholds
+
+    settings = load_config().evaluation
+    quality_threshold, category_thresholds = resolve_thresholds(
+        request.config.quality_threshold,
+        settings.quality_threshold,
+        settings.category_thresholds,
+    )
     return {
         "enabled": request.config.evaluation_enabled,
         "judge_model": request.config.judge_model,
-        "quality_threshold": request.config.quality_threshold,
+        "quality_threshold": quality_threshold,
+        "category_thresholds": category_thresholds,
     }
 
 
@@ -439,5 +454,8 @@ def result_storage():
     sys.path.insert(0, str(Path(__file__).parent / "golden"))
     from result_storage import ResultStorage
 
-    results_dir = Path(__file__).parent / "golden" / "results"
+    from packages.core.settings import load_config
+
+    # Relative paths resolve against the repo root, so the run's cwd doesn't matter
+    results_dir = Path(__file__).resolve().parent.parent / load_config().evaluation.results_dir
     return ResultStorage(results_dir)

@@ -40,8 +40,6 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['judge_model'], label: 'judge_model' },
     { path: ['quality_threshold'], label: 'quality_threshold' },
     { path: ['results_dir'], label: 'results_dir' },
-    { path: ['max_cost_per_run'], label: 'max_cost_per_run ($)' },
-    { path: ['warn_cost_threshold'], label: 'warn_cost_threshold ($)' },
   ],
   rag: [
     { path: ['enabled'], label: 'enabled' },

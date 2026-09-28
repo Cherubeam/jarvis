@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.core.pricing import format_cost, get_model_pricing
+from packages.core.settings import load_config
 
 
 @dataclass
@@ -232,7 +233,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate benchmark report section for docs/research/models.md.")
     parser.add_argument(
         "--results-dir",
-        default="tests/golden/results",
+        default=str(PROJECT_ROOT / load_config().evaluation.results_dir),
         help="Path to golden results directory.",
     )
     parser.add_argument(

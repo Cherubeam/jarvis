@@ -32,6 +32,24 @@ try:
 except ImportError:
     EVALUATION_AVAILABLE = False
 
+from packages.core.model_resolver import AUTO_MODEL_ID
+
+
+def resolve_model_under_test(env_model: str | None, default_model: str) -> tuple[str, str]:
+    """Return (label for results, LiteLLM model id) for the model under test.
+
+    DEFAULT_MODEL wins; without it, models.default. Both may be an OpenRouter id
+    ("openai/gpt-6-luna"), an "openrouter/..." LiteLLM id (models.default's form),
+    or "auto" (OpenRouter Auto Router). The label drops the "openrouter/" prefix so
+    results group the same model the same way whichever form named it.
+    """
+    model = env_model or default_model
+    if model == "auto":
+        return "auto", AUTO_MODEL_ID
+    if model.startswith("openrouter/"):
+        return model.removeprefix("openrouter/"), model
+    return model, f"openrouter/{model}"
+
 
 @pytest.fixture
 def golden_conversations_dir() -> Path:
@@ -133,7 +151,9 @@ class TestGoldenConversations:
     def setup_evaluation(self, request, evaluation_config, result_storage):
         """Setup evaluation run if enabled."""
         if evaluation_config["enabled"]:
-            model_tested = os.getenv("DEFAULT_MODEL", "anthropic/claude-sonnet-4.5")
+            from packages.core.settings import load_config
+
+            model_tested, model_id = resolve_model_under_test(os.getenv("DEFAULT_MODEL"), load_config().models.default)
             # Store on class object so all test methods can access via self
             request.cls.run_id = result_storage.start_run(
                 model_tested=model_tested,
@@ -141,6 +161,7 @@ class TestGoldenConversations:
             )
             request.cls.results = []
             request.cls.model_tested = model_tested
+            request.cls.model_id = model_id
         yield
         # Finalize run after all tests
         if evaluation_config["enabled"] and hasattr(request.cls, "results") and request.cls.results:
@@ -184,15 +205,10 @@ class TestGoldenConversations:
         except ImportError:
             from llm_client import LLMClient
 
-        from packages.core.model_resolver import AUTO_MODEL_ID, session_extra_body
+        from packages.core.model_resolver import session_extra_body
         from packages.core.settings import load_config
 
-        if self.model_tested == "auto":
-            model_id = AUTO_MODEL_ID  # OpenRouter Auto Router with models.auto_router settings
-        elif self.model_tested.startswith("openrouter/"):
-            model_id = self.model_tested
-        else:
-            model_id = f"openrouter/{self.model_tested}"
+        model_id = self.model_id
 
         settings = load_config()
         model_client = LLMClient(
@@ -340,7 +356,7 @@ class TestGoldenConversations:
                 assert result.passed, (
                     f"Test {result.test_name} failed quality threshold "
                     f"(score: {result.evaluation.overall_score:.2f}, "
-                    f"threshold: {evaluation_config['quality_threshold']})\n"
+                    f"threshold: {result.quality_threshold})\n"
                     f"Reason: {result.evaluation.reasoning}"
                 )
 
@@ -518,8 +534,7 @@ class TestGoldenConversations:
                 f"\n\nTool call checks: {'; '.join(tool_check.details)}\nScore capped at {tool_check.score_cap}"
             )
             result.passed = (
-                capped_score >= evaluation_config["quality_threshold"]
-                and len(result.evaluation.forbidden_patterns_found) == 0
+                capped_score >= result.quality_threshold and len(result.evaluation.forbidden_patterns_found) == 0
             )
 
         result_storage.save_result(self.run_id, result)
@@ -528,7 +543,7 @@ class TestGoldenConversations:
         assert result.passed, (
             f"Test {result.test_name} failed "
             f"(score: {result.evaluation.overall_score:.2f}, "
-            f"threshold: {evaluation_config['quality_threshold']})\n"
+            f"threshold: {result.quality_threshold})\n"
             f"Tool checks: {tool_check.details}\n"
             f"Reason: {result.evaluation.reasoning}"
         )

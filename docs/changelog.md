@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Golden harness reads its evaluation settings (2026-09-28)
+
+- **Pass marks come from config.** `--quality-threshold` now defaults to
+  `evaluation.quality_threshold`, and `evaluation.category_thresholds` applies
+  per case category (the evaluator already had the category). An explicit
+  `--quality-threshold` still wins and sets one mark for every case. Each
+  result stores the mark it was judged against, and the agentic score cap
+  re-checks against that mark.
+- **`evaluation.results_dir` is used**, by the harness and by
+  `scripts/model_benchmark.py` / `scripts/benchmark_report.py`, relative to the
+  repo root. Before, all three hard-coded `tests/golden/results`.
+- **Model under test falls back to `models.default`**, not a hard-coded
+  `anthropic/claude-sonnet-4.5`. The `openrouter/` prefix is handled the same
+  way for `DEFAULT_MODEL` and `models.default`; results label the model without
+  it.
+- **Removed `evaluation.max_cost_per_run` and `evaluation.warn_cost_threshold`**
+  (settings, `config/default.yaml`, the GUI Settings form). They were never
+  enforced, and the run's cost is summed from LiteLLM price tables, which
+  undercount (0 for unpriced models such as `auto`), so a limit on it would
+  promise more than it checks. A stale key in `config/local.yaml` is ignored.
+
 ### Fixed — meta.yaml `temperature:` now reaches the model (2026-09-28)
 
 - **`temperature:` had no effect.** `agent_from_meta()` stored it on
