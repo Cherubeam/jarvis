@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-09-28
+
+Four fixes: the CLI shows the agent's name again, the GUI Settings editor drops the retired Cortex section, `meta.yaml` `temperature:` finally reaches the model, and the golden harness reads its evaluation settings from config.
+
 ### Fixed — Golden harness reads its evaluation settings (2026-09-28)
 
 - **Pass marks come from config.** `--quality-threshold` now defaults to
