@@ -19,7 +19,6 @@ dependencies = [
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "rich>=14.3.3",
-    "things-py>=1.0.1",
     "trafilatura>=2.0.0",
     "weasyprint>=68.1",
 ]
@@ -96,8 +95,8 @@ ignore = ["RUF001", "RUF002", "SIM108"]
 [tool.mypy]
 python_version = "3.13"
 # Pin to linux so sys.platform-narrowing is consistent between macOS dev
-# machines and Linux CI. macOS-only branches (things3, weasyprint dlopen
-# fallback) need # type: ignore[unreachable] under this setting.
+# machines and Linux CI. macOS-only branches (the Things Shortcut export,
+# weasyprint dlopen fallback) need # type: ignore[unreachable] under this setting.
 platform = "linux"
 strict = true
 warn_unreachable = true
@@ -124,7 +123,6 @@ module = [
     "fitz",
     "litellm",
     "litellm.*",
-    "things",
     "trafilatura",
     "trafilatura.*",
     "weasyprint",

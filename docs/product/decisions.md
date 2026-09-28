@@ -2541,3 +2541,65 @@ the heuristic router, and keeping `session_id`/plugin fields inside the per-mode
 ### Related ADRs
 - ADR-032 (typed settings) — `AutoRouterSettings` lives in `ModelsSettings`.
 - ADR-034 (context hub) — JARVIS rents models; owning the choice logic stays optional.
+
+---
+
+## ADR-037: Things 3 via a Shortcut, Read-Only
+
+**Date**: 2026-09-28
+**Status**: Accepted — supersedes the `things.py` SQLite approach that replaced ADR-008 (2026-03-12)
+
+### Context
+
+JARVIS read Things 3 by opening its SQLite database with `things.py`. macOS
+protects other apps' data (`~/Library/Group Containers/…ThingsMac`), and Full
+Disk Access is granted **per launching app**. JARVIS started from the Claude
+app's terminal got `Operation not permitted`; every host that launches JARVIS
+(terminals, the GUI server, a future background service) would need its own
+grant. The write tools (`complete_task`, `update_task`) read Things' auth token
+from the same database and failed the same way. JARVIS may also run in a
+container later, where no macOS API is reachable at all.
+
+### Decision
+
+- Read Things through a user-built Shortcut, **`JARVIS Things Export`**, run as
+  `shortcuts run … --output-type public.json`. It uses Things' own Shortcuts
+  actions ("Find Items"), so it needs no Full Disk Access. It returns
+  `{"inbox": [...], "scheduled": [...]}`. JARVIS splits `scheduled` into Today
+  (start date on or before today, including overdue) and Upcoming (later), the
+  same rule `things.py` applied.
+- **Read-only.** The write tools (`create_task`, `complete_task`, `update_task`)
+  are removed, as is the `things-py` dependency. `create_task` (URL scheme, no
+  token) probably still worked; removing it was the user's choice ("read-only
+  for now").
+- On failure JARVIS raises `ThingsUnavailableError` with the cause, caches
+  nothing, and keeps the previous `tasks.md`, so the model isn't told
+  "No tasks found" when the truth is "couldn't read Things".
+
+### Alternatives Considered
+
+- **Full Disk Access per launching app** — zero code, but broad access, has to
+  be repeated for every host, and doesn't work in a container.
+- **AppleScript (ADR-008 again)** — narrow permission, but slow (~5 s launches)
+  and localized list names.
+- **A Things MCP server now** — a stdio server is spawned on JARVIS's own host,
+  so it gives nothing inside a container. Trigger-gated instead (below).
+- **"Open List" / "Get Selected Items" Shortcuts actions** — show a list in the
+  UI or return only the current selection; no data for JARVIS.
+
+### Consequences
+
+- Warm runs take about 0.5–1.2 s (measured 2026-09-28, Things running). Startup
+  waits at most 10 s (`TIMEOUT_SECONDS`). The GUI runs the export off the event
+  loop.
+- The export has no areas, only each task's parent (project or area) title, so
+  `tasks.md` groups by parent. Dates arrive as localized text
+  (`28.09.2026, 00:00`); unknown formats fail loudly.
+- Shortcuts needs a logged-in macOS session (fine for a desktop or an
+  auto-login LaunchAgent, not for ssh or a LaunchDaemon).
+- **Trigger-gated:** when JARVIS runs on a host other than the Things Mac, add a
+  host-side bridge: an MCP server over HTTP, or a scheduled export to a shared
+  volume.
+
+### Related ADRs
+- ADR-008 (AppleScript, superseded)

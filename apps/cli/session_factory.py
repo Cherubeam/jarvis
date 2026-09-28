@@ -403,17 +403,6 @@ def build_session(
     tool_groups["web_tools"] = [WEB_SEARCH_TOOL, FETCH_URL_TOOL]
     print_system("[Tools] Web search + fetch loaded.")
 
-    if settings.things3.enabled:
-        try:
-            from packages.core.tools.things3_tools import make_things3_tools
-
-            things3_tools = make_things3_tools(settings.things3)
-            if things3_tools:
-                tool_groups["things3_tools"] = things3_tools
-                print_system(f"[Tools] {len(things3_tools)} Things 3 tools loaded.")
-        except Exception as e:
-            print_system(f"[Tools] Things 3 tools failed: {e}")
-
     if settings.readwise.enabled:
         try:
             from packages.core.tools.readwise_tools import make_readwise_tools
@@ -493,12 +482,7 @@ def build_session(
         agent_name = meta.name
     else:
         available_agents = [{"name": meta.name, "description": meta.description} for meta in agent_registry.values()]
-        jarvis_tools = (
-            list(shared_tools)
-            + tool_groups.get("web_tools", [])
-            + tool_groups.get("things3_tools", [])
-            + tool_groups.get("readwise_tools", [])
-        )
+        jarvis_tools = list(shared_tools) + tool_groups.get("web_tools", []) + tool_groups.get("readwise_tools", [])
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,

@@ -143,7 +143,7 @@ Assemble full system prompt from context files. Identity is sourced from `soul.m
 3. `professional_context.md` - Professional background
 4. `preferences.md` - Behavior guidelines
 5. `current_focus.md` - Current priorities
-6. `tasks.md` - Things 3 tasks (auto-generated via `things-py` SQLite)
+6. `tasks.md` - Things 3 tasks (auto-generated via the `JARVIS Things Export` Shortcut; see [architecture.md](architecture.md#5-task-sync-packagesintegrationsthings3))
 7. `reader_persona.md` - Reading profile (optional, loaded by Readwise flow)
 
 See `build_system_prompt_with_metadata()` for the same assembly plus per-section token counts.

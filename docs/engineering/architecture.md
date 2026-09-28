@@ -262,34 +262,17 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 
 ---
 
-### 5. Task Sync (`packages/integrations/things3/task_sync.py`)
+### 5. Task Sync (`packages/integrations/things3/`)
 
-**Purpose**: Synchronize tasks from Things 3 to provide task context.
+**Purpose**: Give JARVIS read-only task context from Things 3 (ADR-037).
 
-**Location**: `packages/integrations/things3/task_sync.py`
+**How it works:**
+- `shortcut_source.run_export()` runs the user-built **`JARVIS Things Export`** Shortcut (`shortcuts run … --output-type public.json`, 10 s timeout) and returns `{"inbox": [...], "scheduled": [...]}`. It raises `ThingsUnavailableError` with an actionable reason when not on macOS, the Shortcut is missing or failing, it times out, or the output isn't the expected JSON.
+- `task_sync.fetch_tasks()` maps each item to a `Task` (`_to_task()`: localized dates → ISO, tags one-per-line → comma list, parent title → `project`; there are no areas), splits `scheduled` into Today (start ≤ today, incl. overdue) and Upcoming (later), honours `things3.lists_to_include`, and caches successes only (`TaskSyncCache`, 5-minute TTL).
+- `sync_tasks_to_file()` writes `data/context/tasks.md` at startup (grouped by parent). On any failure it keeps the previous file and logs why.
+- The GUI Home view calls `fetch_tasks()` via `asyncio.to_thread`, so a cache miss doesn't block the event loop.
 
-**Responsibilities:**
-- Read tasks from Things 3 via SQLite using `things.py` (no app launch required)
-- Fetch tasks from Inbox, Today, and Upcoming lists
-- Write tasks to `tasks.md` in markdown format grouped by area > project > tasks
-- Cache results to avoid repeated reads (5-minute TTL)
-- Handle errors gracefully (CLI works without task sync)
-
-**Key Classes:**
-- `Task`: Dataclass with fields: `title`, `notes`, `due_date`, `when_date`, `tags`, `project`, `area`
-- `TaskSyncCache`: File-based cache with TTL
-
-**Key Functions:**
-- `_to_task()`: Convert a `things.py` dict to a `Task` dataclass
-- `fetch_tasks()`: Read tasks from SQLite via `things.py` with caching
-- `format_tasks_as_markdown()`: Format tasks grouped by area > project > tasks
-- `sync_tasks_to_file()`: Orchestrate fetch + format + write to `tasks.md`
-
-**Design Decision**:
-- Reads the Things 3 SQLite database directly via `things.py` — language-independent, no app launch needed
-- Replaced AppleScript approach (ADR-008) which had 5s timeouts and fragile language detection
-- Things 3 write operations (via MCP) remain a future option — tracked under `CAP`
-- See ADR-008 for historical context
+No Full Disk Access, no database access, no write tools. Setting up the Shortcut: [deployment.md#things-3](deployment.md#things-3). History: ADR-008 (AppleScript) → `things.py` SQLite (2026-03) → Shortcut (ADR-037).
 
 ---
 
@@ -704,7 +687,7 @@ jarvis/
 │   │   │   ├── card_generator_tools.py, card_search.py
 │   │   │   ├── codebase_tools.py, git_tools.py, project_write_tools.py,
 │   │   │   │   test_tools.py, mutation_tools.py        # developer agent (dev_tools)
-│   │   │   └── things3_tools.py, readwise_tools.py
+│   │   │   └── readwise_tools.py
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
@@ -724,7 +707,7 @@ jarvis/
 │   │   ├── resolver.py             # Skill resolution and binding for agents
 │   │   └── <skill-name>/           # One kebab-case directory per skill (SKILL.md), e.g. content-evaluator/
 │   ├── integrations/               # External service integrations
-│   │   ├── things3/task_sync.py    # Things 3 task sync (SQLite via things.py)
+│   │   ├── things3/                # Things 3 task sync via the export Shortcut (ADR-037)
 │   │   ├── readwise/client.py      # Readwise / Reader client (/reading)
 │   │   ├── mcp/                    # MCP client integration
 │   │   │   ├── client.py           # Connection lifecycle + async/sync bridge
@@ -810,7 +793,6 @@ jarvis/
 - `requests` - HTTP client (for pricing API)
 - `pyyaml` - Config parsing
 - `python-dotenv` - Environment variables
-- `things.py` - Things 3 task sync via SQLite
 
 **Also core** (listed in `pyproject.toml`):
 - `chromadb` - Vector storage for conversation recall (`rag.enabled`, on by default)
