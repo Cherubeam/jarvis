@@ -165,9 +165,13 @@ and `apps/gui/web/src/lib/types.ts` (TypeScript). Keep them in sync.
 
 ## Rebuilding the frontend
 
-The `dist/` bundle (~175 KB, ~55 KB gzipped) is committed so `uv run
+The `dist/` bundle (~270 KB, ~76 KB gzipped) is committed so `uv run
 jarvis-gui` works on a fresh clone without Node. When you edit frontend
-source, rebuild and re-commit:
+source, rebuild and re-commit. CI's `frontend` job runs the same build (which
+type-checks with `tsc -b`) and fails if the committed `dist/` differs from it,
+so a forgotten rebuild shows up as a red check. Until 2026-09-28 only
+`dist/index.html` was tracked (the root `.gitignore` excluded `dist/`), so the
+JS bundle it referenced was missing on fresh clones.
 
 ```bash
 cd apps/gui/web

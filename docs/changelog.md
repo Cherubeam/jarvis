@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — GUI bundle was never committed; CI now checks the frontend (2026-09-28)
+
+- **`apps/gui/web/dist/assets/` is now committed.** The root `.gitignore`
+  excluded every `dist/`, so git only tracked `dist/index.html`, which pointed at
+  a JS bundle that was never committed: on a fresh clone the GUI couldn't load,
+  despite `gui.md` promising it works without Node. Locally, the served bundle
+  was April's, so the frontend changes from v0.24.0 and v0.25.0 (link warnings on
+  approval cards, the agent's model in the agent panel, the auto-router settings
+  fields) weren't visible until a manual rebuild.
+- **CI `frontend` job:** `npm ci` + `npm run build` (type-checks with `tsc -b`),
+  then fails if the committed `dist/` doesn't match the rebuilt one.
+
 ## [0.25.0] - 2026-09-28
 
 Model control: agents can name their own model in `meta.yaml` (writer and substack_publisher run on `quality`), OpenRouter's Auto Router arrives as an opt-in session model with per-turn visibility of the model that answered and its billed cost (ADR-036), the writer tags the prose it writes (`assist: [prose]`), and the documentation now gives every topic one home.
