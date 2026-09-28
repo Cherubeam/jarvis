@@ -37,7 +37,8 @@ paths:
   learned_facts: "data/learned_facts.md"
   prompt_history_dir: "data/prompt-history"
 
-# Things 3 integration
+# Things 3 integration — read-only, via the "JARVIS Things Export" Shortcut
+# (build it once: docs/engineering/deployment.md#things-3; ADR-037)
 things3:
   enabled: true
   sync_on_startup: true

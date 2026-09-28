@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date, datetime
 from typing import Any
@@ -11,9 +12,9 @@ from fastapi import APIRouter, Request
 from apps.gui.server.home.cost_week import cost_week_rollup
 from apps.gui.server.home.task_links import link_tasks_to_conversations
 
-# fetch_tasks is imported at module level so tests can patch this symbol.
-# task_sync.py imports the macOS-only `things` module lazily inside the
-# function body, so this import is safe on Linux CI.
+# fetch_tasks is imported at module level so tests can patch this symbol. It
+# shells out to the macOS `shortcuts` CLI only when called, so this import is
+# safe on Linux CI.
 from packages.integrations.things3.task_sync import fetch_tasks
 
 logger = logging.getLogger(__name__)
@@ -88,7 +89,9 @@ async def get_home(request: Request) -> dict[str, Any]:
     things3_settings = session.components.settings.things3
     if things3_settings.enabled:
         try:
-            by_list = fetch_tasks(things3_settings, use_cache=True)
+            # Off the event loop: a cache miss runs the Things export Shortcut (~1 s,
+            # up to its timeout), which would otherwise freeze the chat WebSocket.
+            by_list = await asyncio.to_thread(fetch_tasks, things3_settings, True)
             tasks = _flatten_tasks(by_list)
         except Exception as e:
             logger.debug("home: things3 fetch failed, returning empty tasks: %s", e)

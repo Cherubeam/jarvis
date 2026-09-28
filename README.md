@@ -93,7 +93,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Latency Metrics**: TTFT and total latency captured per response
 - **Simple Configuration**: YAML-based config with sensible defaults
 - **Obsidian Integration**: Vault read/write tools and daily note summaries from conversation history
-- **Things 3 Integration**: Auto-sync tasks from Things 3 (macOS) via SQLite for task-aware responses; write tools (`create_task`, `complete_task`, `update_task`) in the `things3_tools` group
+- **Things 3 Integration** (read-only): Inbox, Today and Upcoming tasks synced into context through a Shortcut, no Full Disk Access needed ([setup](docs/engineering/deployment.md#things-3))
 - **MCP Client Integration**: Connect external MCP (Model Context Protocol) servers over stdio, SSE or streamable HTTP; their tools appear as regular tool groups. Config-only setup ([guide](docs/engineering/deployment.md#connecting-mcp-servers))
 - **GUI**: A browser-based peer to the CLI with the same agents, tools and conversation files ([docs/engineering/gui.md](docs/engineering/gui.md))
 - **Testing**: Unit, integration and LLM-as-judge golden tests, plus mutation testing via mutmut ([docs/engineering/testing.md](docs/engineering/testing.md))

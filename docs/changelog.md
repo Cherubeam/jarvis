@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Things 3 read through a Shortcut, read-only (2026-09-28)
+
+- **No more Full Disk Access.** JARVIS read Things by opening its SQLite
+  database, which macOS only allows per launching app. Started from the Claude
+  app's terminal, startup failed with `unable to open database file` and synced
+  an empty task list. JARVIS now runs a user-built Shortcut, `JARVIS Things
+  Export`, via `shortcuts run`, using Things' own Shortcuts actions. It returns
+  Inbox plus all scheduled tasks; JARVIS splits Today (incl. overdue) from
+  Upcoming as `things.py` did. Warm runs take about 1 s. Setup:
+  `deployment.md#things-3`. ADR-037.
+- **Failures are no longer hidden.** A failed read raises
+  `ThingsUnavailableError` with the cause, caches nothing (before, an empty
+  result was cached for 5 minutes), and keeps the previous `tasks.md` instead
+  of replacing it with "No tasks found".
+- **The GUI Home view** runs the export off the event loop.
+- **Removed:** the Things write tools (`create_task`, `complete_task`,
+  `update_task`) and the `things-py` dependency. Read-only for now; the roadmap
+  records how to bring writes back.
+- **Grouping:** tasks are grouped by their parent (project or area) title. The
+  Shortcuts actions don't expose areas separately.
+- The 8 `test_things3_tools.py` tests that failed on macOS (they touched the
+  real database) are gone with the module; new tests cover the Shortcut runner
+  and the mapping with `subprocess` mocked.
+
 ### Fixed — GUI bundle was never committed; CI now checks the frontend (2026-09-28)
 
 - **`apps/gui/web/dist/assets/` is now committed.** The root `.gitignore`

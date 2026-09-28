@@ -611,9 +611,9 @@ flag for delegation, just the tool invocation. If
   coupled to `prompt_toolkit` and CLI display).
 - **`uvicorn --reload` breaks MCP subprocess lifecycle** — don't use it.
   Restart manually when changing Python that owns subprocesses.
-- **Running CLI and GUI concurrently** may race on the Things 3 SQLite read
-  (both call `sync_tasks_to_file`). Low risk, last-writer-wins on
-  `data/context/tasks.md`.
+- **Running CLI and GUI concurrently** both run the Things export Shortcut
+  and write `data/context/tasks.md` (`sync_tasks_to_file`). Low risk,
+  last-writer-wins.
 
 ## Visual identity rules (non-negotiable)
 

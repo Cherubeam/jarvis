@@ -57,7 +57,7 @@ See also: [principles.md](principles.md) for design principles,
 |-----------|-------------|
 | **VaultNoteBrowser** | File browser scoped to the configured Obsidian vault. Lists notes with path validation via `VaultConfig`. Respects `FilesystemGuard` access rules. |
 | **DailyNoteSummary** | Rendered view of today's daily note from the Obsidian vault, focused on the `> [!JARVIS]` callout block. Equivalent to `/daily-summary` output. |
-| **TaskList** | Display of Things 3 tasks synced via `task_sync.py`. Grouped by area > project > tasks, matching the markdown format written to `tasks.md`. |
+| **TaskList** | Display of Things 3 tasks synced via `task_sync.py`. Grouped by project (each task's parent in Things), matching the markdown format written to `tasks.md`. |
 | **RAGResultCard** | A single result from conversation recall. Shows the query match, source conversation date, and a snippet of the matched message pair. Maps to `SearchResult` from `searcher.py`. |
 
 ## Settings

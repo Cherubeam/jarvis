@@ -1,18 +1,20 @@
 """
 Unit tests for task_sync module.
-Tests task synchronization from Things 3 via things.py (SQLite).
+Tests task synchronization from Things 3 via the export Shortcut.
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from packages.core.settings import Things3Settings
+from packages.integrations.things3.shortcut_source import ThingsUnavailableError
 from packages.integrations.things3.task_sync import (
     Task,
     TaskSyncCache,
+    _split_scheduled,
     _to_task,
     fetch_tasks,
     format_tasks_as_markdown,
@@ -156,204 +158,141 @@ class TestTaskSyncCache:
         assert not cache.cache_file.exists()
 
 
+# Shape of one item as the "JARVIS Things Export" Shortcut writes it (German Mac locale)
+def _item(**overrides):
+    item = {
+        "id": "6Hf2qWBjWhq7B1xszwdo34",
+        "title": "Review PR",
+        "notes": "Check auth changes",
+        "startDate": "12.03.2026, 00:00",
+        "deadline": "15.03.2026, 00:00",
+        "tags": "urgent\ncode-review",
+        "parent": "🛠 Jarvis Dev",
+    }
+    item.update(overrides)
+    return item
+
+
 @pytest.mark.unit
 class TestToTask:
-    """Tests for _to_task converter."""
+    """Tests for _to_task converter (Shortcut export item → Task)."""
 
-    def test_full_task(self):
-        """Test converting a full things.py dict."""
-        t = {
-            "uuid": "6Hf2qWBjWhq7B1xszwdo34",
-            "title": "Review PR",
-            "notes": "Check auth changes",
-            "deadline": "2026-03-15",
-            "start_date": "2026-03-12",
-            "tags": ["urgent", "code-review"],
-            "project_title": "Jarvis Dev",
-            "area_title": "Work",
-        }
-        task = _to_task(t)
+    def test_full_item(self):
+        task = _to_task(_item())
         assert task.uuid == "6Hf2qWBjWhq7B1xszwdo34"
         assert task.title == "Review PR"
         assert task.notes == "Check auth changes"
-        # deadline maps to due_date, start_date maps to when_date
-        assert task.due_date == "2026-03-15"
-        assert task.when_date == "2026-03-12"
-        # Verify exact separator: comma-space
-        assert task.tags == "urgent, code-review"
-        assert ", " in task.tags
-        assert task.project == "Jarvis Dev"
-        assert task.area == "Work"
+        assert task.due_date == "2026-03-15"  # deadline → due_date, ISO
+        assert task.when_date == "2026-03-12"  # startDate → when_date, ISO
+        assert task.tags == "urgent, code-review"  # one tag per line → comma-space
+        assert task.project == "🛠 Jarvis Dev"  # parent title (project or area)
+        assert task.area == ""  # the export has no areas
 
-    def test_deadline_maps_to_due_date_not_start_date(self):
-        """Verify deadline maps to due_date by providing conflicting values."""
-        t = {
-            "title": "Task",
-            "deadline": "2026-06-01",
-            "start_date": "2026-05-01",
-        }
-        task = _to_task(t)
-        assert task.due_date == "2026-06-01"
-        assert task.when_date == "2026-05-01"
-        assert task.due_date != task.when_date
+    def test_empty_values(self):
+        task = _to_task(_item(startDate="", deadline="", tags="", notes="", parent=""))
+        assert (task.when_date, task.due_date, task.tags, task.notes, task.project) == ("", "", "", "", "")
 
-    def test_uuid_extracted(self):
-        """Test uuid is extracted from things.py dict."""
-        task = _to_task({"title": "Task", "uuid": "XYZ789"})
-        assert task.uuid == "XYZ789"
-
-    def test_missing_uuid_defaults_to_empty(self):
-        """Test missing uuid defaults to empty string."""
-        task = _to_task({"title": "Task"})
-        assert task.uuid == ""
-
-    def test_minimal_task(self):
-        """Test converting a task with only a title."""
-        task = _to_task({"title": "Quick thought"})
-        assert task.title == "Quick thought"
-        assert task.uuid == ""
-        assert task.notes == ""
-        assert task.due_date == ""
-        assert task.tags == ""
-        assert task.project == ""
-        assert task.area == ""
-
-    def test_none_values_become_empty_strings(self):
-        """Test that None values from things.py are converted to empty strings via `or ''` fallback."""
-        t = {
-            "title": "Task",
-            "notes": None,
-            "deadline": None,
-            "start_date": None,
-            "tags": None,
-            "project_title": None,
-            "area_title": None,
-        }
-        task = _to_task(t)
-        # Each field should be exactly "" (not None, not "None")
-        assert task.notes is not None
-        assert task.notes == ""
-        assert task.due_date is not None
-        assert task.due_date == ""
-        assert task.when_date is not None
+    def test_missing_keys_default_to_empty(self):
+        task = _to_task({"id": "X", "title": "T"})
+        assert task.uuid == "X"
         assert task.when_date == ""
-        assert task.tags is not None
-        assert task.tags == ""
-        assert task.project is not None
-        assert task.project == ""
-        assert task.area is not None
-        assert task.area == ""
 
-    def test_empty_tags_list(self):
-        """Test that empty tags list produces empty string."""
-        task = _to_task({"title": "Task", "tags": []})
-        assert task.tags == ""
+    @pytest.mark.parametrize("raw", ["12.03.2026, 00:00", "12.03.2026", "2026-03-12", "2026-03-12T00:00:00"])
+    def test_accepted_date_shapes(self, raw):
+        assert _to_task(_item(startDate=raw)).when_date == "2026-03-12"
 
-    def test_tag_separator_is_comma_space(self):
-        """Verify the exact separator is ', ' (comma followed by space)."""
-        task = _to_task({"title": "Task", "tags": ["a", "b", "c"]})
-        assert task.tags == "a, b, c"
-        parts = task.tags.split(", ")
-        assert parts == ["a", "b", "c"]
+    def test_unknown_date_shape_fails_loudly(self):
+        with pytest.raises(ThingsUnavailableError, match="unrecognised date format"):
+            _to_task(_item(startDate="March 12, 2026 at 12:00 AM"))
+
+
+@pytest.mark.unit
+class TestSplitScheduled:
+    def test_today_includes_overdue_and_today_upcoming_is_later(self):
+        today = date(2026, 3, 12)
+        tasks = [
+            _to_task(_item(id=i, startDate=d))
+            for i, d in [("a", "11.03.2026"), ("b", "12.03.2026"), ("c", "13.03.2026")]
+        ]
+        today_tasks, upcoming = _split_scheduled(tasks, today)
+        assert [t.uuid for t in today_tasks] == ["a", "b"]
+        assert [t.uuid for t in upcoming] == ["c"]
+
+    def test_items_without_start_date_are_dropped(self):
+        today_tasks, upcoming = _split_scheduled([_to_task(_item(startDate=""))], date(2026, 3, 12))
+        assert today_tasks == [] and upcoming == []
 
 
 @pytest.mark.unit
 class TestFetchTasks:
-    """Tests for fetch_tasks function."""
+    """Tests for fetch_tasks (cache + Shortcut export)."""
+
+    def _no_cache(self, mock_cache_class):
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None
+        mock_cache_class.return_value = mock_cache
+        return mock_cache
 
     def test_fetch_uses_cache(self):
-        """Test that fetch uses cache when available."""
-        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Inbox"])
+        things3 = Things3Settings(enabled=True)
+        cached = {"inbox": [{"title": "Cached"}], "today": [], "upcoming": []}
+        with (
+            patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class,
+            patch("packages.integrations.things3.task_sync.run_export") as mock_export,
+        ):
+            mock_cache_class.return_value.get.return_value = cached
+            result = fetch_tasks(things3)
+        mock_export.assert_not_called()
+        assert [t.title for t in result["inbox"]] == ["Cached"]
 
-        cache_data = {
-            "inbox": [
-                {
-                    "title": "Cached Task",
-                    "notes": "",
-                    "due_date": "",
-                    "when_date": "",
-                    "tags": "",
-                    "project": "",
-                    "area": "",
-                }
+    def test_fetch_from_export_splits_and_caches(self):
+        things3 = Things3Settings(enabled=True)
+        today = date.today()
+        export = {
+            "inbox": [_item(id="i1", startDate="", deadline="")],
+            "scheduled": [
+                _item(id="t1", startDate=today.isoformat()),
+                _item(id="u1", startDate=(today + timedelta(days=3)).isoformat()),
             ],
-            "today": [],
-            "upcoming": [],
         }
+        with (
+            patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class,
+            patch("packages.integrations.things3.task_sync.run_export", return_value=export),
+        ):
+            mock_cache = self._no_cache(mock_cache_class)
+            result = fetch_tasks(things3)
+        assert [t.uuid for t in result["inbox"]] == ["i1"]
+        assert [t.uuid for t in result["today"]] == ["t1"]
+        assert [t.uuid for t in result["upcoming"]] == ["u1"]
+        cached = mock_cache.set.call_args[0][0]
+        assert cached["today"][0]["uuid"] == "t1"
+        assert set(cached["today"][0]) == {"title", "uuid", "notes", "due_date", "when_date", "tags", "project", "area"}
 
-        with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class:
-            mock_cache_instance = MagicMock()
-            mock_cache_instance.get.return_value = cache_data
-            mock_cache_class.return_value = mock_cache_instance
+    def test_fetch_honours_lists_to_include(self):
+        things3 = Things3Settings(enabled=True, lists_to_include=["Today"])
+        export = {"inbox": [_item(id="i1")], "scheduled": [_item(id="t1", startDate=date.today().isoformat())]}
+        with (
+            patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class,
+            patch("packages.integrations.things3.task_sync.run_export", return_value=export),
+        ):
+            self._no_cache(mock_cache_class)
+            result = fetch_tasks(things3)
+        assert result["inbox"] == [] and result["upcoming"] == []
+        assert [t.uuid for t in result["today"]] == ["t1"]
 
-            result = fetch_tasks(things3, use_cache=True)
-
-            assert len(result["inbox"]) == 1
-            assert result["inbox"][0].title == "Cached Task"
-            mock_cache_instance.get.assert_called_once()
-
-    def test_fetch_from_things_py(self):
-        """Test fetch reads from things.py when cache misses."""
-        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Inbox", "Today"])
-
-        mock_things = MagicMock()
-        mock_things.inbox.return_value = [
-            {
-                "title": "Inbox item",
-                "notes": "",
-                "deadline": None,
-                "start_date": None,
-                "tags": [],
-                "project_title": None,
-                "area_title": None,
-            }
-        ]
-        mock_things.today.return_value = [
-            {
-                "title": "Today item",
-                "notes": "note",
-                "deadline": "2026-03-15",
-                "start_date": "2026-03-12",
-                "tags": ["work"],
-                "project_title": "Proj",
-                "area_title": "Work",
-            }
-        ]
-
-        with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class:
-            mock_cache_instance = MagicMock()
-            mock_cache_instance.get.return_value = None
-            mock_cache_class.return_value = mock_cache_instance
-
-            with patch.dict("sys.modules", {"things": mock_things}):
-                result = fetch_tasks(things3, use_cache=False)
-
-            assert len(result["inbox"]) == 1
-            assert result["inbox"][0].title == "Inbox item"
-            assert len(result["today"]) == 1
-            assert result["today"][0].title == "Today item"
-            assert result["today"][0].project == "Proj"
-            mock_cache_instance.set.assert_called_once()
-
-    def test_fetch_skips_unlisted(self):
-        """Test that lists not in lists_to_include are skipped."""
-        things3 = Things3Settings(cache_ttl_seconds=300, lists_to_include=["Today"])
-
-        mock_things = MagicMock()
-        mock_things.today.return_value = []
-
-        with patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class:
-            mock_cache_instance = MagicMock()
-            mock_cache_instance.get.return_value = None
-            mock_cache_class.return_value = mock_cache_instance
-
-            with patch.dict("sys.modules", {"things": mock_things}):
-                result = fetch_tasks(things3, use_cache=False)
-
-            assert result["inbox"] == []
-            assert result["upcoming"] == []
-            mock_things.inbox.assert_not_called()
-            mock_things.upcoming.assert_not_called()
+    def test_failure_raises_and_caches_nothing(self):
+        things3 = Things3Settings(enabled=True)
+        with (
+            patch("packages.integrations.things3.task_sync.TaskSyncCache") as mock_cache_class,
+            patch(
+                "packages.integrations.things3.task_sync.run_export",
+                side_effect=ThingsUnavailableError("the 'shortcuts' command isn't available"),
+            ),
+        ):
+            mock_cache = self._no_cache(mock_cache_class)
+            with pytest.raises(ThingsUnavailableError):
+                fetch_tasks(things3)
+        mock_cache.set.assert_not_called()  # the next call retries instead of serving an empty list
 
 
 @pytest.mark.unit
@@ -541,3 +480,14 @@ class TestSyncTasksToFile:
 
         assert result is False
         assert not output_path.exists()
+
+    @patch("packages.integrations.things3.task_sync.fetch_tasks")
+    def test_sync_keeps_previous_file_when_things_unavailable(self, mock_fetch, tmp_path):
+        """A failed read must not replace real tasks with 'No tasks found'."""
+        things3 = Things3Settings(enabled=True, sync_on_startup=True)
+        output_path = tmp_path / "tasks.md"
+        output_path.write_text("# Tasks from Things 3\n- Previous task")
+        mock_fetch.side_effect = ThingsUnavailableError("the Shortcut failed")
+
+        assert sync_tasks_to_file(output_path, things3) is False
+        assert output_path.read_text() == "# Tasks from Things 3\n- Previous task"

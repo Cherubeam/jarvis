@@ -253,6 +253,30 @@ down, the tools return an actionable error and agents fall back to `search_notes
 
 ---
 
+## Things 3
+
+JARVIS reads your Inbox, Today and Upcoming tasks from Things 3 (macOS) through a Shortcut you build once. It never opens Things' database, so no Full Disk Access is needed (why: ADR-037; how it works: [architecture.md](architecture.md#5-task-sync-packagesintegrationsthings3)). It's read-only.
+
+### Build the `JARVIS Things Export` Shortcut
+
+In the Shortcuts app, create a shortcut named exactly **`JARVIS Things Export`**. German labels in brackets.
+
+1. **Inbox loop**
+   - **Find Items** ("Objekte suchen", from Things). Filters: **Is Inbox** is true, **Status** is Open ("Offen").
+   - **Repeat with Each** ("Mit jedem wiederholen") over those items. Inside the loop, a **Dictionary** ("Wörterbuch") with Text entries; the value is **Repeat Item** ("Wiederholungsobjekt"), then click the token to pick the field:
+     `id` → ID, `title` → Title, `notes` → Notes, `startDate` → Start Date, `deadline` → Deadline, `tags` → Tags, `parent` → Parent ("Übergeordnet").
+2. **Scheduled loop**: duplicate the first loop ("Duplizieren"), and in the copy's Find Items replace the Inbox filter with **Start Date** is after ("ist nach") **01.01.2000**, keeping Status is Open.
+3. **Output**: after both loops, an outer **Dictionary** with two List ("Liste") entries: `inbox` → the first loop's **Repeat Results** ("Wiederholungsergebnisse"), `scheduled` → the second loop's. Then **Stop and Output** ("Stoppen und ausgeben") with that Dictionary.
+4. Run it once by hand and allow any permission prompt; the command line can't show it later.
+
+To check it:
+
+```bash
+shortcuts run "JARVIS Things Export" --output-type public.json -o /tmp/things.json && head -c 300 /tmp/things.json
+```
+
+If Things can't be read, startup logs `Things tasks not refreshed: <reason>` and keeps the previous `tasks.md`. Shortcuts needs a logged-in macOS session.
+
 ## File Structure
 
 See [architecture.md](architecture.md#file-structure) for the project structure.

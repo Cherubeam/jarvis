@@ -82,10 +82,12 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 #### Things 3 Integration (Context Awareness)
 
 - [x] Task sync module with `things.py` (SQLite) — replaced AppleScript
+- [x] Task sync via the `JARVIS Things Export` Shortcut, no Full Disk Access — replaced `things.py` (ADR-037, 2026-09-28)
 - [x] Auto-sync tasks to tasks.md on startup
 - [x] 5-minute task cache to optimize performance
 - [x] Grouped markdown output (area > project > tasks)
-- [x] Write tools (`create_task`, `complete_task`, `update_task` in the `things3_tools` group; not bound to a delegate agent yet)
+- [x] ~~Write tools (`create_task`, `complete_task`, `update_task`)~~ — removed 2026-09-28: read-only for now (ADR-037). Revisit via the Things URL scheme with the auth token in `.env` when writes are wanted
+- [ ] Things from a host other than the Things Mac (MCP over HTTP, or a scheduled export to a shared volume). **Trigger:** JARVIS runs off the Mac (e.g. in a container)
 
 #### Metrics Implementation
 
@@ -309,7 +311,7 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 - [ ] Playwright-based fetch for JS-rendered pages
 - [ ] Tool approval/permission UI
-- [x] Things 3 write operations as tools (`things3_tools`)
+- [x] ~~Things 3 write operations as tools (`things3_tools`)~~ — removed 2026-09-28, read-only for now (ADR-037)
 - [x] Obsidian write operations as tools (implemented in 0.10.0)
 - [x] Web search integration (`web_search`, DuckDuckGo, in `web_tools`)
 

@@ -1,18 +1,19 @@
 """
 Task synchronization module for Things 3 integration.
 
-Uses things.py to read the Things 3 SQLite database directly,
-eliminating AppleScript timeouts and localization issues.
+Reads Things through the "JARVIS Things Export" Shortcut (see shortcut_source.py
+and ADR-037) — no access to Things' database, so no Full Disk Access needed.
 """
 
 import json
 import logging
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from packages.core.settings import Things3Settings
+from packages.integrations.things3.shortcut_source import ThingsUnavailableError, run_export
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -76,34 +77,70 @@ class TaskSyncCache:
             logger.warning(f"Cache invalidation error: {e}")
 
 
-def _to_task(t: dict[str, Any]) -> Task:
-    """Convert a things.py task dict to a Task dataclass."""
+# Shortcuts writes dates as localized text (e.g. German "28.09.2026, 00:00"); accept the
+# shapes seen so far and fail loudly on anything else rather than silently dropping dates.
+_DATE_FORMATS = ("%d.%m.%Y, %H:%M", "%d.%m.%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S")
+
+
+def _parse_date(value: str) -> date | None:
+    """Parse a Shortcut date string; empty → None."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    raise ThingsUnavailableError(f"unrecognised date format from the Shortcut: {value!r}")
+
+
+def _to_task(item: dict[str, Any]) -> Task:
+    """Convert one exported Things item to a Task.
+
+    Things' Shortcuts actions expose a task's parent (project or area) but not both,
+    so ``project`` holds the parent's title and ``area`` stays empty. Tags arrive one
+    per line.
+    """
+    start = _parse_date(item.get("startDate", ""))
+    deadline = _parse_date(item.get("deadline", ""))
+    tags = [t.strip() for t in str(item.get("tags") or "").splitlines() if t.strip()]
     return Task(
-        title=t.get("title", ""),
-        uuid=t.get("uuid", ""),
-        notes=t.get("notes", "") or "",
-        due_date=t.get("deadline", "") or "",
-        when_date=t.get("start_date", "") or "",
-        tags=", ".join(t.get("tags", []) or []),
-        project=t.get("project_title", "") or "",
-        area=t.get("area_title", "") or "",
+        title=str(item.get("title") or ""),
+        uuid=str(item.get("id") or ""),
+        notes=str(item.get("notes") or ""),
+        due_date=deadline.isoformat() if deadline else "",
+        when_date=start.isoformat() if start else "",
+        tags=", ".join(tags),
+        project=str(item.get("parent") or ""),
+        area="",
     )
+
+
+def _split_scheduled(tasks: list[Task], today: date) -> tuple[list[Task], list[Task]]:
+    """Today = start date on or before today (incl. overdue), Upcoming = later (things.py semantics)."""
+    today_tasks = [t for t in tasks if t.when_date and date.fromisoformat(t.when_date) <= today]
+    upcoming = [t for t in tasks if t.when_date and date.fromisoformat(t.when_date) > today]
+    return today_tasks, upcoming
 
 
 def fetch_tasks(things3: Things3Settings, use_cache: bool = True) -> dict[str, list[Task]]:
     """
-    Fetch tasks from Things 3 via SQLite (things.py).
+    Fetch Inbox, Today and Upcoming tasks from Things 3 via the export Shortcut.
 
     Args:
-        things3: Things 3 settings.
+        things3: Things 3 settings (``lists_to_include`` selects Inbox/Today/Upcoming).
         use_cache: Whether to use cached data if available.
 
     Returns:
-        Dictionary with task lists (inbox, today, upcoming)
+        Dictionary with task lists (inbox, today, upcoming).
+
+    Raises:
+        ThingsUnavailableError: the Shortcut couldn't be run or returned unusable data.
+            Nothing is cached in that case, so the next call retries.
     """
     cache = TaskSyncCache(cache_ttl_seconds=things3.cache_ttl_seconds)
 
-    # Check cache first
     if use_cache:
         cached = cache.get()
         if cached:
@@ -113,45 +150,23 @@ def fetch_tasks(things3: Things3Settings, use_cache: bool = True) -> dict[str, l
                 "upcoming": [Task(**t) for t in cached.get("upcoming", [])],
             }
 
-    import things
+    export = run_export()
+    inbox = [_to_task(i) for i in export["inbox"]]
+    today, upcoming = _split_scheduled([_to_task(i) for i in export["scheduled"]], date.today())
 
-    tasks_data: dict[str, list[Task]] = {"inbox": [], "today": [], "upcoming": []}
-    lists_to_include = things3.lists_to_include
-
-    try:
-        if "Inbox" in lists_to_include:
-            tasks_data["inbox"] = [_to_task(t) for t in things.inbox()]
-            logger.info(f"Fetched {len(tasks_data['inbox'])} tasks from Inbox")
-
-        if "Today" in lists_to_include:
-            tasks_data["today"] = [_to_task(t) for t in things.today()]
-            logger.info(f"Fetched {len(tasks_data['today'])} tasks from Today")
-
-        if "Upcoming" in lists_to_include:
-            tasks_data["upcoming"] = [_to_task(t) for t in things.upcoming()]
-            logger.info(f"Fetched {len(tasks_data['upcoming'])} tasks from Upcoming")
-
-    except Exception as e:
-        logger.error(f"Error fetching tasks: {e}")
-
-    # Cache results
-    cache_data: dict[str, list[dict[str, Any]]] = {}
+    wanted = set(things3.lists_to_include)
+    tasks_data: dict[str, list[Task]] = {
+        "inbox": inbox if "Inbox" in wanted else [],
+        "today": today if "Today" in wanted else [],
+        "upcoming": upcoming if "Upcoming" in wanted else [],
+    }
+    unsupported = wanted - {"Inbox", "Today", "Upcoming"}
+    if unsupported:
+        logger.warning("Things lists not supported by the export and skipped: %s", ", ".join(sorted(unsupported)))
     for key, task_list in tasks_data.items():
-        cache_data[key] = [
-            {
-                "title": t.title,
-                "uuid": t.uuid,
-                "notes": t.notes,
-                "due_date": t.due_date,
-                "when_date": t.when_date,
-                "tags": t.tags,
-                "project": t.project,
-                "area": t.area,
-            }
-            for t in task_list
-        ]
-    cache.set(cache_data)
+        logger.info(f"Fetched {len(task_list)} tasks from {key}")
 
+    cache.set({key: [asdict(t) for t in task_list] for key, task_list in tasks_data.items()})
     return tasks_data
 
 
@@ -193,8 +208,9 @@ def _format_section(tasks: list[Task], max_tasks: int) -> list[str]:
     sorted_areas = sorted(grouped.keys(), key=lambda a: (a == "", a))
 
     for area in sorted_areas:
-        area_heading = area if area else "Uncategorized"
-        lines.append(f"### {area_heading}")
+        # The Shortcut export has no areas; only label the no-area group when named areas exist too
+        if area or len(sorted_areas) > 1:
+            lines.append(f"### {area or 'Uncategorized'}")
 
         projects = grouped[area]
         sorted_projects = sorted(projects.keys(), key=lambda p: (p == "", p))
@@ -283,7 +299,17 @@ def sync_tasks_to_file(output_path: Path, things3: Things3Settings) -> bool:
     try:
         # Fetch tasks (uses cache if available)
         tasks_data = fetch_tasks(things3)
+    except ThingsUnavailableError as e:
+        # Keep the previous tasks.md: its "Last synced" line stays true, and the model
+        # isn't told "No tasks found" when the truth is "couldn't read Things".
+        logger.warning(f"Things tasks not refreshed: {e}. Keeping the last tasks.md.")
+        return False
+    except Exception as e:
+        # Never break startup over task sync; same rule: don't overwrite tasks.md
+        logger.error(f"Things tasks not refreshed (unexpected error): {e}. Keeping the last tasks.md.")
+        return False
 
+    try:
         # Format as markdown
         markdown = format_tasks_as_markdown(
             inbox_tasks=tasks_data.get("inbox", []),

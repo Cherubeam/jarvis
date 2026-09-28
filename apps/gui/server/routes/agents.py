@@ -50,7 +50,7 @@ _JARVIS_LIST_ENTRY: dict[str, Any] = {
     "name": "JARVIS",
     "command": "",
     "description": "Orchestrator. Delegates to specialists.",
-    "tools": ["web_tools", "things3_tools", "delegate"],
+    "tools": ["web_tools", "delegate"],
 }
 
 

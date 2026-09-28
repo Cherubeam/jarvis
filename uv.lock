@@ -1106,7 +1106,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "rich" },
-    { name = "things-py" },
     { name = "trafilatura" },
     { name = "weasyprint" },
 ]
@@ -1166,7 +1165,6 @@ requires-dist = [
     { name = "rich", specifier = ">=14.3.3" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7.0" },
     { name = "sse-starlette", marker = "extra == 'web'", specifier = ">=2.0.0" },
-    { name = "things-py", specifier = ">=1.0.1" },
     { name = "trafilatura", specifier = ">=2.0.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20260408" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.33.0.20260408" },
@@ -3148,12 +3146,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/4f/07/766ad19cf2b15cae2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/09/c6f000c2e3702036e593803319af02feee58a662528d0d5728a37e1cf81b/textual-8.2.1-py3-none-any.whl", hash = "sha256:746cbf947a8ca875afc09779ef38cadbc7b9f15ac886a5090f7099fef5ade990", size = 723871, upload-time = "2026-03-29T03:57:34.334Z" },
 ]
-
-[[package]]
-name = "things-py"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/f7/7ca01abf3927ed680688e2ce4c608f0c252dc224134ca2b1f04940db0efd/things_py-1.0.1.tar.gz", hash = "sha256:6d760727e57c0cfb85f18a63b36459287573f7d7c0442874a76d4ef38b92089d", size = 30360, upload-time = "2026-02-28T22:23:41.197Z" }
 
 [[package]]
 name = "tiktoken"

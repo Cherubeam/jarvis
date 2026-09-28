@@ -51,7 +51,7 @@ Each shared tool is registered only when its feature is enabled.
 | `recall_outcomes` | `packages/core/tools/outcome_recall.py` | `outcomes.enabled` and `rag.enabled` | Search scored past recommendations |
 | Shared MCP tools, e.g. `mcp_cortex__search_knowledge` | MCP servers with `shared: true` ([setup](deployment.md#connecting-mcp-servers)) | `mcp.enabled` | Vault semantic search via Cortex (HUB-01), or any other shared server |
 
-**JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools`, `things3_tools` and `readwise_tools` groups (`jarvis_tools` in `build_session()`).
+**JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools` and `readwise_tools` groups (`jarvis_tools` in `build_session()`).
 
 ### Tier 2 — Named tool groups (opt-in per agent via `tools:` in `meta.yaml`)
 
@@ -64,7 +64,6 @@ Each shared tool is registered only when its feature is enabled.
 | `dev_tools` | developer | `packages/core/tools/git_tools.py`, `codebase_tools.py`, `project_write_tools.py`, `test_tools.py`, `mutation_tools.py` |
 | `readwise_tools` | reading_assistant, jarvis | `packages/core/tools/readwise_tools.py` |
 | `suggest_improvements` | content_reviewer | `packages/core/tools/suggest_improvements.py` |
-| `things3_tools` | jarvis *(no delegate agent yet)* | `packages/core/tools/things3_tools.py` |
 | `web_tools` | reading_assistant, researcher, jarvis | `packages/core/tools/web_fetch.py` (`fetch_url`), `web_search.py` (`web_search`) |
 
 A group is only registered when its feature is configured (e.g. `blog_tools` needs `obsidian.writing.blog_dir`, `card_search` needs RAG and a deck-skill). Vault write tools are not a named tool group — they are created on demand per agent based on the agent's `vault_writing` field (see `make_agent_vault_tools` in `apps/cli/session_factory.py`).
