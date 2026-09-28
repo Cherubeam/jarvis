@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-09-28
+
+Things via Shortcuts: JARVIS reads Things 3 through a user-built Shortcut instead of its database, so no Full Disk Access is needed and read failures are visible instead of silently empty (ADR-037; read-only, the write tools are removed). Also: the GUI bundle is finally committed and CI now type-checks and rebuilds the frontend, and `main` is protected by a ruleset.
+
+### Docs — AGENTS.md: release steps for the protected `main` (2026-09-28)
+
+- **`main` only accepts PRs** now (ruleset "Protect main": PR plus the checks
+  `lint`, `typecheck`, `pytest`, `frontend`; linear history; no force-push).
+  AGENTS.md's Branching section says so. Its "How to Release" steps now go
+  through a `release/vX.Y.Z` PR, then tag the merge commit and push only the
+  tag. The old step `git push origin main --tags` would be rejected.
+
 ### Changed — Things 3 read through a Shortcut, read-only (2026-09-28)
 
 - **No more Full Disk Access.** JARVIS read Things by opening its SQLite
