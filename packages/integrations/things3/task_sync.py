@@ -177,8 +177,7 @@ def _format_task_line(task: Task) -> str:
         meta_parts.append(f"Due: {task.due_date}")
     if task.tags:
         meta_parts.append(f"Tags: {task.tags}")
-    if task.uuid:
-        meta_parts.append(f"ID: {task.uuid}")
+    # No task ID: nothing reads it until Things writes exist (ADR-037), and it cost ~19% of tasks.md
 
     meta_str = f" [{' | '.join(meta_parts)}]" if meta_parts else ""
     line = f"- {task.title}{meta_str}"

@@ -364,7 +364,7 @@ class TestFormatTasksAsMarkdown:
         assert "- Random idea" in markdown
 
     def test_format_task_with_metadata(self):
-        """Test task line includes due date, tags, and UUID (UUID last)."""
+        """Test task line includes due date and tags."""
         today = [
             Task(
                 title="Review PR",
@@ -375,22 +375,15 @@ class TestFormatTasksAsMarkdown:
         ]
         markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
 
-        assert "[Due: 2026-03-15 | Tags: urgent, code-review | ID: 6Hf2qWBjWhq7B1xszwdo34]" in markdown
+        assert "- Review PR [Due: 2026-03-15 | Tags: urgent, code-review]" in markdown
 
-    def test_format_task_uuid_last_in_metadata(self):
-        """Test UUID appears after due date and tags in metadata."""
-        today = [Task(title="Task", uuid="ABC123", due_date="2026-01-01", tags="work")]
-        markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
-
-        # UUID should be last
-        assert "Due: 2026-01-01 | Tags: work | ID: ABC123" in markdown
-
-    def test_format_task_uuid_only(self):
-        """Test task with only UUID shows just the ID."""
+    def test_format_task_omits_uuid(self):
+        """Test the task ID stays out of the context (nothing reads it; it only costs tokens)."""
         today = [Task(title="Task", uuid="ABC123")]
         markdown = format_tasks_as_markdown([], today, [], max_tasks=50)
 
-        assert "[ID: ABC123]" in markdown
+        assert "ABC123" not in markdown
+        assert "- Task\n" in markdown
 
     def test_format_task_with_notes(self):
         """Test task notes appear indented below task."""
