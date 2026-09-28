@@ -192,6 +192,7 @@ class TestMCPManager:
         assert "good_tools" in result
         assert "bad_tools" not in result
         assert len(result["good_tools"]) == 1
+        assert manager.connected_count == 1
 
         manager.shutdown()
 

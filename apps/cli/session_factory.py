@@ -458,7 +458,12 @@ def build_session(
             tool_groups.update(mcp_tool_groups)
             total = shared_count + sum(len(v) for v in mcp_tool_groups.values())
             shared_note = f" ({shared_count} shared)" if shared_count else ""
-            print_system(f"[MCP] {total} tool(s) from {len(settings.mcp.servers)} server(s){shared_note}.")
+            configured = len(settings.mcp.servers)
+            connected = mcp_manager.connected_count
+            servers_note = f"{connected} server(s)"
+            if connected < configured:
+                servers_note = f"{connected} of {configured} servers"
+            print_system(f"[MCP] {total} tool(s) from {servers_note}{shared_note}.")
     except Exception as e:
         print_system(f"[MCP] Startup failed: {e}")
 

@@ -127,6 +127,11 @@ class MCPManager:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
 
+    @property
+    def connected_count(self) -> int:
+        """Number of servers that connected in ``start()``."""
+        return len(self._connections)
+
     def start(self, servers: dict[str, MCPServerSettings]) -> dict[str, list[ToolDefinition]]:
         """Start the background event loop, connect to all servers, return tool groups.
 
