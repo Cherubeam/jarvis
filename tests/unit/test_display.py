@@ -283,3 +283,10 @@ class TestStyledHelpers:
         print_agent_prefix("Writing")
         out = capsys.readouterr().out
         assert "Writing" in out
+
+    @pytest.mark.parametrize("name", ["content_reviewer", "writing"])
+    def test_print_agent_prefix_keeps_brackets(self, capsys, name):
+        # Lowercase names look like Rich markup tags and were silently dropped.
+        print_agent_prefix(name)
+        out = capsys.readouterr().out
+        assert f"[{name}]:" in out
