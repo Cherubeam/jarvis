@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Any
 
 SHORTCUT_NAME = "JARVIS Things Export"
-# Warm runs take ~0.5-1.2 s; startup blocks on this, so fail fast rather than hang
+# Measured: ~1.7 s with Things closed (it's launched in the background), ~0.5-1.2 s
+# with Things running. Startup blocks on this, so fail fast rather than hang
 TIMEOUT_SECONDS = 10
 
 

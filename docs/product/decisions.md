@@ -2589,7 +2589,8 @@ container later, where no macOS API is reachable at all.
 
 ### Consequences
 
-- Warm runs take about 0.5–1.2 s (measured 2026-09-28, Things running). Startup
+- Measured 2026-09-28: 1.7 s with Things not running (Shortcuts starts Things in
+  the background, and it stays running), 0.5–1.2 s with Things running. Startup
   waits at most 10 s (`TIMEOUT_SECONDS`). The GUI runs the export off the event
   loop.
 - The export has no areas, only each task's parent (project or area) title, so
