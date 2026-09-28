@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — CLI agent label shows the agent name again (2026-09-28)
+
+- **The CLI label for agent responses printed only `:`.** Rich read
+  `[content_reviewer]` as a markup tag and dropped it. `print_agent_prefix`
+  now escapes the name, so the label reads `[content_reviewer]:` in the agent
+  style.
+
 ## [0.26.0] - 2026-09-28
 
 Things via Shortcuts: JARVIS reads Things 3 through a user-built Shortcut instead of its database, so no Full Disk Access is needed and read failures are visible instead of silently empty (ADR-037; read-only, the write tools are removed). Also: the GUI bundle is finally committed and CI now type-checks and rebuilds the frontend, and `main` is protected by a ruleset.

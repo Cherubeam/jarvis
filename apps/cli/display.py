@@ -14,6 +14,7 @@ from typing import Any
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.spinner import Spinner
 from rich.text import Text
 from rich.theme import Theme
@@ -92,7 +93,8 @@ def print_assistant_prefix(agent_name: str = "JARVIS") -> None:
 
 def print_agent_prefix(agent_name: str) -> None:
     """Print a colored agent label for slash-command responses."""
-    console.print(f"\n[agent.name][{agent_name}]:[/]")
+    # Escape so Rich doesn't read "[content_reviewer]" as a markup tag and drop it.
+    console.print(f"\n[agent.name]{escape(f'[{agent_name}]')}:[/]")
 
 
 # ---------------------------------------------------------------------------
