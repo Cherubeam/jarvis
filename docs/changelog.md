@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-09-28
+
+Model control: agents can name their own model in `meta.yaml` (writer and substack_publisher run on `quality`), OpenRouter's Auto Router arrives as an opt-in session model with per-turn visibility of the model that answered and its billed cost (ADR-036), the writer tags the prose it writes (`assist: [prose]`), and the documentation now gives every topic one home.
+
 ### Changed — Documentation brought up to date (2026-09-27)
 
 - **A staleness sweep across 14 docs.** It removed the retired Cortex HTTP path
@@ -79,6 +83,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed:** an agent's `max_tokens` (e.g. developer's 4,096) stayed on the
   shared stream handler after its turn and capped later JARVIS answers. It is
   now restored, keeping any credit-fallback reduction made during the turn.
+
+## [0.24.0] - 2026-09-25
+
+Model refresh and vault oversight. A provider-side change made the default model (Qwen 3.5 Flash) answer with its own reasoning; the fix grew into a 10-model benchmark with two judges that made GPT-6 Luna the default and Opus 5.5 the `quality` model. Along the way three vault-write oversight gaps were closed: the GUI approval card showed no diff, link changes could hide in long diffs, and an edit could silently revert changes made in Obsidian meanwhile.
 
 ### Fixed — Vault edits could revert changes made in Obsidian meanwhile (2026-09-25)
 
@@ -166,6 +174,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switched the model but left the default model's pricing on the stream
   handler, so the cost shown for fast/quality turns was wrong.
 
+## [0.23.1] - 2026-09-11
+
+Writer voice fixes: the voice profile left the repository (personal content; a `.example` ships instead), and content review now judges voice against the writer's own profile, not a generic checklist.
+
 ### Fixed — Content review judged voice against a generic checklist (2026-09-11)
 
 - **`evaluate_content` now receives the writer's voice profile.** The `/review`
@@ -184,6 +196,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disagree, "harness" is flagged only as a verb, and three-beat fragment runs
   join the structural patterns. The matching content-evaluator skill fix landed
   in `agent-capability-specifications` (`e0f247e`).
+
+### Changed — Voice profile untracked; a starter ships instead (2026-09-05)
+
+- **`packages/agents/_shared/prompts/voice-profile.md` is no longer tracked.** It held personal content in a public repository; the real file stays local (gitignored) and `voice-profile.md.example` ships in its place with the structure and the lesson that matters: never re-derive a voice profile from LLM-assisted text. All consuming agents still resolve the local file, and fall back to the example with a startup warning on a fresh clone (#44).
+
+## [0.23.0] - 2026-09-05
+
+GUI authentication (AON-01, finding #1): every GUI route and the WebSocket are gated by a token plus an origin allowlist (ADR-035), two approval-hijack holes in vault-write confirmations are closed, and a mutation sweep of the auth code backs it with tests.
 
 ### Security — AON-01: GUI authentication + WebSocket origin allowlist (2026-09-05)
 
@@ -1441,4 +1461,4 @@ client = LLMClient(
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-09-28*
