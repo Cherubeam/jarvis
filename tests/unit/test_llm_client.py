@@ -288,6 +288,35 @@ class TestLLMClient:
             call_kwargs = mock_completion.call_args[1]
             assert "temperature" not in call_kwargs
 
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_chat_stream_sends_temperature_only_when_set(self, temperature):
+        """chat_stream() forwards temperature to litellm; None sends no temperature key."""
+        client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
+
+        with patch("litellm.completion") as mock_completion:
+            mock_completion.return_value = iter([])
+            list(client.chat_stream([{"role": "user", "content": "hi"}], temperature=temperature))
+
+            call_kwargs = mock_completion.call_args[1]
+            if temperature is None:
+                assert "temperature" not in call_kwargs
+            else:
+                assert call_kwargs["temperature"] == temperature
+
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_stream_with_tool_detection_sends_temperature_only_when_set(self, temperature):
+        client = LLMClient(api_keys={"test": "test-key"}, default_model="test/test-model")
+
+        with patch("litellm.completion") as mock_completion:
+            mock_completion.return_value = iter([])
+            client.stream_with_tool_detection([{"role": "user", "content": "hi"}], temperature=temperature)
+
+            call_kwargs = mock_completion.call_args[1]
+            if temperature is None:
+                assert "temperature" not in call_kwargs
+            else:
+                assert call_kwargs["temperature"] == temperature
+
 
 @pytest.mark.unit
 class TestStreamingResponse:

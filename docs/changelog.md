@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — meta.yaml `temperature:` now reaches the model (2026-09-28)
+
+- **`temperature:` had no effect.** `agent_from_meta()` stored it on
+  `AgentConfig`, but `BaseAgent.run()` never passed it on and `StreamHandler`
+  never sent one, so the developer agent's `0.3` was ignored. `run()` now passes
+  it to `StreamHandler.stream(temperature=...)`, which forwards it to every
+  model call of the turn: the tool loop (streaming and non-streaming), the
+  final answer, and the forced answer after the iteration limit.
+  `LLMClient.chat_stream()` gained the `temperature` parameter that
+  `complete()` and `stream_with_tool_detection()` already had.
+- **Only when set.** `AgentConfig.temperature` is now `None` by default
+  (was `0.7`, never sent). Agents without `temperature:` in meta.yaml, and
+  JARVIS itself, still send no temperature, so the provider default applies as
+  before. Agents that set it now get it: developer (0.3), strategyzer and
+  tactics_coach (0.7).
+- Checked live via OpenRouter: `openai/gpt-6-luna` (default model) and
+  `anthropic/claude-opus-5.5` (`quality` preset) both accept `temperature: 0.3`.
+
 ### Fixed — Settings editor no longer shows the retired Cortex section (2026-09-28)
 
 - **The GUI Settings editor dropped its "Cortex" tab.** `Settings` has had no

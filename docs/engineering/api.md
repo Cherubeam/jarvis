@@ -82,13 +82,14 @@ Main client for LLM provider interactions.
 
 Switch the default model mid-session.
 
-#### `chat_stream(messages: list[dict], model: str | None = None) -> StreamingResponse`
+#### `chat_stream(messages: list[dict], model=None, tools=None, temperature=None, max_tokens=None) -> StreamingResponse`
 
 Stream a chat completion.
 
 **Parameters:**
 - `messages` - List of message dicts with "role" and "content"
 - `model` - Optional model override
+- `temperature` - Optional; `None` sends no temperature (same for `complete()` and `stream_with_tool_detection()`)
 
 **Returns:**
 - `StreamingResponse` - Iterator yielding content chunks
@@ -349,7 +350,7 @@ Subclass of `BaseAgent` for agents defined entirely via `meta.yaml` + `prompts/s
 #### `__init__(config: AgentConfig, llm_client: LLMClient)`
 
 **Parameters:**
-- `config: AgentConfig` — Agent configuration (name, model, temperature, max_tokens, max_iterations, tools, `model_pinned`: the model came from meta.yaml and `run()` switches to it via `StreamHandler.using_model()`)
+- `config: AgentConfig` — Agent configuration (name, model, temperature (`None` unless meta.yaml sets it; `run()` passes it to `StreamHandler.stream(temperature=...)`), max_tokens, max_iterations, tools, `model_pinned`: the model came from meta.yaml and `run()` switches to it via `StreamHandler.using_model()`)
 - `llm_client: LLMClient` — Shared LLM client for API calls
 
 **Methods:**
@@ -415,7 +416,7 @@ command: /my-agent          # required — slash command to invoke, /kebab-case
 model: quality              # optional — preset name or model id; the agent always runs on it
                             #   (tool loop, final answer, nested tool calls, pricing);
                             #   omit to use the session model (default, /model, routing)
-temperature: 0.7            # optional, default 0.7 (stored, not sent to the model yet — see agents.md)
+temperature: 0.7            # optional — sent on every model call of the agent; omit to send none (provider default)
 max_tokens: 4096            # optional (default: provider decides)
 max_iterations: 20          # optional — agentic-loop rounds; default in stream_handler.py
 vault_writing: slip_box     # optional — scoped vault write tools from obsidian.writing.<key>

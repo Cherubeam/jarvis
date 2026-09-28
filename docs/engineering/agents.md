@@ -84,7 +84,7 @@ Features that would otherwise require a Python class are handled declaratively:
 | Extended iterations | `max_iterations:` | developer (20), pattern_card_generator (15), content_reviewer (10), pattern_language_expert (10) |
 | Own model | `model:` (preset or model id) | writer, substack_publisher (`quality`) |
 | Tool wiring | `tools:` (named tool groups) | Most agents |
-| Custom temperature | `temperature:` | developer (0.3). **Stored on `AgentConfig` but not sent to the model yet** — the stream handler never passes it |
+| Custom temperature | `temperature:` | developer (0.3), strategyzer and tactics_coach (0.7). Sent on every model call of the agent's turn; agents without it send none (provider default) |
 | Scoped vault writing | `vault_writing:` | obsidian_note_creator (slip_box), pattern_language_expert (patterns) |
 | Skill binding | `skills:` | pattern_language_expert, strategyzer, substack_image_creator, substack_publisher |
 
