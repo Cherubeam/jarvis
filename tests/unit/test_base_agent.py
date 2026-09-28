@@ -120,6 +120,27 @@ class TestBaseAgentRun:
         result = agent.run("hello", handler)
         assert result is expected
 
+    def test_run_passes_config_temperature_to_stream(self):
+        agent = self._make_agent()  # temperature=0.5
+        handler = Mock(spec=StreamHandler)
+        handler.stream.return_value = _make_stream_result()
+
+        agent.run("hello", handler)
+
+        assert handler.stream.call_args.kwargs["temperature"] == 0.5
+
+    def test_run_sends_no_temperature_when_config_has_none(self):
+        """No temperature in the config → stream() gets no temperature kwarg (provider default)."""
+        config = AgentConfig(name="t", description="t", model="m", system_prompt="s")
+        assert config.temperature is None
+        agent = ConcreteAgent(config, Mock(spec=LLMClient))
+        handler = Mock(spec=StreamHandler)
+        handler.stream.return_value = _make_stream_result()
+
+        agent.run("hello", handler)
+
+        assert "temperature" not in handler.stream.call_args.kwargs
+
 
 @pytest.mark.unit
 class TestBaseAgentLoadPrompt:

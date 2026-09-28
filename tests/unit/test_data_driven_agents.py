@@ -194,6 +194,29 @@ class TestDataDrivenAgentsSkillBinding:
 
 
 @pytest.mark.unit
+class TestMetaTemperature:
+    """temperature comes from meta.yaml only; absent means None (nothing sent to the model)."""
+
+    @staticmethod
+    def _agent(tmp_path, meta):
+        agent_dir = tmp_path / "test_agent"
+        (agent_dir / "prompts").mkdir(parents=True)
+        (agent_dir / "prompts" / "system.md").write_text("You are a test agent.")
+        (agent_dir / "meta.yaml").write_text(yaml.dump({"name": "test", "description": "t", "command": "/t", **meta}))
+        return agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "test-model")
+
+    def test_meta_temperature_is_read(self, tmp_path):
+        assert self._agent(tmp_path, {"temperature": 0.3}).config.temperature == 0.3
+
+    def test_missing_meta_temperature_is_none(self, tmp_path):
+        assert self._agent(tmp_path, {}).config.temperature is None
+
+    def test_developer_agent_uses_its_meta_temperature(self):
+        agent = agent_from_meta(_AGENTS_DIR / "developer" / "meta.yaml", Mock(spec=LLMClient), "test-model")
+        assert agent.config.temperature == 0.3
+
+
+@pytest.mark.unit
 class TestPromptIncludes:
     """Verify prompt_includes substitution in agent_from_meta."""
 

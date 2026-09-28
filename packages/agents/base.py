@@ -29,7 +29,8 @@ class AgentConfig:
     system_prompt: str
     tools: list[ToolDefinition] = field(default_factory=list)
     max_tokens: int | None = None
-    temperature: float = 0.7
+    # None = send no temperature (the provider's default); set only by meta.yaml `temperature:`
+    temperature: float | None = None
     max_iterations: int | None = None
     # True when meta.yaml names a model: run() then uses it instead of the session model
     model_pinned: bool = False
@@ -145,6 +146,8 @@ class BaseAgent(ABC):
         kwargs: dict[str, Any] = {}
         if self.config.max_iterations is not None:
             kwargs["max_iterations"] = self.config.max_iterations
+        if self.config.temperature is not None:
+            kwargs["temperature"] = self.config.temperature
         if self.config.model_pinned:
             with stream_handler.using_model(self.config.model):
                 return stream_handler.stream(messages, print_chunks=print_chunks, tool_registry=registry, **kwargs)
@@ -309,7 +312,7 @@ def agent_from_meta(
         model=model,
         system_prompt=system_prompt,
         tools=tools,
-        temperature=meta.get("temperature", 0.7),
+        temperature=meta.get("temperature"),
         max_tokens=meta.get("max_tokens"),
         max_iterations=meta.get("max_iterations"),
         model_pinned=model_pinned,

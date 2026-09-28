@@ -191,7 +191,7 @@ class TestStreamHandler:
         handler = StreamHandler(client, tracker, pricing, "test-model")
         handler.stream(messages)
 
-        client.chat_stream.assert_called_once_with(messages, tools=None, max_tokens=None)
+        client.chat_stream.assert_called_once_with(messages, tools=None, temperature=None, max_tokens=None)
 
     def test_on_chunk_callback_invoked_instead_of_print(self, capsys):
         """When on_chunk is set, it receives chunks and print() is suppressed."""
@@ -849,6 +849,7 @@ class TestStreamHandlerAgenticLoop:
         client.chat_stream.assert_called_once_with(
             [{"role": "user", "content": "hi"}],
             tools=None,
+            temperature=None,
             max_tokens=16384,
         )
 
@@ -1878,3 +1879,83 @@ class TestStreamHandlerMutationTargets:
         assert result.delegate_to is None
         assert result.delegate_task is None
         assert result.delegate_context is None
+
+
+@pytest.mark.unit
+class TestStreamHandlerTemperature:
+    """stream(temperature=...) reaches every LLMClient call of the turn; None is forwarded as None."""
+
+    @staticmethod
+    def _registry():
+        from packages.core.tools.base import ToolDefinition, ToolRegistry
+
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(name="my_tool", description="t", parameters={}, execute=lambda: "ok"))
+        return registry
+
+    @staticmethod
+    def _handler(client, streaming=True):
+        pricing = ModelPricing(prompt_cost=0, completion_cost=0, model_id="t")
+        return StreamHandler(client, MetricsTracker(), pricing, "m", streaming=streaming)
+
+    @staticmethod
+    def _temperatures(mock_method):
+        return [c.kwargs["temperature"] for c in mock_method.call_args_list]
+
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_streaming_simple_path(self, temperature):
+        client = Mock(spec=LLMClient)
+        client.chat_stream.return_value = _make_streaming_response(["ok"])
+
+        self._handler(client).stream([{"role": "user", "content": "hi"}], temperature=temperature)
+
+        assert self._temperatures(client.chat_stream) == [temperature]
+
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_streaming_agentic_loop_and_forced_final_call(self, temperature):
+        """Every loop round and the forced final chat_stream after an exhausted loop."""
+        client = Mock(spec=LLMClient)
+        call = _make_tool_call_obj("tc1", "my_tool", "{}")
+        client.stream_with_tool_detection.side_effect = [
+            _make_stream_tool_result([call]),
+            _make_stream_tool_result([call]),
+        ]
+        client.chat_stream.return_value = _make_streaming_response(["forced"])
+
+        self._handler(client).stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=self._registry(),
+            max_iterations=2,
+            temperature=temperature,
+        )
+
+        assert self._temperatures(client.stream_with_tool_detection) == [temperature, temperature]
+        assert self._temperatures(client.chat_stream) == [temperature]
+
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_nonstreaming_simple_path(self, temperature):
+        client = Mock(spec=LLMClient)
+        client.complete.return_value = _make_complete_response("ok")
+
+        self._handler(client, streaming=False).stream([{"role": "user", "content": "hi"}], temperature=temperature)
+
+        assert self._temperatures(client.complete) == [temperature]
+
+    @pytest.mark.parametrize("temperature", [0.3, None])
+    def test_nonstreaming_agentic_loop_and_forced_final_call(self, temperature):
+        client = Mock(spec=LLMClient)
+        call = _make_tool_call_obj("tc1", "my_tool", "{}")
+        client.complete.side_effect = [
+            _make_complete_response(tool_calls=[call]),
+            _make_complete_response(tool_calls=[call]),
+            _make_complete_response("forced"),
+        ]
+
+        self._handler(client, streaming=False).stream(
+            [{"role": "user", "content": "hi"}],
+            tool_registry=self._registry(),
+            max_iterations=2,
+            temperature=temperature,
+        )
+
+        assert self._temperatures(client.complete) == [temperature] * 3

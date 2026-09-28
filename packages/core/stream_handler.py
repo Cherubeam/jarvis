@@ -199,6 +199,7 @@ class StreamHandler:
         print_chunks: bool = False,
         tool_registry: Any = None,
         max_iterations: int | None = None,
+        temperature: float | None = None,
     ) -> StreamResult:
         """Stream an LLM response, tracking metrics and cost.
 
@@ -211,6 +212,9 @@ class StreamHandler:
             messages: Messages to send to the LLM.
             print_chunks: Whether to print chunks to stdout as they arrive.
             tool_registry: Optional ToolRegistry. None or empty → simple path.
+            max_iterations: Cap on agentic-loop rounds (None → module default).
+            temperature: Sampling temperature for every model call of this turn
+                (None → none sent, the provider default applies).
 
         Returns:
             StreamResult with full text, usage, cost, and metrics.
@@ -234,6 +238,7 @@ class StreamHandler:
                     tool_registry,
                     execute_tool_calls,
                     max_iterations=max_iterations,
+                    temperature=temperature,
                 )
             else:
                 messages, tools_format, final_text, final_usage = self._run_agentic_loop_nonstreaming(
@@ -241,6 +246,7 @@ class StreamHandler:
                     tool_registry,
                     execute_tool_calls,
                     max_iterations=max_iterations,
+                    temperature=temperature,
                 )
 
         if self._terminal_tool_fired:
@@ -296,8 +302,8 @@ class StreamHandler:
 
         # Final response (no agentic loop, or loop exhausted iterations)
         if use_streaming:
-            return self._stream_simple(messages, print_chunks, tools=tools_format)
-        return self._complete_simple(messages, tools=tools_format)
+            return self._stream_simple(messages, print_chunks, tools=tools_format, temperature=temperature)
+        return self._complete_simple(messages, tools=tools_format, temperature=temperature)
 
     def _run_agentic_loop(
         self,
@@ -305,6 +311,7 @@ class StreamHandler:
         tool_registry: Any,
         execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
+        temperature: float | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Run agentic tool-calling loop using streaming-first detection.
 
@@ -325,6 +332,7 @@ class StreamHandler:
                 lambda m=messages, t=tools_format: self.client.stream_with_tool_detection(
                     m,
                     tools=t,
+                    temperature=temperature,
                     max_tokens=self.max_tokens,
                 )
             )
@@ -474,11 +482,15 @@ class StreamHandler:
         )
 
     def _stream_simple(
-        self, messages: list[dict[str, Any]], print_chunks: bool, tools: list[dict[str, Any]] | None = None
+        self,
+        messages: list[dict[str, Any]],
+        print_chunks: bool,
+        tools: list[dict[str, Any]] | None = None,
+        temperature: float | None = None,
     ) -> StreamResult:
         """Stream the final response and return a StreamResult."""
         response = self._try_with_credit_fallback(
-            lambda: self.client.chat_stream(messages, tools=tools, max_tokens=self.max_tokens)
+            lambda: self.client.chat_stream(messages, tools=tools, temperature=temperature, max_tokens=self.max_tokens)
         )
 
         chunks: list[str] = []
@@ -547,6 +559,7 @@ class StreamHandler:
         tool_registry: Any,
         execute_tool_calls: Callable[..., Any],
         max_iterations: int | None = None,
+        temperature: float | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None, str | None, TokenUsage | None]:
         """Run agentic tool-calling loop using non-streaming complete().
 
@@ -566,6 +579,7 @@ class StreamHandler:
                 lambda m=messages, t=tools_format: self.client.complete(
                     m,
                     tools=t,
+                    temperature=temperature,
                     max_tokens=self.max_tokens,
                 )
             )
@@ -663,11 +677,14 @@ class StreamHandler:
         return messages, tools_format, final_text, final_usage
 
     def _complete_simple(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        temperature: float | None = None,
     ) -> StreamResult:
         """Non-streaming final response — returns full text at once."""
         response = self._try_with_credit_fallback(
-            lambda: self.client.complete(messages, tools=tools, max_tokens=self.max_tokens)
+            lambda: self.client.complete(messages, tools=tools, temperature=temperature, max_tokens=self.max_tokens)
         )
 
         text = response.choices[0].message.content or ""
