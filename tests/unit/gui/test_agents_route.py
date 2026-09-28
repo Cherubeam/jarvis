@@ -126,7 +126,7 @@ def test_detail_writer_shape(client):
 
 
 def test_detail_model_is_none_when_agent_inherits_session_model(client):
-    assert client.get("/api/agents/content_reviewer").json()["model"] is None
+    assert client.get("/api/agents/simplifier").json()["model"] is None
 
 
 def test_detail_writer_meta_yaml_fields_populated(client):
