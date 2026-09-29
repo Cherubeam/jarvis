@@ -48,6 +48,7 @@ from packages.core.pricing import ModelPricing, get_model_pricing
 from packages.core.settings import ModelsSettings, Settings, load_config
 from packages.core.stream_handler import StreamHandler, StreamResult, served_metadata
 from packages.core.tools.base import ToolDefinition
+from packages.core.tools.delegate import HandBackState, make_hand_back_tool
 from packages.integrations.obsidian.vault import load_vault_config
 from packages.integrations.obsidian.writer import CLIConfirmationHandler, append_to_daily_note
 from packages.telemetry.metrics import MetricsTracker
@@ -357,8 +358,9 @@ def _run_agent_session(
     initial_message: str | None = None,
     context: str | None = None,
     prior_session: list[dict[str, Any]] | None = None,
+    hand_back: HandBackState | None = None,
 ) -> list[dict[str, Any]]:
-    """Run a multi-turn agent session until the user types /exit or /back.
+    """Run a multi-turn agent session until the user types /exit or /back, or the agent hands back.
 
     Args:
         agent: The agent instance to run.
@@ -369,6 +371,8 @@ def _run_agent_session(
         initial_message: If set, process this as the first message before prompting.
         context: JARVIS's summary of its conversation before delegating.
         prior_session: Full conversation history from a previous agent session.
+        hand_back: If set, the agent gets ``hand_back_to_jarvis`` and the session ends when
+            it calls it; the reason and the handed-back user message are left in this state.
 
     Returns:
         The session history (list of user/assistant message dicts).
@@ -378,6 +382,9 @@ def _run_agent_session(
     print_system(f"\nEntering {agent_name} session{on_model}. Type /exit or /back to return to JARVIS.\n")
 
     session_history: list[dict[str, Any]] = []
+    if hand_back is not None:
+        hand_back.agent_name = agent_name
+        agent.tool_registry.register(make_hand_back_tool(hand_back))
 
     # Inject prior agent session as conversation context
     if prior_session:
@@ -435,7 +442,7 @@ def _run_agent_session(
         _process_message(framed)
 
     try:
-        while True:
+        while hand_back is None or hand_back.reason is None:
             try:
                 user_input = prompt_user(session)
             except EOFError:
@@ -447,11 +454,41 @@ def _run_agent_session(
                 break
 
             _process_message(user_input)
+            if hand_back is not None and hand_back.reason is not None:
+                hand_back.user_message = user_input
     except KeyboardInterrupt:
         pass
 
-    print_system("\nReturning to JARVIS.\n")
+    if hand_back is not None and hand_back.reason is not None:
+        print_system(f"\n{agent_name} handed back to JARVIS: {hand_back.reason}\n")
+    else:
+        print_system("\nReturning to JARVIS.\n")
     return session_history
+
+
+def _handed_back_input(
+    hand_back: HandBackState,
+    delegated_input: str,
+    delegated_input_was_handed_back: bool,
+) -> str | None:
+    """The message JARVIS routes next after a hand-back, or None if there is nothing to route.
+
+    Args:
+        hand_back: The session's hand-back state.
+        delegated_input: The JARVIS turn that started the session (used when the specialist
+            handed back the delegated goal itself rather than a later user message).
+        delegated_input_was_handed_back: True if that turn was itself a hand-back. It is then
+            not routed a second time, so two specialists can't bounce a request between them.
+    """
+    if hand_back.reason is None:
+        return None
+    message = hand_back.user_message
+    if message is None:
+        if delegated_input_was_handed_back:
+            print_system("Not routing it again. Tell JARVIS which agent should take it.\n")
+            return None
+        message = delegated_input
+    return f"[{hand_back.agent_name} handed this back to you: {hand_back.reason}]\n\n{message}"
 
 
 def _run_with_display(
@@ -507,8 +544,12 @@ def _handle_agent_command(
     card_search_tool: ToolDefinition | None = None,
     settings: Settings | None = None,
     vault_config: Any = None,
+    hand_back: HandBackState | None = None,
 ) -> bool:
-    """Route a slash command to the matching agent. Returns True if handled."""
+    """Route a slash command to the matching agent. Returns True if handled.
+
+    ``hand_back`` is passed to an interactive session (no payload); see ``_run_agent_session``.
+    """
     meta = get_by_command(command, agent_registry)
     if meta is None:
         return False
@@ -535,7 +576,7 @@ def _handle_agent_command(
     )
 
     if not payload:
-        _run_agent_session(agent, meta.name, stream_handler, logger, session)
+        _run_agent_session(agent, meta.name, stream_handler, logger, session, hand_back=hand_back)
         return True
 
     logger.add_message("user", f"{command} {payload}")
@@ -641,14 +682,20 @@ def main(argv: list[str] | None = None) -> None:
 
     # Track last agent session for agent-to-agent handoff
     last_agent_session: list[dict[str, Any]] | None = None
+    # A request a specialist handed back; JARVIS routes it before prompting again
+    handed_back_input: str | None = None
 
     # Main chat loop
     try:
         while True:
-            try:
-                user_input = prompt_user(session)
-            except EOFError:
-                break
+            is_handed_back = handed_back_input is not None
+            if handed_back_input is not None:
+                user_input, handed_back_input = handed_back_input, None
+            else:
+                try:
+                    user_input = prompt_user(session)
+                except EOFError:
+                    break
 
             if not user_input:
                 continue
@@ -703,6 +750,7 @@ def main(argv: list[str] | None = None) -> None:
                     continue
 
                 # Agent-routed commands
+                command_hand_back = HandBackState()
                 if _handle_agent_command(
                     command,
                     payload,
@@ -718,7 +766,9 @@ def main(argv: list[str] | None = None) -> None:
                     card_search_tool=card_search_tool,
                     settings=settings,
                     vault_config=vault_config,
+                    hand_back=command_hand_back,
                 ):
+                    handed_back_input = _handed_back_input(command_hand_back, "", False)
                     continue
 
                 print_error(f"\nUnknown command: {command}\n")
@@ -816,6 +866,7 @@ def main(argv: list[str] | None = None) -> None:
                     card_search_tool=card_search_tool,
                     models=settings.models,
                 )
+                delegate_hand_back = HandBackState()
                 agent_session = _run_agent_session(
                     delegate_agent,
                     delegate_meta.name,
@@ -825,6 +876,7 @@ def main(argv: list[str] | None = None) -> None:
                     initial_message=result.delegate_task,
                     context=result.delegate_context,
                     prior_session=last_agent_session,
+                    hand_back=delegate_hand_back,
                 )
                 # Store for next delegation + inject summary into JARVIS history
                 last_agent_session = agent_session
@@ -833,6 +885,7 @@ def main(argv: list[str] | None = None) -> None:
                         f"[Completed session with {delegate_meta.name} agent — {len(agent_session)} messages exchanged]"
                     )
                     active_agent.add_to_history("assistant", summary)
+                handed_back_input = _handed_back_input(delegate_hand_back, user_input, is_handed_back)
 
     except KeyboardInterrupt:
         print("\n")

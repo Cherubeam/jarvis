@@ -2604,3 +2604,85 @@ container later, where no macOS API is reachable at all.
 
 ### Related ADRs
 - ADR-008 (AppleScript, superseded)
+
+---
+
+## ADR-038: Specialist Hand-Back — JARVIS Stays the Only Router
+
+**Date**: 2026-09-29
+**Status**: Accepted — extends ADR-020 (delegation) and ADR-026 (handoff context)
+
+### Context
+
+In a CLI `content_reviewer` session the user asked for a cover image and for
+Substack/LinkedIn publishing material. The reviewer answered both itself: it
+found the image-prompt spec through Cortex and `read_note` (shared tools every
+agent gets) and improvised from it, although `substack_image_creator` and
+`substack_publisher` own those jobs. This is the ADR-020 failure mode one level
+down. A delegated or `/command` session is sticky: every message goes to the
+specialist until the user types `/back`, and a specialist had no way to say
+"this isn't mine". The context channel for a second agent already existed
+(`prior_session`, ADR-026); only the trigger was missing.
+
+### Decision
+
+- Interactive specialist sessions in the CLI get a terminal tool,
+  `hand_back_to_jarvis(reason)` (`packages/core/tools/delegate.py`). Its
+  description carries the scope rule: hand back requests outside your job,
+  don't improvise them from notes or search results.
+- When it fires, `_run_agent_session` ends. The main loop hands JARVIS the
+  user's message **verbatim** (not a model paraphrase), prefixed with
+  `[<agent> handed this back to you: <reason>]`, and JARVIS routes it like any
+  other message.
+- A request is routed again at most once: if the agent JARVIS picks hands the
+  same request back, JARVIS doesn't route it a third time and the user decides.
+- JARVIS remains the only agent that routes; specialists know nothing about
+  each other.
+
+### Alternatives Considered
+
+- **Scope rule in the prompt only** — no code, stops the improvising, but the
+  user still types `/back` and repeats the request. Folded into the tool
+  description instead.
+- **Peer handoff** (`handoff_to(agent)` per specialist, allowlist in
+  `meta.yaml`) — saves one routing turn, but spreads routing knowledge over
+  every agent, lets JARVIS lose track of who is active, and invites ping-pong.
+  Trigger: hand-back through JARVIS misroutes in practice, or the extra turn is
+  noticeably slow.
+- **Per-turn intent classifier** (the open CAP "auto-routing" item) — one extra
+  model call on every turn to catch what the agent can usually tell itself.
+  Trigger: specialists keep missing out-of-scope requests despite the tool.
+- **Free agent mesh / A2A protocol** — Scenario C Tier 3, research only.
+- **Deterministic workflows** (Scenario C Tier 1) — see Consequences; a
+  different problem, kept close.
+
+### Consequences
+
+- Tokens: the tool schema adds about 110 input tokens per call in a specialist
+  session. A hand-back costs roughly one extra JARVIS turn per switch; it
+  replaces the specialist's improvised answer, which on a `quality`-pinned
+  agent is usually the more expensive output.
+- Oversight: one agent decides where requests go, and every hand-back is in
+  the conversation log with its reason (record-keeping, EU AI Act Art. 12;
+  keeps specialist agency narrow, OWASP LLM06 Excessive Agency).
+- CLI only. GUI delegation is single-shot, so the next message already goes to
+  JARVIS; the deferred GUI "interactive delegation sub-loops" item must include
+  hand-back. The AON-02 `TurnRunner` should absorb this logic rather than
+  duplicate it.
+- A `/command` session doesn't update `last_agent_session`, so an agent
+  reached by a hand-back from `/review` gets JARVIS's context summary, not the
+  full `prior_session` (pre-existing gap).
+- **Deterministic pipelines are the next step for repeatable processes.**
+  Content creation has steps that always run in the same order
+  (review → cover image → publish/promote) and don't need an agent to decide
+  the order. The planned shape is a Scenario C Tier 1 workflow
+  ([multi-agent-architecture.md](../engineering/multi-agent-architecture.md#5-scenario-c-agent-communication--workflows)),
+  with one addition the Tier 1 sketch lacks: steps that wait for the user
+  (the user writes the prose and approves each step). Trigger: the same
+  sequence run by hand a third time, or a second deterministic process
+  appears. Hand-back stays the fallback for conversations that leave the script.
+
+### Related ADRs
+- ADR-020 (Agent Delegation via Tool Calling)
+- ADR-022 (Capability Distribution — Orchestrator vs Subagent Tools)
+- ADR-026 (Agent-Skill Binding and Delegation Context)

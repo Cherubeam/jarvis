@@ -532,6 +532,8 @@ skills:
 3. JARVIS stores `last_agent_session` and adds a summary to its own history
 4. When JARVIS delegates to Agent B, `prior_session=last_agent_session` passes Agent A's full conversation
 
+**Hand-back** (agent → JARVIS): a specialist in an interactive CLI session can call `hand_back_to_jarvis(reason)`. The session ends and JARVIS routes the user's message (verbatim, prefixed with the reason) as its next turn, which usually delegates to Agent B via the flow above. A request is routed again at most once. Rationale and alternatives: [ADR-038](../product/decisions.md#adr-038-specialist-hand-back--jarvis-stays-the-only-router).
+
 ---
 
 ## Data Flow

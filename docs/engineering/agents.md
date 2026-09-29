@@ -53,6 +53,8 @@ Each shared tool is registered only when its feature is enabled.
 
 **JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools` and `readwise_tools` groups (`jarvis_tools` in `build_session()`).
 
+**Interactive specialist sessions only (CLI)**: `hand_back_to_jarvis` (same file), added by `_run_agent_session` so a specialist returns out-of-scope requests to JARVIS instead of improvising them ([ADR-038](../product/decisions.md#adr-038-specialist-hand-back--jarvis-stays-the-only-router)).
+
 ### Tier 2 — Named tool groups (opt-in per agent via `tools:` in `meta.yaml`)
 
 | Tool Group | Used By | Source |
