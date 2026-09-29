@@ -57,8 +57,14 @@ class CLIConfirmationHandler(ConfirmationHandler):
         print("\n" + format_diff_for_cli(diff) + "\n")
 
     def get_confirmation(self, prompt: str = "Apply this change?") -> bool:
+        # prompt_toolkit, not input(): it sets the terminal mode itself and reads CR as Enter.
+        # input() relies on the tty's line discipline, and a tty left in a half-raw state
+        # (no CR->LF translation) turned Enter into a literal "^M" and hung the prompt.
+        from prompt_toolkit import prompt as pt_prompt
+
         try:
-            answer = input(f"\n{prompt} (y/yes to confirm): ").strip().lower()
+            print()
+            answer = pt_prompt(f"{prompt} (y/yes to confirm): ").strip().lower()
             return answer in ("y", "yes")
         except (EOFError, KeyboardInterrupt):
             return False

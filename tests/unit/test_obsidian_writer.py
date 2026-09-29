@@ -229,29 +229,32 @@ class TestCLIConfirmationHandler:
         assert "+ new line" in captured.out
         assert "- old line" in captured.out
 
-    def test_get_confirmation_yes(self, monkeypatch):
-        handler = CLIConfirmationHandler()
-        monkeypatch.setattr("builtins.input", lambda _: "y")
-        assert handler.get_confirmation() is True
+    @staticmethod
+    def _answer(keys: str) -> bool:
+        """Type *keys* into the real prompt_toolkit prompt, as a terminal would send them."""
+        from prompt_toolkit.application import create_app_session
+        from prompt_toolkit.input import create_pipe_input
+        from prompt_toolkit.output import DummyOutput
 
-    def test_get_confirmation_no(self, monkeypatch):
-        handler = CLIConfirmationHandler()
-        monkeypatch.setattr("builtins.input", lambda _: "n")
-        assert handler.get_confirmation() is False
+        with create_pipe_input() as pipe, create_app_session(input=pipe, output=DummyOutput()):
+            pipe.send_text(keys)
+            return CLIConfirmationHandler().get_confirmation()
 
-    def test_get_confirmation_empty(self, monkeypatch):
-        handler = CLIConfirmationHandler()
-        monkeypatch.setattr("builtins.input", lambda _: "")
-        assert handler.get_confirmation() is False
+    @pytest.mark.parametrize("keys", ["y\r", "yes\r", "Y\r", " y \r", "y\n"])
+    def test_get_confirmation_yes(self, keys):
+        # Enter arrives as CR from a terminal; input() needed the tty to translate it to LF,
+        # and hung with a literal "^M" when the tty was left without that translation.
+        assert self._answer(keys) is True
 
-    def test_get_confirmation_eof(self, monkeypatch):
-        handler = CLIConfirmationHandler()
+    @pytest.mark.parametrize("keys", ["n\r", "\r", "yep\r"])
+    def test_get_confirmation_no(self, keys):
+        assert self._answer(keys) is False
 
-        def raise_eof(_):
-            raise EOFError
+    def test_get_confirmation_eof(self):
+        assert self._answer("\x04") is False  # Ctrl-D on an empty line
 
-        monkeypatch.setattr("builtins.input", raise_eof)
-        assert handler.get_confirmation() is False
+    def test_get_confirmation_ctrl_c(self):
+        assert self._answer("\x03") is False
 
 
 # ==================== Stale writes (file changed since the agent read it) ====================
