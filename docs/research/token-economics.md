@@ -149,5 +149,7 @@ Only if context grows beyond ~20K tokens:
 
 ---
 
+*Follow-up (2026-09-29): tool-argument and edit-tool savings, plus a measurement caveat for streamed usage: [token-economics-edit-tools.md](token-economics-edit-tools.md)*
+
 *Created: 2026-03-17*
 *Status: Research complete, instrumentation in progress*

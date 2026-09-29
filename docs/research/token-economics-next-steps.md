@@ -102,6 +102,13 @@ If Step B reveals that certain sections are rarely utilized (e.g., projects refe
 - **Two-pass architecture**: Over-engineered for current scale
 - **Summarization**: ✅ Implemented (Step C.7) — opt-in via config
 
+## Update 2026-09-29
+
+Streamed usage is a LiteLLM estimate (prompt and cost undercounted; no cache fields), so the
+Step C conclusion that streaming breaks caching needs re-checking: a probe showed streamed calls
+write and read the cache. Details and the edit-tool savings:
+[token-economics-edit-tools.md](token-economics-edit-tools.md).
+
 ## Relationship to Roadmap
 
 This work feeds into multiple roadmap items:
