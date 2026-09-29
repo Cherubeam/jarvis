@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Write confirmation hung on Enter (2026-09-29)
+
+- **"Apply this change?" accepts Enter again.** The CLI asked with plain
+  `input()`, which relies on the terminal translating Enter (CR) into a newline.
+  A session's terminal was found in a half-raw state without that translation
+  (`-icrnl -isig`), so Enter echoed a literal `^M`, the prompt never returned,
+  and Ctrl-C did nothing: the diff could be neither applied nor rejected. The
+  confirmation now goes through prompt_toolkit like the `You:` prompt, which sets
+  the terminal mode itself and reads CR as Enter. What left the terminal in that
+  state is still unknown; spinner, MCP servers and the Things export were ruled
+  out. Keeps the diff confirmation gate usable (human oversight, EU AI Act Art. 14).
+
 ## [0.26.2] - 2026-09-29
 
 ### Fixed — `/review` printed twice, empty evaluation unexplained (2026-09-28)
