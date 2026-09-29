@@ -27,6 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A stale read is reported before matching, so the agent re-reads instead of
   hunting for a passage that moved.
 
+### Fixed — Old tool-call arguments re-sent on every turn (2026-09-29)
+
+- **Long tool arguments are trimmed like tool results.** `trim_tool_results`
+  shortened old tool *results* but left the model's own tool *calls* intact. A
+  full-post `edit_blog_post` call (25,110 characters, about 6,300 tokens) went
+  out again with every later turn of the session. Older tool calls now have long
+  string arguments cut to 200 characters; the JSON stays valid, because
+  providers parse it. Replaying the 2026-09-29 substack_publisher session: 25,110
+  → 1,085 characters of arguments per turn once the call leaves the recent window.
+- **The summarization threshold counts tool arguments.** `_approx_tokens` read
+  only message content, so large tool calls never pushed a session toward
+  summarization.
+
 ### Fixed — Write confirmation hung on Enter (2026-09-29)
 
 - **"Apply this change?" accepts Enter again.** The CLI asked with plain

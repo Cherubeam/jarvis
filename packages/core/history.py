@@ -7,13 +7,14 @@ results. Tool results (vault reads, searches, fetches) are the biggest
 bloat contributors but are rarely needed verbatim after the LLM has
 processed them. This module provides two complementary strategies:
 
-1. ``trim_tool_results`` — truncates old tool result content (zero API cost).
+1. ``trim_tool_results`` — truncates old tool results and tool-call arguments (zero API cost).
 2. ``summarize_history`` — compresses old conversation turns into a summary
    using a cheap/fast model (one LLM call when threshold is exceeded).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -37,7 +38,8 @@ def trim_tool_results(
 
     Recent messages (last ``keep_recent``) are preserved intact. For older
     messages with role "tool", content longer than the summary threshold is
-    truncated. Non-tool messages are never modified.
+    truncated; older assistant tool calls get long argument strings truncated
+    (the JSON stays valid). User and plain assistant messages are never modified.
 
     Args:
         history: List of message dicts (user, assistant, tool).
@@ -53,6 +55,11 @@ def trim_tool_results(
     cutoff = len(history) - keep_recent
 
     for i, msg in enumerate(history):
+        if i < cutoff and msg.get("role") == "assistant" and msg.get("tool_calls"):
+            # The model's own tool arguments can be as large as a result (a full post
+            # passed to a write tool) and were re-sent untrimmed on every later turn.
+            trimmed.append({**msg, "tool_calls": [_trim_tool_call(tc) for tc in msg["tool_calls"]]})
+            continue
         if i < cutoff and msg.get("role") == "tool":
             content = msg.get("content", "")
             if len(content) > _TOOL_RESULT_SUMMARY_LEN:
@@ -68,9 +75,43 @@ def trim_tool_results(
     return trimmed
 
 
+def _shorten(value: Any) -> Any:
+    """Truncate long strings anywhere inside a decoded JSON value."""
+    if isinstance(value, str) and len(value) > _TOOL_RESULT_SUMMARY_LEN:
+        return value[:_TOOL_RESULT_SUMMARY_LEN] + "[... truncated]"
+    if isinstance(value, dict):
+        return {k: _shorten(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_shorten(v) for v in value]
+    return value
+
+
+def _trim_tool_call(tool_call: dict[str, Any]) -> dict[str, Any]:
+    """Shorten a tool call's arguments, keeping them valid JSON.
+
+    Providers parse the arguments (Anthropic turns them into a tool_use input), so
+    long string values are cut, not the JSON text itself.
+    """
+    function = tool_call.get("function") or {}
+    arguments = function.get("arguments")
+    if not isinstance(arguments, str) or len(arguments) <= _TOOL_RESULT_SUMMARY_LEN:
+        return tool_call
+    try:
+        decoded = json.loads(arguments)
+    except json.JSONDecodeError:
+        return tool_call
+    shortened = json.dumps(_shorten(decoded), ensure_ascii=False)
+    return {**tool_call, "function": {**function, "arguments": shortened}}
+
+
 def _approx_tokens(messages: list[dict[str, Any]]) -> int:
-    """Estimate token count using the bytes/4 heuristic."""
-    return sum(len(str(m.get("content", "")).encode("utf-8")) for m in messages) // 4
+    """Estimate token count using the bytes/4 heuristic, tool-call arguments included."""
+    total = 0
+    for m in messages:
+        total += len(str(m.get("content", "")).encode("utf-8"))
+        for tc in m.get("tool_calls") or []:
+            total += len(str((tc.get("function") or {}).get("arguments", "")).encode("utf-8"))
+    return total // 4
 
 
 def _format_messages_for_summary(messages: list[dict[str, Any]]) -> str:

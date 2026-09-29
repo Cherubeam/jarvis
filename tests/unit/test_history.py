@@ -2,6 +2,7 @@
 Unit tests for session history trimming and summarization.
 """
 
+import json
 from unittest.mock import MagicMock
 
 import pytest
@@ -89,6 +90,53 @@ class TestTrimToolResults:
         # All messages should be unchanged — no tool messages to trim
         assert result[0]["content"] == long_msg
         assert result[1]["content"] == long_msg
+
+    def test_old_tool_call_arguments_truncated_as_valid_json(self):
+        post = "x" * 5000
+        call = {
+            "id": "c1",
+            "type": "function",
+            "function": {
+                "name": "edit_blog_post",
+                "arguments": json.dumps({"path": "p.md", "edits": [{"old_text": post, "new_text": post}]}),
+            },
+        }
+        history = [
+            {"role": "user", "content": "edit it"},
+            {"role": "assistant", "content": None, "tool_calls": [call]},
+            {"role": "tool", "tool_call_id": "c1", "content": "ok"},
+            *({"role": "user", "content": f"turn {i}"} for i in range(_KEEP_RECENT_MESSAGES)),
+        ]
+        result = trim_tool_results(history)
+
+        trimmed_call = result[1]["tool_calls"][0]
+        args = json.loads(trimmed_call["function"]["arguments"])  # still valid JSON
+        assert args["path"] == "p.md"
+        assert args["edits"][0]["old_text"] == "x" * _TOOL_RESULT_SUMMARY_LEN + "[... truncated]"
+        assert trimmed_call["id"] == "c1"
+        assert trimmed_call["function"]["name"] == "edit_blog_post"
+        assert len(call["function"]["arguments"]) > 10_000  # input not mutated
+
+    def test_recent_tool_call_arguments_kept(self):
+        args = json.dumps({"content": "y" * 1000})
+        history = [
+            {"role": "user", "content": "go"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{"id": "c", "function": {"name": "t", "arguments": args}}],
+            },
+        ]
+        assert trim_tool_results(history, keep_recent=6)[1]["tool_calls"][0]["function"]["arguments"] == args
+
+    @pytest.mark.parametrize("arguments", ['{"path": "short"}', "not json " + "z" * 500])
+    def test_short_or_unparseable_arguments_left_alone(self, arguments):
+        call = {"id": "c", "function": {"name": "t", "arguments": arguments}}
+        history = [
+            {"role": "assistant", "content": None, "tool_calls": [call]},
+            *({"role": "user", "content": str(i)} for i in range(_KEEP_RECENT_MESSAGES)),
+        ]
+        assert trim_tool_results(history)[0]["tool_calls"][0] is call
 
     def test_recent_messages_preserved_intact(self):
         long_content = "x" * 1000
@@ -396,6 +444,10 @@ class TestApproxTokens:
     def test_missing_content_treated_as_empty(self):
         msgs = [{"role": "user"}, {"content": "x" * 40}]
         assert _approx_tokens(msgs) == 10  # 0 + 40/4
+
+    def test_tool_call_arguments_counted(self):
+        msgs = [{"content": None, "tool_calls": [{"function": {"name": "t", "arguments": "a" * 400}}]}]
+        assert _approx_tokens(msgs) == 101  # 400 argument bytes + "None" (4) = 404 / 4
 
     def test_multiple_messages_summed(self):
         msgs = [{"content": "a" * 80}, {"content": "b" * 120}]
