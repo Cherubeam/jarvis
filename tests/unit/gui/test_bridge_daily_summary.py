@@ -672,7 +672,7 @@ async def test_assistant_add_message_kwargs_are_exact(tmp_path: Path):
         "cost_usd": 0.001,
         "ttft_ms": 120,
         "total_latency_ms": 800,
-        "metadata": None,  # no Auto Router models to record
+        "metadata": {"usage_source": "estimated"},  # price-table cost, no billed record
         "agent_name": "JARVIS",
     }
 

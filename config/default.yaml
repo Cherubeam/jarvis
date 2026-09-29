@@ -11,7 +11,7 @@
 models:
   default: "openrouter/openai/gpt-6-luna"
   default_max_tokens: 16384
-  streaming: true  # Set to false for non-streaming mode (enables prompt caching via OpenRouter)
+  streaming: true  # false = exact usage per call, but answers appear at once. Streamed usage is estimated, then billed via the logger (packages/core/billed_usage.py)
   presets:
     fast: "openrouter/openai/gpt-6-luna"
     quality: "openrouter/anthropic/claude-opus-5.5"

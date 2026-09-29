@@ -222,6 +222,51 @@ class SessionMetrics:
         return result
 
 
+_BILLED_FIELDS = {
+    "prompt_tokens": "total_prompt_tokens",
+    "completion_tokens": "total_completion_tokens",
+    "total_tokens": "total_tokens",
+    "cache_read_tokens": "total_cache_read_tokens",
+    "cost_usd": "total_cost_usd",
+}
+
+
+def reconcile_estimated_messages(
+    messages: list[dict[str, Any]], api_key: str, deadline_s: float = 0.0
+) -> tuple[int, dict[str, float]]:
+    """Replace estimated usage on logged messages with OpenRouter's billed records, in place.
+
+    Streamed turns are logged with LiteLLM's local estimate plus their generation ids
+    (``metadata.usage_source == "estimated"``). Returns the number of messages updated
+    and the change to apply to each session total (keys as in ``SessionMetrics``).
+    """
+    from packages.core.billed_usage import fetch_billed_usage
+
+    updated = 0
+    deltas: dict[str, float] = dict.fromkeys(_BILLED_FIELDS.values(), 0)  # ints stay ints
+    for message in messages:
+        meta, usage = message.get("metadata") or {}, message.get("usage")
+        ids = meta.get("generation_ids")
+        if meta.get("usage_source") != "estimated" or not ids or not usage:
+            continue
+        billed = fetch_billed_usage(ids, api_key, deadline_s=deadline_s)
+        if billed is None:
+            continue
+        new = {
+            "prompt_tokens": billed.prompt_tokens,
+            "completion_tokens": billed.completion_tokens,
+            "total_tokens": billed.total_tokens,
+            "cache_read_tokens": billed.cache_read_tokens,
+            "cost_usd": billed.reported_cost or 0.0,
+        }
+        for field_name, total_name in _BILLED_FIELDS.items():
+            deltas[total_name] += new[field_name] - usage.get(field_name, 0)
+        usage.update(new)
+        meta["usage_source"] = "billed"
+        updated += 1
+    return updated, deltas
+
+
 class ConversationLogger:
     """Logs conversations to files for later review/learning."""
 
@@ -242,6 +287,8 @@ class ConversationLogger:
         self.metrics = SessionMetrics()
         self.conversation_id = conversation_id or generate_conversation_id()
         self._message_counter = 0
+        # OpenRouter key for swapping streamed-usage estimates for billed records; None disables it
+        self.billing_api_key: str | None = None
 
         # New schema fields
         self.model_config = model_config
@@ -425,6 +472,19 @@ class ConversationLogger:
 
         self.current_conversation.append(message)
 
+    def reconcile_billed_usage(self, deadline_s: float = 0.0) -> int:
+        """Swap estimated usage on this session's messages for OpenRouter's billed records.
+
+        Records not published yet stay estimated and are retried on the next call.
+        Returns the number of messages updated.
+        """
+        if not self.billing_api_key:
+            return 0
+        updated, deltas = reconcile_estimated_messages(self.current_conversation, self.billing_api_key, deadline_s)
+        for name, delta in deltas.items():
+            setattr(self.metrics, name, getattr(self.metrics, name) + delta)
+        return updated
+
     def save(self) -> None:
         """Save the current conversation to a file."""
         if not self.current_conversation:
@@ -484,12 +544,21 @@ class ConversationLogger:
             if m.average_ttft_ms > 0:
                 latency_str = f" | Avg TTFT: {m.average_ttft_ms:.0f}ms | Avg latency: {m.average_latency_ms:.0f}ms"
 
+            estimated = sum(
+                1 for msg in self.current_conversation if (msg.get("metadata") or {}).get("usage_source") == "estimated"
+            )
+            approx = "~" if estimated else ""
             print(
-                f"Session: {m.total_tokens:,} tokens "
+                f"Session: {approx}{m.total_tokens:,} tokens "
                 f"({m.total_prompt_tokens:,} prompt + {m.total_completion_tokens:,} completion) | "
-                f"Cost: {cost_str} | "
+                f"Cost: {approx}{cost_str} | "
                 f"{m.request_count} request(s){latency_str}"
             )
+            if estimated:
+                print(
+                    f"  ~ {estimated} turn(s) still estimated; OpenRouter publishes billed usage ~15 s after a turn. "
+                    "Fix later with: uv run python scripts/backfill_billed_usage.py"
+                )
 
             # Print context breakdown if available
             if self.context_metadata:

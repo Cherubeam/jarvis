@@ -840,6 +840,8 @@ def main(argv: list[str] | None = None) -> None:
     finally:
         if mcp_manager is not None:
             mcp_manager.shutdown()
+        # Streamed turns were logged as estimates; the records for all but the last are published by now.
+        logger.reconcile_billed_usage()
         logger.save()
         print("Goodbye!")
 
