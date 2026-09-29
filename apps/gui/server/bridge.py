@@ -131,6 +131,8 @@ async def run_turn(session: GuiSession, user_text: str, queue: Queue[dict[str, A
     # Save the conversation file every turn (long-lived server, no process-exit
     # finally to rely on).
     try:
+        # Billed records lag ~10-15 s: this turn stays an estimate until the next save.
+        await asyncio.to_thread(components.logger.reconcile_billed_usage)
         components.logger.save()
     except Exception:
         logger.exception("logger.save() failed")  # pragma: no mutate
@@ -432,6 +434,7 @@ async def _run_daily_summary_turn(session: GuiSession, user_text: str, queue: Qu
         )
 
     try:
+        await asyncio.to_thread(c.logger.reconcile_billed_usage)
         c.logger.save()
     except Exception:
         logger.exception("logger.save() failed")  # pragma: no mutate

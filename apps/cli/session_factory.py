@@ -560,6 +560,7 @@ def build_session(
         context_metadata=context_metadata,
         conversation_id=conversation_id,
     )
+    logger.billing_api_key = get_api_key("openrouter", api_keys)
     metrics_tracker = MetricsTracker()
 
     pricing = get_model_pricing(model_id)

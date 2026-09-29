@@ -61,9 +61,23 @@ class StreamResult:
 
 
 def served_metadata(result: Any) -> dict[str, Any] | None:
-    """Conversation-log metadata naming the models the Auto Router picked (record-keeping)."""
+    """Conversation-log metadata for record-keeping.
+
+    Names the models the Auto Router picked, and whether the logged usage is what the
+    provider billed or a local estimate (streamed calls; LiteLLM drops the real usage).
+    """
+    meta: dict[str, Any] = {}
     models = getattr(result, "served_models", None)
-    return {"served_models": list(models)} if isinstance(models, list) and models else None
+    if isinstance(models, list) and models:
+        meta["served_models"] = list(models)
+    usage = getattr(result, "usage", None)
+    if isinstance(usage, TokenUsage) and usage.total_tokens:
+        meta["usage_source"] = "billed" if usage.reported_cost is not None else "estimated"
+        if usage.reported_cost is None and usage.generation_ids:
+            # OpenRouter publishes the billing record ~10-15 s after a stream ends, so the
+            # logger swaps the estimate for it later (ConversationLogger.reconcile_billed_usage).
+            meta["generation_ids"] = list(usage.generation_ids)
+    return meta or None
 
 
 class StreamHandler:

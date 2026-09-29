@@ -5,7 +5,7 @@ Supports multiple providers via LiteLLM's routing conventions.
 
 import re
 from collections.abc import Generator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import litellm
@@ -69,6 +69,12 @@ def _extract_cache_tokens(usage: Any) -> tuple[int, int]:
     return cache_read, cache_write
 
 
+def _attach_generation_id(usage: "TokenUsage", generation_id: str | None, model: str) -> None:
+    """Record an OpenRouter stream's generation id so its billed usage can be looked up."""
+    if generation_id and model.startswith("openrouter/"):
+        usage.generation_ids = [generation_id]
+
+
 class InsufficientCreditsError(Exception):
     """Raised when OpenRouter returns 402 due to insufficient credits."""
 
@@ -119,9 +125,13 @@ class TokenUsage:
     total_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    # Exact billed cost reported by the provider (OpenRouter `usage.cost`, non-streaming
-    # only); None when not reported. Takes precedence over price-table estimates.
+    # Exact billed cost reported by the provider (OpenRouter `usage.cost` on non-streamed
+    # responses, or its billing record looked up after a stream); None when not reported.
+    # Takes precedence over price-table estimates, and marks the token counts as exact too.
     reported_cost: float | None = None
+    # OpenRouter generation ids of streamed calls, whose usage LiteLLM replaces with a local
+    # estimate. StreamHandler looks up the billed record for each at the end of a turn.
+    generation_ids: list[str] = field(default_factory=list)
 
     def __add__(self, other: "TokenUsage") -> "TokenUsage":
         costs = [c for c in (self.reported_cost, other.reported_cost) if c is not None]
@@ -132,6 +142,7 @@ class TokenUsage:
             cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
             cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
             reported_cost=sum(costs) if costs else None,
+            generation_ids=self.generation_ids + other.generation_ids,
         )
 
 
@@ -334,8 +345,10 @@ class LLMClient:
         tool_call_deltas: dict[int, dict[str, Any]] = {}  # index -> accumulated tool call
         usage = TokenUsage()
         is_tool_response = False
+        generation_id = None
 
         for chunk in response:
+            generation_id = generation_id or getattr(chunk, "id", None)
             # Extract usage from final chunk
             if hasattr(chunk, "usage") and chunk.usage:
                 cache_read, cache_write = _extract_cache_tokens(chunk.usage)
@@ -374,6 +387,8 @@ class LLMClient:
             # Accumulate content
             if delta.content:
                 content_chunks.append(delta.content)
+
+        _attach_generation_id(usage, generation_id, kwargs["model"])
 
         if is_tool_response:
             # Build tool call objects that match the complete() response format
@@ -430,8 +445,10 @@ class LLMClient:
 
         # Stream content chunks and extract usage from chunks
         usage = TokenUsage()
+        generation_id = None
 
         for chunk in response:
+            generation_id = generation_id or getattr(chunk, "id", None)
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
@@ -446,4 +463,5 @@ class LLMClient:
                     cache_write_tokens=cache_write,
                 )
 
+        _attach_generation_id(usage, generation_id, kwargs["model"])
         return usage, response

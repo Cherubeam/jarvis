@@ -86,7 +86,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files
 - **Conversation Memory**: All interactions are logged with timestamps, creating a searchable history
-- **Streaming Responses**: Real-time token-by-token output; `/stream` toggles non-streaming mode, which enables prompt caching ([details](docs/engineering/architecture.md#streaming-and-prompt-caching))
+- **Streaming Responses**: Real-time token-by-token output; `/stream` toggles non-streaming mode. Streamed usage is logged as an estimate, then replaced with OpenRouter's billed record ([details](docs/engineering/architecture.md#streaming-and-prompt-caching))
 - **History Summarization** (opt-in): Compresses old conversation turns in long sessions with the `fast` preset ([details](docs/engineering/architecture.md#history-summarization))
 - **Provider Agnostic**: Unified interface to multiple LLM providers through OpenRouter/LiteLLM
 - **Token & Cost Tracking**: Automatic tracking of usage and costs per request and session

@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Logged token counts and costs were estimates for streamed turns (2026-09-29)
+
+- **Streamed usage is now replaced with what OpenRouter billed.** In streaming
+  mode (the default), LiteLLM 1.82.1 drops OpenRouter's usage and substitutes a
+  local estimate with no cache fields and no cost; JARVIS then priced that
+  estimate. Compared with OpenRouter's billing record for the same request, the
+  logged cost was about 36% low (2,615 vs 3,931 prompt tokens, $0.0109 vs
+  $0.0169). The newest LiteLLM (1.103.0) doesn't fix it (BerriAI/litellm#36168
+  is open). Streamed calls now record their generation ids, and the logger swaps
+  the estimate for the billed record when it saves. The record appears about
+  10-15 s after a turn, so the CLI stats line shows the estimate marked `~`, the
+  GUI corrects a turn at its next save, and `scripts/backfill_billed_usage.py`
+  fixes turns still estimated at exit. Every logged assistant message says
+  `usage_source: billed` or `estimated` (record-keeping, EU AI Act Art. 12;
+  NIST AI RMF Measure).
+- **Older numbers are lower bounds.** Logs from before this change have no
+  generation ids and can't be corrected, including the March 2026 cost report.
+
 ### Changed — `edit_blog_post` edits passages, not the whole post (2026-09-29)
 
 - **The model sends only what changes.** `edit_blog_post` took the complete new

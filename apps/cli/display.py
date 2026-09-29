@@ -166,7 +166,10 @@ def print_usage_stats(result: StreamResult, routed_model: str | None = None) -> 
     ttft_str = f"TTFT: {result.metrics.ttft_ms:.0f}ms" if result.metrics.ttft_ms > 0 else "TTFT: N/A (tool call)"
     latency_str = f"Total: {result.metrics.total_latency_ms:.0f}ms"
     if result.cost_usd > 0:
-        line = f"[{result.usage.total_tokens:,} tokens | {format_cost(result.cost_usd)} | {ttft_str} | {latency_str}]"
+        # "~" marks LiteLLM's local estimate for streamed turns; the log gets the billed numbers later
+        approx = "" if result.usage.reported_cost is not None else "~"
+        tokens, cost = f"{approx}{result.usage.total_tokens:,} tokens", f"{approx}{format_cost(result.cost_usd)}"
+        line = f"[{tokens} | {cost} | {ttft_str} | {latency_str}]"
     else:
         line = f"[{result.usage.total_tokens:,} tokens | {ttft_str} | {latency_str}]"
     label = routed_model or (f"auto → {', '.join(result.served_models)}" if result.served_models else None)
