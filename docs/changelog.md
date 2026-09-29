@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `edit_blog_post` edits passages, not the whole post (2026-09-29)
+
+- **The model sends only what changes.** `edit_blog_post` took the complete new
+  file, so adding two LinkedIn drafts meant retyping a 24,600-character post:
+  24,637 characters of tool arguments (about 6,500 output tokens as logged;
+  streamed usage is a LiteLLM estimate, so the real figure is likely higher).
+  It now takes a list of `old_text` → `new_text` replacements (all-or-nothing;
+  each `old_text` must match once). A live run of the same LinkedIn edit sent
+  504 characters and 369 output tokens (non-streamed, exact usage).
+- **Untouched text stays byte-for-byte.** The full-file rewrite silently turned
+  three no-break spaces into normal spaces, which showed up as unexplained
+  "changed" lines in the diff. Text outside the replaced passages is no longer
+  retyped. Matching tolerates what models don't copy reliably (no-break and
+  zero-width characters, typographic quotes), so a retyped `old_text` still
+  finds its passage instead of costing a retry turn.
+- A stale read is reported before matching, so the agent re-reads instead of
+  hunting for a passage that moved.
+
 ### Fixed — Write confirmation hung on Enter (2026-09-29)
 
 - **"Apply this change?" accepts Enter again.** The CLI asked with plain

@@ -1491,7 +1491,7 @@ Four tools scoped to the blog directory:
 - `list_blog_posts`: List `.md` files (recursive)
 - `read_blog_post`: Read file content
 - `create_blog_post`: Create new post (optional template prepend)
-- `edit_blog_post`: Full-file replacement with diff + reasoning
+- `edit_blog_post`: Full-file replacement with diff + reasoning *(changed 2026-09-29: takes a list of `old_text` → `new_text` passage edits instead, so the model outputs only what changes; see changelog)*
 
 Write guards:
 1. `validate_path()` enforces `allowed_dirs` from config
