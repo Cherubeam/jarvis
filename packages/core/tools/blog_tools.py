@@ -6,8 +6,19 @@ blog posts in the Obsidian vault. Uses the closure pattern (like conversation_re
 to capture VaultConfig and ConfirmationHandler.
 """
 
+from typing import Any
+
 from packages.core.tools.base import ToolDefinition
-from packages.integrations.obsidian.vault import VaultConfig, list_notes, read_note, record_read, validate_write
+from packages.core.tools.text_edits import EditError, apply_edits
+from packages.integrations.obsidian.vault import (
+    STALE_READ_MESSAGE,
+    VaultConfig,
+    changed_since_read,
+    list_notes,
+    read_note,
+    record_read,
+    validate_write,
+)
 from packages.integrations.obsidian.writer import ConfirmationHandler, WriteResult, write_note
 
 
@@ -151,15 +162,27 @@ def make_blog_tools(
 
     # --- edit_blog_post ---
 
-    def _edit_blog_post(path: str, new_content: str, reasoning: str = "") -> str:
+    def _edit_blog_post(path: str, edits: list[dict[str, Any]], reasoning: str = "") -> str:
         full_path = (vault_config.vault_path / path).resolve()
 
         # Write guard: reject edits to paths without write access
         if not validate_write(full_path, vault_config):
             return "Error: Cannot edit this file (read-only)."
 
-        if not full_path.exists():
+        try:
+            original = read_note(full_path, vault_config)
+        except PermissionError as e:
+            return f"Error: {e}"
+        except FileNotFoundError:
             return f"Error: File not found: {path}. Use create_blog_post for new files."
+        # Before matching: a stale read explains a failed match better than "not found".
+        if changed_since_read(full_path, original, vault_config):
+            return STALE_READ_MESSAGE.format(path=path)
+
+        try:
+            new_content = apply_edits(original, edits)
+        except EditError as e:
+            return str(e)
 
         result: WriteResult = write_note(
             full_path,
@@ -173,10 +196,11 @@ def make_blog_tools(
     edit_tool = ToolDefinition(
         name="edit_blog_post",
         description=(  # pragma: no mutate
-            "Edit an existing blog post by replacing its full content. "  # pragma: no mutate
-            "Provide reasoning to explain the changes — it will be shown alongside the diff. "  # pragma: no mutate
-            "The user must confirm before the edit is applied. "  # pragma: no mutate
-            "Cannot edit template files (read-only)."  # pragma: no mutate
+            "Edit an existing blog post by replacing passages: each edit swaps old_text for new_text. "  # pragma: no mutate
+            "Send only the passages that change, never the whole post. "  # pragma: no mutate
+            "old_text must match the current file once; include enough surrounding text to be unique. "  # pragma: no mutate
+            "To insert, use a nearby passage as old_text and repeat it in new_text. "  # pragma: no mutate
+            "The user sees a diff and must confirm. Cannot edit template files (read-only)."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
@@ -185,16 +209,31 @@ def make_blog_tools(
                     "type": "string",
                     "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
                 },
-                "new_content": {
-                    "type": "string",
-                    "description": "The complete new content for the file.",  # pragma: no mutate
+                "edits": {
+                    "type": "array",
+                    "description": "Replacements, applied in order.",  # pragma: no mutate
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "old_text": {
+                                "type": "string",
+                                "description": "Exact text from the current file to replace.",  # pragma: no mutate
+                            },
+                            "new_text": {
+                                "type": "string",
+                                "description": "Replacement text (empty string deletes old_text).",  # pragma: no mutate
+                            },
+                        },
+                        "required": ["old_text", "new_text"],
+                    },
                 },
                 "reasoning": {
                     "type": "string",
                     "description": "Explanation of what changed and why (shown to user before diff).",  # pragma: no mutate
                 },
             },
-            "required": ["path", "new_content"],
+            "required": ["path", "edits"],
         },
         execute=_edit_blog_post,
     )

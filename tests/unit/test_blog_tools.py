@@ -135,11 +135,14 @@ class TestMakeBlogTools:
         params = tool.parameters
         assert params["type"] == "object"
         props = params["properties"]
-        assert set(props.keys()) == {"path", "new_content", "reasoning"}
+        assert set(props.keys()) == {"path", "edits", "reasoning"}
         assert props["path"]["type"] == "string"
-        assert props["new_content"]["type"] == "string"
+        assert props["edits"]["type"] == "array"
+        item = props["edits"]["items"]
+        assert set(item["properties"]) == {"old_text", "new_text"}
+        assert item["required"] == ["old_text", "new_text"]
         assert props["reasoning"]["type"] == "string"
-        assert params["required"] == ["path", "new_content"]
+        assert params["required"] == ["path", "edits"]
 
 
 # ==================== list_blog_posts ====================
@@ -339,12 +342,44 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         result = tool.execute(
             path="03 – Areas/02 – Substack/post.md",
-            new_content="# New Title\n\nNew content.",
+            edits=[
+                {"old_text": "# Old Title", "new_text": "# New Title"},
+                {"old_text": "Old content.", "new_text": "New content."},
+            ],
             reasoning="Improved the title",
         )
 
         assert "Successfully" in result
         assert post.read_text(encoding="utf-8") == "# New Title\n\nNew content."
+
+    def test_failed_edit_writes_nothing_and_shows_no_diff(self, tools):
+        tool_list, blog_dir, _, handler = tools
+        post = blog_dir / "post.md"
+        post.write_text("# Title\n\nBody.")
+
+        result = _get_tool(tool_list, "edit_blog_post").execute(
+            path="03 – Areas/02 – Substack/post.md",
+            edits=[{"old_text": "# Title", "new_text": "# New"}, {"old_text": "missing", "new_text": "x"}],
+        )
+
+        assert result.startswith("Error in edit 2: old_text not found")
+        assert post.read_text(encoding="utf-8") == "# Title\n\nBody."
+        assert handler.presented_diff is None
+
+    def test_diff_covers_only_the_edited_passage(self, tools):
+        tool_list, blog_dir, _, handler = tools
+        post = blog_dir / "post.md"
+        post.write_text("see this\u00a0[link](u)\n\n> (placeholder)\n\n*Last updated:\u00a0x*", encoding="utf-8")
+
+        _get_tool(tool_list, "edit_blog_post").execute(
+            path="03 – Areas/02 – Substack/post.md",
+            edits=[{"old_text": "> (placeholder)", "new_text": "> Post 1"}],
+        )
+
+        assert handler.presented_diff is not None
+        changed = [dl.content for dl in handler.presented_diff.diff_lines if dl.type != "unchanged"]
+        assert changed == ["> (placeholder)", "> Post 1"]
+        assert post.read_text(encoding="utf-8").count("\u00a0") == 2
 
     def test_reasoning_passed_through(self, blog_vault):
         """Reasoning argument must be forwarded to write_note, not dropped."""
@@ -366,7 +401,7 @@ class TestEditBlogPost:
         ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/reason-test.md",
-                new_content="new content",
+                edits=[{"old_text": "old", "new_text": "new"}],
                 reasoning="Improved clarity",
             )
             mock_write.assert_called_once()
@@ -394,7 +429,7 @@ class TestEditBlogPost:
         ) as mock_write:
             tool.execute(
                 path="03 – Areas/02 – Substack/no-reason.md",
-                new_content="new content",
+                edits=[{"old_text": "old", "new_text": "new"}],
             )
             mock_write.assert_called_once()
             # reasoning kwarg should be "" (empty string), not None or "XXXX"
@@ -405,7 +440,7 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         result = tool.execute(
             path="03 – Areas/02 – Substack/ghost.md",
-            new_content="content",
+            edits=[{"old_text": "a", "new_text": "b"}],
         )
         assert result == "Error: File not found: 03 – Areas/02 – Substack/ghost.md. Use create_blog_post for new files."
 
@@ -415,7 +450,7 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         result = tool.execute(
             path="99 – Meta/00 – Templates/(TEMPLATE) Blog Post.md",
-            new_content="hacked template",
+            edits=[{"old_text": "a", "new_text": "hacked"}],
         )
         assert result == "Error: Cannot edit this file (read-only)."
 
@@ -433,7 +468,7 @@ class TestEditBlogPost:
         tool = _get_tool(tool_list, "edit_blog_post")
         result = tool.execute(
             path="03 – Areas/02 – Substack/post.md",
-            new_content="modified",
+            edits=[{"old_text": "original", "new_text": "modified"}],
         )
 
         assert "cancelled" in result.lower()
@@ -455,7 +490,7 @@ class TestEditAfterConcurrentChange:
         post.write_text("draft v2 from Obsidian\n", encoding="utf-8")
 
         result = _get_tool(tool_list, "edit_blog_post").execute(
-            path="03 – Areas/02 – Substack/post.md", new_content="draft v1, polished\n"
+            path="03 – Areas/02 – Substack/post.md", edits=[{"old_text": "draft v1", "new_text": "draft v1, polished"}]
         )
 
         assert result.startswith("Error: 03 – Areas/02 – Substack/post.md changed on disk since you read it")
@@ -471,7 +506,8 @@ class TestEditAfterConcurrentChange:
         read.execute(path="03 – Areas/02 – Substack/post.md")
 
         result = _get_tool(tool_list, "edit_blog_post").execute(
-            path="03 – Areas/02 – Substack/post.md", new_content="draft v2, polished\n"
+            path="03 – Areas/02 – Substack/post.md",
+            edits=[{"old_text": "draft v2 from Obsidian", "new_text": "draft v2, polished"}],
         )
 
         assert result.startswith("Successfully wrote")
