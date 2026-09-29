@@ -1,5 +1,9 @@
 # Token Economics: Current Cost Status & Savings Analysis
 
+> **Caveat (2026-09-29):** figures below come from streamed turns, whose usage LiteLLM estimates
+> locally; a billed-vs-logged probe showed a ~36% cost undercount. Treat them as lower bounds.
+> See [token-economics-edit-tools.md](token-economics-edit-tools.md#5-measurement-caveat-logged-numbers-from-streamed-turns-are-estimates).
+
 > Analysis of actual cost data from 28 native sessions (Feb–Mar 2026).
 
 ---
