@@ -146,12 +146,14 @@ OpenRouter's generation record for that request (2026-09-29):
 ## Open items
 
 - `edit_note` (vault) and the developer agent's `edit_file` still use full-file replacement.
-- Usage reporting for streamed turns needs a fix before prompt-caching work resumes (see
-  [token-economics-next-steps.md](token-economics-next-steps.md)).
+- Streamed usage is replaced with OpenRouter's billed records since PR #73. The records appear
+  9.5–12.7 s after a stream, so the logger reconciles when it saves, and
+  `scripts/backfill_billed_usage.py` fixes the rest. Prompt caching work resumes on exact numbers
+  (see [token-economics-next-steps.md](token-economics-next-steps.md)).
 - History summarization does not run in delegated agent sessions.
 
 ---
 
-*Created: 2026-09-29. Sources: session log 2026-09-29_09-56-13, PR #70, PR #71, live probes
+*Created: 2026-09-29. Sources: session log 2026-09-29_09-56-13, PRs #70, #71 and #73, live probes
 2026-09-29.*
 *assist: [prose, research]. Fact sheet written by Claude; not voice-profile material (P7).*
