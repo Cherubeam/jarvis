@@ -209,6 +209,8 @@ class MessageBroker(Protocol):
 
 ## 5. Scenario C: Agent Communication & Workflows
 
+First candidate for Tier 1: the content pipeline (review → cover image → publish/promote), which needs steps that wait for the user. Trigger and rationale in [ADR-038](../product/decisions.md#adr-038-specialist-hand-back--jarvis-stays-the-only-router).
+
 ### Agent Autonomy: Progressive Tiers
 
 #### Tier 1: Strict DAG Workflows (Start Here)

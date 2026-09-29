@@ -305,7 +305,9 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 
 - [x] JARVIS delegation — sub-conversations with specialist agents (implemented in 0.10.0+Unreleased)
 - [x] Agent-to-agent handoff with conversation context (Unreleased)
-- [ ] LLM-based intent detection and auto-routing
+- [x] Specialist hand-back: `hand_back_to_jarvis` ends an interactive CLI session and JARVIS routes the request again, at most once ([ADR-038](decisions.md#adr-038-specialist-hand-back--jarvis-stays-the-only-router)) — 2026-09-29
+- [ ] Deterministic content pipeline (review → cover image → publish/promote) as a Scenario C Tier 1 workflow with steps that wait for the user. **Trigger**: the same sequence run by hand a third time, or a second deterministic process appears (ADR-038)
+- [ ] LLM-based intent detection and auto-routing — trigger-gated since ADR-038: build only if specialists keep missing out-of-scope requests despite hand-back
 - [ ] Error recovery and fallbacks
 
 ### Extended Tools *(legacy 5C)*
@@ -383,7 +385,7 @@ per ADR-033. Each landed on its own feature branch, merged via
 - [x] Outcomes scoring view (0.19.0)
 - [x] Settings editor with 16-section 2-pane layout, customized-dot overrides, model-validator error display, managed-header guard (0.20.0)
 - [x] Prompt-include editor (Includes tab) (0.20.0)
-- [ ] Interactive delegation sub-loops (deferred)
+- [ ] Interactive delegation sub-loops (deferred) — must include specialist hand-back (ADR-038)
 
 **Design principle**: Keep the core sync. Add async at the web boundary only. See [gui-architecture-notes.md](../research/gui-architecture-notes.md) for rationale and [docs/engineering/gui.md](../engineering/gui.md) for architecture + rebuild instructions.
 
@@ -422,7 +424,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 One core, many front ends, one safe scheduled job.
 
-- [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
+- [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. It absorbs the delegation transitions: delegate, specialist hand-back (ADR-038, CLI-only today) and the spawn-and-consume mode below. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
 - [ ] Session-per-conversation replacing the global GuiSession (`apps/gui/server/app.py`, `state.py`) *(M)*
 - [ ] `PolicyConfirmationHandler` with a whitelist + persisted approval inbox (headless-safe) *(M)*
 - [ ] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*

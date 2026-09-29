@@ -11,6 +11,7 @@ import pytest
 
 from apps.cli.main import (
     _assemble_agent_tools,
+    _handed_back_input,
     _handle_agent_command,
     _instantiate_agent,
     _make_agent_vault_tools,
@@ -28,6 +29,7 @@ from packages.core.settings import (
 )
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
+from packages.core.tools.delegate import HandBackState
 from packages.telemetry.metrics import ResponseMetrics
 
 
@@ -278,6 +280,25 @@ class TestHandleAgentCommand:
         assert result is True
         mock_session.assert_called_once()
 
+    def test_no_payload_session_gets_hand_back_state(self):
+        """An interactive /command session can hand back to JARVIS."""
+        registry = {
+            "tactics": AgentMeta(
+                name="tactics", description="desc", command="/tactics", meta_path=Path("/fake/meta.yaml")
+            )
+        }
+        state = HandBackState()
+
+        with (
+            patch("apps.cli.main._run_agent_session") as mock_session,
+            patch("apps.cli.session_factory.agent_from_meta", return_value=Mock()),
+        ):
+            _handle_agent_command(
+                "/tactics", "", Mock(), Mock(), Mock(), "model", registry, session=Mock(), hand_back=state
+            )
+
+        assert mock_session.call_args.kwargs["hand_back"] is state
+
     def test_no_payload_shows_usage_when_no_session(self, capsys):
         """No-payload + no session falls back to usage text."""
         registry = {
@@ -478,6 +499,105 @@ class TestRunAgentSessionHandoff:
         assert result[0]["content"] == "q1"
         assert result[1]["content"] == "a1"
         assert "[Context from JARVIS]" in result[2]["content"]
+
+
+def _agent_that_hands_back(reason: str, on_call: int = 1) -> Mock:
+    """A mock agent that calls the registered hand-back tool on its ``on_call``-th run."""
+    agent = Mock()
+    calls = {"n": 0}
+
+    def _run(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == on_call:
+            tool = agent.tool_registry.register.call_args[0][0]
+            tool.execute(reason=reason)
+            return _make_stream_result("")
+        return _make_stream_result("answer")
+
+    agent.run.side_effect = _run
+    return agent
+
+
+@pytest.mark.unit
+class TestRunAgentSessionHandBack:
+    """A specialist hands a request back to JARVIS instead of improvising it."""
+
+    @patch("apps.cli.main.prompt_user")
+    def test_no_state_registers_no_tool(self, mock_prompt):
+        mock_prompt.side_effect = ["/exit"]
+        agent = Mock()
+
+        _run_agent_session(agent, "content_reviewer", Mock(), Mock(), Mock())
+
+        agent.tool_registry.register.assert_not_called()
+
+    @patch("apps.cli.main.finish_live_stream")
+    @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
+    @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
+    @patch("apps.cli.main.prompt_user")
+    def test_hand_back_ends_session_with_user_message(self, mock_prompt, mock_chunk, mock_start, mock_finish, capsys):
+        mock_prompt.side_effect = ["review it", "now make a cover image", "never read"]
+        agent = _agent_that_hands_back("User wants a cover image", on_call=2)
+        state = HandBackState()
+
+        _run_agent_session(agent, "content_reviewer", Mock(), Mock(), Mock(), hand_back=state)
+
+        assert mock_prompt.call_count == 2
+        assert state.agent_name == "content_reviewer"
+        assert state.reason == "User wants a cover image"
+        assert state.user_message == "now make a cover image"
+        assert "content_reviewer handed back to JARVIS: User wants a cover image" in capsys.readouterr().out
+
+    @patch("apps.cli.main.finish_live_stream")
+    @patch("apps.cli.main.start_live_stream", return_value=(Mock(), Mock()))
+    @patch("apps.cli.main.make_live_chunk_handler", return_value=Mock())
+    @patch("apps.cli.main.prompt_user")
+    def test_hand_back_of_delegated_goal_never_prompts(self, mock_prompt, mock_chunk, mock_start, mock_finish):
+        agent = _agent_that_hands_back("Not a review task")
+        state = HandBackState()
+
+        _run_agent_session(
+            agent, "content_reviewer", Mock(), Mock(), Mock(), initial_message="make an image", hand_back=state
+        )
+
+        mock_prompt.assert_not_called()
+        assert state.reason == "Not a review task"
+        assert state.user_message is None
+
+
+@pytest.mark.unit
+class TestHandedBackInput:
+    def test_none_without_hand_back(self):
+        assert _handed_back_input(HandBackState(), "delegated", False) is None
+
+    def test_forwards_user_message_verbatim_with_reason(self):
+        state = HandBackState(agent_name="content_reviewer", reason="Wants an image", user_message="make a cover")
+
+        result = _handed_back_input(state, "review my post", False)
+
+        assert result == "[content_reviewer handed this back to you: Wants an image]\n\nmake a cover"
+
+    def test_falls_back_to_delegated_input(self):
+        state = HandBackState(agent_name="writer", reason="Not writing")
+
+        result = _handed_back_input(state, "publish my post", False)
+
+        assert result is not None
+        assert result.endswith("publish my post")
+
+    def test_does_not_route_a_handed_back_request_twice(self, capsys):
+        state = HandBackState(agent_name="writer", reason="Not writing")
+
+        assert _handed_back_input(state, "[x handed this back to you: y]\n\nq", True) is None
+        assert "Not routing it again" in capsys.readouterr().out
+
+    def test_new_user_message_is_routed_even_after_a_hand_back(self):
+        state = HandBackState(agent_name="writer", reason="Not writing", user_message="something new")
+
+        result = _handed_back_input(state, "[x handed this back to you: y]\n\nq", True)
+
+        assert result is not None
+        assert result.endswith("something new")
 
 
 @pytest.mark.unit

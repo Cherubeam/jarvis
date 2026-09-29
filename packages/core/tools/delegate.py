@@ -75,3 +75,46 @@ def make_delegate_tool(
         execute=_delegate,
         terminal=True,
     )
+
+
+@dataclass
+class HandBackState:
+    """Mutable state set when a specialist hands the conversation back to JARVIS."""
+
+    agent_name: str | None = None
+    reason: str | None = None
+    # The user message the specialist handed back; None when it handed back JARVIS's delegated goal
+    user_message: str | None = None
+
+
+def make_hand_back_tool(state: HandBackState) -> ToolDefinition:
+    """Create the tool a specialist in an interactive session uses to return a request to JARVIS.
+
+    JARVIS stays the only router: the specialist says a request isn't its job, the CLI ends
+    the session, and JARVIS routes the user's message again.
+    """
+
+    def _hand_back(reason: str) -> str:
+        state.reason = reason
+        return "Handing back to JARVIS."
+
+    return ToolDefinition(
+        name="hand_back_to_jarvis",
+        description=(
+            "Hand the conversation back to JARVIS when the user asks for something outside your job, "  # pragma: no mutate
+            "e.g. a different kind of deliverable another specialist handles. Don't improvise it from "  # pragma: no mutate
+            "notes or search results. Call it as your only tool call; JARVIS routes the request."  # pragma: no mutate
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "description": "One sentence: what the user now wants and why it isn't your job.",  # pragma: no mutate
+                },
+            },
+            "required": ["reason"],
+        },
+        execute=_hand_back,
+        terminal=True,
+    )

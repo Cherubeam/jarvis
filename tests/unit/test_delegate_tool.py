@@ -5,7 +5,7 @@ Unit tests for the delegation tool and DelegationState.
 import pytest
 
 from packages.core.tools.base import ToolDefinition
-from packages.core.tools.delegate import DelegationState, make_delegate_tool
+from packages.core.tools.delegate import DelegationState, HandBackState, make_delegate_tool, make_hand_back_tool
 
 AVAILABLE_AGENTS = [
     {"name": "writer", "description": "Writing and content creation"},
@@ -106,3 +106,28 @@ class TestDelegateTool:
 
         assert "context" in tool.parameters["properties"]
         assert tool.parameters["properties"]["context"]["type"] == "string"
+
+
+@pytest.mark.unit
+class TestHandBackTool:
+    def test_state_defaults_to_none(self):
+        state = HandBackState()
+        assert state.agent_name is None
+        assert state.reason is None
+        assert state.user_message is None
+
+    def test_tool_is_terminal(self):
+        tool = make_hand_back_tool(HandBackState())
+
+        assert tool.name == "hand_back_to_jarvis"
+        assert tool.terminal is True
+        assert tool.parameters["required"] == ["reason"]
+
+    def test_execute_records_reason(self):
+        state = HandBackState()
+        tool = make_hand_back_tool(state)
+
+        result = tool.execute(reason="User wants a cover image")
+
+        assert state.reason == "User wants a cover image"
+        assert "JARVIS" in result

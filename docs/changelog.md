@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only message content, so large tool calls never pushed a session toward
   summarization.
 
+### Added — Specialists hand out-of-scope requests back to JARVIS (2026-09-29)
+
+- **`hand_back_to_jarvis`.** A `content_reviewer` session asked for a cover
+  image and publishing material answered both itself, improvising from a spec
+  it found in the vault, instead of reaching `substack_image_creator` and
+  `substack_publisher`. Specialist sessions in the CLI were sticky until `/back`,
+  and a specialist had no way to decline. Interactive specialist sessions
+  (delegated or `/command`) now get this terminal tool: the session ends and
+  JARVIS routes the user's message, word for word with the specialist's reason,
+  as its next turn. A request is routed again at most once, so two agents can't
+  bounce it. JARVIS stays the only router, and every hand-back is logged with
+  its reason (record-keeping, EU AI Act Art. 12; narrow specialist agency,
+  OWASP LLM06). CLI only; see ADR-038, which also records deterministic
+  pipelines (review → image → publish) as the next step for repeatable processes.
+
 ### Fixed — Write confirmation hung on Enter (2026-09-29)
 
 - **"Apply this change?" accepts Enter again.** The CLI asked with plain
