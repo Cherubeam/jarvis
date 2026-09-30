@@ -22,9 +22,10 @@ Dataclass storing token usage statistics.
 - `total_tokens: int` - Sum of prompt + completion
 - `cache_read_tokens: int` - Tokens served from cache (default 0)
 - `cache_write_tokens: int` - Tokens written to cache (default 0)
-- `reported_cost: float | None` - Exact billed cost reported by the provider (OpenRouter `usage.cost`, non-streaming only); `StreamHandler` prefers it over the price table. `None` when not reported
+- `reported_cost: float | None` - Exact billed cost reported by the provider: OpenRouter `usage.cost` on non-streamed responses, or its billing record looked up after a stream. `StreamHandler` prefers it over the price table. Non-`None` also means the token counts are exact; `None` means they are LiteLLM's local estimate (streamed calls)
+- `generation_ids: list[str]` - OpenRouter generation ids of streamed calls (default empty); `ConversationLogger.reconcile_billed_usage()` looks up their billing records
 
-`TokenUsage + TokenUsage` sums all fields; `reported_cost` is summed over the parts that carry one and stays `None` only if none did.
+`TokenUsage + TokenUsage` sums all fields and concatenates `generation_ids`; `reported_cost` is summed over the parts that carry one and stays `None` only if none did.
 
 Helpers: `reported_cost(usage)` and `served_model(response)` read those values from a LiteLLM response defensively (non-numeric / non-string → `None`).
 
@@ -180,7 +181,7 @@ Add message to current session.
 **Parameters:**
 - `role` - "user" or "assistant"
 - `content` - Message content
-- `**metadata` - Optional: `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `agent_name` (str, tags assistant messages with the originating agent)
+- `**metadata` - Optional: `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `agent_name` (str, tags assistant messages with the originating agent), `metadata` (dict; `served_metadata(result)` fills `usage_source` (`billed` | `estimated`), `generation_ids` for estimated turns, and Auto Router `served_models`)
 
 #### `get_messages_for_api() -> list[dict]`
 
@@ -188,6 +189,10 @@ Get message history formatted for LLM API.
 
 **Returns:**
 - `list[dict]` - Messages with "role" and "content"
+
+#### `reconcile_billed_usage(deadline_s: float = 0.0) -> int`
+
+Replace estimated usage on logged messages with OpenRouter's billed records (`packages/core/billed_usage.py`) and correct the session totals. Uses `billing_api_key` (set by the session factory; `None` disables it). Records appear ~10-15 s after a turn; unpublished ones stay estimated and are retried on the next call. Returns the number of messages updated. `scripts/backfill_billed_usage.py` does the same for saved logs.
 
 #### `save() -> None`
 
