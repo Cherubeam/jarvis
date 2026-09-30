@@ -2323,7 +2323,7 @@ Adopt a two-tier scheme (ADRs remain the third, decision, tier):
 ## ADR-034: Context Hub Positioning — Rent Coding Harnesses, Own the Context
 
 **Date**: 2026-08-19
-**Status**: ✅ Accepted — §1 amended by [ADR-039](#adr-039-retire-the-developer-agent) (2026-09-30): the DEV-01 fast path is gone, coding goes to Claude Code directly
+**Status**: ✅ Accepted — §1 amended by [ADR-039](#adr-039-retire-the-developer-agent) (2026-09-30): the DEV-01 fast path is gone, coding goes to Claude Code directly; scope amended by [ADR-040](#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn) (2026-09-30): the commodity argument covers coding harnesses, not the assistant itself
 
 ### Context
 
@@ -2790,3 +2790,91 @@ not by restoring DEV-01 — only if either happens:
 - ADR-028 (Developer Agent — superseded by this ADR)
 - ADR-034 (Context Hub Positioning — §1 amended by this ADR)
 - ADR-033 (Initiative & Milestone Naming — `DEV` stays allocated)
+
+---
+
+## ADR-040: What JARVIS Is For — an Owned Daily Assistant and a Place to Learn
+
+**Date**: 2026-09-30
+**Status**: Accepted — amends ADR-034 (scope of "don't build what vendors ship")
+
+### Context
+
+The 2026-09-30 dossier revision (`docs/research/jarvis-deep-research-dossier.html`)
+asked what JARVIS itself is still for, now that vendor products ship much of
+what the AON roadmap planned:
+
+- Claude merged Cowork into its main app (2026-09-16), with memory, scheduled
+  tasks and phone access. Claude Code has Channels (Telegram) and Remote Control.
+- OpenAI launched **Dots** (DevDay, 2026-09-29): always-on personal agents with
+  their own cloud computer, connectors to more than 4,000 apps, reachable from
+  ChatGPT, Slack and Teams. At launch the Pro tier excludes the EEA,
+  Switzerland and the UK.
+- JARVIS's own use dropped: 15 native sessions in February 2026, 20 in March,
+  2 in April, none from May to August, 4 in September. (The other 162 files in
+  `data/conversations/` are imported ChatGPT and Claude conversations; the most
+  recent imported conversation dates from April 2026.)
+
+ADR-034 read "harnesses are commodities" as a reason not to build what vendors
+already provide. Applied to the whole assistant, that reading would shrink
+JARVIS to a context export for other tools. The pre-mortem in the dossier
+named that as a likely end state.
+
+Marco's answer (2026-09-30): JARVIS exists so he can **try new things and
+learn**, **show his skills and experience**, **own** his assistant and **use it
+every day**. It should be the **central place for all his conversations**,
+imported from the AI tools he uses, and the place where he reaches everything
+else (Obsidian, Things 3 and so on). Over time it should **grow into his
+personal assistant**; Dots is the kind of end state he finds interesting. He
+knows he can't compete with those products, and that isn't the point.
+
+### Decision
+
+1. **Purpose.** JARVIS is Marco's owned, local-first personal assistant and his
+   learning and portfolio platform. Its value is measured by learning, by what
+   it lets him show and write about, and by daily use, not by whether it beats
+   commercial assistants.
+2. **Amend ADR-034.** "Harnesses are commodities" stays true for *coding*
+   harnesses (ADR-039 retired the developer agent on that basis). It no longer
+   rules out building assistant features that vendors also ship (scheduled
+   jobs, phone access, always-on agents) when the build teaches something or
+   gets JARVIS used daily. P1 still applies: each such feature names its
+   trigger, and a learning goal counts as a trigger only when it names what is
+   being learned and the milestone ships a write-up (P6).
+3. **The conversation archive is core.** The existing importers (ChatGPT,
+   Claude conversations, Claude memories and projects — CTX, see
+   `docs/engineering/architecture.md`) are part of JARVIS's purpose, not a side
+   feature. Extending them means keeping the archive current, adding sources,
+   and making it reachable from other tools through Cortex (HUB).
+4. **North star.** A Dots-like assistant: always on, able to act across
+   Marco's own apps, reachable from the phone. It is built local-first and in
+   small steps, each shippable on its own.
+5. **Usage is a success measure.** Native JARVIS sessions per week are counted
+   and reviewed. Low use steers priorities toward work that brings Marco back
+   to JARVIS; it is not a reason to shrink the scope.
+
+### Alternatives Considered
+
+- **Shrink JARVIS to a context hub** that only exports vault, context and
+  conversations to vendor tools. Least maintenance, but it drops the learning,
+  ownership and portfolio value this project exists for.
+- **Compete with Dots feature by feature.** Not possible for one person and
+  not the goal.
+- **Owned assistant and learning platform, built in small steps (chosen).**
+
+### Consequences
+
+- The roadmap gets a **Current focus** order: finish AON-01, write the owed
+  P6 write-up, then daily-use work first (refresh and extend the conversation
+  archive, conversation recall via Cortex), then caching, then AON-02.
+- AON-02 items that vendors also ship (Telegram, scheduled jobs) are no longer
+  gated only on "a vendor can't do it"; learning and daily use count as
+  reasons, with the P1/P6 conditions above.
+- `docs/product/vision.md` states this purpose and the north star.
+- Non-goals keep "not a coding harness" (ADR-034, ADR-039) and add "not a
+  competitor to commercial assistants".
+
+### Related ADRs
+- ADR-034 (Context Hub Positioning — amended: the commodity argument applies to coding harnesses, not to the assistant itself)
+- ADR-039 (Retire the Developer Agent)
+- ADR-029 (Cortex — the reach for the conversation archive)

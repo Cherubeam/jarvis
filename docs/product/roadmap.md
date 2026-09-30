@@ -34,6 +34,29 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
+## Current focus (2026-09-30)
+
+Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
+[ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
+Each step names its milestone below; this list only sets the order.
+
+1. **Finish AON-01** — fix GUI approvals, count native sessions, check the
+   OpenRouter data policy, TOK caching baseline with a monthly spend report.
+2. **Write-up** (P6) — AON-01 and the developer-agent retirement, before the
+   next milestone starts.
+3. **Daily use: the conversation archive** — refresh the ChatGPT and Claude
+   imports (the newest imported conversation is from April 2026), then
+   conversation recall via Cortex (HUB-02), then more sources.
+4. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
+5. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
+   daily use count as reasons (ADR-040), with a named learning goal and a
+   write-up.
+
+Native JARVIS sessions per month (2026): Feb 15 · Mar 20 · Apr 2 · May–Aug 0 ·
+Sep 4. Imported conversations are not counted.
+
+---
+
 ## FND — Foundation & Metrics
 
 *Legacy: Phase 1*
@@ -135,6 +158,10 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 - [x] Claude conversation import with date filters
 - [x] Claude context import (memories, projects)
 - [x] Shared importer utilities (`ImportSummary`, `make_conv_id`)
+- [ ] Refresh the archive: re-export and re-import ChatGPT and Claude (newest imported conversation: April 2026) *(S)*
+- [ ] Check that imported conversations are listed and searchable in the GUI history *(S)*
+- [ ] More sources, one at a time, each with its own trigger: Claude Code sessions, Codex, Gemini *(M each)*
+- [ ] Make re-importing routine (a documented monthly step or a scheduled job under AON-02) *(S)*
 
 #### Obsidian Integration
 
@@ -413,10 +440,13 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] **Vault-write oversight fixes** (found during the 2026-09 model refresh, not originally planned): the GUI approval card now shows the real diff and path (it showed nothing); changed links are listed above every vault diff; writes and previews are refused when the note changed on disk since the agent read it (Art. 14(4)(c), OWASP LLM05/LLM06) *(S)* ✅ 2026-09-25
 - [x] ~~Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py`~~ — closed by deletion: the developer agent and its pytest runner were retired ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)) ✅ 2026-09-30
 - [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
-- [ ] Fix the confirmation deadlock: add a timeout to `apps/gui/server/confirmation.py`, move approval handling out of the blocked receive loop in `chat_ws.py` *(M)*
+- [ ] Fix the confirmation deadlock: run the turn as a task so `chat_ws.py` can receive approvals mid-turn, add a timeout to `apps/gui/server/confirmation.py` that defaults to reject, and add an end-to-end WebSocket test with two writes in one turn. A timeout alone would turn every GUI approval into a rejection; reproduce the hang first (read from the code, not yet seen live). Ship together with the per-approval reset below *(M)*
 - [ ] Reset `WebConfirmationHandler._event`/`_pending_id` per approval, not per turn — `bridge.py` creates one handler per turn, so a second vault write in the same turn silently replays the first decision without prompting. Found during AON-01; current behaviour is pinned in `test_confirmation.py` *(S)*
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [ ] Atomic conversation saves in `packages/core/memory.py` (write-temp-then-rename) *(S)*
+- [ ] Count native sessions per week and per front end from `data/conversations/`, excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
+- [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
+- [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline *(S)*
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*
 
@@ -504,7 +534,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 Extend the server beyond search to JARVIS's curated context.
 
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
-- [ ] Conversation-recall search (scoped, opt-in — most private data class)
+- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
 ### Source policy — index, don't proxy (2026-08-20)

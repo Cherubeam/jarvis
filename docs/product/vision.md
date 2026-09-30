@@ -20,6 +20,26 @@ Jarvis is a provider-agnostic personal AI assistant that puts users in control o
 - Stores all conversations locally with full ownership
 - Enables true multi-provider comparison and switching
 
+## Why Jarvis Exists
+
+Jarvis is Marco's owned, local-first personal assistant and his learning and
+portfolio platform ([ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
+It exists so he can:
+
+- **Try new things and learn** by building them himself
+- **Show his skills and experience**: every milestone gets a write-up
+- **Own his assistant** and **use it every day**
+- Keep **all his AI conversations in one place**, imported from ChatGPT, Claude
+  and the other tools he uses, next to his vault, tasks and other sources
+  (Obsidian, Things 3, Readwise)
+
+Jarvis does not try to beat commercial assistants. It is measured by what it
+teaches, what it lets him show, and how often he uses it.
+
+**North star:** a personal assistant in the spirit of OpenAI's Dots (2026-09):
+always on, able to act across his own apps, reachable from the phone. Jarvis
+gets there local-first and in small steps that each ship on their own.
+
 ## Long-term Vision
 
 ### Year 1: Personal Assistant Foundation
@@ -85,6 +105,11 @@ This project teaches AI engineering through real implementation. Documentation e
 - Zero vendor lock-in (validated through provider switching)
 - Clear, documented codebase understandable by others
 
+### Ongoing (from 2026-09)
+- Jarvis is used daily: native sessions per week are counted and reviewed
+- The conversation archive is current (imports no more than a month old)
+- Each shipped milestone has a public write-up
+
 ### Medium-term (1 year)
 - Conversation search and retrieval working
 - 5+ different models benchmarked on personal use cases
@@ -129,7 +154,7 @@ These are **complements, not competitors** ([ADR-034](decisions.md#adr-034-conte
 
 > **Harnesses are commodities; the context is the moat.**
 
-Jarvis is the **personal context, memory, and workflow hub**: the vault, context files, conversation history, typed memory, voice profile, personal integrations, and provider independence. Coding execution is *delegated* to a harness (see the rescoped `DEV` initiative); the context itself is *exported* to every tool via MCP (initiative `HUB`), so nothing has to be copy-pasted between Jarvis, Claude Code, and friends.
+Jarvis is the **personal context, memory, and workflow hub**: the vault, context files, conversation history, typed memory, voice profile, personal integrations, and provider independence. Coding execution is *delegated* to a harness (the developer agent was retired, [ADR-039](decisions.md#adr-039-retire-the-developer-agent)); the commodity argument applies to coding harnesses, not to the assistant itself ([ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)). The context itself is *exported* to every tool via MCP (initiative `HUB`), so nothing has to be copy-pasted between Jarvis, Claude Code, and friends.
 
 ## Non-Goals
 
@@ -137,7 +162,8 @@ What Jarvis is **not** trying to be:
 
 - ❌ A hosted service (local-first always)
 - ❌ A team collaboration tool (personal use only)
-- ❌ A general-purpose coding agent harness (delegate to Claude Code & co. — ADR-034)
+- ❌ A general-purpose coding agent harness (delegate to Claude Code & co. — ADR-034, ADR-039)
+- ❌ A competitor to commercial assistants such as ChatGPT, Claude or Dots (ADR-040): features they also ship are built for learning and daily use, not to win on scale
 - ❌ A framework for others to build on (learning project first)
 - ❌ Production-ready for non-technical users (technical audience)
 
@@ -145,4 +171,4 @@ These may change in the future, but clarity on non-goals prevents scope creep.
 
 ---
 
-*Last updated: 2026-08-19*
+*Last updated: 2026-09-30*
