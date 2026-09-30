@@ -1,25 +1,32 @@
 <!doctype html>
-<!-- JARVIS Deep-Research Dossier — prepared 2026-07-04, revised 2026-08-19 (ADR-034 strategic positioning). -->
+<!-- JARVIS Deep-Research Dossier — prepared 2026-07-04, revised 2026-08-19 (ADR-034), revised 2026-09-30 (September delta, developer agent, decision models). -->
 <!-- Canonical interactive copy: https://claude.ai/code/artifact/116c007f-b12a-4504-8d34-8868d2c27197 (kept in sync manually). -->
+<!-- The 2026-08-19 version (loop engineering, hosting comparison, original phased roadmap) is preserved in git at commit 1358f5a (tag v0.27.0). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JARVIS Deep-Research Dossier — Audit, Loop Engineering &amp; the Path to Always-On</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JARVIS Deep-Research Dossier</title>
 </head>
 <body>
 <style>
+  /* Layout: editorial report — masthead, sticky contents rail on wide screens, one reading column. */
   :root {
     --ground: #E9ECEF;
     --paper: #FFFFFF;
     --ink: #141C24;
+    --body-ink: #2A353E;
     --muted: #5B6875;
-    --faint: #8794A0;
+    --faint: #7A8792;
     --hair: #D4DBE1;
     --hair-soft: #E4E9ED;
+    --code-bg: #EEF2F4;
+    --row-alt: #F7F9FA;
+    --row-head: #F1F4F6;
     --accent: #0F6E7E;
     --accent-deep: #0A505C;
     --accent-wash: #E4F0F1;
+    --accent-line: #BFDCDD;
     --crit: #B02A32;
     --high: #BC5A16;
     --med: #927200;
@@ -28,13 +35,40 @@
     --high-wash: #F8ECE1;
     --med-wash: #F5F0DC;
     --low-wash: #E6F1EB;
+    --banner: #141C24;
+    --banner-ink: #C7D0D7;
+    --banner-strong: #FFFFFF;
+    --banner-key: #6FB7C0;
+    --banner-code-bg: #24303A;
+    --banner-code: #8FCFD6;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", ui-monospace, monospace;
-    --measure: 42rem;
+    --measure: 44rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F151A; --paper: #172027; --ink: #E4EAEE; --body-ink: #C9D3DA; --muted: #98A6B1; --faint: #7D8B96;
+      --hair: #2B3842; --hair-soft: #22303A; --code-bg: #1E2A33; --row-alt: #1A242C; --row-head: #1C2730;
+      --accent: #4FB3C2; --accent-deep: #7CCAD5; --accent-wash: #16313A; --accent-line: #24505A;
+      --crit: #F07D82; --high: #F0A15F; --med: #D8B84A; --low: #7FC49E;
+      --crit-wash: #3A1D20; --high-wash: #3A2716; --med-wash: #332C12; --low-wash: #1A3226;
+      --banner: #0A1014; --banner-ink: #B8C4CC; --banner-strong: #FFFFFF; --banner-key: #6FB7C0; --banner-code-bg: #1C2A33; --banner-code: #8FCFD6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F151A; --paper: #172027; --ink: #E4EAEE; --body-ink: #C9D3DA; --muted: #98A6B1; --faint: #7D8B96;
+    --hair: #2B3842; --hair-soft: #22303A; --code-bg: #1E2A33; --row-alt: #1A242C; --row-head: #1C2730;
+    --accent: #4FB3C2; --accent-deep: #7CCAD5; --accent-wash: #16313A; --accent-line: #24505A;
+    --crit: #F07D82; --high: #F0A15F; --med: #D8B84A; --low: #7FC49E;
+    --crit-wash: #3A1D20; --high-wash: #3A2716; --med-wash: #332C12; --low-wash: #1A3226;
+    --banner: #0A1014; --banner-ink: #B8C4CC; --banner-strong: #FFFFFF; --banner-key: #6FB7C0; --banner-code-bg: #1C2A33; --banner-code: #8FCFD6;
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); }
 
   .doc {
     background: var(--ground);
@@ -43,540 +77,180 @@
     font-size: 1.0625rem;
     line-height: 1.62;
     -webkit-font-smoothing: antialiased;
-    margin: 0;
-    padding: 0 1.5rem 6rem;
+    padding-inline: clamp(1rem, 4vw, 1.5rem);
+    padding-block: 0 6rem;
   }
-
-  .shell {
-    max-width: 64rem;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
+  .shell { max-width: 66rem; margin: 0 auto; }
 
   /* ---------- Masthead ---------- */
-  .masthead {
-    padding: 4.5rem 0 2.25rem;
-    border-bottom: 2px solid var(--ink);
-    margin-bottom: 2.75rem;
-  }
+  .masthead { padding-block: 4rem 2.25rem; border-bottom: 2px solid var(--ink); margin-bottom: 2.75rem; }
   .eyebrow {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--accent-deep);
-    margin: 0 0 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent-deep); margin: 0 0 1.25rem; display: flex; align-items: center; gap: 0.7rem;
   }
-  .eyebrow::before {
-    content: "";
-    width: 1.6rem;
-    height: 2px;
-    background: var(--accent);
-  }
+  .eyebrow::before { content: ""; width: 1.6rem; height: 2px; background: var(--accent); }
   .masthead h1 {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: clamp(2rem, 5vw, 3rem);
-    line-height: 1.08;
-    letter-spacing: -0.01em;
-    text-wrap: balance;
-    margin: 0 0 1rem;
-    max-width: 20ch;
+    font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.08;
+    letter-spacing: -0.01em; text-wrap: balance; margin: 0 0 1rem; max-width: 22ch;
   }
-  .masthead .sub {
-    color: var(--muted);
-    font-size: 1.08rem;
-    max-width: 46rem;
-    margin: 0 0 2rem;
-  }
-  .byline {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    color: var(--faint);
-    letter-spacing: 0.02em;
-    display: flex;
-    gap: 1.4rem;
-    flex-wrap: wrap;
-  }
+  .masthead .sub { color: var(--muted); font-size: 1.08rem; max-width: 46rem; margin: 0 0 2rem; }
+  .byline { font-family: var(--mono); font-size: 0.78rem; color: var(--faint); letter-spacing: 0.02em; display: flex; gap: 0.5rem 1.4rem; flex-wrap: wrap; }
   .byline b { color: var(--ink); font-weight: 600; }
 
-  /* ---------- Stats strip ---------- */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1px;
-    background: var(--hair);
-    border: 1px solid var(--hair);
-    margin: 2.4rem 0 0;
-  }
-  .stat {
-    background: var(--paper);
-    padding: 1rem 1.1rem 1.05rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  .stat .n {
-    font-family: var(--serif);
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
-  }
-  .stat .l {
-    font-family: var(--mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); margin: 2.4rem 0 0; }
+  .stat { background: var(--paper); padding: 1rem 1.1rem 1.05rem; display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat .n { font-family: var(--serif); font-size: 1.75rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stat .l { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 
   /* ---------- Layout with rail ---------- */
-  .body {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr); }
   .rail { display: none; }
-
   @media (min-width: 60rem) {
-    .body {
-      grid-template-columns: 12.5rem minmax(0, 1fr);
-      gap: 3.5rem;
-      align-items: start;
-    }
-    .rail {
-      display: block;
-      position: sticky;
-      top: 2rem;
-      font-family: var(--mono);
-      font-size: 0.76rem;
-    }
+    .body { grid-template-columns: 12.5rem minmax(0, 1fr); gap: 3.5rem; align-items: start; }
+    .rail { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 2rem); font-family: var(--mono); font-size: 0.76rem; }
     .rail ol { list-style: none; margin: 0; padding: 0; }
     .rail li { margin: 0 0 0.15rem; }
-    .rail a {
-      display: flex;
-      gap: 0.6rem;
-      padding: 0.34rem 0.5rem;
-      color: var(--muted);
-      text-decoration: none;
-      border-left: 2px solid var(--hair);
-      transition: color 0.15s, border-color 0.15s;
-    }
+    .rail a { display: flex; gap: 0.6rem; padding: 0.34rem 0.5rem; color: var(--muted); text-decoration: none; border-left: 2px solid var(--hair); transition: color 0.15s, border-color 0.15s; }
     .rail a:hover { color: var(--accent-deep); border-left-color: var(--accent); }
     .rail a .num { color: var(--faint); font-variant-numeric: tabular-nums; }
-    .rail .tag {
-      margin: 1.4rem 0 0.5rem 0.5rem;
-      font-size: 0.64rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--faint);
-    }
+    .rail .tag { margin: 1.4rem 0 0.5rem 0.5rem; font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
   }
-
   main { min-width: 0; max-width: var(--measure); }
 
   /* ---------- Sections ---------- */
   section { margin: 0 0 3.5rem; scroll-margin-top: 1.5rem; }
-  .sec-head {
-    display: flex;
-    align-items: baseline;
-    gap: 0.9rem;
-    margin: 0 0 1.4rem;
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--hair);
-  }
-  .sec-head .idx {
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent);
-    font-variant-numeric: tabular-nums;
-  }
-  .sec-head h2 {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: 1.6rem;
-    letter-spacing: -0.01em;
-    margin: 0;
-    text-wrap: balance;
-  }
-
+  .sec-head { display: flex; align-items: baseline; gap: 0.9rem; margin: 0 0 1.4rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--hair); }
+  .sec-head .idx { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sec-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.6rem; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
   main p { margin: 0 0 1.1rem; }
-  main h3 {
-    font-family: var(--sans);
-    font-size: 1.06rem;
-    font-weight: 700;
-    letter-spacing: 0;
-    margin: 2rem 0 0.8rem;
-  }
-  main h4 {
-    font-family: var(--mono);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent-deep);
-    margin: 1.4rem 0 0.5rem;
-  }
+  main h3 { font-family: var(--sans); font-size: 1.06rem; font-weight: 700; margin: 2rem 0 0.8rem; text-wrap: balance; }
+  main h4 { font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-deep); margin: 1.4rem 0 0.5rem; }
+  main ul.plain { margin: 0 0 1.1rem; padding-left: 1.2rem; }
+  main ul.plain li { margin: 0 0 0.4rem; }
   strong { font-weight: 700; }
-  em { font-style: italic; color: var(--ink); }
+  em { font-style: italic; }
   a { color: var(--accent-deep); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-
-  code, .path {
-    font-family: var(--mono);
-    font-size: 0.82em;
-    background: #EEF2F4;
-    color: var(--accent-deep);
-    padding: 0.08em 0.34em;
-    border-radius: 3px;
-    border: 1px solid var(--hair-soft);
-    word-break: break-word;
+  code {
+    font-family: var(--mono); font-size: 0.82em; background: var(--code-bg); color: var(--accent-deep);
+    padding: 0.08em 0.34em; border-radius: 3px; border: 1px solid var(--hair-soft); word-break: break-word;
   }
-
-  .cite {
-    font-family: var(--mono);
-    font-size: 0.62em;
-    font-weight: 600;
-    vertical-align: super;
-    line-height: 0;
-    color: var(--accent);
-    text-decoration: none;
-    padding: 0 0.05em;
-  }
+  pre { background: var(--code-bg); border: 1px solid var(--hair); border-radius: 4px; padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 1rem 0; }
+  pre code { background: none; border: 0; padding: 0; font-size: 1em; color: var(--ink); word-break: normal; }
+  .cite { font-family: var(--mono); font-size: 0.62em; font-weight: 600; vertical-align: super; line-height: 0; color: var(--accent); text-decoration: none; padding: 0 0.05em; }
   .cite:hover { color: var(--crit); }
   .cite::before { content: "["; }
   .cite::after { content: "]"; }
+  .uv { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--med); background: var(--med-wash); padding: 0.05rem 0.35rem; border-radius: 3px; white-space: nowrap; }
 
-  /* ---------- Lead / exec summary ---------- */
-  .lead {
-    font-size: 1.14rem;
-    line-height: 1.6;
-    color: #232E38;
-  }
-  .lead::first-letter {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: 3.1rem;
-    float: left;
-    line-height: 0.82;
-    padding: 0.4rem 0.6rem 0 0;
-    color: var(--accent);
-  }
+  .lead { font-size: 1.14rem; line-height: 1.6; color: var(--body-ink); }
+  .lead::first-letter { font-family: var(--serif); font-weight: 600; font-size: 3.1rem; float: left; line-height: 0.82; padding: 0.4rem 0.6rem 0 0; color: var(--accent); }
 
-  /* ---------- Severity chips + finding rows ---------- */
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-family: var(--mono);
-    font-size: 0.64rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.2rem 0.5rem;
-    border-radius: 100px;
-    white-space: nowrap;
-  }
+  /* ---------- Chips + finding cards ---------- */
+  .chip { display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--mono); font-size: 0.64rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 100px; white-space: nowrap; }
   .chip::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 100px; background: currentColor; }
   .chip.crit { color: var(--crit); background: var(--crit-wash); }
   .chip.high { color: var(--high); background: var(--high-wash); }
   .chip.med  { color: var(--med);  background: var(--med-wash); }
   .chip.low  { color: var(--low);  background: var(--low-wash); }
+  .chip.done { color: var(--low);  background: var(--low-wash); }
+  .chip.part { color: var(--med);  background: var(--med-wash); }
+  .chip.open { color: var(--high); background: var(--high-wash); }
+  .chip.gone { color: var(--muted); background: var(--row-head); }
 
-  .theme {
-    background: var(--paper);
-    border: 1px solid var(--hair);
-    border-left: 3px solid var(--sev, var(--muted));
-    border-radius: 4px;
-    padding: 1.2rem 1.3rem 1.3rem;
-    margin: 0 0 1rem;
-  }
+  .theme { background: var(--paper); border: 1px solid var(--hair); border-left: 3px solid var(--sev, var(--muted)); border-radius: 4px; padding: 1.2rem 1.3rem 1.3rem; margin: 0 0 1rem; }
   .theme.s-crit { --sev: var(--crit); }
   .theme.s-high { --sev: var(--high); }
   .theme.s-med  { --sev: var(--med); }
-  .theme-top {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    flex-wrap: wrap;
-    margin: 0 0 0.75rem;
-  }
-  .theme-top h3 {
-    font-family: var(--sans);
-    font-size: 0.98rem;
-    font-weight: 700;
-    margin: 0;
-    flex: 1 1 auto;
-    min-width: 12rem;
-  }
-  .theme p { font-size: 0.95rem; margin: 0 0 0.6rem; color: #2A353E; }
+  .theme.s-low  { --sev: var(--low); }
+  .theme-top { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin: 0 0 0.75rem; }
+  .theme-top h3 { font-size: 0.98rem; font-weight: 700; margin: 0; flex: 1 1 12rem; min-width: 0; }
+  .theme p { font-size: 0.95rem; margin: 0 0 0.6rem; color: var(--body-ink); }
   .theme p:last-child { margin-bottom: 0; }
-
   .findings { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
-  .findings li {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.7rem;
-    align-items: start;
-    font-size: 0.92rem;
-    padding: 0.55rem 0 0;
-    border-top: 1px solid var(--hair-soft);
-  }
+  .findings li { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 0.7rem; align-items: start; font-size: 0.92rem; padding: 0.55rem 0 0; border-top: 1px solid var(--hair-soft); }
   .findings li:first-child { border-top: none; padding-top: 0; }
   .findings .f-sev { padding-top: 0.1rem; }
   .findings .f-txt strong { display: block; margin-bottom: 0.1rem; }
   .findings .f-txt .ev { color: var(--muted); font-size: 0.88rem; }
 
-  /* ---------- Callout ---------- */
-  .callout {
-    background: var(--accent-wash);
-    border: 1px solid #BFDCDD;
-    border-radius: 4px;
-    padding: 0.9rem 1.1rem;
-    margin: 1.2rem 0;
-    font-size: 0.94rem;
-  }
-  .callout .k {
-    font-family: var(--mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent-deep);
-    display: block;
-    margin-bottom: 0.3rem;
-  }
+  .callout { background: var(--accent-wash); border: 1px solid var(--accent-line); border-radius: 4px; padding: 0.9rem 1.1rem; margin: 1.2rem 0; font-size: 0.94rem; }
+  .callout .k { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-deep); display: block; margin-bottom: 0.3rem; }
+  .callout.warn { background: var(--high-wash); border-color: var(--high); }
+  .callout.warn .k { color: var(--high); }
 
-  /* ---------- Sub-blocks for loop engineering ---------- */
-  .facet { margin: 0 0 1.6rem; }
-  .facet-grid { display: grid; gap: 0.6rem; margin: 0.8rem 0 0; }
-  .frow {
-    display: grid;
-    grid-template-columns: 6.5rem 1fr;
-    gap: 0.9rem;
-    padding: 0.7rem 0;
-    border-top: 1px solid var(--hair-soft);
-    font-size: 0.93rem;
-  }
-  .frow:first-child { border-top: none; }
-  .frow .fk {
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--faint);
-    padding-top: 0.12rem;
-  }
-  .frow.tok .fk { color: var(--accent-deep); }
-  .frow.sec .fk { color: var(--crit); }
-  .frow .fv { color: #2A353E; }
-  .frow .fv p { margin: 0; }
-
-  /* ---------- Table ---------- */
+  /* ---------- Tables ---------- */
   .table-wrap { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--hair); border-radius: 4px; }
-  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: 0.9rem; }
-  thead th {
-    background: var(--ink);
-    color: #EDF1F3;
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-weight: 600;
-    text-align: left;
-    padding: 0.7rem 0.9rem;
-  }
-  thead th:first-child { background: #0C141B; }
-  tbody td { padding: 0.65rem 0.9rem; border-top: 1px solid var(--hair-soft); vertical-align: top; }
-  tbody tr:nth-child(even) td { background: #F7F9FA; }
-  tbody th {
-    text-align: left;
-    padding: 0.65rem 0.9rem;
-    border-top: 1px solid var(--hair-soft);
-    font-family: var(--mono);
-    font-size: 0.74rem;
-    font-weight: 600;
-    color: var(--ink);
-    white-space: nowrap;
-    background: #F1F4F6;
-  }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: 0.88rem; }
+  thead th { background: var(--banner); color: var(--banner-strong); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; text-align: left; padding: 0.7rem 0.9rem; }
+  tbody td { padding: 0.6rem 0.9rem; border-top: 1px solid var(--hair-soft); vertical-align: top; background: var(--paper); }
+  tbody tr:nth-child(even) td { background: var(--row-alt); }
+  tbody th { text-align: left; padding: 0.6rem 0.9rem; border-top: 1px solid var(--hair-soft); font-family: var(--mono); font-size: 0.74rem; font-weight: 600; color: var(--ink); background: var(--row-head); vertical-align: top; }
   td.yes { color: var(--low); font-weight: 600; }
   td.no { color: var(--crit); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
 
   /* ---------- Recommendation banner ---------- */
-  .rec {
-    background: var(--ink);
-    color: #EAEEF1;
-    border-radius: 5px;
-    padding: 1.4rem 1.5rem;
-    margin: 1.4rem 0;
-  }
-  .rec .k {
-    font-family: var(--mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #6FB7C0;
-    display: block;
-    margin-bottom: 0.5rem;
-  }
-  .rec strong { color: #FFFFFF; }
-  .rec p { margin: 0; font-size: 0.96rem; line-height: 1.55; color: #C7D0D7; }
+  .rec { background: var(--banner); color: var(--banner-ink); border-radius: 5px; padding: 1.4rem 1.5rem; margin: 1.4rem 0; }
+  .rec .k { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--banner-key); display: block; margin-bottom: 0.5rem; }
+  .rec strong { color: var(--banner-strong); }
+  .rec p { margin: 0; font-size: 0.96rem; line-height: 1.55; color: var(--banner-ink); }
   .rec p + p { margin-top: 0.7rem; }
-  .rec code { background: #24303A; color: #8FCFD6; border-color: #33414C; }
+  .rec code { background: var(--banner-code-bg); color: var(--banner-code); border-color: var(--banner-code-bg); }
 
-  /* ---------- Adopt / skip ---------- */
+  /* ---------- Usage bar chart ---------- */
+  .usage { background: var(--paper); border: 1px solid var(--hair); border-radius: 4px; padding: 1rem 1.1rem 0.8rem; margin: 1.2rem 0; }
+  .usage .cap { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 0 0 0.8rem; }
+  .bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.35rem; align-items: end; height: 8rem; border-bottom: 1px solid var(--hair); }
+  .bar { position: relative; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 1px; }
+  .bar.zero { background: var(--hair); }
+  .bar span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 0.64rem; color: var(--muted); padding-bottom: 0.15rem; font-variant-numeric: tabular-nums; }
+  .blabels { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.35rem; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); text-align: center; padding-top: 0.3rem; }
+
+  /* ---------- Milestones ---------- */
+  .phase { background: var(--paper); border: 1px solid var(--hair); border-radius: 5px; padding: 1.3rem 1.4rem 1.4rem; margin: 0 0 1.1rem; }
+  .phase.gate { border-style: dashed; background: var(--ground); }
+  .phase-top { display: flex; align-items: flex-start; gap: 0.6rem 1rem; flex-wrap: wrap; margin: 0 0 0.4rem; }
+  .phase-no { font-family: var(--serif); font-size: 1.5rem; font-weight: 600; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; }
+  .phase-ttl { flex: 1 1 14rem; min-width: 0; }
+  .phase-ttl h3 { margin: 0 0 0.15rem; font-size: 1.06rem; font-weight: 700; }
+  .phase-ttl .goal { font-size: 0.9rem; color: var(--muted); font-style: italic; margin: 0; }
+  .phase-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .pill { font-family: var(--mono); font-size: 0.63rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 3px; border: 1px solid var(--hair); color: var(--muted); white-space: nowrap; }
+  .pill b { color: var(--ink); font-weight: 700; }
+  .pill.eff { background: var(--accent-wash); border-color: var(--accent-line); color: var(--accent-deep); }
+  .pill.who { background: var(--med-wash); border-color: var(--med-wash); color: var(--med); }
+  .steps { list-style: none; margin: 0.9rem 0 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 0.5rem; }
+  .steps li { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) auto; gap: 0.7rem; align-items: baseline; font-size: 0.92rem; padding: 0.5rem 0 0; border-top: 1px solid var(--hair-soft); }
+  .steps li:first-child { border-top: none; padding-top: 0; }
+  .steps li::before { counter-increment: step; content: counter(step); font-family: var(--mono); font-size: 0.68rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .steps .e { font-family: var(--mono); font-size: 0.62rem; font-weight: 700; color: var(--accent-deep); background: var(--accent-wash); border-radius: 3px; padding: 0.12rem 0.4rem; align-self: center; }
+  .steps .e.M { color: var(--med); background: var(--med-wash); }
+  .steps .e.L { color: var(--high); background: var(--high-wash); }
+  .tok-note { margin: 1rem 0 0; font-size: 0.84rem; font-family: var(--mono); color: var(--muted); padding-top: 0.7rem; border-top: 1px dashed var(--hair); }
+  .tok-note b { color: var(--accent-deep); }
+
+  /* ---------- Two columns ---------- */
   .cols { display: grid; gap: 1.1rem; margin: 1rem 0; }
   @media (min-width: 40rem) { .cols { grid-template-columns: 1fr 1fr; } }
-  .card {
-    background: var(--paper);
-    border: 1px solid var(--hair);
-    border-radius: 4px;
-    padding: 1.1rem 1.2rem;
-  }
-  .card .h {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin: 0 0 0.7rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--hair-soft);
-  }
+  .card { background: var(--paper); border: 1px solid var(--hair); border-radius: 4px; padding: 1.1rem 1.2rem; min-width: 0; }
+  .card .h { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 0.7rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--hair-soft); }
   .card.adopt .h { color: var(--low); }
   .card.skip .h { color: var(--muted); }
   .card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
   .card li { font-size: 0.9rem; line-height: 1.5; padding-left: 1.1rem; position: relative; }
   .card.adopt li::before { content: "+"; position: absolute; left: 0; color: var(--low); font-weight: 700; font-family: var(--mono); }
   .card.skip li::before { content: "\2212"; position: absolute; left: 0; color: var(--faint); font-weight: 700; font-family: var(--mono); }
-  .card li b { font-weight: 700; }
-
-  /* ---------- Roadmap phases ---------- */
-  .phase {
-    background: var(--paper);
-    border: 1px solid var(--hair);
-    border-radius: 5px;
-    padding: 1.3rem 1.4rem 1.4rem;
-    margin: 0 0 1.1rem;
-    position: relative;
-  }
-  .phase-top { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin: 0 0 0.4rem; }
-  .phase-no {
-    font-family: var(--serif);
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--accent);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .phase-ttl { flex: 1 1 14rem; }
-  .phase-ttl h3 { margin: 0 0 0.15rem; font-size: 1.06rem; font-weight: 700; }
-  .phase-ttl .goal { font-size: 0.9rem; color: var(--muted); font-style: italic; margin: 0; }
-  .phase-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-  .pill {
-    font-family: var(--mono);
-    font-size: 0.63rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    border: 1px solid var(--hair);
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .pill b { color: var(--ink); font-weight: 700; }
-  .pill.eff { background: var(--accent-wash); border-color: #BFDCDD; color: var(--accent-deep); }
-  .pill.risk-low { background: var(--low-wash); border-color: #C4E0D2; color: var(--low); }
-  .pill.risk-med { background: var(--med-wash); border-color: #E4DBB0; color: var(--med); }
-
-  .steps { list-style: none; margin: 0.9rem 0 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 0.5rem; }
-  .steps li {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 0.7rem;
-    align-items: baseline;
-    font-size: 0.92rem;
-    padding: 0.5rem 0 0;
-    border-top: 1px solid var(--hair-soft);
-  }
-  .steps li:first-child { border-top: none; padding-top: 0; }
-  .steps li::before {
-    counter-increment: step;
-    content: counter(step);
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    color: var(--faint);
-    font-variant-numeric: tabular-nums;
-    padding-top: 0.1rem;
-  }
-  .steps .e {
-    font-family: var(--mono);
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: var(--accent-deep);
-    background: var(--accent-wash);
-    border-radius: 3px;
-    padding: 0.12rem 0.4rem;
-    align-self: center;
-  }
-  .steps .e.L { color: var(--high); background: var(--high-wash); }
-  .steps .e.M { color: var(--med); background: var(--med-wash); }
-  .tok-note {
-    margin: 1rem 0 0;
-    font-size: 0.84rem;
-    font-family: var(--mono);
-    color: var(--muted);
-    padding-top: 0.7rem;
-    border-top: 1px dashed var(--hair);
-  }
-  .tok-note b { color: var(--accent-deep); }
 
   /* ---------- Sources ---------- */
   .sources { list-style: none; margin: 0; padding: 0; counter-reset: src; display: flex; flex-direction: column; gap: 0.5rem; }
-  .sources li {
-    display: grid;
-    grid-template-columns: 1.8rem 1fr;
-    gap: 0.5rem;
-    font-size: 0.84rem;
-    line-height: 1.45;
-    padding: 0.35rem 0;
-    border-top: 1px solid var(--hair-soft);
-    scroll-margin-top: 2rem;
-  }
+  .sources li { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); gap: 0.5rem; font-size: 0.84rem; line-height: 1.45; padding: 0.35rem 0; border-top: 1px solid var(--hair-soft); scroll-margin-top: 2rem; }
   .sources li:first-child { border-top: none; }
-  .sources li::before {
-    counter-increment: src;
-    content: counter(src);
-    font-family: var(--mono);
-    font-size: 0.74rem;
-    font-weight: 600;
-    color: var(--accent);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-  }
+  .sources li::before { counter-increment: src; content: counter(src); font-family: var(--mono); font-size: 0.74rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; }
   .sources a { color: var(--muted); word-break: break-all; text-decoration: none; }
   .sources a:hover { color: var(--accent-deep); text-decoration: underline; }
   .sources li:target { background: var(--accent-wash); border-radius: 3px; }
 
-  footer {
-    margin-top: 4rem;
-    padding-top: 1.4rem;
-    border-top: 2px solid var(--ink);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--faint);
-    letter-spacing: 0.02em;
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
+  footer { margin-top: 4rem; padding-top: 1.4rem; border-top: 2px solid var(--ink); font-family: var(--mono); font-size: 0.72rem; color: var(--faint); letter-spacing: 0.02em; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
 
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -587,19 +261,19 @@
 
     <header class="masthead">
       <p class="eyebrow">Deep-Research Dossier · Cherubeam / JARVIS</p>
-      <h1>Audit, Loop Engineering &amp; the Path to Always-On</h1>
-      <p class="sub">A grounded review of the JARVIS codebase, the three senses of &ldquo;loop engineering,&rdquo; getting the assistant off the terminal, and a roadmap ordered by value-per-effort.</p>
+      <h1>Audit, Decisions &amp; What JARVIS Is Still For</h1>
+      <p class="sub">The September revision. What changed since August, a fresh audit of the code, a decision on the developer agent, an evaluation of Jev and other decision models, and a roadmap that was scored, attacked and pre-mortemed before it was written down.</p>
       <div class="byline">
         <span>Prepared for <b>Marco Braun</b></span>
-        <span>2026-07-04 · revised <b>2026-08-19</b> (ADR-034)</span>
-        <span>Hybrid audit + verified web research</span>
+        <span>2026-07-04 · rev. 2026-08-19 · rev. <b>2026-09-30</b></span>
+        <span>Repo audit + web research + adversarial review</span>
       </div>
       <div class="stats">
-        <div class="stat"><span class="n">38</span><span class="l">Agents run</span></div>
-        <div class="stat"><span class="n">1.47M</span><span class="l">Tokens</span></div>
-        <div class="stat"><span class="n">46</span><span class="l">Sources</span></div>
-        <div class="stat"><span class="n">40</span><span class="l">Audit findings</span></div>
-        <div class="stat"><span class="n">30</span><span class="l">Verified claims</span></div>
+        <div class="stat"><span class="n">77</span><span class="l">Commits reviewed</span></div>
+        <div class="stat"><span class="n">41</span><span class="l">August items re-checked</span></div>
+        <div class="stat"><span class="n">3 / 5 / 30</span><span class="l">Done / partial / open</span></div>
+        <div class="stat"><span class="n">8</span><span class="l">Research agents</span></div>
+        <div class="stat"><span class="n">4</span><span class="l">Claims re-verified by hand</span></div>
       </div>
     </header>
 
@@ -607,329 +281,456 @@
       <nav class="rail" aria-label="Contents">
         <ol>
           <li><a href="#s1"><span class="num">01</span> Summary</a></li>
-          <li><a href="#s2"><span class="num">02</span> Codebase audit</a></li>
-          <li><a href="#s3"><span class="num">03</span> Loop engineering</a></li>
-          <li><a href="#s4"><span class="num">04</span> Always-on access</a></li>
-          <li><a href="#s5"><span class="num">05</span> Unknown unknowns</a></li>
-          <li><a href="#spos"><span class="num">06</span> Strategic position</a></li>
-          <li><a href="#s6"><span class="num">07</span> Roadmap</a></li>
-          <li><a href="#s7"><span class="num">08</span> Sources</a></li>
+          <li><a href="#s2"><span class="num">02</span> Since August</a></li>
+          <li><a href="#s3"><span class="num">03</span> Audit refresh</a></li>
+          <li><a href="#s4"><span class="num">04</span> Developer agent</a></li>
+          <li><a href="#s5"><span class="num">05</span> Jev &amp; decision models</a></li>
+          <li><a href="#s6"><span class="num">06</span> Landscape</a></li>
+          <li><a href="#s7"><span class="num">07</span> How this was decided</a></li>
+          <li><a href="#s8"><span class="num">08</span> Roadmap</a></li>
+          <li><a href="#s9"><span class="num">09</span> Pre-mortem</a></li>
+          <li><a href="#s10"><span class="num">10</span> Open questions</a></li>
+          <li><a href="#s11"><span class="num">11</span> Sources</a></li>
         </ol>
-        <p class="tag">Severity</p>
+        <p class="tag">Status</p>
         <ol>
-          <li><span class="chip crit">Critical</span></li>
-          <li><span class="chip high">High</span></li>
-          <li><span class="chip med">Medium</span></li>
+          <li><span class="chip done">Done</span></li>
+          <li><span class="chip part">Partial</span></li>
+          <li><span class="chip open">Open</span></li>
         </ol>
       </nav>
 
       <main>
 
-        <!-- 1 -->
+        <!-- 01 -->
         <section id="s1">
-          <div class="sec-head"><span class="idx">01</span><h2>Executive summary</h2></div>
-          <p class="lead">JARVIS is a well-factored local-first assistant &mdash; 16 agents, typed settings, a real eval harness, 102 test files with serious mutation-testing discipline &mdash; but every architectural assumption bakes in &ldquo;one human, watching, in a terminal, on localhost.&rdquo;</p>
-          <p>The web GUI has no authentication and accepts WebSocket connections from any origin (<code>chat_ws.py:22</code>), which is tolerable today and becomes full remote takeover the moment JARVIS is exposed beyond the machine. The agent already assembles all three legs of the &ldquo;lethal trifecta&rdquo; &mdash; private vault data, untrusted web content, and write/exec tools<a class="cite" href="#s8-8">8</a> &mdash; so unattended runs must be designed by <em>removing</em> a leg per job, not by trusting guardrails; even production classifiers miss ~17% of dangerous actions<a class="cite" href="#s8-10">10</a>.</p>
-          <p>Autonomy is further blocked by a single global session, confirmation handlers that deadlock or silently reject without a human, and no spend limit beyond a 5-iteration cap (<code>stream_handler.py:31</code>). The feedback-loop story is weakest where it matters: golden evals bypass the real StreamHandler, so the exact loop changes you plan would be invisible to them. On access, Telegram long polling is the standout &mdash; outbound-only, works behind NAT, no exposed ports<a class="cite" href="#s8-13">13</a> &mdash; paired with Tailscale for the GUI. On hosting, the Things&nbsp;3 dependency plus local-first preference make a headless Mac mini running JARVIS as a LaunchAgent the clear recommendation. The roadmap puts safety rails and the session refactor first, one read-only scheduled loop plus Telegram second, eval hardening third, deeper autonomy last. Phase&nbsp;1 is startable this week and is mostly small, boring changes &mdash; which is exactly the point.</p>
-          <p><strong>Revision 2026-08-19.</strong> A strategic-positioning pass (now ADR-034 in the repo) was folded into this dossier: with coding-agent harnesses (Claude Code, Codex, OpenCode) now commodities, JARVIS is explicitly the <em>personal context, memory, and workflow hub</em> &mdash; it delegates coding execution to external harnesses instead of growing its own (DEV-02/03 rescoped), and exports its context to every tool via a new Cortex-backed MCP server (initiative <code>HUB</code>). See the new <a href="#spos">Strategic position</a> section; the in-repo <code>roadmap.md</code> (initiatives <code>AON</code>, <code>HUB</code>, <code>DEV</code>) is the authoritative, evolving version of section&nbsp;07.</p>
+          <div class="sec-head"><span class="idx">01</span><h2>Summary</h2></div>
+          <p class="lead">Six weeks after the August revision, the most urgent finding is closed: the GUI now has authentication and an origin check. Most of the rest of the August audit still stands, and two new problems came to light, one in the developer agent and one in GUI approvals.</p>
+          <p>Since 19 August, 77 commits and nine tags (v0.22.0 to v0.27.0) shipped GUI authentication, vault-write oversight, billed-usage accounting, per-agent models, the OpenRouter Auto Router, Things&nbsp;3 through a read-only Shortcut, and specialist hand-back. Of the 41 recommendations and findings in the August dossier, 3 are done, 5 are partly done and 30 are still open. The August roadmap assumed a steady build pace. The repo shows short bursts instead: the 77 commits fall on 12 days, 19 of them on 28 September.</p>
+          <p>The developer agent (<code>/develop</code>) is the largest remaining attack surface. It also has no recorded use. In 203 conversation logs no one ever called one of its 16 tools. Its write-scope check can be escaped with <code>..</code>. It is enabled by default, and JARVIS can delegate to it from the GUI without anyone typing <code>/develop</code>. <strong>Recommendation: switch it off now and retire it with an ADR.</strong> Build a dispatcher to Claude Code only if a named trigger fires (<a href="#s4">&sect;04</a>).</p>
+          <p><strong>Jev</strong> (TypeSafe AI, 15 September 2026) is a new kind of model. It returns typed decisions with confidence scores, not text. It suits a few runtime decisions in JARVIS, such as picking a model tier or pre-routing to a specialist. It is not a tool for planning a roadmap, and at today's usage volume nothing in JARVIS needs it yet. It is worth a one-hour smoke test with firm exit criteria. Adopting it would need an ADR that amends the provider-independence decision (<a href="#s5">&sect;05</a>).</p>
+          <div class="callout warn">
+            <span class="k">The finding that reframes the roadmap</span>
+            Owner usage collapsed. There were 43 conversation logs in March 2026, 4 in April, none from May to August, and 4 in September, all on one day. Hardening a runtime nobody uses is the most likely way this project fails (<a href="#s9">&sect;09</a>). The roadmap therefore starts with a usage gate. Before AON-02, there is an explicit decision on whether JARVIS-the-runtime still earns its keep, or whether its value now lies in the context it exports to other tools.
+          </div>
         </section>
 
-        <!-- 2 -->
+        <!-- 02 -->
         <section id="s2">
-          <div class="sec-head"><span class="idx">02</span><h2>Codebase audit</h2></div>
+          <div class="sec-head"><span class="idx">02</span><h2>Since August</h2></div>
+          <p>Each item from the August dossier was checked against the code, the changelog and <code>roadmap.md</code>. The full per-item map (41 rows, with commit evidence) lives in the PR that shipped this revision. The table keeps the rows that matter for the next decisions.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">August item</th><th scope="col">Status</th><th scope="col">Evidence</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">GUI auth + WebSocket origin check</th><td><span class="chip done">Done</span></td><td>ADR-035, v0.23.0; <code>apps/gui/server/auth.py</code></td></tr>
+                <tr><th scope="row">143-mutant GUI blind spot</th><td><span class="chip done">Done</span></td><td>84 new tests (41aad95, 8e14c5e)</td></tr>
+                <tr><th scope="row">HUB-01: Cortex as stdio MCP server</th><td><span class="chip done">Done</span></td><td>v0.22.0, 2026-09-05</td></tr>
+                <tr><th scope="row">Settings API can persist a malicious MCP server</th><td><span class="chip part">Partial</span></td><td>Now behind auth; tool descriptions still unvetted (<code>mcp/bridge.py:39</code>)</td></tr>
+                <tr><th scope="row">Tool-result clearing</th><td><span class="chip part">Partial</span></td><td>Between turns only (03dd090)</td></tr>
+                <tr><th scope="row">Things&nbsp;3 macOS-bound</th><td><span class="chip part">Changed</span></td><td>Read-only via a Shortcut, no Full Disk Access (ADR-037)</td></tr>
+                <tr><th scope="row">&ldquo;Developer agent never unattended&rdquo; is structural</th><td><span class="chip part">Partial</span></td><td>Policy only; <code>AutoConfirmationHandler</code> still ships</td></tr>
+                <tr><th scope="row">Unconfirmed pytest runner</th><td><span class="chip open">Open</span></td><td><code>test_tools.py:27-53</code></td></tr>
+                <tr><th scope="row">Confirmation deadlock</th><td><span class="chip open">Open</span></td><td><code>confirmation.py:83</code>, <code>routes/chat_ws.py:65</code></td></tr>
+                <tr><th scope="row">Cost ledger + budget abort</th><td><span class="chip open">Open</span></td><td>No budget code; billed usage now trustworthy (5f2280a)</td></tr>
+                <tr><th scope="row">TurnRunner / twin loops</th><td><span class="chip open">Open</span></td><td><code>stream_handler.py:322</code> and <code>:570</code></td></tr>
+                <tr><th scope="row">Golden evals bypass the real loop; fabricated fallback scores</th><td><span class="chip open">Open</span></td><td><code>evaluator.py:473-514</code>; harness improved (66444e5)</td></tr>
+                <tr><th scope="row">Prompt caching</th><td><span class="chip open">Re-diagnosed</span></td><td>March diagnosis withdrawn; 4-step TOK plan (774659a)</td></tr>
+                <tr><th scope="row">Telegram, run-job, morning briefing</th><td><span class="chip open">Open</span></td><td>No code; vendors now ship parts of this (&sect;06)</td></tr>
+                <tr><th scope="row">Voice via Home Assistant + ESP32</th><td><span class="chip gone">Replaced</span></td><td>AON-05 now plans a local Pipecat pipeline</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Shipped work the August dossier did not anticipate</h3>
+          <ul class="plain">
+            <li><strong>Vault-write oversight</strong> (v0.24.0): the approval card shows the real diff and path, link changes are flagged, and a write is refused when the note changed since the agent read it. This is human oversight under EU AI Act Art.&nbsp;14.</li>
+            <li><strong>Cost accuracy:</strong> billed usage from OpenRouter replaces streamed estimates (PR #73), and routed turns are priced at the routed model's rate. This invalidated earlier token numbers and led to the caching re-diagnosis.</li>
+            <li><strong>Model control:</strong> 2026-09 model refresh (default GPT-6 Luna, quality Opus 5.5), per-agent models in <code>meta.yaml</code>, and the Auto Router as an opt-in session model (ADR-036).</li>
+            <li><strong>Specialist hand-back</strong> (ADR-038): specialists return out-of-scope requests to JARVIS instead of improvising.</li>
+            <li><strong>Voice-profile hygiene and P7:</strong> the profile is untracked, and notes the writer drafts are tagged <code>assist: prose</code>.</li>
+            <li><strong>Process:</strong> <code>main</code> is ruleset-protected, CI builds the GUI bundle, and the docs were restructured to one home per topic.</li>
+          </ul>
+        </section>
+
+        <!-- 03 -->
+        <section id="s3">
+          <div class="sec-head"><span class="idx">03</span><h2>Audit refresh</h2></div>
+          <p>Every August finding was checked against the current code, and the 77 new commits were read for new risk. Severity reflects today's exposure. Framework hooks are named where one applies.</p>
 
           <div class="theme s-crit">
-            <div class="theme-top">
-              <h3>A · Security assumes a watching human on localhost</h3>
-              <span class="chip crit">Critical</span>
-            </div>
-            <p>The single most important theme: nearly every safety property depends on a human being present at a local terminal. That holds today and collapses the instant JARVIS is tunneled or scheduled.</p>
+            <div class="theme-top"><h3>A · New since August</h3><span class="chip crit">Act now</span></div>
             <ul class="findings">
-              <li><span class="f-sev"><span class="chip crit">Crit</span></span><span class="f-txt"><strong>No auth, no WebSocket origin check</strong><span class="ev"><code>chat_ws.py:22</code> accepts unconditionally; CORS (<code>app.py:67-73</code>) doesn&rsquo;t gate WebSockets &mdash; any website you visit can drive the agent via your browser today.</span></span></li>
-              <li><span class="f-sev"><span class="chip crit">Crit</span></span><span class="f-txt"><strong>Prompt-injection &rarr; RCE chain</strong><span class="ev">Web content enters context verbatim (<code>web_fetch.py</code>, <code>web_search.py</code>); <code>test_tools.py:29-42</code> runs pytest (arbitrary Python via conftest) with <em>no confirmation</em>; the developer agent bundles write+git+test tools.</span></span></li>
-              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>FilesystemGuard is bypassed by most write tools</strong><span class="ev">Only <code>obsidian/vault.py</code> and <code>outcome_tools.py</code> consult it; <code>codebase_tools.py</code>, <code>project_write_tools.py</code>, <code>git_tools.py</code> roll their own access logic.</span></span></li>
-              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>Unauthed settings API can persist a malicious MCP server</strong><span class="ev"><code>routes/settings.py</code> &rarr; <code>mcp/client.py</code>; MCP tool descriptions are injected into the prompt unvetted (<code>mcp/bridge.py</code>).</span></span></li>
-              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>The GUI server is the biggest test blind spot</strong><span class="ev">~143 never-executed mutants across <code>app.py</code>, <code>state.py</code>, <code>chat_ws.py</code> &mdash; the exact code you&rsquo;d need to secure has no safety net.</span></span></li>
+              <li><span class="f-sev"><span class="chip crit">High</span></span><span class="f-txt"><strong>GUI vault approvals probably hang every time</strong><span class="ev">The WebSocket loop awaits <code>run_turn</code> (<code>routes/chat_ws.py:65</code>) before it reads the next message, so an <code>approval_decision</code> sent mid-turn cannot be received until the turn ends. The existing tests send approvals only when no turn is running. Verified by reading the code; not yet reproduced live. A two-minute GUI vault write settles it. Art.&nbsp;14(4).</span></span></li>
+              <li><span class="f-sev"><span class="chip crit">High</span></span><span class="f-txt"><strong>A second vault write in one turn replays the first decision</strong><span class="ev">One <code>WebConfirmationHandler</code> per turn (<code>bridge.py:63</code>), and its event is never cleared. Today it can only replay a rejection. Once the hang above is fixed it would replay an approval, so both must ship together. Art.&nbsp;14(4)(d), OWASP LLM06.</span></span></li>
+              <li><span class="f-sev"><span class="chip crit">High</span></span><span class="f-txt"><strong>The developer agent's write scope can be escaped</strong><span class="ev"><code>_check_allowed</code> compares the raw path string (<code>project_write_tools.py:24-40</code>), so <code>config/../.github/workflows/x.yml</code> passes. <code>config/</code> is in scope, so the agent could also add an MCP server command to <code>config/local.yaml</code> that runs at next start. Under <code>--auto-confirm</code> no human sees the write. OWASP LLM06.</span></span></li>
+              <li><span class="f-sev"><span class="chip high">High</span></span><span class="f-txt"><strong>The developer agent is reachable without <code>/develop</code></strong><span class="ev"><code>developer.enabled: true</code> is the default (<code>config/default.yaml</code>). The GUI delegates to any registered agent (<code>bridge.py:128</code>), and Cortex is a shared tool for every agent. An injected note found by vault search could steer JARVIS into delegating to an agent that runs pytest unconfirmed. This is the lethal trifecta<a class="cite" href="#r1">1</a>. OWASP LLM01.</span></span></li>
+              <li><span class="f-sev"><span class="chip med">Med</span></span><span class="f-txt"><strong>No OpenRouter data policy</strong><span class="ev">No data-collection, zero-retention or provider settings exist in the config. Auto Router turns let OpenRouter choose the provider for prompts that carry vault-derived context. Account settings not checked. NIST AI RMF Map.</span></span></li>
+              <li><span class="f-sev"><span class="chip med">Med</span></span><span class="f-txt"><strong>Settings GET returns MCP secrets in plain text</strong><span class="ev"><code>routes/settings.py:187</code> returns <code>model_dump()</code>, including MCP <code>env</code> and <code>headers</code>. Behind auth today; becomes High once a second device gets access.</span></span></li>
+              <li><span class="f-sev"><span class="chip med">Med</span></span><span class="f-txt"><strong>Safety code outside mutation scope</strong><span class="ev">Mutation testing covers the GUI server and settings only (<code>pyproject.toml:144</code>). The stale-write refusal, billed usage and the confirmation paths are outside it, and the weekly run cannot fail CI.</span></span></li>
             </ul>
           </div>
 
           <div class="theme s-high">
-            <div class="theme-top">
-              <h3>B · Human-in-the-loop gates &amp; single-session design block autonomy</h3>
-              <span class="chip high">High</span>
-            </div>
-            <p><strong>Confirmation deadlock:</strong> <code>confirmation.py:98</code> waits on a threading Event with no timeout, and <code>chat_ws.py:65</code> awaits the turn inside the same receive loop that handles approvals &mdash; a vault-write approval wedges the session. Headless CLI silently rejects on EOF.</p>
-            <p><strong>One global session:</strong> <code>app.py:36</code> builds a single GuiSession with takeover semantics; turns are serialized. Background jobs, Telegram, and chat cannot coexist. <strong>No spend circuit breaker:</strong> only the 5-iteration cap; per-response <code>cost_usd</code> is computed but never enforced.</p>
+            <div class="theme-top"><h3>B · Still true from August</h3><span class="chip high">Open</span></div>
+            <p><strong>Unconfirmed pytest runner</strong> (<code>test_tools.py:27-53</code>), and <code>path</code> is not validated. <strong>FilesystemGuard</strong> is still used only by vault and outcome tools. <strong>One global GUI session</strong> (<code>app.py:39</code>). <strong>No spend limit</strong>: no budget or ledger code anywhere. <strong>Twin agentic loops</strong> in <code>stream_handler.py</code>, which still mutates <code>max_tokens</code> permanently, plus a dead copy of the tool assembly in <code>apps/cli/main.py:63-81</code>. <strong>Golden evals</strong> hardcode the prompt and still fabricate 0.5/0.6 scores when parsing fails. <strong>Reliability:</strong> non-atomic saves (<code>memory.py:528</code>), no MCP reconnect, and <code>refresh_context()</code> is never called.</p>
+            <p><strong>Correction to August:</strong> the dossier said the only spend limit was a 5-iteration cap. That was wrong even then. JARVIS runs 15 iterations, the developer agent 20. The 5 is only a fallback default.</p>
           </div>
 
-          <div class="theme s-high">
-            <div class="theme-top">
-              <h3>C · Duplicated orchestration, non-reentrant core</h3>
-              <span class="chip high">High</span>
-            </div>
-            <p>Per-turn orchestration is hand-duplicated between <code>apps/cli/main.py:705-809</code> and <code>apps/gui/server/bridge.py:41-260</code>, already diverging. StreamHandler keeps per-call state on <code>self</code>, permanently mutates <code>max_tokens</code>, and duplicates the agentic loop (~120 lines, twice). Every loop-engineering change currently lands in 2&ndash;4 places &mdash; and a Telegram front end would be copy number three.</p>
-          </div>
-
-          <div class="theme s-high">
-            <div class="theme-top">
-              <h3>E · Host portability &amp; F · Evals don&rsquo;t guard the code that matters</h3>
-              <span class="chip high">High</span>
-            </div>
-            <p><strong>Portability:</strong> all 21 skills are gitignored absolute-path symlinks to a private sibling repo with soft-fail resolution &mdash; a fresh clone runs <em>silently degraded</em>. Things&nbsp;3 is doubly macOS-GUI-bound. <strong>Evals:</strong> golden tests reimplement the loop and hardcode the prompt (<code>test_golden_conversations.py:319-400</code>), bypassing the real StreamHandler &mdash; exactly the code the roadmap changes &mdash; and the judge silently fabricates 0.5&ndash;0.6 fallback scores. <span class="chip med">Reliability · Med</span> Non-atomic JSON saves lose a conversation on mid-turn crash; MCP never reconnects; context is frozen at startup.</p>
+          <div class="theme s-low">
+            <div class="theme-top"><h3>C · Closed or improved</h3><span class="chip low">Evidence</span></div>
+            <p>GUI auth with origin allowlist and derived cookie (Art.&nbsp;15). Approval-id matching against hijacked approvals (Art.&nbsp;14). Vault diff, link warnings and stale-write refusal (Art.&nbsp;14(4)(c)). Billed usage per generation id, with the source recorded per message (Art.&nbsp;12 record-keeping). Things is read-only, with least privilege. Hand-back reduces scope creep (NIST Manage).</p>
           </div>
         </section>
 
-        <!-- 3 -->
-        <section id="s3">
-          <div class="sec-head"><span class="idx">03</span><h2>Loop engineering</h2></div>
-          <p>You asked about &ldquo;loop engineering&rdquo; in three senses. Each maps to different JARVIS subsystems, token math, and security posture.</p>
-
-          <div class="facet">
-            <h3>3a · Autonomous agentic loops</h3>
-            <p>Today the loop lives in <code>stream_handler.py</code> (duplicated), capped at 5 iterations, with all state in-process. Anthropic&rsquo;s harness research is unambiguous that the path past a small cap is <em>external state</em>, not a bigger number: a JSON task list with per-item pass/fail, a progress-notes file, and git checkpoints<a class="cite" href="#s8-1">1</a>. Concretely: deduplicate the loop into a shared TurnRunner in <code>packages/core</code>; add tool-result clearing &mdash; &ldquo;one of the safest lightest-touch forms of compaction&rdquo;<a class="cite" href="#s8-2">2</a>; and extend delegation past its one-hop ceiling only after sub-agents return distilled 1&ndash;2k-token summaries.</p>
-            <div class="facet-grid">
-              <div class="frow tok"><span class="fk">Tokens</span><span class="fv"><p>Each iteration re-sends the whole context; with a ~12KB skill prompt inlined every turn, iterations 6&ndash;15 can cost 3&ndash;5&times; iterations 1&ndash;5. Counters: tool-result clearing, and prompt caching &mdash; a 500-session study found caching cuts cost ~45&ndash;80% <em>if</em> static content sits in a stable cached prefix<a class="cite" href="#s8-5">5</a>. JARVIS&rsquo;s per-turn skill inlining is currently cache-hostile.</p></span></div>
-              <div class="frow sec"><span class="fk">Security</span><span class="fv"><p>Longer loops mean more consecutive un-reviewed tool calls, compounding the Theme-A injection chain per iteration. The unconfirmed pytest runner is the single worst offender.</p></span></div>
-              <div class="frow"><span class="fk">Evals</span><span class="fv"><p>Any loop change is invisible to the golden suite because it reimplements the loop. Rewiring evals through the real TurnRunner is a <em>precondition</em> for touching iteration logic safely.</p></span></div>
-            </div>
-          </div>
-
-          <div class="facet">
-            <h3>3b · Scheduled / background runs</h3>
-            <div class="callout">
-              <span class="k">First principles</span>
-              A <strong>daemon</strong> runs without a terminal attached, started by the OS. On macOS the scheduler is <code>launchd</code>: you drop a small plist describing &ldquo;run this at this interval,&rdquo; and it handles starting, restarting, and logging &mdash; macOS&rsquo;s <code>cron</code>, but supervising too. A <strong>LaunchAgent</strong> runs inside your logged-in GUI session (and can talk to Things&nbsp;3); a <strong>LaunchDaemon</strong> runs outside it and cannot<a class="cite" href="#s8-18">18</a>. That one fact shapes the hosting decision.</p>
-            </div>
-            <p>There&rsquo;s zero scheduling code today, and that&rsquo;s fine &mdash; the scheduler should stay <em>outside</em> the app (launchd invoking a CLI entry point). What must change inside: a headless entry point (<code>jarvis run-job</code>); a <strong>PolicyConfirmationHandler</strong> that auto-approves a whitelist and routes everything else to a persisted approval inbox; a persisted cost ledger with a daily budget abort &mdash; the Agent SDK ships <code>max_budget_usd</code><a class="cite" href="#s8-3">3</a>, OWASP suggests a $10/session cap<a class="cite" href="#s8-11">11</a>; and per-turn context refresh (tasks.md is synced once at startup).</p>
-            <div class="facet-grid">
-              <div class="frow sec"><span class="fk">Security</span><span class="fv"><p>Every scheduled job must drop one leg of the lethal trifecta<a class="cite" href="#s8-8">8</a>, because no guardrail is reliable enough to substitute (17% false-negatives<a class="cite" href="#s8-10">10</a>). Safest first job: a <em>read-only briefing</em> (vault + Things &rarr; message) &mdash; drops external writes. Never schedule the developer agent unattended &mdash; since ADR-034 this is structural: JARVIS never executes coding runs itself (see <a href="#spos">&sect;06</a>).</p></span></div>
-              <div class="frow tok"><span class="fk">Tokens</span><span class="fv"><p>A daily briefing is cheap and predictable &mdash; ~$0.05&ndash;0.20/day &mdash; and an ideal caching candidate (identical prefix daily), but only <em>bounded</em> once the budget check exists.</p></span></div>
-              <div class="frow"><span class="fk">Evals</span><span class="fv"><p>Scheduled jobs produce artifacts gradeable with <em>deterministic code checks</em> (&ldquo;does the briefing mention every task due today?&rdquo;), which Anthropic recommends over LLM judges<a class="cite" href="#s8-6">6</a>. Each job ships with its output check.</p></span></div>
-            </div>
-          </div>
-
-          <div class="facet">
-            <h3>3c · Feedback / improvement loops</h3>
-            <p>The raw materials exist and are disconnected: golden evals, outcome tracking (<code>outcome_tools.py</code>), a manual review CLI (<code>review.py</code>), telemetry, and ChromaDB RAG. Fixes in value order: <strong>(1)</strong> make evals test the real system and fail loudly instead of fabricating 0.5&ndash;0.6 scores; <strong>(2)</strong> turn on regression gating &mdash; read the baseline <code>result_storage.py</code> already writes; at ~$0.41/run even every-PR is noise-level<a class="cite" href="#s8-7">7</a>; <strong>(3)</strong> calibrate the judge once against ~25 hand-labeled transcripts, since consistency &ne; correctness<a class="cite" href="#s8-12">12</a>; <strong>(4)</strong> automate the outcome loop as a weekly read-only job, the natural home for typed memory &mdash; Mem0-style fact extraction beats raw-transcript RAG (&gt;90% token savings), and graph memory adds only ~2%, so skip it<a class="cite" href="#s8-17">17</a>.</p>
-            <div class="callout">
-              <span class="k">Anti-over-engineering verdict</span>
-              Extract facts to Markdown/JSON in the vault; don&rsquo;t adopt a memory framework. The whole feedback layer costs less per month than one runaway agentic turn &mdash; which is the argument for building it <em>before</em> autonomy, not after.
-            </div>
-          </div>
-        </section>
-
-        <!-- 4 -->
+        <!-- 04 -->
         <section id="s4">
-          <div class="sec-head"><span class="idx">04</span><h2>Always-on access</h2></div>
-
-          <h4>Channels</h4>
-          <p><strong>Messaging &mdash; Telegram, clearly.</strong> Long polling means the bot makes <em>outbound</em> requests to Telegram and holds the connection open &mdash; no inbound port, no public HTTPS, works behind any home NAT<a class="cite" href="#s8-13">13</a>. Signal via signal-cli needs a JRE, a constant receive loop, and updates every ~3 months or it breaks<a class="cite" href="#s8-14">14</a> &mdash; a treadmill with no payoff for one user. A Telegram bot is just a third front end, which is why the shared TurnRunner extraction is its real prerequisite.</p>
-          <p><strong>Web app &mdash; Tailscale.</strong> Tailscale builds an encrypted private network among your own devices; <em>Serve</em> exposes a local port only inside it &mdash; your phone reaches the GUI, the internet cannot<a class="cite" href="#s8-15">15</a>. Given the GUI has no auth, tailnet-only is the only responsible exposure. Non-negotiable regardless: fix WebSocket origin checking and add token auth first &mdash; &ldquo;private network&rdquo; should be the second wall, not the only one.</p>
-          <p><strong>Voice &mdash; later, but proven viable.</strong> Home Assistant Assist ships a &ldquo;Hey Jarvis&rdquo; wake word with ~$13 ESP32 satellite hardware<a class="cite" href="#s8-20">20</a>. Fun, but it depends on everything above. Park it.</p>
-
-          <h4>Hosting comparison</h4>
+          <div class="sec-head"><span class="idx">04</span><h2>The developer agent</h2></div>
+          <p>ADR-034 (19 August) already decided that JARVIS does not build its own coding harness. <code>/develop</code> was to become a thin dispatcher to Claude Code, keeping the DEV-01 tools only for tiny edits to <code>meta.yaml</code> and prompts. The docs were rescoped, but the code was not touched. The question now is which of three paths to take.</p>
           <div class="table-wrap">
             <table>
-              <thead>
-                <tr><th scope="col">Dimension</th><th scope="col">Mac as LaunchAgent</th><th scope="col">Linux home server</th><th scope="col">Cloud VPS</th></tr>
-              </thead>
+              <thead><tr><th scope="col">Option</th><th scope="col">What it takes</th><th scope="col">Surface afterwards</th><th scope="col">For / against</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Things 3</th><td class="yes">Full (Apple Events)</td><td class="no">Lost &mdash; no server API</td><td class="no">Lost + SSRF surface</td></tr>
-                <tr><th scope="row">Skills / vault symlinks</th><td class="yes">Work as-is</td><td>Re-plumb paths</td><td>Re-plumb + cloud sync</td></tr>
-                <tr><th scope="row">Local-first</th><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">No</td></tr>
-                <tr><th scope="row">New concepts</th><td>launchd + Tailscale</td><td>New OS &amp; box</td><td>systemd, hardening, patching</td></tr>
-                <tr><th scope="row">Cost</th><td>Hardware you may own</td><td>Hardware + time</td><td>$5&ndash;20/mo + data off-site</td></tr>
+                <tr><th scope="row">A · Thin dispatcher</th><td>Prompt composer + <code>claude -p</code> or Agent SDK call, ~150&ndash;300 LOC (estimate)</td><td class="num">~1,550 LOC · ~190 tests</td><td>Coding work could start from JARVIS front ends. Duplicates Claude Code's remote, cloud and scheduled sessions. No input source until DEV-03 exists.</td></tr>
+                <tr><th scope="row">B · Freeze at DEV-01</th><td>One small PR to fix four drift problems</td><td class="num">~1,320 LOC · 167 tests</td><td>Keeps self-editing. But freezing is what produced the drift and the scope escape.</td></tr>
+                <tr><th scope="row">C · Retire</th><td>Delete agent, 5 tool modules, <code>--auto-confirm</code>, codebase map; new ADR</td><td class="num">&minus;2,650 LOC · &minus;167 tests</td><td>Loses a capability that was never used. Closes two open AON items by deletion.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>Evidence of use:</strong> none. No call to any of the 16 dev tools appears in 203 conversation logs, no user message starts with <code>/develop</code>, and no commit was made by the agent. The last functional change was on 3 April. Four problems built up while it sat frozen: the roadmap's tool and test counts are wrong, <code>AutoConfirmationHandler</code> is documented as dropped but still ships, the prompt forbids <code>data/context/</code> while the config allows it, and <code>run_mutation_tests</code> rewrites <code>pyproject.toml</code> outside the scope guard (and mutmut does not run on macOS anyway).</p>
+          <p><strong>The &ldquo;other skill repo&rdquo;:</strong> <code>agent-capability-specifications</code> contains no developer or coding agent. It holds 22 skill decks, templates, practices and scripts. The only developer agent found is the in-repo <code>/develop</code>. If you meant something else, see <a href="#s10">&sect;10</a>.</p>
+          <div class="rec">
+            <span class="k">Recommendation</span>
+            <p><strong>Retire it (option C), in two steps.</strong> Today: set <code>developer.enabled: false</code>. One line, easily undone, and it removes the GUI delegation path. Then, at normal pace: delete the code with an ADR that supersedes ADR-028 and says plainly that it reverses ADR-034 &sect;1's &ldquo;tiny-edit fast path&rdquo;, because that path was never taken in seven months. Repoint the golden delegation case to another agent.</p>
+            <p><strong>Reversal trigger:</strong> build option A from scratch if you try at least 3 times in a month to start a coding task from a JARVIS-only front end that Claude Code's own remote, cloud or scheduled sessions can't serve, or if a JARVIS discovery job produces at least 5 actionable fixes a month. Until then, put the freed effort into the context export (HUB), which no harness provides.</p>
+          </div>
+          <p>Framing for the changelog and write-up: removing unused write and exec permissions is a direct control against OWASP LLM06 Excessive Agency and reduces attack surface under NIST AI RMF Manage. The ADR-028 write-up and tag v0.27.0 keep the git-sandbox design as portfolio evidence, so that evidence does not depend on the code staying live.</p>
+        </section>
+
+        <!-- 05 -->
+        <section id="s5">
+          <div class="sec-head"><span class="idx">05</span><h2>Jev and decision models</h2></div>
+          <p><strong>What Jev is.</strong> TypeSafe AI calls it a &ldquo;System One&rdquo; model<a class="cite" href="#r2">2</a>. You send some state and a set of typed questions. It answers each one in parallel with a typed value and a probability distribution, and it never writes prose. There are three question types<a class="cite" href="#r3">3</a>: <em>noul</em> (a probability that something is true), <em>choice</em> (up to 255 options) and <em>score</em> (2&ndash;10 ordered levels). Choice and score answers carry a confidence value derived from how concentrated the distribution is. The docs suggest acting automatically above 0.9 and sending anything under 0.5 to a human<a class="cite" href="#r4">4</a>.</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Claim</th><th scope="col">Vendor</th><th scope="col">Independent</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Latency</th><td>70&ndash;500 ms; &ldquo;193&times; faster&rdquo;</td><td>Median 458&ndash;563 ms wall clock, ~200 ms of it network<a class="cite" href="#r7">7</a></td></tr>
+                <tr><th scope="row">Price</th><td>$0.042 per million input tokens, output free</td><td>~$0.00002 per decision measured<a class="cite" href="#r7">7</a></td></tr>
+                <tr><th scope="row">Accuracy</th><td>&ldquo;Never hallucinates&rdquo;</td><td>27/27 on a small ticket set, tied with Mistral Small (n=27, weak)</td></tr>
+                <tr><th scope="row">Calibration</th><td>&ldquo;Calibrated&rdquo; (RLCD training)</td><td>No published calibration metrics; none found</td></tr>
+                <tr><th scope="row">Usage in the wild</th><td>&mdash;</td><td>2,170 GitHub projects; mostly attribute judgment and scoring<a class="cite" href="#r6">6</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>Known failure modes, as listed by the vendor</strong><a class="cite" href="#r5">5</a>: literal reading that misses implied intent, weak counting and dates, trouble with double negatives and multi-hop reasoning, lower accuracy when the state holds irrelevant material, and answers that shift under injected instructions. German is &ldquo;supported but less accurate&rdquo;, which matters for a partly German vault. <span class="uv">Unverified</span> The research agents disagreed on the context limit (64k vs 32k), the OpenRouter endpoint (<code>/v1/systemone</code> vs <code>/api/alpha/decisions</code>) and whether access is still waitlisted or self-serve<a class="cite" href="#r8">8</a>. Retention terms and EU data location sit in a DPA nobody read.</p>
+
+          <h3>Where it could fit in JARVIS</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Decision point</th><th scope="col">Today</th><th scope="col">Verdict</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Model tier (fast / balanced / quality)</th><td>Length + regex heuristic with hardcoded confidences (<code>model_router.py:32-63</code>), CLI only</td><td>Best technical fit, but the Auto Router (ADR-036) already covers it and no telemetry exists to show misroutes. <strong>Gated.</strong></td></tr>
+                <tr><th scope="row">Pre-route to a specialist</th><td>JARVIS's LLM calls <code>delegate_to_agent</code></td><td>Saves a round-trip. Literal reading is exactly the ADR-038 failure. <strong>Gated</strong> on logged misroutes.</td></tr>
+                <tr><th scope="row">Second golden-suite judge</th><td>Opus 5.5 free-text judge with fallback parsing</td><td>Typed scores would remove fabricated fallbacks, but the vendor says score levels are weakly calibrated. <strong>Gated</strong> on judge calibration.</td></tr>
+                <tr><th scope="row">Readwise triage</th><td>LLM moves documents</td><td>Good fit, no latency pressure, tiny volume. <strong>Gated</strong> on a scheduled triage job.</td></tr>
+                <tr><th scope="row">Auto-approve writes</th><td>Human confirms every diff</td><td><strong>Drop.</strong> Weakens Art.&nbsp;14 oversight; injection sensitivity is a listed failure mode (LLM01).</td></tr>
               </tbody>
             </table>
           </div>
           <div class="rec">
-            <span class="k">Recommendation</span>
-            <p><strong>A headless Mac running JARVIS as a LaunchAgent, reached via Tailscale.</strong> Things&nbsp;3 has no server API &mdash; Cultured Code&rsquo;s own docs say &ldquo;if it&rsquo;s not documented, it&rsquo;s not possible&rdquo;<a class="cite" href="#s8-19">19</a> &mdash; so any non-Mac host silently amputates a live integration, and the codebase is macOS-coupled elsewhere too.</p>
-            <p>It must be a Launch<em>Agent</em> with auto-login, not a LaunchDaemon, because only an agent in a logged-in GUI session can send Apple Events to Things<a class="cite" href="#s8-18">18</a>. Headless recipe: FileVault off (its pre-boot lock blocks remote access after a reboot), auto-login, auto-restart after power loss, <code>pmset -a sleep 0</code> &mdash; sleep is the main availability failure on Apple Silicon minis<a class="cite" href="#s8-21">21</a>. Disabling disk encryption is acceptable <em>only</em> because access stays Tailscale-scoped. Revisit a VPS only if Things is ever dropped.</p>
+            <span class="k">Verdict</span>
+            <p><strong>Use Jev for runtime classification, not for planning.</strong> Deciding a roadmap is multi-hop trade-off reasoning, which is the vendor's own weak spot. At about 7 sessions a month, no routing decision in JARVIS costs enough to optimise yet. Jev also needs its own call path, outside LiteLLM, so each call site would be Jev-specific code. Adopting it would need an ADR amending ADR-001/003 on provider independence.</p>
+            <p><strong>Optional smoke test, off-milestone, one hour.</strong> Repo text only, no vault data. Pass only if routing, scope and dev-path answers are correct in 5 of 5 runs. A pass unlocks nothing by itself. It needs a key in <code>.env</code>, which you set up yourself.</p>
           </div>
+<pre><code>curl -s https://api.typesafe.ai/v1/systemone \
+ -H "Authorization: Bearer $TYPESAFE_API_KEY" -H "Content-Type: application/json" -d @- &lt;&lt;'EOF'
+{"model":"jev-1.13.0",
+ "state":{"user_message":"Can you make a cover image and the LinkedIn post for this article?",
+          "current_agent":"content_reviewer",
+          "dev_task":"Change temperature from 0.7 to 0.5 in packages/agents/writer/meta.yaml",
+          "user_query":"Why?",
+          "user_message_de":"Kannst du mir die Notiz von gestern zusammenfassen?"},
+ "questions":{
+  "route":{"type":"choice","instructions":"Which specialist should handle user_message?",
+     "criteria":{"substack_image_creator":"Creates cover images","substack_publisher":"Prepares publishing material",
+                 "content_reviewer":"Reviews drafts","writer":"Drafts prose","none":"JARVIS answers directly"}},
+  "in_scope":{"type":"noul","instructions":"Is user_message within current_agent's job (reviewing drafts)?"},
+  "dev_path":{"type":"choice","instructions":"How should dev_task be executed?",
+     "criteria":{"tiny_edit":"Single scoped yaml/md edit","harness":"Multi-file change for an external coding agent","reject":"Unsafe"}},
+  "complexity":{"type":"choice","instructions":"Which model tier does user_query need?",
+     "criteria":{"fast":"Trivial","balanced":"Moderate","quality":"Hard or ambiguous"}},
+  "route_de":{"type":"choice","instructions":"Which specialist should handle user_message_de?",
+     "criteria":{"reading_assistant":"Summarises notes and reading","writer":"Drafts prose","none":"JARVIS answers directly"}}}}
+EOF</code></pre>
+          <p>Expected: <code>route</code> split between the image creator and the publisher, <code>in_scope</code> below 0.2, <code>dev_path</code> = <code>tiny_edit</code>, <code>complexity</code> = <code>balanced</code> with low confidence, and <code>route_de</code> = <code>reading_assistant</code>. Record latency and <code>usage</code>, and check whether confidence tracks correctness.</p>
+
+          <h3>Other decision techniques</h3>
+          <ul class="plain">
+            <li><strong>OpenAI Decisions API</strong> (DevDay, 29 September, limited preview): the same idea on GPT-6 Luna, which is already JARVIS's default family. <span class="uv">Unverified</span></li>
+            <li><strong>Anthropic advisor tool</strong><a class="cite" href="#r20">20</a>: a cheap executor escalates hard steps to Opus within one call. It fits the default/quality split, and LiteLLM supports it. Whether it works through OpenRouter is <span class="uv">unverified</span>.</li>
+            <li><strong>For the roadmap itself</strong>, this revision used three techniques that need no new vendor: trigger-gated scoring, an adversarial skeptic and a pre-mortem (<a href="#s7">&sect;07</a>). They are cheap enough to repeat at each milestone.</li>
+          </ul>
         </section>
 
-        <!-- 5 -->
-        <section id="s5">
-          <div class="sec-head"><span class="idx">05</span><h2>Unknown unknowns</h2></div>
-          <p>Capabilities the field treats as table stakes that JARVIS doesn&rsquo;t yet have &mdash; filtered for a one-person, local-first assistant.</p>
+        <!-- 06 -->
+        <section id="s6">
+          <div class="sec-head"><span class="idx">06</span><h2>Landscape since August</h2></div>
+          <p>ADR-034's thesis was &ldquo;harnesses are commodities; the context is the moat.&rdquo; Six weeks of releases strengthened it and sharpened it.</p>
           <div class="cols">
             <div class="card adopt">
-              <p class="h">Worth adopting</p>
+              <p class="h">Strengthens the thesis</p>
               <ul>
-                <li><b>Tool descriptions are the cheapest lever anywhere.</b> Rewriting them alone cut task time 40% in Anthropic&rsquo;s tests<a class="cite" href="#s8-22">22</a>. An afternoon on <code>packages/core/tools/*</code> may outperform any architecture work here.</li>
-                <li><b>Typed memory extraction</b> over raw-transcript RAG &mdash; the ChromaDB approach is one generation behind fact extraction (&gt;90% token cut)<a class="cite" href="#s8-17">17</a>.</li>
-                <li><b>Tiered trust for sessions</b> &mdash; run scheduled jobs with reduced tool groups; JARVIS&rsquo;s per-agent tool binding already supports this structurally<a class="cite" href="#s8-23">23</a>.</li>
-                <li><b>Khoj as existence proof</b> &mdash; the closest comparable (self-hosted, Obsidian-centric) ships scheduled automations and thin multi-device clients<a class="cite" href="#s8-24">24</a>. Proactivity is table stakes, not exotic.</li>
+                <li><b>Every vendor now ships a memory silo.</b> Claude Projects gained shared project memory (17 September)<a class="cite" href="#r12">12</a>, and Codex has a memory preview. Each one is locked to one vendor, which makes a user-owned, cross-tool context store more valuable.</li>
+                <li><b>MCP 2026-07-28</b><a class="cite" href="#r16">16</a> made the core stateless and standardised authorization. A future HTTP transport for HUB-02 behind Tailscale is simpler than it was. Sampling and Roots are deprecated, so don't build on them.</li>
+                <li><b>Claude Code keeps getting better at the loop</b><a class="cite" href="#r14">14</a>: it neutralises markup injected into <code>MEMORY.md</code> and caps MCP descriptions at 2,048 characters. HUB tool descriptions must fit that cap.</li>
               </ul>
             </div>
             <div class="card skip">
-              <p class="h">Consciously skip</p>
+              <p class="h">Weakens JARVIS-specific plans</p>
               <ul>
-                <li><b>Parallel multi-agent fan-out</b> &mdash; ~90% eval gains but ~15&times; token cost<a class="cite" href="#s8-22">22</a>. Wrong trade for one person.</li>
-                <li><b>Graph memory</b> &mdash; ~2% gain over typed extraction<a class="cite" href="#s8-17">17</a>.</li>
-                <li><b>LangGraph-style frameworks</b> &mdash; but steal the insight: durability lives in a pluggable SQLite checkpointer; in-memory state loses everything on restart<a class="cite" href="#s8-25">25</a> &mdash; exactly JARVIS&rsquo;s current failure mode.</li>
+                <li><b>Cowork merged into Claude</b> (16 September)<a class="cite" href="#r13">13</a>, with scheduled tasks, memory and mobile access. Proactivity is no longer something JARVIS has to build to be useful.</li>
+                <li><b>Claude Code Channels</b><a class="cite" href="#r15">15</a> provide Telegram access, and Remote Control reaches a local session from the phone. The JARVIS Telegram bot is only justified for JARVIS's own workflow agents.</li>
+                <li><b>Memory servers are a commodity</b>: mcpservers.org lists 244<a class="cite" href="#r17">17</a>. The moat is the curated content and its governance, not having an MCP server.</li>
               </ul>
             </div>
           </div>
-        </section>
-
-        <!-- 6 · added 2026-08-19 -->
-        <section id="spos">
-          <div class="sec-head"><span class="idx">06</span><h2>Strategic position <span style="font-weight:400;font-size:1rem;color:var(--faint)">(added 2026-08-19, ADR-034)</span></h2></div>
-          <p>The tool landscape question: with Claude Code, Claude Cowork, OpenAI Codex, OpenCode, and Pi in daily reach, where does JARVIS fit &mdash; and what has it built that already exists? The tools all run agentic loops, but they sit at different layers:</p>
+          <p><strong>Caching.</strong> OpenRouter now supports a top-level <code>cache_control</code> that moves the breakpoint forward automatically<a class="cite" href="#r18">18</a>. That could replace step 2 of the TOK plan (hand-placed breakpoints). Its sticky-routing guide (24 September) confirms step 3: send <code>session_id</code> on every call, because a single unused Anthropic cache write costs more than not caching<a class="cite" href="#r19">19</a>. Whether LiteLLM passes the top-level field through is <span class="uv">unverified</span>.</p>
+          <p><strong>Hosting.</strong> The August recommendation (a headless Mac as a LaunchAgent behind Tailscale) still stands, because no vendor feature reaches Things or the local vault. It is now gated on a job that actually needs it.</p>
           <div class="table-wrap">
             <table>
-              <thead>
-                <tr><th scope="col">Tool</th><th scope="col">Layer</th><th scope="col">Competes on</th></tr>
-              </thead>
+              <thead><tr><th scope="col">Layer</th><th scope="col">Examples (Sept 2026)</th><th scope="col">JARVIS stance</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Claude Code / Codex / OpenCode</th><td>Coding agent harness</td><td>Loop quality: sandboxing, planning, headless/CI modes, subagents</td></tr>
-                <tr><th scope="row">Claude Cowork</th><td>General knowledge-work harness</td><td>Non-coding agentic work over docs, files, connected tools</td></tr>
-                <tr><th scope="row">Pi</th><td>Minimal open harness</td><td>Simplicity; same loop, deliberately tiny</td></tr>
-                <tr><th scope="row">JARVIS</th><td class="yes">Personal context &amp; workflow hub</td><td>Your vault, context files, memory, voice, integrations, provider independence</td></tr>
+                <tr><th scope="row">Coding harness</th><td>Claude Code, Codex, OpenCode, Pi</td><td>Rent. Retire <code>/develop</code>.</td></tr>
+                <tr><th scope="row">General assistant</th><td>Claude (with Cowork merged), ChatGPT</td><td>Rent for chat, scheduling and mobile.</td></tr>
+                <tr><th scope="row">Vendor memory</th><td>Claude project memory, Codex memory</td><td>Don't compete; stay the neutral store.</td></tr>
+                <tr><th scope="row">Decision layer</th><td>Jev, OpenAI Decisions API</td><td>New category. Evaluate; gate adoption.</td></tr>
+                <tr><th scope="row">Personal context hub</th><td class="yes">JARVIS + Cortex</td><td>Build: vault, voice profile, typed facts, source policy, local integrations.</td></tr>
               </tbody>
             </table>
           </div>
-          <div class="rec">
-            <span class="k">Positioning verdict</span>
-            <p><strong>Harnesses are commodities; the context is the moat.</strong> Nothing in the harness column is worth competing with as a solo project &mdash; and nothing in JARVIS&rsquo;s row is provided by any harness. Build the moat, rent the harnesses, connect them with MCP.</p>
-          </div>
-          <h3>What this changes</h3>
-          <p><strong>DEV-02/03 rescoped: delegate, don&rsquo;t rebuild.</strong> The developer agent&rsquo;s DEV-01 tool set was a hand-rolled miniature Claude Code, and its planned follow-ons (AutoConfirmationHandler, planning phase, heartbeat execution, PR creation) re-created what Claude Code ships as headless mode (<code>claude -p</code>), the Agent SDK, permission policies, and scheduled agents. <code>/develop</code> becomes a thin dispatcher: JARVIS decides <em>what</em> to improve and composes the context; the external harness executes and opens PRs. The DEV-01 tools survive only as a fast path for tiny scoped edits (<code>meta.yaml</code>, prompts).</p>
-          <p><strong>New initiative <code>HUB</code>: export the context via MCP.</strong> Cortex (ADR-029) already anticipated this (&ldquo;MCP-ready&rdquo;). <code>HUB-01</code> wraps its semantic search as a local, stdio-only MCP server registered in Claude Code and consumed by JARVIS itself; <code>HUB-02</code> adds context files and typed memory (post-quarantine facts only, per AON-03). Every harness is an MCP client, so this ends copy-pasting context between tools &mdash; and flips JARVIS&rsquo;s most valuable asset from &ldquo;locked inside JARVIS&rdquo; into the shared memory backbone of the whole toolchain. The single-source-of-truth pattern already works here: <code>CLAUDE.md</code> pointing at <code>AGENTS.md</code>, skills as symlinks &mdash; MCP generalizes it to live data.</p>
-          <p><strong>AON scope guard.</strong> The TurnRunner, front ends, and read-only scheduled jobs stay &mdash; they serve JARVIS&rsquo;s <em>own</em> conversational loop, which no harness replaces. But harness-grade depth beyond that (unattended code-editing sandboxes, long autonomous coding loops) is out: delegated. The audit&rsquo;s &ldquo;never schedule the developer agent unattended&rdquo; is thereby structural, not just policy.</p>
-          <p><strong>Unchanged, deliberately:</strong> workflow agents (writer, reading assistant, publisher&hellip;), voice profile, provider routing, token economics, Obsidian/Readwise/Things&nbsp;3/Substack integrations, and the GUI. None of the listed tools do any of it.</p>
         </section>
 
-        <!-- 7 -->
-        <section id="s6">
-          <div class="sec-head"><span class="idx">07</span><h2>Phased roadmap</h2></div>
-          <div class="callout">
-            <span class="k">2026-08-19 note</span>
-            These phases now live in the repo as milestones <code>AON-01&hellip;05</code> (plus the 2026-07-31 delta-review amendments) &mdash; <code>docs/product/roadmap.md</code> is authoritative. The ADR-034 revision adds initiative <code>HUB</code> (Cortex as MCP server; independent of AON sequencing, startable any time after AON-01) and rescopes <code>DEV-02/03</code> to delegated execution &mdash; the &ldquo;deeper autonomy&rdquo; in Phase&nbsp;4 below concerns JARVIS&rsquo;s own scheduled loops only, never self-executed coding runs.
+        <!-- 07 -->
+        <section id="s7">
+          <div class="sec-head"><span class="idx">07</span><h2>How this roadmap was decided</h2></div>
+          <p>Every candidate item went through three passes, each run by a separate agent that did not see the others' reasoning until its turn.</p>
+          <ul class="plain">
+            <li><strong>Trigger-gated scoring</strong> (practice P1). Each of 38 items got value, cost and risk-reduction scores, the trigger that would justify it, whether that trigger has fired (with evidence), a verdict (now, next, gated or drop) and a confidence.</li>
+            <li><strong>Adversarial skeptic.</strong> A second agent tried to refute every &ldquo;now&rdquo; and argue for every &ldquo;drop&rdquo;, checking the repo itself before ruling.</li>
+            <li><strong>Pre-mortem.</strong> A third agent assumed the roadmap had failed by 31 March 2027 and wrote the failure stories, each with an early-warning signal visible today.</li>
+          </ul>
+          <p>The skeptic and the pre-mortem changed the draft in these places:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Item</th><th scope="col">Draft</th><th scope="col">After review</th><th scope="col">Why</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Retire <code>/develop</code></th><td>Now</td><td>Now, flag first</td><td>GUI delegation reaches it; a one-line config flag closes that today</td></tr>
+                <tr><th scope="row">Approval deadlock</th><td>Timeout now, loop later</td><td>Both halves now, with the replay fix</td><td>A timeout alone turns every GUI approval into a rejection</td></tr>
+                <tr><th scope="row">Fallback judge scores</th><td>Now</td><td>AON-03</td><td>The model refresh did not rely on fallback scores; none occurred in those runs</td></tr>
+                <tr><th scope="row">TurnRunner</th><td>Next</td><td>Split: delete dead CLI copy now, rest gated</td><td>Its main users (Telegram, jobs) are gated or covered by vendors</td></tr>
+                <tr><th scope="row">HUB-02a context export</th><td>After AON-02</td><td>Before AON-02, doc-level first</td><td>An <code>@</code>-import of <code>data/context/</code> in CLAUDE.md may do it with no code</td></tr>
+                <tr><th scope="row">Jev spike</th><td>In AON-03</td><td>Optional, off-milestone</td><td>It answers curiosity, not a JARVIS need; roadmap weight would be scope creep</td></tr>
+                <tr><th scope="row">Usage gate</th><td>&mdash;</td><td>Added first</td><td>No item's trigger measured whether anyone uses JARVIS</td></tr>
+                <tr><th scope="row">Spend report</th><td>Ledger gated</td><td>Read-only monthly report now</td><td>Billed usage exists per message but nothing adds it up</td></tr>
+                <tr><th scope="row">P6 write-up</th><td>After close-out</td><td>Entry gate before the next milestone</td><td>Write-ups are already owed; &ldquo;after&rdquo; has been skipped before</td></tr>
+              </tbody>
+            </table>
           </div>
-          <p>Ordered by value-per-effort. Effort per step is <b>S</b>/<b>M</b>/<b>L</b>; each phase carries an overall effort, risk, and token-impact note.</p>
+          <p>One weakness this method exposed: most metric-based triggers (&ldquo;3 misroutes a month&rdquo;) can never fire at about 7 sessions a month. Every gated item below therefore names the log or script that would show its trigger firing. Items without one get deleted at the next quarterly review.</p>
+        </section>
+
+        <!-- 08 -->
+        <section id="s8">
+          <div class="sec-head"><span class="idx">08</span><h2>Roadmap</h2></div>
+          <p>In order. Item codes follow <code>docs/product/roadmap.md</code>, which remains the authoritative plan. This dossier is a dated research snapshot. S/M/L is effort.</p>
+
+          <div class="phase">
+            <div class="phase-top">
+              <span class="phase-no">0</span>
+              <div class="phase-ttl"><h3>Today</h3><p class="goal">Remove the live risk before any debate.</p></div>
+              <div class="phase-meta"><span class="pill who">Needs your OK: config file</span></div>
+            </div>
+            <ul class="steps">
+              <li><span>Set <code>developer.enabled: false</code>. AGENTS.md reserves config changes for an explicit request, so this waits for you.</span><span class="e">S</span></li>
+              <li><span>Reproduce the GUI approval hang with one vault write (2 minutes). It confirms or kills the top finding.</span><span class="e">S</span></li>
+            </ul>
+          </div>
 
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">1</span>
-              <div class="phase-ttl"><h3>Safety rails &amp; the shared core</h3><p class="goal">Make the existing system safe to leave running and cheap to extend. Start this week.</p></div>
-              <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+              <div class="phase-ttl"><h3>AON-01 close-out</h3><p class="goal">Finish &ldquo;Harden&rdquo;, one small PR per item.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span></div>
             </div>
             <ul class="steps">
-              <li><span>WebSocket origin allowlist + token auth in <code>chat_ws.py</code>/<code>app.py</code>; add TestClient coverage for the 143-mutant blind spot.</span><span class="e">S</span></li>
-              <li><span>Add a confirmation gate to the unconfirmed pytest runner (<code>test_tools.py:29-42</code>).</span><span class="e">S</span></li>
-              <li><span>Persisted SQLite cost ledger + daily budget abort in StreamHandler, per <code>max_budget_usd</code><a class="cite" href="#s8-3">3</a>.</span><span class="e">S</span></li>
-              <li><span>Fix the confirmation deadlock: timeout on <code>confirmation.py:98</code>, move approval handling out of the blocked receive loop.</span><span class="e M">M</span></li>
-              <li><span>Rewrite tool descriptions across <code>packages/core/tools/*</code><a class="cite" href="#s8-22">22</a>.</span><span class="e">S</span></li>
-              <li><span>Atomic conversation saves (write-temp-then-rename) in <code>memory.py</code>.</span><span class="e">S</span></li>
+              <li><span><strong>Usage gate:</strong> a small script that counts sessions per front end per week from <code>data/conversations/</code>.</span><span class="e">S</span></li>
+              <li><span>Fix GUI approvals: run the turn as a task so approvals arrive mid-turn, reset handler state per approval, add a timeout that defaults to reject, and add one end-to-end WebSocket test with two writes in one turn. (Art.&nbsp;14)</span><span class="e M">M</span></li>
+              <li><span>Retire <code>/develop</code>: new ADR, delete code and <code>--auto-confirm</code>, repoint the golden delegation case. Closes the pytest and FilesystemGuard-bypass items by deletion. (LLM06)</span><span class="e M">M</span></li>
+              <li><span>Check the OpenRouter account data policy (15 minutes) and document it.</span><span class="e">S</span></li>
+              <li><span>TOK step 1: caching baseline from billed logs, plus a read-only monthly spend report that shares the parsing code.</span><span class="e">S</span></li>
+              <li><span>Delete the dead tool-assembly copy in <code>apps/cli/main.py</code>. Fix doc drift: &ldquo;max 5 iterations&rdquo;, ADR-008 &rarr; ADR-037 pointer.</span><span class="e">S</span></li>
             </ul>
-            <p class="tok-note">Token impact: <b>neutral-to-negative</b> &mdash; budget cap + better tool descriptions reduce waste.</p>
+            <p class="tok-note">Token impact: <b>negative</b>. Mostly deletions; the baseline tells whether caching is worth building.</p>
+          </div>
+
+          <div class="phase gate">
+            <div class="phase-top">
+              <span class="phase-no">&#9670;</span>
+              <div class="phase-ttl"><h3>Gate: write-up and scope decision</h3><p class="goal">Nothing below starts until both are done.</p></div>
+              <div class="phase-meta"><span class="pill who">You write (P6, P7)</span></div>
+            </div>
+            <ul class="steps">
+              <li><span>One write-up for AON-01 and the <code>/develop</code> retirement: &ldquo;removing excess agency&rdquo;, framed as Art.&nbsp;14 and OWASP LLM06. I supply facts and sources; you write the prose.</span><span class="e M">M</span></li>
+              <li><span>Read the usage gate. Under about 8 real sessions in 4 weeks: write a scope ADR on what JARVIS-the-runtime is still for before building AON-02.</span><span class="e">S</span></li>
+            </ul>
           </div>
 
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">2</span>
-              <div class="phase-ttl"><h3>Session refactor + first loop + Telegram</h3><p class="goal">One core, many front ends, one safe scheduled job.</p></div>
-              <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span><span class="pill risk-med">Risk <b>Med</b></span></div>
+              <div class="phase-ttl"><h3>HUB-02a: context everywhere</h3><p class="goal">Get JARVIS's context into the tools you actually use.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>S&ndash;M</b></span></div>
             </div>
             <ul class="steps">
-              <li><span>Extract TurnRunner + headless session factory into <code>packages/core</code>; de-duplicate StreamHandler&rsquo;s twin loops. The one refactor everything rides on.</span><span class="e L">L</span></li>
-              <li><span>Session-per-conversation replacing the global GuiSession.</span><span class="e M">M</span></li>
-              <li><span>PolicyConfirmationHandler with whitelist + persisted approval inbox.</span><span class="e M">M</span></li>
-              <li><span><code>jarvis run-job</code> + launchd LaunchAgent; first job = <b>read-only morning briefing</b><a class="cite" href="#s8-8">8</a>; refresh tasks.md per run.</span><span class="e M">M</span></li>
-              <li><span>Telegram bot via long polling<a class="cite" href="#s8-13">13</a> as a thin TurnRunner client; Tailscale Serve for the GUI<a class="cite" href="#s8-15">15</a>.</span><span class="e M">M</span></li>
+              <li><span>First try the doc-level route: <code>@</code>-import <code>data/context/*.md</code> in <code>~/.claude/CLAUDE.md</code> and add an AGENTS.md pointer for Codex.</span><span class="e">S</span></li>
+              <li><span>Only if that fails on token cost or staleness: expose the context files as read-only Cortex MCP tools, with descriptions under 2,048 characters.</span><span class="e M">M</span></li>
             </ul>
-            <p class="tok-note">Token impact: <b>+$2&ndash;6/month</b> for a daily briefing; bounded by the Phase-1 ledger.</p>
           </div>
 
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">3</span>
-              <div class="phase-ttl"><h3>Evals that guard the loop</h3><p class="goal">Change loop code without flying blind.</p></div>
-              <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+              <div class="phase-ttl"><h3>TOK steps 2&ndash;4 (if the baseline says so)</h3><p class="goal">Cache only where billed numbers show the spend.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>S&ndash;M</b></span></div>
             </div>
             <ul class="steps">
-              <li><span>Route golden evals through the real TurnRunner; remove the reimplemented loop and hardcoded prompt.</span><span class="e M">M</span></li>
-              <li><span>Replace fabricated fallback scores with hard failures; read the baseline for CI regression gating<a class="cite" href="#s8-7">7</a>.</span><span class="e">S</span></li>
-              <li><span>Calibrate the judge against ~25 hand-labeled transcripts; randomize ordering<a class="cite" href="#s8-12">12</a>.</span><span class="e">S</span></li>
-              <li><span>Deterministic output checks for each scheduled job<a class="cite" href="#s8-6">6</a>.</span><span class="e">S</span></li>
-              <li><span>Automate the outcome-review loop as the second scheduled job, with typed fact extraction into the vault<a class="cite" href="#s8-17">17</a>.</span><span class="e M">M</span></li>
+              <li><span>Probe whether a top-level <code>cache_control</code> passes through LiteLLM to OpenRouter; use it instead of hand-placed breakpoints.</span><span class="e">S</span></li>
+              <li><span>Send <code>session_id</code> on every call; parse cache-write tokens; move the &ldquo;Last synced&rdquo; time out of the system prompt.</span><span class="e">S</span></li>
+              <li><span>If the baseline shows little cacheable spend, log a documented no-go with the numbers (P2).</span><span class="e">S</span></li>
             </ul>
-            <p class="tok-note">Token impact: <b>~$0.41/eval run</b> + pennies for judges &mdash; negligible.</p>
           </div>
 
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">4</span>
-              <div class="phase-ttl"><h3>Headless Mac host + deeper autonomy</h3><p class="goal">Dedicated always-on box; loops that run longer, safely.</p></div>
-              <div class="phase-meta"><span class="pill eff">Effort <b>M&ndash;L</b></span><span class="pill risk-med">Risk <b>Med</b></span></div>
+              <div class="phase-ttl"><h3>AON-02/03, only if the gate says the runtime earns it</h3><p class="goal">Unify the core, then guard it with evals.</p></div>
+              <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span></div>
             </div>
             <ul class="steps">
-              <li><span>Headless Mac mini: auto-login, FileVault off, <code>pmset -a sleep 0</code>, auto-restart, Tailscale-only<a class="cite" href="#s8-21">21</a>.</span><span class="e M">M</span></li>
-              <li><span>Route FilesystemGuard through <em>all</em> write tools; add a quarantined web-digest job.</span><span class="e M">M</span></li>
-              <li><span>Tool-result clearing<a class="cite" href="#s8-2">2</a> + cache-friendly prompt assembly (static prefix first), targeting the 45&ndash;80% cut<a class="cite" href="#s8-5">5</a>.</span><span class="e M">M</span></li>
-              <li><span>Raise the iteration cap only alongside file-based checkpoints (JSON task list + progress notes + git)<a class="cite" href="#s8-1">1</a>; MCP reconnection.</span><span class="e M">M</span></li>
-              <li><span>Optional hardening: sandbox-runtime + credential-injecting egress proxy so the agent never holds API keys<a class="cite" href="#s8-9">9</a>.</span><span class="e L">L</span></li>
+              <li><span>TurnRunner; hand-back in the GUI; session-per-conversation with atomic saves; redact secrets in settings GET.</span><span class="e L">L</span></li>
+              <li><span>Before building a job runner, check whether Claude's scheduled tasks can do the briefing. Things needs a local Shortcut, so probably not.</span><span class="e">S</span></li>
+              <li><span>Golden evals through the real loop; fallback scores become failures; judge calibration at the next model decision.</span><span class="e M">M</span></li>
             </ul>
-            <p class="tok-note">Token impact: <b>net negative</b> &mdash; caching + clearing should more than fund longer loops.</p>
           </div>
 
-          <div class="phase">
-            <div class="phase-top">
-              <span class="phase-no">5</span>
-              <div class="phase-ttl"><h3>Voice &amp; proactivity <span style="font-weight:400;color:var(--faint)">(optional)</span></h3><p class="goal">Do this only when Phases 1&ndash;4 feel boring.</p></div>
-              <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span><span class="pill risk-low">Risk <b>Low</b></span></div>
+          <h3>Gated backlog</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Item</th><th scope="col">Trigger</th><th scope="col">Data source</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">DEV-02 dispatcher (rebuild)</th><td>&ge;3 coding requests/month from a JARVIS-only front end</td><td>Usage-gate script</td></tr>
+                <tr><th scope="row">Jev as tier router</th><td>&ge;3 logged misroutes/month</td><td>One route field in conversation JSON</td></tr>
+                <tr><th scope="row">Cost ledger + hard stops</th><td>First unattended job exists</td><td>Job runner</td></tr>
+                <tr><th scope="row">Telegram bot</th><td>A JARVIS workflow needed from the phone that Claude Channels can't serve</td><td>Your own note of the attempt</td></tr>
+                <tr><th scope="row">Headless Mac host</th><td>A job must run while the laptop sleeps</td><td>Job runner</td></tr>
+                <tr><th scope="row">HUB-02b typed memory</th><td>Quarantined fact extraction exists</td><td>AON-03 output</td></tr>
+                <tr><th scope="row">MCP description vetting</th><td>First network MCP server</td><td><code>config/local.yaml</code></td></tr>
+                <tr><th scope="row">Mutation scope for confirmation + vault</th><td>A safety fix lands outside scope</td><td><code>pyproject.toml</code> diff in PR</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Review this backlog quarterly, in 30 minutes. Delete any item whose trigger has no data source.</p>
+        </section>
+
+        <!-- 09 -->
+        <section id="s9">
+          <div class="sec-head"><span class="idx">09</span><h2>Pre-mortem</h2></div>
+          <p>Assume it is 31 March 2027 and this roadmap failed. These are the most likely stories, each with the signal already visible and the cheapest prevention, which is now part of &sect;08.</p>
+          <div class="usage" role="img" aria-label="Conversation logs per month from October 2025 to September 2026: 18, 19, 11, 22, 33, 43, 4, 0, 0, 0, 0, 4.">
+            <p class="cap">Conversation logs per month · Oct 2025 &ndash; Sep 2026</p>
+            <div class="bars">
+              <div class="bar" style="height:41.9%"><span>18</span></div>
+              <div class="bar" style="height:44.2%"><span>19</span></div>
+              <div class="bar" style="height:25.6%"><span>11</span></div>
+              <div class="bar" style="height:51.2%"><span>22</span></div>
+              <div class="bar" style="height:76.7%"><span>33</span></div>
+              <div class="bar" style="height:100%"><span>43</span></div>
+              <div class="bar" style="height:9.3%"><span>4</span></div>
+              <div class="bar zero"><span>0</span></div>
+              <div class="bar zero"><span>0</span></div>
+              <div class="bar zero"><span>0</span></div>
+              <div class="bar zero"><span>0</span></div>
+              <div class="bar" style="height:9.3%"><span>4</span></div>
             </div>
-            <ul class="steps">
-              <li><span>Home Assistant Assist &ldquo;Hey Jarvis&rdquo; wake word + ESP32 satellite as another thin TurnRunner client<a class="cite" href="#s8-20">20</a>.</span><span class="e L">L</span></li>
-              <li><span>Proactive Telegram notifications from scheduled jobs (approval-inbox digests, outcome summaries).</span><span class="e M">M</span></li>
-            </ul>
+            <div class="blabels"><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div>
+          </div>
+          <p style="font-size:0.86rem;color:var(--muted)">Counted by filename in <code>data/conversations/</code>. Assumes every front end writes a log there, which is not verified for the GUI.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Failure story</th><th scope="col">Odds</th><th scope="col">Signal today</th><th scope="col">Prevention</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Hardening a tool nobody uses</th><td>High</td><td>Usage chart above</td><td>Usage gate + scope decision</td></tr>
+                <tr><th scope="row">Write-ups never come</th><td>High</td><td>Write-ups already owed; 9 tags in 25 days</td><td>Write-up as an entry gate</td></tr>
+                <tr><th scope="row">The hub wins and the runtime is redundant</th><td>Med&ndash;high</td><td>Vendors now cover phone access and scheduling</td><td>HUB-02a before AON-02</td></tr>
+                <tr><th scope="row">Oversight exists only on paper</th><td>Med</td><td>Approval hang not reproduced; oversight code outside mutation scope</td><td>End-to-end two-write test</td></tr>
+                <tr><th scope="row">Spend creeps unseen</th><td>Med</td><td>Billed usage recorded but never summed</td><td>Monthly spend report</td></tr>
+                <tr><th scope="row">Retirement stalls halfway</th><td>Med</td><td>Frozen code already drifted from its docs</td><td>Config flag today</td></tr>
+                <tr><th scope="row">Plan sprawl</th><td>Med</td><td>Dossier, roadmap.md and developer roadmap disagree</td><td>roadmap.md is the only plan</td></tr>
+                <tr><th scope="row">A Jev spike grows into infrastructure</th><td>Low&ndash;med</td><td>Novelty pull; no telemetry to judge it</td><td>Exit criteria; ADR before any non-LiteLLM path</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
-        <!-- 8 -->
-        <section id="s7">
-          <div class="sec-head"><span class="idx">08</span><h2>Sources</h2></div>
-          <p style="font-size:0.9rem;color:var(--muted)">All external claims passed 3-lens adversarial verification (accuracy, currency, applicability); 30/30 survived.</p>
+        <!-- 10 -->
+        <section id="s10">
+          <div class="sec-head"><span class="idx">10</span><h2>Open questions for you</h2></div>
+          <ul class="plain">
+            <li><strong>Retire or harden <code>/develop</code>?</strong> And did you keep ADR-034's tiny-edit path on purpose, as portfolio evidence? The ADR-028 write-up and tag v0.27.0 preserve it either way.</li>
+            <li><strong>&ldquo;The developer agent in the other skill repo&rdquo;:</strong> nothing coding-related exists in <code>agent-capability-specifications</code> or <code>~/.claude/agents</code>. Did you mean a different place?</li>
+            <li><strong>Jev smoke test:</strong> is sending repo-only text to TypeSafe or OpenRouter acceptable before the DPA has been read?</li>
+            <li><strong>What is JARVIS-the-runtime for</strong> now that Claude covers scheduling, memory and mobile? The usage gate gives data, but the answer is yours.</li>
+          </ul>
+        </section>
+
+        <!-- 11 -->
+        <section id="s11">
+          <div class="sec-head"><span class="idx">11</span><h2>Sources</h2></div>
+          <p style="font-size:0.9rem;color:var(--muted)">Repo evidence is cited inline as file:line or commit SHA. External sources below were fetched by the research agents unless marked unverified in the text. The 25 sources of the August revision remain in its git version.</p>
           <ol class="sources">
-            <li id="s8-1"><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">anthropic.com/engineering/effective-harnesses-for-long-running-agents</a></li>
-            <li id="s8-2"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">anthropic.com/engineering/effective-context-engineering-for-ai-agents</a></li>
-            <li id="s8-3"><a href="https://code.claude.com/docs/en/agent-sdk/agent-loop">code.claude.com/docs/en/agent-sdk/agent-loop</a></li>
-            <li id="s8-4"><a href="https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge">langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge</a></li>
-            <li id="s8-5"><a href="https://arxiv.org/pdf/2601.06007">arxiv.org/pdf/2601.06007 &mdash; prompt-caching cost study</a></li>
-            <li id="s8-6"><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">anthropic.com/engineering/demystifying-evals-for-ai-agents</a></li>
-            <li id="s8-7"><a href="https://www.braintrust.dev/articles/llm-evaluation-guide">braintrust.dev/articles/llm-evaluation-guide</a></li>
-            <li id="s8-8"><a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">simonwillison.net &mdash; the lethal trifecta</a></li>
-            <li id="s8-9"><a href="https://www.anthropic.com/engineering/claude-code-sandboxing">anthropic.com/engineering/claude-code-sandboxing</a> &amp; <a href="https://code.claude.com/docs/en/agent-sdk/secure-deployment">agent-sdk/secure-deployment</a></li>
-            <li id="s8-10"><a href="https://www.anthropic.com/engineering/claude-code-auto-mode">anthropic.com/engineering/claude-code-auto-mode</a></li>
-            <li id="s8-11"><a href="https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html">owasp.org &mdash; AI Agent Security Cheat Sheet</a></li>
-            <li id="s8-12"><a href="https://arxiv.org/pdf/2606.19544">arxiv.org/pdf/2606.19544 &mdash; LLM-judge consistency vs correctness</a></li>
-            <li id="s8-13"><a href="https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks">python-telegram-bot wiki &mdash; polling vs webhooks</a></li>
-            <li id="s8-14"><a href="https://github.com/AsamK/signal-cli">github.com/AsamK/signal-cli</a></li>
-            <li id="s8-15"><a href="https://tailscale.com/docs/features/tailscale-funnel">tailscale.com/docs &mdash; Serve &amp; Funnel</a></li>
-            <li id="s8-16"><a href="https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/">developers.cloudflare.com &mdash; Access self-hosted app</a></li>
-            <li id="s8-17"><a href="https://arxiv.org/abs/2504.19413">arxiv.org/abs/2504.19413</a> &amp; <a href="https://mem0.ai/blog/state-of-ai-agent-memory-2026">mem0.ai &mdash; state of agent memory 2026</a></li>
-            <li id="s8-18"><a href="https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html">developer.apple.com &mdash; Creating launchd Jobs</a></li>
-            <li id="s8-19"><a href="https://culturedcode.com/things/support/articles/2803572/">culturedcode.com/things/support &mdash; automation articles</a></li>
-            <li id="s8-20"><a href="https://www.home-assistant.io/voice_control/">home-assistant.io/voice_control</a></li>
-            <li id="s8-21"><a href="https://astropad.com/blog/headless-mac-mini-setup-guide/">astropad.com &mdash; headless Mac mini guide</a> &amp; hometechops.com</li>
-            <li id="s8-22"><a href="https://www.anthropic.com/engineering/multi-agent-research-system">anthropic.com/engineering/multi-agent-research-system</a></li>
-            <li id="s8-23"><a href="https://github.com/openclaw/openclaw">github.com/openclaw/openclaw</a></li>
-            <li id="s8-24"><a href="https://github.com/khoj-ai/khoj">github.com/khoj-ai/khoj</a></li>
-            <li id="s8-25"><a href="https://docs.langchain.com/oss/python/langgraph/durable-execution">docs.langchain.com &mdash; LangGraph durable execution</a></li>
+            <li id="r1"><a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">simonwillison.net — the lethal trifecta</a></li>
+            <li id="r2"><a href="https://typesafe.ai/">typesafe.ai</a></li>
+            <li id="r3"><a href="https://docs.typesafe.ai/api.md">docs.typesafe.ai/api.md</a></li>
+            <li id="r4"><a href="https://docs.typesafe.ai/confidence.md">docs.typesafe.ai/confidence.md</a></li>
+            <li id="r5"><a href="https://docs.typesafe.ai/model-jaggedness/jev-1.13.md">docs.typesafe.ai — Jev 1.13 jaggedness</a></li>
+            <li id="r6"><a href="https://arxiv.org/abs/2609.30216">arxiv.org/abs/2609.30216 — Jev in the Wild</a></li>
+            <li id="r7"><a href="https://github.com/WallerChen/jev-measured">github.com/WallerChen/jev-measured</a></li>
+            <li id="r8"><a href="https://openrouter.ai/docs/guides/community/jev">openrouter.ai/docs/guides/community/jev</a></li>
+            <li id="r9"><a href="https://openrouter.ai/docs/guides/routing/routers/jev-router">openrouter.ai — jev-router</a></li>
+            <li id="r10"><a href="https://www.langchain.com/blog/building-a-harness-with-jev">langchain.com — building a harness with Jev</a></li>
+            <li id="r11"><a href="https://www.heise.de/en/news/AI-model-Jev-to-make-machines-decide-faster-11457071.html">heise.de — AI model Jev</a></li>
+            <li id="r12"><a href="https://claude.com/blog/projects-redesigned">claude.com/blog/projects-redesigned</a></li>
+            <li id="r13"><a href="https://claude.com/blog/cowork-is-now-claude">claude.com/blog/cowork-is-now-claude</a></li>
+            <li id="r14"><a href="https://code.claude.com/docs/en/changelog">code.claude.com/docs/en/changelog</a></li>
+            <li id="r15"><a href="https://code.claude.com/docs/en/channels">code.claude.com/docs/en/channels</a></li>
+            <li id="r16"><a href="https://blog.modelcontextprotocol.io/posts/2026-07-28/">blog.modelcontextprotocol.io — 2026-07-28 release</a></li>
+            <li id="r17"><a href="https://mcpservers.org/category/memory">mcpservers.org/category/memory</a></li>
+            <li id="r18"><a href="https://openrouter.ai/docs/features/prompt-caching">openrouter.ai/docs/features/prompt-caching</a></li>
+            <li id="r19"><a href="https://openrouter.ai/blog/tutorials/prompt-caching-sticky-routing/">openrouter.ai — prompt caching and sticky routing</a></li>
+            <li id="r20"><a href="https://claude.com/blog/the-advisor-strategy">claude.com/blog/the-advisor-strategy</a></li>
           </ol>
         </section>
 
         <footer>
           <span>JARVIS Deep-Research Dossier</span>
-          <span>38 agents · 1.47M tokens · 30/30 claims verified · 2026-07-04 · rev. 2026-08-19 (ADR-034)</span>
+          <span>2026-07-04 · rev. 2026-08-19 (ADR-034) · rev. 2026-09-30 (8 agents · 77 commits · roadmap.md is authoritative)</span>
         </footer>
 
       </main>
     </div>
   </div>
 </div>
+
 </body>
 </html>
