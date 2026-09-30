@@ -502,7 +502,7 @@ class DeveloperSettings(BaseModel):
     """Developer agent — JARVIS self-improvement."""
 
     enabled: bool = Field(
-        default=True,
+        default=False,
         description="Expose the developer agent that can edit JARVIS's own configuration files.",
     )
     scope: list[str] = Field(

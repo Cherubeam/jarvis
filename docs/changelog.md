@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Developer agent off by default (2026-09-30)
+
+- **`developer.enabled` now defaults to `false`**, so the developer tools
+  (codebase, git, project writes, pytest and mutation runners) are no longer
+  built. The agent had no recorded use in 203 conversation logs, yet JARVIS
+  could delegate to it from the GUI, and its write-scope check can be escaped
+  with `..`. Removing unused write and exec permissions is a control against
+  excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent and its code
+  are removed in a follow-up with an ADR; set `developer.enabled: true` in
+  `config/local.yaml` to get it back until then.
+
 ## [0.27.0] - 2026-09-30
 
 ### Fixed — Logged token counts and costs were estimates for streamed turns (2026-09-29)

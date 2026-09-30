@@ -14,7 +14,7 @@ This matrix is the reference list of agents, their slash commands and their tool
 |-------|---------|-------------|-------|:-----------:|:--------------:|:-------------:|-------------|--------|
 | **jarvis** *(orchestrator)* | — | Default session; answers directly or delegates to the agents below | session / auto | 0.7 | 5 | — | *(see Tier 1)* | — |
 | **content_reviewer** | `/review` | Structured content evaluation and improvement suggestions | quality | 0.7 | 10 | — | blog_tools, content_evaluator, suggest_improvements | — |
-| **developer** | `/develop` | Self-improvement: reads the codebase, branches, writes data-driven files, runs tests, commits | session | 0.3 | 20 | — | dev_tools | — |
+| **developer** | `/develop` | Off by default since 2026-09-30 (`developer.enabled`), being retired. Self-improvement: reads the codebase, branches, writes data-driven files, runs tests, commits | session | 0.3 | 20 | — | dev_tools | — |
 | **navigator** | `/navigator` | Personal alignment, goal clarity and structured reviews | session | 0.7 | default | — | — | — |
 | **obsidian_note_creator** | `/obsidian-note-creator` | Extracts atomic evergreen notes into the Slip-Box | session | 0.7 | default | slip_box | — | — |
 | **okr_architect** | `/okr-architect` | Designs, implements and tracks OKRs | session | 0.7 | default | — | — | — |
