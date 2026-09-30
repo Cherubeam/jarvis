@@ -19,7 +19,7 @@ def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
     Semantics (unchanged from ``apps.cli.main._deep_merge``):
     - Nested dicts merge key-by-key.
     - Lists replace wholesale (not concatenated) — matches user expectation
-      for keys like ``mcp.servers`` or ``developer.scope``.
+      for keys like ``mcp.servers`` or ``filesystem.access_rules``.
     - Any non-dict override replaces the base value at that key.
 
     Returns a new dict; inputs are not mutated.
@@ -498,29 +498,6 @@ class PatternCardsSettings(BaseModel):
     )
 
 
-class DeveloperSettings(BaseModel):
-    """Developer agent — JARVIS self-improvement."""
-
-    enabled: bool = Field(
-        default=False,
-        description="Expose the developer agent that can edit JARVIS's own configuration files.",
-    )
-    scope: list[str] = Field(
-        default_factory=lambda: [
-            "packages/agents/",
-            "packages/skills/",
-            "data/context/",
-            "data/prompts/",
-            "config/",
-        ],
-        description="Project-relative directories the developer agent is allowed to edit.",
-    )
-    allowed_extensions: list[str] = Field(
-        default_factory=lambda: [".md", ".yaml", ".yml"],
-        description="File extensions the developer agent is allowed to edit.",
-    )
-
-
 class GuiSettings(BaseModel):
     """GUI server — browser-facing origin policy. Holds no secrets.
 
@@ -566,7 +543,6 @@ class Settings(BaseSettings):
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
     readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
     pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
-    developer: DeveloperSettings = Field(default_factory=DeveloperSettings)
     gui: GuiSettings = Field(default_factory=GuiSettings)
 
     jarvis_dir: Path = Field(

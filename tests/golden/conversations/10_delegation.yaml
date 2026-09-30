@@ -1,15 +1,15 @@
-name: "delegation_to_developer"
-description: "Model should delegate a coding task to the developer agent"
+name: "delegation_to_researcher"
+description: "Model should delegate a research-and-synthesis task to the researcher agent"
 category: "tool_use"
 context:
   profile: |
     I am building a personal AI assistant called Jarvis in Python.
 
-prompt: "Add error handling to the LLM client's retry logic"
+prompt: "Research how other personal AI assistants handle long-term memory and give me a structured comparison of the approaches"
 
 tools:
   - name: "delegate_to_agent"
-    description: "Delegate a task to a specialized agent. Available agents: developer (coding/debugging), researcher (web research), writer (content creation), content_reviewer (editorial review). Use when the user's request is better handled by a domain expert. Delegate on the first turn — do not pre-fetch content."
+    description: "Delegate a task to a specialized agent. Available agents: researcher (analysis, synthesis, structured answers), simplifier (explains complex ideas simply), writer (content creation), content_reviewer (editorial review). Use when the user's request is better handled by a domain expert. Delegate on the first turn — do not pre-fetch content."
     parameters:
       type: "object"
       properties:
@@ -17,8 +17,8 @@ tools:
           type: "string"
           description: "Name of the agent to delegate to"
           enum:
-            - "developer"
             - "researcher"
+            - "simplifier"
             - "writer"
             - "content_reviewer"
         task:
@@ -50,7 +50,7 @@ assertions:
   expected_tool_calls:
     - tool_name: "delegate_to_agent"
       expected_args:
-        agent_name: "developer"
+        agent_name: "researcher"
       exact_match_args:
         - "agent_name"
 

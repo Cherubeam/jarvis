@@ -590,7 +590,7 @@ class TestGoldenConversations:
         self._run_golden_test("09_tool_calling.yaml", evaluator, evaluation_config, result_storage)
 
     def test_10_delegation(self, evaluator, evaluation_config, result_storage):
-        """Test that model delegates coding tasks to the developer agent."""
+        """Test that model delegates a research task to the researcher agent."""
         self._run_golden_test("10_delegation.yaml", evaluator, evaluation_config, result_storage)
 
     def test_11_multi_step_tool_use(self, evaluator, evaluation_config, result_storage):

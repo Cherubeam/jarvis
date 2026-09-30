@@ -230,11 +230,10 @@ def test_build_gui_session_wiring(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["settings"] is settings
     assert captured["args"].model is None
     assert captured["args"].agent is None
-    assert captured["args"].auto_confirm is False
+    assert not hasattr(captured["args"], "auto_confirm")
     assert captured["kwargs"] == {
         "on_tool_call": None,
         "client_label": "gui",
-        "auto_confirm": False,
     }
     assert session.components is components
     # started_at comes from time.strftime("%H:%M"). Compare against the same

@@ -18,7 +18,6 @@ class TestDiscoverAgents:
             ("researcher", "/research"),
             ("simplifier", "/simplify"),
             ("tactics_coach", "/tactics"),
-            ("developer", "/develop"),
             ("content_reviewer", "/review"),
             ("substack_publisher", "/publish"),
             ("substack_image_creator", "/substack-image"),
@@ -28,6 +27,12 @@ class TestDiscoverAgents:
         agents = discover_agents()
         assert name in agents
         assert agents[name].command == command
+
+    def test_retired_developer_agent_is_gone(self):
+        """The developer agent was retired (ADR-039); /develop no longer resolves."""
+        agents = discover_agents()
+        assert "developer" not in agents
+        assert get_by_command("/develop", agents) is None
 
     def test_excludes_jarvis(self):
         agents = discover_agents()
@@ -69,7 +74,6 @@ class TestDiscoverAgents:
             "content_evaluator",
             "suggest_improvements",
         )
-        assert agents["developer"].tool_groups == ("dev_tools",)
         assert agents["tactics_coach"].tool_groups == ("card_search",)
 
     def test_skills_extracted_from_meta_yaml(self):

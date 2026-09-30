@@ -1,7 +1,7 @@
 """
 Parameterized tests for data-driven agents (meta.yaml-based).
 
-All agents are now data-driven (including writing, tactics, developer).
+All agents are now data-driven (including writing and tactics).
 """
 
 from pathlib import Path
@@ -16,7 +16,6 @@ from packages.core.llm_client import LLMClient, StreamingResponse, TokenUsage
 
 DATA_DRIVEN_AGENTS = [
     "content_reviewer",
-    "developer",
     "navigator",
     "obsidian_note_creator",
     "okr_architect",
@@ -211,9 +210,9 @@ class TestMetaTemperature:
     def test_missing_meta_temperature_is_none(self, tmp_path):
         assert self._agent(tmp_path, {}).config.temperature is None
 
-    def test_developer_agent_uses_its_meta_temperature(self):
-        agent = agent_from_meta(_AGENTS_DIR / "developer" / "meta.yaml", Mock(spec=LLMClient), "test-model")
-        assert agent.config.temperature == 0.3
+    def test_tactics_coach_uses_its_meta_temperature(self):
+        agent = agent_from_meta(_AGENTS_DIR / "tactics_coach" / "meta.yaml", Mock(spec=LLMClient), "test-model")
+        assert agent.config.temperature == 0.7
 
 
 @pytest.mark.unit
@@ -367,11 +366,11 @@ class TestMaxIterations:
         agent = agent_from_meta(agent_dir / "meta.yaml", Mock(spec=LLMClient), "m")
         assert agent.config.max_iterations is None
 
-    def test_developer_agent_has_max_iterations(self):
-        """Developer agent's meta.yaml sets max_iterations=20."""
-        meta_path = _AGENTS_DIR / "developer" / "meta.yaml"
+    def test_pattern_card_generator_has_max_iterations(self):
+        """Pattern card generator's meta.yaml sets max_iterations=15."""
+        meta_path = _AGENTS_DIR / "pattern_card_generator" / "meta.yaml"
         agent = agent_from_meta(meta_path, Mock(spec=LLMClient), "test-model")
-        assert agent.config.max_iterations == 20
+        assert agent.config.max_iterations == 15
 
     def test_max_iterations_passed_to_stream_handler(self, tmp_path):
         """DataDrivenAgent.run() passes max_iterations to stream_handler.stream()."""

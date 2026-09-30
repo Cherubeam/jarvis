@@ -82,7 +82,7 @@ def build_gui_session() -> GuiSession:
 
     Confirmation handler is per-turn (created fresh each `submit` so the
     threading.Event isn't reused). The factory needs *some* handler for the
-    initial wiring of blog/suggest/dev/vault tools — we wire a placeholder
+    initial wiring of blog/suggest/vault tools — we wire a placeholder
     that defers to whatever turn-specific handler is bound on `session.confirmation`.
     """
     settings = load_config()
@@ -90,14 +90,13 @@ def build_gui_session() -> GuiSession:
     # Create a deferred handler — the queue comes later (per turn).
     deferred = _DeferredConfirmationHandler()
 
-    args = Namespace(model=None, agent=None, auto_confirm=False)
+    args = Namespace(model=None, agent=None)
     components = build_session(
         args,
         settings,
         deferred,
         on_tool_call=None,
         client_label="gui",
-        auto_confirm=False,
     )
     # Attach the deferred handler so the bridge can rebind it per turn.
     components._deferred_handler = deferred

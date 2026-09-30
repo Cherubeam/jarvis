@@ -15,10 +15,6 @@ from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
 
-_SPECIAL_HINTS: dict[str, str] = {
-    "developer": " (uses a git sandbox — creates branches, commits safely, never pushes)",
-}
-
 
 def _build_outcome_tracking_directive() -> str:
     """Directive teaching JARVIS when to call track_recommendation.
@@ -66,8 +62,7 @@ def _build_delegation_directive(available_agents: list[dict[str, Any]]) -> str:
 
     agent_lines = []
     for agent in sorted(available_agents, key=lambda a: a["name"]):
-        hint = _SPECIAL_HINTS.get(agent["name"], "")
-        agent_lines.append(f"- **{agent['name']}**: {agent['description']}{hint}")
+        agent_lines.append(f"- **{agent['name']}**: {agent['description']}")
 
     agent_list = "\n".join(agent_lines)
 
