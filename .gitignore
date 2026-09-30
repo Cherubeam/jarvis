@@ -40,6 +40,8 @@ config/*.local.yaml
 *.swp
 *.swo
 *~
+# Claude Code Desktop creates a worktree per session here
+.claude/worktrees/
 
 # OS files
 .DS_Store
