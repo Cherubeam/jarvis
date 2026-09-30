@@ -149,7 +149,7 @@ OpenRouter's generation record for that request (2026-09-29):
 - Streamed usage is replaced with OpenRouter's billed records since PR #73. The records appear
   9.5–12.7 s after a stream, so the logger reconciles when it saves, and
   `scripts/backfill_billed_usage.py` fixes the rest. Prompt caching work resumes on exact numbers
-  (see [token-economics-next-steps.md](token-economics-next-steps.md)).
+  (plan: [token-economics-next-steps.md, Step C reopened](token-economics-next-steps.md#step-c-reopened-prompt-caching-state-and-plan-2026-09-30)).
 - History summarization does not run in delegated agent sessions.
 
 ---
