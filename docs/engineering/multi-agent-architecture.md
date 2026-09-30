@@ -42,7 +42,7 @@ All events carry an `instance_id` field (defaults to `""`) for future multi-inst
 
 **`packages/core/settings.py`** — Typed configuration loader (PR-8a, supersedes the deleted `packages/core/app.py`):
 - `load_config(project_root) -> Settings` — reads `default.yaml` + `local.yaml`, deep-merges, validates via pydantic-settings
-- All sections (`models`, `paths`, `cli`, `outcomes`, `things3`, `evaluation`, `rag`, `routing`, `summarization`, `obsidian`, `mcp`, `filesystem`, `readwise`, `pattern_cards`, `developer`, `gui`) are typed sub-models with `Field(description=...)` documentation suitable for the Settings GUI
+- All sections (`models`, `paths`, `cli`, `outcomes`, `things3`, `evaluation`, `rag`, `routing`, `summarization`, `obsidian`, `mcp`, `filesystem`, `readwise`, `pattern_cards`, `gui`) are typed sub-models with `Field(description=...)` documentation suitable for the Settings GUI
 
 Other shared bootstrap helpers (`build_session`, agent/skill discovery, LLM client init) live in `apps/cli/session_factory.py` and are reused by both the CLI and the GUI.
 

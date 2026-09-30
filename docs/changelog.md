@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — Developer agent retired (2026-09-30)
+
+- **`/develop` and its 16 tools are gone** ([ADR-039](product/decisions.md#adr-039-retire-the-developer-agent),
+  superseding ADR-028 and amending ADR-034 §1). Deleted: the developer agent
+  and its `AutoConfirmationHandler`, the `dev_tools` group (codebase, git,
+  project writes, pytest and mutation runners), `--auto-confirm`, the
+  `developer` settings section (CLI config and GUI), and
+  `scripts/generate_codebase_map.py` with `data/codebase_map.md`.
+- **Why.** No dev tool was called in 203 conversation logs, no message started
+  with `/develop`, and the agent authored no commit; the "tiny-edit fast path"
+  ADR-034 kept was never used. Yet JARVIS could delegate to it from the GUI,
+  where it held untrusted Cortex text, writes and pytest execution in one
+  agent. Its write-scope check could be escaped with `..`
+  (`config/../.github/…`), `config/` in scope reached the MCP server commands in
+  `config/local.yaml`, `--auto-confirm` approved such writes without a human,
+  and the mutation runner rewrote `pyproject.toml` outside the scope check.
+  Deleting unused write and exec permissions removes excessive agency instead
+  of guarding it (OWASP LLM06 Excessive Agency; NIST AI RMF Manage).
+- **Closes by deletion** the AON-01 item "confirmation gate on the pytest
+  runner" and the FilesystemGuard-bypass part of the AON-04 item (the
+  quarantined web-digest job stays open).
+- **If you had a `developer:` block in `config/local.yaml`, delete it**:
+  startup rejects unknown settings keys.
+- Coding on JARVIS happens in Claude Code. Tag `v0.27.0` is the restore point;
+  ADR-039 records when a thin dispatcher would be worth building instead.
+- Golden case `10_delegation` now checks delegation to `researcher`.
+
 ### Changed — Developer agent off by default (2026-09-30)
 
 - **`developer.enabled` now defaults to `false`**, so the developer tools

@@ -1,5 +1,12 @@
 # Developer Agent Roadmap — `DEV`
 
+> **Retired 2026-09-30 per [ADR-039](decisions.md#adr-039-retire-the-developer-agent)**: the developer agent and
+> its tools were deleted (no recorded use, escapable write scope). Coding on
+> JARVIS happens in Claude Code. DEV-01 below is history; DEV-02/DEV-03 are
+> kept as **trigger-gated ideas**, not planned work. Build a thin dispatcher
+> from scratch (not by restoring DEV-01, restore point tag `v0.27.0`) only if
+> the reversal trigger in ADR-039 fires.
+
 Milestone plan for JARVIS's self-improvement capabilities via the developer agent (`/develop`).
 
 Uses the initiative/milestone naming scheme from [ADR-033](decisions.md#adr-033-initiative--milestone-naming-scheme): this is initiative **`DEV`**; milestone IDs (`DEV-01`…) are stable and never renumbered. See [ADR-028](decisions.md) for the architectural decision record. *(Legacy: this doc previously used "Phase 1–3"; historical changelog entries keep that label.)*
@@ -12,7 +19,7 @@ Uses the initiative/milestone naming scheme from [ADR-033](decisions.md#adr-033-
 
 *Legacy: Phase 1*
 
-**Status**: ✅ Complete (2026-03-13)
+**Status**: 🗑️ Retired 2026-09-30 ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)) — shipped 2026-03-13
 
 The developer agent can read its own codebase, make scoped changes, and commit safely.
 
@@ -27,16 +34,17 @@ The developer agent can read its own codebase, make scoped changes, and commit s
 
 *Legacy: Phase 2 "Autonomous Operation" — rescoped 2026-08-19 per ADR-034*
 
-**Status**: 📋 Planned
+**Status**: 💤 Trigger-gated idea (ADR-039) — not planned
 
 `/develop` becomes a thin dispatcher: JARVIS frames the task and supplies context; an external coding harness executes it.
 
 - **Harness dispatch**: invoke Claude Code headless (`claude -p`) / Agent SDK with a JARVIS-composed prompt (task framing, relevant context, acceptance criteria); capture the result and surface it in the conversation
-- **Task composition**: reuse the codebase map + `AGENTS.md` conventions so the delegated harness lands changes that follow house rules (branch naming, commit format, `uv`-only)
-- **Tiny-edit fast path**: keep the DEV-01 tool set for small scoped edits (`meta.yaml`, prompt files) where spawning a harness is overkill — explicit size/scope threshold decides the path
+- **Task composition**: reuse the `AGENTS.md` conventions (the codebase map was deleted with DEV-01) so the delegated harness lands changes that follow house rules (branch naming, commit format, `uv`-only)
+- ~~**Tiny-edit fast path**: keep the DEV-01 tool set for small scoped edits~~ — dropped by ADR-039; the DEV-01 tools no longer exist
 - **End-to-end integration test**: dispatch a mocked harness run and assert the composed prompt, sandbox flags, and result capture
 
-> **Dropped from the original spec**: AutoConfirmationHandler (headless-safe
+> **Dropped from the original spec**: AutoConfirmationHandler (it had in fact
+> shipped with DEV-01 behind `--auto-confirm`; deleted by ADR-039) (headless-safe
 > confirmation for JARVIS's own jobs is `AON-02`'s `PolicyConfirmationHandler`;
 > confirmation *inside* delegated coding runs is the harness's permission
 > system, not ours), planning phase, and expanded Python file scope with AST
@@ -46,7 +54,7 @@ The developer agent can read its own codebase, make scoped changes, and commit s
 
 *Legacy: Phase 3 — rescoped 2026-08-19 per ADR-034*
 
-**Status**: 📋 Planned
+**Status**: 💤 Trigger-gated idea (ADR-039) — not planned
 
 Periodic, proactive improvement — JARVIS discovers, the harness executes, a human reviews the PR.
 
@@ -63,4 +71,4 @@ Periodic, proactive improvement — JARVIS discovers, the harness executes, a hu
 
 ---
 
-*Last updated: 2026-08-19*
+*Last updated: 2026-09-30*

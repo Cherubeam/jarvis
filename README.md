@@ -73,7 +73,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 
 ## Features
 
-- **Agent Framework**: Slash-command routing from the JARVIS orchestrator to specialist agents (Writer, Researcher, Content Reviewer, Developer, Reading Assistant and more — full list with commands and tools in [docs/engineering/agents.md](docs/engineering/agents.md))
+- **Agent Framework**: Slash-command routing from the JARVIS orchestrator to specialist agents (Writer, Researcher, Content Reviewer, Reading Assistant and more — full list with commands and tools in [docs/engineering/agents.md](docs/engineering/agents.md))
 - **Data-Driven Agents**: Delegate agents are defined via `meta.yaml` + `prompts/system.md` -- no Python class needed
 - **Standalone Agent Mode**: Run any agent directly with `--agent <name>`
 - **Tool Calling**: Agentic loop with tool execution and a per-agent iteration limit ([how it works](docs/engineering/architecture.md#agentic-loop))

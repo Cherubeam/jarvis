@@ -28,7 +28,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 | Phase 8 | `OPS` | System Monitoring & Optimization |
 | Phase 9 | `UX` | UX Enhancements |
 | Phase 10 | `TUNE` | Fine-tuning (optional) |
-| Dev-agent Phase 1–3 | `DEV` | Developer Agent (see `developer-agent-roadmap.md`) |
+| Dev-agent Phase 1–3 | `DEV` | Developer Agent — retired 2026-09-30 ([ADR-039](decisions.md#adr-039-retire-the-developer-agent); ideas in `developer-agent-roadmap.md`) |
 | — | `AON` | Always-On & Loop Engineering |
 | — | `HUB` | Context Hub — Cortex/memory via MCP (see [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context)) |
 
@@ -242,6 +242,8 @@ packages/skills/
 
 ### Developer Agent *(legacy 5G)*
 
+*Retired 2026-09-30 ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)); the items below are history.*
+
 - [x] Developer Agent (`/develop`) — self-improvement agent with codebase read tools, git operations, guarded file writes, and test runner
 - [x] 14 tools across four modules (codebase, git, project writes, tests)
 - [x] Extended agentic loop (`max_iterations: 20`) for multi-step edit-test-fix cycles
@@ -409,7 +411,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 - [x] **WebSocket origin allowlist + token auth** — one ASGI middleware gates every `/api/*` route, `/ws/chat`, and `/docs`; derived-value cookie for browsers, `Authorization: Bearer` for scripts ([ADR-035](decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)). Also fixed two approval-hijack holes in `confirmation.py` and closed the `app.py`/`state.py`/`chat_ws.py` mutation blind spot (115 unkilled mutants → 84 new tests) *(S)* ✅ 2026-09-05
 - [x] **Vault-write oversight fixes** (found during the 2026-09 model refresh, not originally planned): the GUI approval card now shows the real diff and path (it showed nothing); changed links are listed above every vault diff; writes and previews are refused when the note changed on disk since the agent read it (Art. 14(4)(c), OWASP LLM05/LLM06) *(S)* ✅ 2026-09-25
-- [ ] Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py` (currently runs arbitrary Python via conftest with no confirmation) *(S)*
+- [x] ~~Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py`~~ — closed by deletion: the developer agent and its pytest runner were retired ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)) ✅ 2026-09-30
 - [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
 - [ ] Fix the confirmation deadlock: add a timeout to `apps/gui/server/confirmation.py`, move approval handling out of the blocked receive loop in `chat_ws.py` *(M)*
 - [ ] Reset `WebConfirmationHandler._event`/`_pending_id` per approval, not per turn — `bridge.py` creates one handler per turn, so a second vault write in the same turn silently replays the first decision without prompting. Found during AON-01; current behaviour is pinned in `test_confirmation.py` *(S)*
@@ -457,7 +459,7 @@ Dedicated always-on box; loops that run longer, safely.
 
 - [ ] **Secrets hygiene before the box goes always-on**: `config/local.yaml` holds plaintext API keys and the pattern will grow (OpenRouter, Telegram) — on an unencrypted always-on disk with FileVault off. Move to Keychain or 0600 env files outside the repo; document the physical-theft acceptance *(S)*
 - [ ] Headless Mac (mini/spare) as a LaunchAgent: auto-login, FileVault off, `pmset -a sleep 0`, auto-restart, Tailscale-only access (standalone `tailscaled`, not the App Store build) *(M)*
-- [ ] Route `FilesystemGuard` through **all** write tools (close the bypass in `codebase_tools.py`, `project_write_tools.py`, `git_tools.py`); add a quarantined web-digest job *(M)*
+- [ ] ~~Route `FilesystemGuard` through **all** write tools (close the bypass in `codebase_tools.py`, `project_write_tools.py`, `git_tools.py`)~~ — closed by deletion ([ADR-039](decisions.md#adr-039-retire-the-developer-agent), 2026-09-30); still open: add a quarantined web-digest job *(M)*
 - [ ] **MCP transport policy**: stdio/local-only by default; network transports (SSE/HTTP) are deliberate opt-in (`mcp/client.py` supports all three; thousands of exposed MCP servers are catalogued, roughly half unauthenticated) *(S)*
 - [ ] Wire the existing `history.py:trim_tool_results` into StreamHandler's within-loop iterations — **batched at a token threshold, cache-aware** (per-turn sliding-window trimming mutates old messages and invalidates the cached prefix; don't rebuild what exists). Cache-friendly prompt assembly: static prefix first, dynamic content last. Note: Anthropic's native context-management beta is rejected by OpenRouter, so hand-rolling is correct here; a direct-Anthropic path is optional for long loops only *(M)*
 - [ ] Cache **keepalive pings at ~240s** during approval waits (the circulating 30s convention is ~8× too expensive), only within the break-even horizon; spend counted by the AON-01 ledger *(S)*
@@ -643,4 +645,4 @@ The rule for "should Cortex integrate source X?":
 
 ---
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-30*
