@@ -151,7 +151,7 @@ pattern_cards:
 
 # Developer agent — JARVIS self-improvement
 developer:
-  enabled: true
+  enabled: false  # off since 2026-09-30; being retired (unused, write scope escapable)
   scope:
     - "packages/agents/"
     - "packages/skills/"

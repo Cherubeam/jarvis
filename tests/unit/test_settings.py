@@ -121,7 +121,7 @@ class TestOutcomesSettings:
 class TestDeveloperSettings:
     def test_defaults_match_default_yaml(self) -> None:
         dev = DeveloperSettings()
-        assert dev.enabled is True
+        assert dev.enabled is False
         assert dev.scope == [
             "packages/agents/",
             "packages/skills/",
@@ -567,7 +567,7 @@ class TestSettingsAggregator:
         assert settings.filesystem.access_rules == []
         assert settings.readwise.enabled is False
         assert settings.pattern_cards.output_dir == "data/pattern-cards"
-        assert settings.developer.enabled is True
+        assert settings.developer.enabled is False
         assert settings.gui.allowed_origins == []
 
     def test_partial_section_override_via_dict(self) -> None:
