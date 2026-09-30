@@ -1826,7 +1826,7 @@ Each agent declares which `obsidian.writing.<key>` config section it uses via `v
 ## ADR-028: Developer Agent — Git Sandbox, Scope Restrictions, and Extended Agentic Loop
 
 **Date**: 2026-03-13
-**Status**: ✅ Accepted
+**Status**: 🔴 Superseded by [ADR-039](#adr-039-retire-the-developer-agent) (2026-09-30) — the developer agent was retired
 
 ### Context
 
@@ -2323,7 +2323,7 @@ Adopt a two-tier scheme (ADRs remain the third, decision, tier):
 ## ADR-034: Context Hub Positioning — Rent Coding Harnesses, Own the Context
 
 **Date**: 2026-08-19
-**Status**: ✅ Accepted
+**Status**: ✅ Accepted — §1 amended by [ADR-039](#adr-039-retire-the-developer-agent) (2026-09-30): the DEV-01 fast path is gone, coding goes to Claude Code directly
 
 ### Context
 
@@ -2686,3 +2686,106 @@ specialist until the user types `/back`, and a specialist had no way to say
 - ADR-020 (Agent Delegation via Tool Calling)
 - ADR-022 (Capability Distribution — Orchestrator vs Subagent Tools)
 - ADR-026 (Agent-Skill Binding and Delegation Context)
+
+---
+
+## ADR-039: Retire the Developer Agent
+
+**Date**: 2026-09-30
+**Status**: Accepted — supersedes ADR-028, amends ADR-034 §1
+
+### Context
+
+The developer agent (`/develop`, milestone DEV-01, ADR-028) was a small coding
+harness inside JARVIS: codebase read tools, git tools, scoped file writes, a
+pytest runner and a mutation-test runner (16 tools in the `dev_tools` group).
+ADR-034 (2026-08-19) already decided that coding harnesses are commodities and
+delegated coding to Claude Code, but kept DEV-01 as a "tiny-edit fast path".
+
+What the record shows since then:
+
+- **No use.** None of the 16 dev tools was called in the 203 conversation logs
+  under `data/conversations/`; no user message starts with `/develop`; no
+  commit in the repo was authored by the agent. The last functional change to
+  the agent was on 2026-04-03. The fast path ADR-034 kept was never taken.
+- **Reachable without asking for it.** JARVIS could delegate to it from the GUI
+  (`apps/gui/server/bridge.py` → `build_delegate_agent`) without anyone typing
+  `/develop`. Cortex vault search is a shared tool every agent gets, so
+  untrusted text (notes, clipped web content) and pytest execution sat in one
+  agent: untrusted input, private data and code execution together.
+- **The write scope could be escaped.** `_check_allowed` in
+  `project_write_tools.py` compared the raw relative path with `startswith`, so
+  `config/../.github/workflows/x.yml` passed a `config/` scope. `config/` in
+  scope also allowed editing `config/local.yaml`, which holds MCP server
+  commands. `--auto-confirm` (`AutoConfirmationHandler`) approved such writes
+  without a human, although `developer-agent-roadmap.md` said that handler had
+  been dropped.
+- **The mutation runner wrote outside the guard.** `run_mutation_tests`
+  rewrote `pyproject.toml` without going through the scope check, and mutmut
+  doesn't run usefully on macOS anyway.
+- **Open hardening items existed only because of it.** AON-01 "confirmation
+  gate on the pytest runner" and the FilesystemGuard-bypass half of the AON-04
+  item named the dev tool modules.
+
+PR #79 turned the agent off by default (`developer.enabled: false`) as a first
+step.
+
+### Decision
+
+Delete the developer agent and everything that only it used:
+`packages/agents/developer/` (including `AutoConfirmationHandler`),
+`packages/core/tools/{codebase,git,project_write,test,mutation}_tools.py`,
+`scripts/generate_codebase_map.py` and `data/codebase_map.md`, the `dev_tools`
+wiring in `session_factory.py`, the `--auto-confirm` CLI flag, the
+`DeveloperSettings` model with its `config/default.yaml` block, the GUI
+settings section, and JARVIS's developer-only delegation hint.
+
+Coding work on JARVIS happens in Claude Code (local, remote, cloud or
+scheduled sessions), which reads the repo's `AGENTS.md`. This reverses the
+ADR-034 §1 clause that kept DEV-01 as a tiny-edit fast path and the plan to
+turn `/develop` into a dispatcher; the rest of ADR-034 stands.
+
+### Alternatives Considered
+
+- **A. Thin dispatcher to Claude Code** (DEV-02 as rescoped by ADR-034) —
+  `/develop` composes context and runs `claude -p`. Nobody has asked for it
+  from a JARVIS front end, and Claude Code already runs from the terminal,
+  the desktop app, the web and on a schedule. Building it now is speculative.
+- **B. Freeze and harden** — fix `_check_allowed` (resolve before comparing),
+  drop `config/` from scope, gate pytest behind confirmation, remove
+  `--auto-confirm`, take the agent out of GUI delegation. Real work plus
+  permanent test and mutation-audit surface for a feature with zero calls.
+- **C. Retire (chosen)** — removes the attack surface and the maintenance
+  surface at once. Tag `v0.27.0` is the restore point.
+
+### Consequences
+
+- About 2,700 lines of code and tests leave the repo; the agent list, tool
+  groups and settings shrink by one entry each.
+- Excessive agency is removed rather than guarded: no JARVIS agent can write
+  repo files, run git or execute the test suite any more (OWASP LLM06
+  Excessive Agency; NIST AI RMF Manage).
+- Two roadmap items close by deletion: AON-01 "confirmation gate on the pytest
+  runner" and the FilesystemGuard-bypass part of the AON-04 item. The
+  quarantined web-digest job in that AON-04 line stays open.
+- A leftover `developer:` block in `config/local.yaml` now fails validation at
+  startup (`Settings` rejects unknown keys); delete it.
+- `DEV` stays allocated as an initiative code (ADR-033: codes are never
+  reused). DEV-02/DEV-03 remain in `developer-agent-roadmap.md` as
+  trigger-gated ideas, not planned work.
+- Golden case `10_delegation` now covers delegation routing with the
+  researcher agent.
+
+**Reversal trigger.** Build a thin dispatcher to Claude Code from scratch —
+not by restoring DEV-01 — only if either happens:
+
+1. Marco tries at least 3 times in one month to start a coding task from a
+   JARVIS-only front end (e.g. Telegram) that Claude Code's remote, cloud or
+   scheduled sessions can't serve, or
+2. a JARVIS discovery job (DEV-03 idea) yields at least 5 actionable fixes a
+   month.
+
+### Related ADRs
+- ADR-028 (Developer Agent — superseded by this ADR)
+- ADR-034 (Context Hub Positioning — §1 amended by this ADR)
+- ADR-033 (Initiative & Milestone Naming — `DEV` stays allocated)

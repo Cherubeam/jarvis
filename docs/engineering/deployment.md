@@ -42,7 +42,6 @@ API keys come from `.env`, never from the YAML files. The system prompt is assem
 uv run jarvis                      # or: uv run python -m apps.cli.main
 uv run jarvis --agent writer       # run one specialist agent directly
 uv run jarvis --model quality      # start on a preset or model id (see below)
-uv run jarvis --auto-confirm       # auto-approve developer-agent writes within developer.scope
 ```
 
 In a session, type a message and press Enter; `quit` or `exit` ends it, `Ctrl+C` interrupts.
