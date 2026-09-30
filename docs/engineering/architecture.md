@@ -207,6 +207,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 - Accumulate messages during session
 - Track session metadata (tokens, cost, latency, model)
 - Save to timestamped JSON files
+- Replace estimated usage of streamed turns with OpenRouter's billed records (`metadata.usage_source`: `billed` | `estimated`)
 - Return message history for API calls
 
 **Key Classes:**
@@ -216,6 +217,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 **Key Methods:**
 - `add_message(role, content, ..., ttft_ms, total_latency_ms)`: Add message to log
 - `get_messages_for_api()`: Format messages for LLM API
+- `reconcile_billed_usage(deadline_s=0.0)`: swap estimated usage for billed records (needs `billing_api_key`; called before `save()` in CLI and GUI)
 - `save()`: Write to JSON file
 
 **File Format (Schema v1.0.0):**
@@ -362,7 +364,8 @@ The `shared: true` flag (introduced for this integration, generic to any MCP ser
 - `base.py`: `ToolDefinition` dataclass + `ToolRegistry` class
 - `executor.py`: `execute_tool_calls()` — runs tool calls from LLM, returns formatted result messages
 - `web_fetch.py`: `FETCH_URL_TOOL` singleton — fetches URLs with `httpx`, extracts text with `trafilatura`
-- `blog_tools.py`: `make_blog_tools()` factory — scoped blog post tools for the Writing Agent (list, read, create, edit)
+- `blog_tools.py`: `make_blog_tools()` factory — scoped blog post tools for the Writing Agent (list, read, create, edit). `edit_blog_post` takes `old_text` → `new_text` passage edits, not the full file
+- `text_edits.py`: `apply_edits()` — applies passage edits all-or-nothing; each `old_text` must match once (exact first, then ignoring no-break/zero-width characters and typographic quotes); text outside the edits stays byte-for-byte
 - `card_generator_tools.py`: `make_card_generator_tools()` factory — pattern card tools (generate_card, generate_deck, generate_image_prompts) for the Pattern Card Generator agent
 - `vault_write_tools.py`: `make_vault_write_tools()` factory — generic vault write tools (create_note, edit_note, list_notes_in_dir) for any agent
 - `codebase_tools.py`: `read_source_file`, `search_code`, `list_directory`, `read_architecture_map` — read-only codebase introspection tools for the Developer Agent
@@ -660,7 +663,8 @@ jarvis/
 │   │   ├── llm_client.py           # LLM API abstraction
 │   │   ├── context_builder.py      # System prompt assembly
 │   │   ├── memory.py               # Conversation logging (schema v1.0.0)
-│   │   ├── history.py              # History summarization
+│   │   ├── history.py              # History trimming (old tool results + tool-call args) + summarization
+│   │   ├── billed_usage.py         # OpenRouter billing records for streamed calls
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── stream_handler.py       # Streaming + agentic loop + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
@@ -685,7 +689,7 @@ jarvis/
 │   │   │   ├── conversation_recall.py, outcome_tools.py, outcome_recall.py
 │   │   │   ├── vault_read_tools.py, vault_write_tools.py
 │   │   │   ├── web_fetch.py, web_search.py
-│   │   │   ├── blog_tools.py, content_evaluator.py, suggest_improvements.py
+│   │   │   ├── blog_tools.py, text_edits.py, content_evaluator.py, suggest_improvements.py
 │   │   │   ├── card_generator_tools.py, card_search.py
 │   │   │   ├── codebase_tools.py, git_tools.py, project_write_tools.py,
 │   │   │   │   test_tools.py, mutation_tools.py        # developer agent (dev_tools)
@@ -735,7 +739,7 @@ jarvis/
 │   └── local.yaml                  # Local overrides (gitignored)
 │
 ├── scripts/                        # Importers (import_*.py), model_benchmark.py, benchmark_report.py,
-│                                   #   analyze_costs.py, analyze_context.py, generate_codebase_map.py,
+│                                   #   analyze_costs.py, analyze_context.py, backfill_billed_usage.py, generate_codebase_map.py,
 │                                   #   link_skills.sh (symlink private skills), one-off migrations
 ├── tests/                          # Test suite (layout: tests/README.md)
 ├── docs/                           # Documentation (product/, engineering/, research/, design/)
