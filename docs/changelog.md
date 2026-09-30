@@ -43,9 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   built. The agent had no recorded use in 203 conversation logs, yet JARVIS
   could delegate to it from the GUI, and its write-scope check can be escaped
   with `..`. Removing unused write and exec permissions is a control against
-  excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent and its code
-  are removed in a follow-up with an ADR; set `developer.enabled: true` in
-  `config/local.yaml` to get it back until then.
+  excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent, its code and
+  the setting itself were then removed (ADR-039, entry above).
 
 ## [0.27.0] - 2026-09-30
 
