@@ -2704,8 +2704,9 @@ delegated coding to Claude Code, but kept DEV-01 as a "tiny-edit fast path".
 
 What the record shows since then:
 
-- **No use.** None of the 16 dev tools was called in the 203 conversation logs
-  under `data/conversations/`; no user message starts with `/develop`; no
+- **No use.** None of the 16 dev tools was called in the 41 native JARVIS
+  sessions under `data/conversations/` (the other 162 files there are imported
+  ChatGPT and Claude conversations); no user message starts with `/develop`; no
   commit in the repo was authored by the agent. The last functional change to
   the agent was on 2026-04-03. The fast path ADR-034 kept was never taken.
 - **Reachable without asking for it.** JARVIS could delegate to it from the GUI

@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project writes, pytest and mutation runners), `--auto-confirm`, the
   `developer` settings section (CLI config and GUI), and
   `scripts/generate_codebase_map.py` with `data/codebase_map.md`.
-- **Why.** No dev tool was called in 203 conversation logs, no message started
+- **Why.** No dev tool was called in 41 native JARVIS sessions, no message started
   with `/develop`, and the agent authored no commit; the "tiny-edit fast path"
   ADR-034 kept was never used. Yet JARVIS could delegate to it from the GUI,
   where it held untrusted Cortex text, writes and pytest execution in one
@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`developer.enabled` now defaults to `false`**, so the developer tools
   (codebase, git, project writes, pytest and mutation runners) are no longer
-  built. The agent had no recorded use in 203 conversation logs, yet JARVIS
+  built. The agent had no recorded use in 41 native JARVIS sessions, yet JARVIS
   could delegate to it from the GUI, and its write-scope check can be escaped
   with `..`. Removing unused write and exec permissions is a control against
   excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent, its code and
