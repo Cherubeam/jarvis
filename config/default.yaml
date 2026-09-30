@@ -149,20 +149,6 @@ pattern_cards:
     size: "1536x640"                  # ~2.4:1 landscape to match card image slot (686x300)
     max_images_per_run: 10
 
-# Developer agent — JARVIS self-improvement
-developer:
-  enabled: false  # off since 2026-09-30; being retired (unused, write scope escapable)
-  scope:
-    - "packages/agents/"
-    - "packages/skills/"
-    - "data/context/"
-    - "data/prompts/"
-    - "config/"
-  allowed_extensions:
-    - ".md"
-    - ".yaml"
-    - ".yml"
-
 # GUI server — browser-facing origin policy (see docs/engineering/gui.md).
 # The auth token is NOT here: it lives in data/.gui_token or $JARVIS_GUI_TOKEN.
 gui:

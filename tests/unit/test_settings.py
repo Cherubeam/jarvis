@@ -13,7 +13,6 @@ from packages.core.settings import (
     HOT_APPLY_PATHS,
     AccessRuleSettings,
     CliSettings,
-    DeveloperSettings,
     EvaluationSettings,
     FilesystemSettings,
     GuiSettings,
@@ -116,30 +115,6 @@ class TestOutcomesSettings:
     def test_can_be_disabled(self) -> None:
         outcomes = OutcomesSettings(enabled=False)
         assert outcomes.enabled is False
-
-
-class TestDeveloperSettings:
-    def test_defaults_match_default_yaml(self) -> None:
-        dev = DeveloperSettings()
-        assert dev.enabled is False
-        assert dev.scope == [
-            "packages/agents/",
-            "packages/skills/",
-            "data/context/",
-            "data/prompts/",
-            "config/",
-        ]
-        assert dev.allowed_extensions == [".md", ".yaml", ".yml"]
-
-    def test_scope_default_is_independent(self) -> None:
-        a = DeveloperSettings()
-        b = DeveloperSettings()
-        a.scope.append("mutated/")
-        assert "mutated/" not in b.scope
-
-    def test_scope_override(self) -> None:
-        dev = DeveloperSettings(scope=["packages/"])
-        assert dev.scope == ["packages/"]
 
 
 class TestGuiSettings:
@@ -567,8 +542,12 @@ class TestSettingsAggregator:
         assert settings.filesystem.access_rules == []
         assert settings.readwise.enabled is False
         assert settings.pattern_cards.output_dir == "data/pattern-cards"
-        assert settings.developer.enabled is False
         assert settings.gui.allowed_origins == []
+
+    def test_retired_developer_section_is_rejected(self) -> None:
+        """The developer agent was retired (ADR-039); a leftover local.yaml block fails loudly."""
+        with pytest.raises(ValidationError, match="developer"):
+            Settings.model_validate({"developer": {"enabled": True}})
 
     def test_partial_section_override_via_dict(self) -> None:
         settings = Settings(models={"streaming": False})  # type: ignore[arg-type]
@@ -707,9 +686,9 @@ class TestClassifyChanges:
         """A changed list is one leaf path, not per-index diffs."""
         current = Settings().model_dump()
         new = Settings().model_dump()
-        new["developer"]["scope"] = ["packages/agents/", "packages/skills/"]
+        new["things3"]["lists_to_include"] = ["Today", "Inbox"]
         result = classify_changes(current, new)
-        assert result["restart_required_fields"] == ["developer.scope"]
+        assert result["restart_required_fields"] == ["things3.lists_to_include"]
 
     def test_fields_sorted_deterministically(self) -> None:
         """Buckets are sorted so test assertions don't flap by dict ordering."""

@@ -1,7 +1,6 @@
 """Tests for JARVIS agent — delegation directive builder."""
 
 from packages.agents.jarvis.agent import (
-    _SPECIAL_HINTS,
     _build_delegation_directive,
     _build_outcome_tracking_directive,
 )
@@ -45,7 +44,7 @@ class TestBuildDelegationDirective:
         agents = [
             {"name": "writer", "description": "creative writing"},
             {"name": "tactics_coach", "description": "tactics search"},
-            {"name": "developer", "description": "self-improvement agent"},
+            {"name": "content_reviewer", "description": "reviews drafts"},
         ]
         result = _build_delegation_directive(agents)
         for agent in agents:
@@ -55,23 +54,18 @@ class TestBuildDelegationDirective:
         agents = [
             {"name": "writer", "description": "write"},
             {"name": "simplifier", "description": "simplify"},
-            {"name": "developer", "description": "develop"},
+            {"name": "content_reviewer", "description": "review"},
         ]
         result = _build_delegation_directive(agents)
-        developer_pos = result.index("**developer**")
+        reviewer_pos = result.index("**content_reviewer**")
         simplifier_pos = result.index("**simplifier**")
         writer_pos = result.index("**writer**")
-        assert developer_pos < simplifier_pos < writer_pos
+        assert reviewer_pos < simplifier_pos < writer_pos
 
-    def test_special_hint_included_for_developer(self):
-        agents = [{"name": "developer", "description": "self-improvement"}]
-        result = _build_delegation_directive(agents)
-        assert "git sandbox" in result
-
-    def test_no_special_hint_for_unknown_agent(self):
+    def test_agent_line_is_name_and_description_only(self):
         agents = [{"name": "custom-agent", "description": "does stuff"}]
         result = _build_delegation_directive(agents)
-        assert "git sandbox" not in result
+        assert "\n- **custom-agent**: does stuff\n" in result
 
     def test_behavioral_instructions_present(self):
         agents = [{"name": "writer", "description": "write"}]
@@ -79,6 +73,3 @@ class TestBuildDelegationDirective:
         assert "delegate_to_agent" in result
         assert "context" in result
         assert "read_note" in result
-
-    def test_special_hints_dict_has_developer(self):
-        assert "developer" in _SPECIAL_HINTS

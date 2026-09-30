@@ -86,11 +86,11 @@ class TestAssembleAgentTools:
         assert len(result) == 0
 
     def test_agent_only_gets_declared_groups(self):
-        """Agent with tool_groups=('blog_tools',) doesn't get dev_tools."""
+        """Agent with tool_groups=('blog_tools',) doesn't get web_tools."""
         blog = [Mock(spec=ToolDefinition)]
-        dev = [Mock(spec=ToolDefinition)]
+        web = [Mock(spec=ToolDefinition)]
         meta = AgentMeta(name="test", description="", command="/test", tool_groups=("blog_tools",))
-        result = _assemble_agent_tools(meta, [], {"blog_tools": blog, "dev_tools": dev})
+        result = _assemble_agent_tools(meta, [], {"blog_tools": blog, "web_tools": web})
         assert len(result) == 1
         assert result[0] is blog[0]
 
@@ -98,21 +98,21 @@ class TestAssembleAgentTools:
         """only_tool_groups overrides meta.tool_groups and include_shared=False drops shared."""
         shared = [Mock(spec=ToolDefinition)]
         blog = [Mock(spec=ToolDefinition), Mock(spec=ToolDefinition)]
-        dev = [Mock(spec=ToolDefinition)]
+        web = [Mock(spec=ToolDefinition)]
         meta = AgentMeta(
             name="test",
             description="",
             command="/test",
-            tool_groups=("blog_tools", "dev_tools"),
+            tool_groups=("blog_tools", "web_tools"),
         )
         result = _assemble_agent_tools(
             meta,
             shared,
-            {"blog_tools": blog, "dev_tools": dev},
+            {"blog_tools": blog, "web_tools": web},
             only_tool_groups={"blog_tools"},
             include_shared=False,
         )
-        # Only blog tools, no shared, no dev
+        # Only blog tools, no shared, no web
         assert len(result) == 2
         assert result[0] is blog[0]
         assert result[1] is blog[1]

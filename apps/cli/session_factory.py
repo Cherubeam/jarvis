@@ -188,13 +188,12 @@ def build_session(
     *,
     on_tool_call: Callable[[str], None] | None = None,
     client_label: str = "cli",
-    auto_confirm: bool = False,
 ) -> SessionComponents:
     """Build everything the chat loop (CLI or GUI) needs.
 
     Args:
         args: argparse.Namespace (CLI) or any duck-typed equivalent (GUI).
-            Reads: args.model, args.agent, args.auto_confirm.
+            Reads: args.model, args.agent.
         config: Loaded config dict (from load_config()).
         confirmation_handler: CLIConfirmationHandler() for CLI; a
             WebConfirmationHandler() (or per-turn factory) for GUI.
@@ -202,8 +201,6 @@ def build_session(
             announcements. CLI passes print_tool_feedback. GUI passes None
             (events go via the typed on_event bus instead).
         client_label: 'cli' or 'gui' — recorded in conversation env metadata.
-        auto_confirm: If True, developer-tool writes auto-approve (CLI dev
-            mode). GUI never sets this.
     """
     jarvis_dir = settings.jarvis_dir
     api_keys = collect_api_keys()
@@ -351,42 +348,6 @@ def build_session(
             print_system(f"[Tools] Content evaluator loaded {voice_note}.")
         except Exception as e:
             print_system(f"[Tools] Content evaluator failed: {e}")
-
-    if settings.developer.enabled:
-        try:
-            from packages.core.tools.codebase_tools import make_codebase_tools
-            from packages.core.tools.git_tools import make_git_tools
-            from packages.core.tools.mutation_tools import make_mutation_tools
-            from packages.core.tools.project_write_tools import make_project_write_tools
-            from packages.core.tools.test_tools import make_test_runner_tool
-
-            dev_scope = settings.developer.scope
-            dev_extensions = settings.developer.allowed_extensions
-
-            dev_tools: list[Any] = []
-            dev_tools.extend(make_codebase_tools(jarvis_dir))
-            dev_tools.extend(make_git_tools(jarvis_dir))
-            dev_confirmation: ConfirmationHandler
-            if auto_confirm:
-                from packages.agents.developer.confirmation import AutoConfirmationHandler
-
-                dev_confirmation = AutoConfirmationHandler(dev_scope, jarvis_dir)
-            else:
-                dev_confirmation = confirmation_handler
-            dev_tools.extend(
-                make_project_write_tools(
-                    jarvis_dir,
-                    dev_confirmation,
-                    allowed_dirs=dev_scope,
-                    allowed_extensions=dev_extensions,
-                )
-            )
-            dev_tools.append(make_test_runner_tool(jarvis_dir))
-            dev_tools.extend(make_mutation_tools(jarvis_dir))
-            tool_groups["dev_tools"] = dev_tools
-            print_system(f"[Developer] {len(dev_tools)} developer tools loaded.")
-        except Exception as e:
-            print_system(f"[Developer] Startup failed — developer tools disabled. ({e})")
 
     if vault_config is not None:
         try:

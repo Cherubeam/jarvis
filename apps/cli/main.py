@@ -316,11 +316,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Model preset or LiteLLM model ID (e.g. --model fast, --model anthropic/claude-sonnet-4.6)",
     )
-    parser.add_argument(
-        "--auto-confirm",
-        action="store_true",
-        help="Auto-approve file writes within developer.scope (for CI/unattended runs)",
-    )
     return parser.parse_args(argv)
 
 
@@ -631,7 +626,6 @@ def main(argv: list[str] | None = None) -> None:
             confirmation_handler,
             on_tool_call=print_tool_feedback,
             client_label="cli",
-            auto_confirm=getattr(args, "auto_confirm", False),
         )
     except RuntimeError as e:
         print_error(f"Error: {e}")
