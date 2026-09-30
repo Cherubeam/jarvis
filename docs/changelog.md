@@ -46,6 +46,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent, its code and
   the setting itself were then removed (ADR-039, entry above).
 
+### Changed — Deep-research dossier revised for September (2026-09-30)
+
+- **`docs/research/jarvis-deep-research-dossier.html` now reflects the repo as
+  of v0.27.0.** It re-checks the 41 August items against the code (3 done, 5
+  partial, 30 open), refreshes the audit, recommends retiring the unused
+  developer agent (OWASP LLM06 Excessive Agency), evaluates Jev and other
+  decision models as runtime classifiers, and replaces the phased roadmap with
+  one scored by trigger, attacked by a skeptic and pre-mortemed. New findings
+  recorded there but not yet fixed: GUI vault approvals likely hang (read from
+  the code, not reproduced; human oversight, EU AI Act Art. 14), and the
+  developer agent's write scope can be escaped with `..`. The August version
+  stays in git at v0.27.0; `docs/product/roadmap.md` remains the authoritative
+  plan.
+
 ## [0.27.0] - 2026-09-30
 
 ### Fixed — Logged token counts and costs were estimates for streamed turns (2026-09-29)
