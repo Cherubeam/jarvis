@@ -71,7 +71,9 @@ Anthropic's prompt caching reduces cost of cached tokens by 90% on reads. The sy
 - **Implementation**: `cache_control` breakpoints implemented in `llm_client.py`
 - **Info loss**: None
 
-**Current status (2026-03-24):** Implemented but ineffective. LiteLLM reformats messages differently for streaming vs non-streaming via OpenRouter (8026 vs 8823 prompt tokens for identical messages), invalidating cache keys. Non-streaming caching works; streaming (which JARVIS uses exclusively) does not. Blocked on upstream LiteLLM fix. See `scripts/test_prompt_caching.py` for diagnostic and `docs/research/token-economics-next-steps.md` Step C for details.
+**Superseded 2026-09-30:** the diagnosis below mistook LiteLLM's streamed usage estimate for a prompt difference; streamed calls do cache. Current state and plan: [token-economics-next-steps.md, Step C reopened](token-economics-next-steps.md#step-c-reopened-prompt-caching-state-and-plan-2026-09-30).
+
+**Status as of 2026-03-24:** Implemented but ineffective. LiteLLM reformats messages differently for streaming vs non-streaming via OpenRouter (8026 vs 8823 prompt tokens for identical messages), invalidating cache keys. Non-streaming caching works; streaming (which JARVIS uses exclusively) does not. Blocked on upstream LiteLLM fix. See `scripts/test_prompt_caching.py` for diagnostic and `docs/research/token-economics-next-steps.md` Step C for details.
 
 ### 2. History Summarization for Long Sessions — HIGH IMPACT for outliers
 

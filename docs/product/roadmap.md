@@ -539,7 +539,9 @@ The rule for "should Cortex integrate source X?":
 
 - [x] Intelligent truncation strategies (tool result trimming in main loop + delegates)
 - [x] Summarization for old conversation context
-- [x] Non-streaming mode for prompt caching (workaround for LiteLLM streaming bug)
+- [x] Non-streaming mode for prompt caching (workaround for LiteLLM streaming bug) — *superseded 2026-09-30: the "bug" was LiteLLM's usage estimate, not broken caching*
+- [x] Billed usage for streamed turns: logs reconciled against OpenRouter's billing records (PR #73)
+- [ ] **Prompt caching for conversation history**: baseline on billed logs → second `cache_control` breakpoint on the last message → `session_id` on every OpenRouter call → cache-write parsing. Plan and cache busters: [token-economics-next-steps.md](../research/token-economics-next-steps.md#step-c-reopened-prompt-caching-state-and-plan-2026-09-30) *(M)*
 - [ ] Token budget management
 - [ ] Full-text + semantic search over conversations
 - [ ] Conversation export and statistics

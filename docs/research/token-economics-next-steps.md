@@ -46,7 +46,9 @@ Implementation depends on provider:
 
 This maps to **Phase 7** on the roadmap (Context Window Management) and could be done independently.
 
-**Status: Implemented but NOT effective via OpenRouter streaming.**
+**Status (2026-09-30): reopened — the March diagnosis below was wrong; see [Step C, reopened](#step-c-reopened-prompt-caching-state-and-plan-2026-09-30).** Kept for the record.
+
+~~**Status: Implemented but NOT effective via OpenRouter streaming.**~~
 
 **Investigation (2026-03-24):** Diagnostic confirmed that:
 - OpenRouter *does* support prompt caching for Anthropic models
@@ -102,12 +104,109 @@ If Step B reveals that certain sections are rarely utilized (e.g., projects refe
 - **Two-pass architecture**: Over-engineered for current scale
 - **Summarization**: ✅ Implemented (Step C.7) — opt-in via config
 
-## Update 2026-09-29
+## Step C, reopened: prompt caching state and plan (2026-09-30)
 
-Streamed usage is a LiteLLM estimate (prompt and cost undercounted; no cache fields), so the
-Step C conclusion that streaming breaks caching needs re-checking: a probe showed streamed calls
-write and read the cache. Details and the edit-tool savings:
-[token-economics-edit-tools.md](token-economics-edit-tools.md).
+Handoff for the caching work. Marked **verified** (probe or code read, with date) or
+**unverified**. Engineering record of how this was found:
+[token-economics-edit-tools.md](token-economics-edit-tools.md) §5.
+
+### What changed since March
+
+- **The March diagnosis was a measurement error, not a caching failure (verified 2026-09-29).**
+  In streaming mode LiteLLM 1.82.1 drops OpenRouter's usage and substitutes a local estimate
+  with no cache fields ([BerriAI/litellm#36168](https://github.com/BerriAI/litellm/issues/36168),
+  still open; 1.103.0 doesn't fix it). "8026 vs 8823 prompt tokens" was estimate vs real, not
+  two different prompts.
+- **Streamed calls do write and read the cache (verified 2026-09-29).** Two LiteLLM streamed
+  calls, then a raw OpenRouter call with the same prefix: the raw call reported
+  `cached_tokens: 2216`. LiteLLM passes `cache_control` through for `openrouter/` Claude models
+  (`litellm/llms/openrouter/chat/transformation.py`).
+- **Usage is now measurable (PR #73, merged).** Streamed turns are logged with their OpenRouter
+  generation ids and reconciled against the billing record (`packages/core/billed_usage.py`,
+  `ConversationLogger.reconcile_billed_usage()`). The record carries `native_tokens_cached`
+  (cache reads) and the exact `total_cost`; it has **no cache-write field**, so
+  `cache_write_tokens` stays 0 for streamed turns, but the cost includes writes. Each logged
+  assistant message says `metadata.usage_source: billed | estimated`; leftovers:
+  `uv run python scripts/backfill_billed_usage.py`.
+
+### Current code (verified by code read, 2026-09-29)
+
+- `_apply_cache_control()` in `packages/core/llm_client.py` sets **one** breakpoint,
+  `cache_control: {"type": "ephemeral"}` on `messages[0]` (the system prompt), only when the
+  model string contains `anthropic`. Applied on every call via `_base_kwargs`.
+- Auto Router turns (`openrouter/auto`) get no breakpoints (ADR-036).
+- `_extract_cache_tokens()` reads writes only from `cache_creation_input_tokens`; OpenRouter's
+  non-streamed responses report them as `prompt_tokens_details.cache_write_tokens`, so
+  **non-streamed cache writes are logged as 0 too** (small bug, unfixed).
+- `session_id` is sent only for the Auto Router (`packages/core/model_resolver.py`,
+  `apps/cli/session_factory.py`).
+
+### Prices (verified via OpenRouter `/api/v1/models`, 2026-09-29)
+
+| `anthropic/claude-opus-5.5` | per M tokens | × input |
+|---|---|---|
+| Input | $4.00 | 1× |
+| Output | $20.00 | — |
+| Cache read | $0.20 | 0.05× |
+| Cache write, 5-min TTL | $5.00 | 1.25× |
+| Cache write, 1-h TTL | $8.00 | 2× |
+
+Same across OpenRouter's Opus providers (Anthropic, Vertex, Azure, Bedrock, Claude on AWS);
+regional us/eu endpoints +10%. OpenAI models (the `gpt-6-luna` default) cache automatically at
+1,024+ tokens; reads $0.01/M — little to gain there.
+
+### Plan, in order
+
+1. **Baseline first (no code).** Run a real multi-turn Opus session (e.g. `/review` or a
+   `substack_publisher` session), then read the billed logs: is `cache_read_tokens` > 0 on turn
+   2+? This answers whether today's system-prompt breakpoint hits at all. Without it, no
+   savings claim is checkable.
+2. **Second breakpoint on the last message** of each Anthropic request, next to the system one
+   (2 of Anthropic's 4 allowed). Caches the growing history and each tool-loop iteration.
+   String content must become `[{"type": "text", "text": ..., "cache_control": ...}]`.
+   **Unverified:** whether OpenRouter accepts `cache_control` on `role: "tool"` messages; test it,
+   else put the breakpoint on the last user/assistant message. Keep the 5-min TTL (most turn
+   gaps in the 2026-09-29 session were 1-3 min).
+3. **`session_id` on every OpenRouter call**, not just Auto Router: OpenRouter's sticky routing
+   keeps a conversation on the provider that holds its cache. Without it, a request can land on
+   another of the 5+ Opus providers with a cold cache (one 2026-09-29 request was tried on five).
+   Don't set `provider.order`; it overrides stickiness.
+4. **Fix cache-write parsing** in `_extract_cache_tokens()` (read
+   `prompt_tokens_details.cache_write_tokens`).
+5. **Cache-aware trimming** only if measurement shows prefix churn: roadmap item under AON-04
+   ("batched at a token threshold, cache-aware").
+
+### What breaks the cached prefix
+
+- `trim_tool_results(keep_recent=6)` runs every turn: when a message leaves the recent window
+  it is truncated (results, and since PR #71 tool-call arguments too), which rewrites history
+  from that point. Everything after is re-written to cache at 1.25×; earlier prefix still hits.
+- `summarize_history` (enabled in `config/local.yaml`) rewrites history once over threshold.
+- Routing (`routing.enabled: true`) can switch models between turns; caches are per model.
+  Pinned agents (e.g. `substack_publisher` → `quality`) are unaffected.
+- The JARVIS system prompt contains a `Last synced: HH:MM` Things line
+  (`packages/integrations/things3/task_sync.py`) and `refresh_context()` output: stable within a
+  session, different across sessions.
+- Changing thinking/effort settings between requests invalidates the message cache.
+- Prompts under the minimum don't cache (512 tokens for Opus/Sonnet 5.5, 4,096 for Haiku 4.5 —
+  **unverified** on OpenRouter; a ~2.2k-token Sonnet 5.5 probe did cache).
+- Tool-list order: comes from registry insertion order; probably stable, **not audited**.
+
+### Expected effect (a model, not a measurement)
+
+For the 2026-09-29 `substack_publisher` session (~283k Opus input tokens logged, itself an
+undercount): if ~85% of input became cache reads (0.05×) and ~15% writes (1.25×), the effective
+input rate is ~0.23×, i.e. input cost −77%, whole session roughly −58%. Validate against step 1.
+
+### How to verify a change
+
+- One request: `GET https://openrouter.ai/api/v1/generation?id=<gen-id>` (free) →
+  `native_tokens_cached`, `total_cost`, `provider_name`. The id is the stream chunk `id`, and
+  logged in `metadata.generation_ids` for streamed turns.
+- A session: billed logs in `data/conversations/`; `scripts/analyze_costs.py`.
+- Old probe script `scripts/test_prompt_caching.py` targets Sonnet 4.6 and predates this
+  diagnosis; update or replace it. The 2026-09-29 probe scripts lived in a session scratchpad
+  and are gone.
 
 ## Relationship to Roadmap
 
