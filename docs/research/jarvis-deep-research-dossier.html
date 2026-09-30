@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- JARVIS Deep-Research Dossier — prepared 2026-07-04, revised 2026-08-19 (ADR-034), revised 2026-09-30 (September delta, developer agent, decision models). -->
+<!-- JARVIS Deep-Research Dossier — prepared 2026-07-04, revised 2026-08-19 (ADR-034), revised 2026-09-30 (September delta, developer agent, decision models; usage figures corrected and ADR-039/ADR-040 decisions added the same day). -->
 <!-- Canonical interactive copy: https://claude.ai/code/artifact/116c007f-b12a-4504-8d34-8868d2c27197 (kept in sync manually). -->
 <!-- The 2026-08-19 version (loop engineering, hosting comparison, original phased roadmap) is preserved in git at commit 1358f5a (tag v0.27.0). -->
 <html lang="en">
@@ -200,11 +200,11 @@
   /* ---------- Usage bar chart ---------- */
   .usage { background: var(--paper); border: 1px solid var(--hair); border-radius: 4px; padding: 1rem 1.1rem 0.8rem; margin: 1.2rem 0; }
   .usage .cap { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 0 0 0.8rem; }
-  .bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.35rem; align-items: end; height: 8rem; border-bottom: 1px solid var(--hair); }
+  .bars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.35rem; align-items: end; height: 8rem; border-bottom: 1px solid var(--hair); }
   .bar { position: relative; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 1px; }
   .bar.zero { background: var(--hair); }
   .bar span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 0.64rem; color: var(--muted); padding-bottom: 0.15rem; font-variant-numeric: tabular-nums; }
-  .blabels { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.35rem; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); text-align: center; padding-top: 0.3rem; }
+  .blabels { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.35rem; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); text-align: center; padding-top: 0.3rem; }
 
   /* ---------- Milestones ---------- */
   .phase { background: var(--paper); border: 1px solid var(--hair); border-radius: 5px; padding: 1.3rem 1.4rem 1.4rem; margin: 0 0 1.1rem; }
@@ -289,7 +289,7 @@
           <li><a href="#s7"><span class="num">07</span> How this was decided</a></li>
           <li><a href="#s8"><span class="num">08</span> Roadmap</a></li>
           <li><a href="#s9"><span class="num">09</span> Pre-mortem</a></li>
-          <li><a href="#s10"><span class="num">10</span> Open questions</a></li>
+          <li><a href="#s10"><span class="num">10</span> Decisions</a></li>
           <li><a href="#s11"><span class="num">11</span> Sources</a></li>
         </ol>
         <p class="tag">Status</p>
@@ -307,11 +307,11 @@
           <div class="sec-head"><span class="idx">01</span><h2>Summary</h2></div>
           <p class="lead">Six weeks after the August revision, the most urgent finding is closed: the GUI now has authentication and an origin check. Most of the rest of the August audit still stands, and two new problems came to light, one in the developer agent and one in GUI approvals.</p>
           <p>Since 19 August, 77 commits and nine tags (v0.22.0 to v0.27.0) shipped GUI authentication, vault-write oversight, billed-usage accounting, per-agent models, the OpenRouter Auto Router, Things&nbsp;3 through a read-only Shortcut, and specialist hand-back. Of the 41 recommendations and findings in the August dossier, 3 are done, 5 are partly done and 30 are still open. The August roadmap assumed a steady build pace. The repo shows short bursts instead: the 77 commits fall on 12 days, 19 of them on 28 September.</p>
-          <p>The developer agent (<code>/develop</code>) is the largest remaining attack surface. It also has no recorded use. In 203 conversation logs no one ever called one of its 16 tools. Its write-scope check can be escaped with <code>..</code>. It is enabled by default, and JARVIS can delegate to it from the GUI without anyone typing <code>/develop</code>. <strong>Recommendation: switch it off now and retire it with an ADR.</strong> Build a dispatcher to Claude Code only if a named trigger fires (<a href="#s4">&sect;04</a>).</p>
+          <p>The developer agent (<code>/develop</code>) is the largest remaining attack surface. It also had no recorded use: none of its 16 tools was called in 41 native JARVIS sessions. Its write-scope check could be escaped with <code>..</code>, it was enabled by default, and JARVIS could delegate to it from the GUI without anyone typing <code>/develop</code>. <strong>Decided and done the same day:</strong> switched off (PR #79), then removed with ADR-039 (PR #80). A dispatcher to Claude Code gets built only if a named trigger fires (<a href="#s4">&sect;04</a>).</p>
           <p><strong>Jev</strong> (TypeSafe AI, 15 September 2026) is a new kind of model. It returns typed decisions with confidence scores, not text. It suits a few runtime decisions in JARVIS, such as picking a model tier or pre-routing to a specialist. It is not a tool for planning a roadmap, and at today's usage volume nothing in JARVIS needs it yet. It is worth a one-hour smoke test with firm exit criteria. Adopting it would need an ADR that amends the provider-independence decision (<a href="#s5">&sect;05</a>).</p>
           <div class="callout warn">
             <span class="k">The finding that reframes the roadmap</span>
-            Owner usage collapsed. There were 43 conversation logs in March 2026, 4 in April, none from May to August, and 4 in September, all on one day. Hardening a runtime nobody uses is the most likely way this project fails (<a href="#s9">&sect;09</a>). The roadmap therefore starts with a usage gate. Before AON-02, there is an explicit decision on whether JARVIS-the-runtime still earns its keep, or whether its value now lies in the context it exports to other tools.
+            JARVIS use dropped. There were 15 native sessions in February 2026, 20 in March, 2 in April, none from May to August and 4 in September, all on one day. (A first version of this revision counted imported ChatGPT and Claude conversations as use and overstated the numbers; this is the corrected count.) The question this raised, what JARVIS is still for, is now answered in ADR-040: an owned daily assistant and a place to learn and show your work. So low use steers the roadmap toward what brings you back to JARVIS, starting with the conversation archive, instead of toward shrinking it (<a href="#s8">&sect;08</a>).
           </div>
         </section>
 
@@ -329,7 +329,7 @@
                 <tr><th scope="row">Settings API can persist a malicious MCP server</th><td><span class="chip part">Partial</span></td><td>Now behind auth; tool descriptions still unvetted (<code>mcp/bridge.py:39</code>)</td></tr>
                 <tr><th scope="row">Tool-result clearing</th><td><span class="chip part">Partial</span></td><td>Between turns only (03dd090)</td></tr>
                 <tr><th scope="row">Things&nbsp;3 macOS-bound</th><td><span class="chip part">Changed</span></td><td>Read-only via a Shortcut, no Full Disk Access (ADR-037)</td></tr>
-                <tr><th scope="row">&ldquo;Developer agent never unattended&rdquo; is structural</th><td><span class="chip part">Partial</span></td><td>Policy only; <code>AutoConfirmationHandler</code> still ships</td></tr>
+                <tr><th scope="row">&ldquo;Developer agent never unattended&rdquo; is structural</th><td><span class="chip done">Done</span></td><td>Agent retired 2026-09-30 (ADR-039, PR #80)</td></tr>
                 <tr><th scope="row">Unconfirmed pytest runner</th><td><span class="chip open">Open</span></td><td><code>test_tools.py:27-53</code></td></tr>
                 <tr><th scope="row">Confirmation deadlock</th><td><span class="chip open">Open</span></td><td><code>confirmation.py:83</code>, <code>routes/chat_ws.py:65</code></td></tr>
                 <tr><th scope="row">Cost ledger + budget abort</th><td><span class="chip open">Open</span></td><td>No budget code; billed usage now trustworthy (5f2280a)</td></tr>
@@ -341,6 +341,9 @@
               </tbody>
             </table>
           </div>
+          <h3>Already there: the conversation archive</h3>
+          <p>JARVIS already imports conversations. <code>scripts/import_chatgpt.py</code> and <code>scripts/import_claude.py</code> convert exports into JARVIS's own schema in <code>data/conversations/YYYY/</code>, with date filters, dry runs, duplicate detection and incremental Claude sync. <code>scripts/import_claude_context.py</code> turns Claude memories and projects into context files. The local search index (<code>packages/core/rag/indexer.py</code>) picks the imports up. The archive holds 162 imported conversations (67 from ChatGPT, 95 from Claude).</p>
+          <p>What is missing: the newest imported conversation is from April 2026, because every import needs a manual export and a script run. Only ChatGPT and Claude chat are covered, not Claude Code, Codex or Gemini. And the archive is reachable only from JARVIS's own index, because Cortex, which Claude Code queries, indexes the vault alone. Whether the GUI history lists imported conversations is not verified.</p>
           <h3>Shipped work the August dossier did not anticipate</h3>
           <ul class="plain">
             <li><strong>Vault-write oversight</strong> (v0.24.0): the approval card shows the real diff and path, link changes are flagged, and a write is refused when the note changed since the agent read it. This is human oversight under EU AI Act Art.&nbsp;14.</li>
@@ -396,11 +399,11 @@
               </tbody>
             </table>
           </div>
-          <p><strong>Evidence of use:</strong> none. No call to any of the 16 dev tools appears in 203 conversation logs, no user message starts with <code>/develop</code>, and no commit was made by the agent. The last functional change was on 3 April. Four problems built up while it sat frozen: the roadmap's tool and test counts are wrong, <code>AutoConfirmationHandler</code> is documented as dropped but still ships, the prompt forbids <code>data/context/</code> while the config allows it, and <code>run_mutation_tests</code> rewrites <code>pyproject.toml</code> outside the scope guard (and mutmut does not run on macOS anyway).</p>
-          <p><strong>The &ldquo;other skill repo&rdquo;:</strong> <code>agent-capability-specifications</code> contains no developer or coding agent. It holds 22 skill decks, templates, practices and scripts. The only developer agent found is the in-repo <code>/develop</code>. If you meant something else, see <a href="#s10">&sect;10</a>.</p>
+          <p><strong>Evidence of use:</strong> none. No call to any of the 16 dev tools appears in the 41 native JARVIS sessions (the other 162 files in <code>data/conversations/</code> are imports, which can't contain them), no user message starts with <code>/develop</code>, and no commit was made by the agent. The last functional change was on 3 April. Four problems built up while it sat frozen: the roadmap's tool and test counts are wrong, <code>AutoConfirmationHandler</code> is documented as dropped but still ships, the prompt forbids <code>data/context/</code> while the config allows it, and <code>run_mutation_tests</code> rewrites <code>pyproject.toml</code> outside the scope guard (and mutmut does not run on macOS anyway).</p>
+          <p><strong>The &ldquo;other skill repo&rdquo;:</strong> you meant <code>agent-capability-specifications</code>. It contains no developer or coding agent: 22 skill decks, templates, scripts and <code>practices/engineering-practices.md</code>, which every coding harness reads and which stays. The only developer agent was the in-repo <code>/develop</code>.</p>
           <div class="rec">
-            <span class="k">Recommendation</span>
-            <p><strong>Retire it (option C), in two steps.</strong> Today: set <code>developer.enabled: false</code>. One line, easily undone, and it removes the GUI delegation path. Then, at normal pace: delete the code with an ADR that supersedes ADR-028 and says plainly that it reverses ADR-034 &sect;1's &ldquo;tiny-edit fast path&rdquo;, because that path was never taken in seven months. Repoint the golden delegation case to another agent.</p>
+            <span class="k">Decision · done 2026-09-30</span>
+            <p><strong>Retired (option C), in two steps.</strong> PR #79 set <code>developer.enabled: false</code>. PR #80 deleted the agent, its five tool modules, <code>--auto-confirm</code> and the settings (about 2,780 lines), with ADR-039 superseding ADR-028 and reversing ADR-034 &sect;1&rsquo;s &ldquo;tiny-edit fast path&rdquo;. The golden delegation case now routes to <code>researcher</code>. Tag <code>v0.27.0</code> is the restore point.</p>
             <p><strong>Reversal trigger:</strong> build option A from scratch if you try at least 3 times in a month to start a coding task from a JARVIS-only front end that Claude Code's own remote, cloud or scheduled sessions can't serve, or if a JARVIS discovery job produces at least 5 actionable fixes a month. Until then, put the freed effort into the context export (HUB), which no harness provides.</p>
           </div>
           <p>Framing for the changelog and write-up: removing unused write and exec permissions is a direct control against OWASP LLM06 Excessive Agency and reduces attack surface under NIST AI RMF Manage. The ADR-028 write-up and tag v0.27.0 keep the git-sandbox design as portfolio evidence, so that evidence does not depend on the code staying live.</p>
@@ -440,7 +443,7 @@
           </div>
           <div class="rec">
             <span class="k">Verdict</span>
-            <p><strong>Use Jev for runtime classification, not for planning.</strong> Deciding a roadmap is multi-hop trade-off reasoning, which is the vendor's own weak spot. At about 7 sessions a month, no routing decision in JARVIS costs enough to optimise yet. Jev also needs its own call path, outside LiteLLM, so each call site would be Jev-specific code. Adopting it would need an ADR amending ADR-001/003 on provider independence.</p>
+            <p><strong>Use Jev for runtime classification, not for planning.</strong> Deciding a roadmap is multi-hop trade-off reasoning, which is the vendor's own weak spot. At a handful of sessions a month, no routing decision in JARVIS costs enough to optimise yet. Jev also needs its own call path, outside LiteLLM, so each call site would be Jev-specific code. Adopting it would need an ADR amending ADR-001/003 on provider independence.</p>
             <p><strong>Optional smoke test, off-milestone, one hour.</strong> Repo text only, no vault data. Pass only if routing, scope and dev-path answers are correct in 5 of 5 runs. A pass unlocks nothing by itself. It needs a key in <code>.env</code>, which you set up yourself.</p>
           </div>
 <pre><code>curl -s https://api.typesafe.ai/v1/systemone \
@@ -496,13 +499,14 @@ EOF</code></pre>
             </div>
           </div>
           <p><strong>Caching.</strong> OpenRouter now supports a top-level <code>cache_control</code> that moves the breakpoint forward automatically<a class="cite" href="#r18">18</a>. That could replace step 2 of the TOK plan (hand-placed breakpoints). Its sticky-routing guide (24 September) confirms step 3: send <code>session_id</code> on every call, because a single unused Anthropic cache write costs more than not caching<a class="cite" href="#r19">19</a>. Whether LiteLLM passes the top-level field through is <span class="uv">unverified</span>.</p>
+          <p><strong>How to read the right-hand column.</strong> Vendors shipping a feature is no longer a reason for JARVIS not to build it (ADR-040). It still matters for order: build first what only JARVIS can do for you (your archive, your vault, your tasks), and build vendor-like features when they teach something you want to learn or write about.</p>
           <p><strong>Hosting.</strong> The August recommendation (a headless Mac as a LaunchAgent behind Tailscale) still stands, because no vendor feature reaches Things or the local vault. It is now gated on a job that actually needs it.</p>
           <div class="table-wrap">
             <table>
               <thead><tr><th scope="col">Layer</th><th scope="col">Examples (Sept 2026)</th><th scope="col">JARVIS stance</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Coding harness</th><td>Claude Code, Codex, OpenCode, Pi</td><td>Rent. Retire <code>/develop</code>.</td></tr>
-                <tr><th scope="row">General assistant</th><td>Claude (with Cowork merged), ChatGPT</td><td>Rent for chat, scheduling and mobile.</td></tr>
+                <tr><th scope="row">Coding harness</th><td>Claude Code, Codex, OpenCode, Pi</td><td>Rent. <code>/develop</code> retired (ADR-039).</td></tr>
+                <tr><th scope="row">General assistant</th><td>Claude (with Cowork merged), ChatGPT, OpenAI Dots<a class="cite" href="#r21">21</a></td><td>Use them, and learn from them. Dots is the north star, not a competitor (ADR-040).</td></tr>
                 <tr><th scope="row">Vendor memory</th><td>Claude project memory, Codex memory</td><td>Don't compete; stay the neutral store.</td></tr>
                 <tr><th scope="row">Decision layer</th><td>Jev, OpenAI Decisions API</td><td>New category. Evaluate; gate adoption.</td></tr>
                 <tr><th scope="row">Personal context hub</th><td class="yes">JARVIS + Cortex</td><td>Build: vault, voice profile, typed facts, source policy, local integrations.</td></tr>
@@ -531,29 +535,28 @@ EOF</code></pre>
                 <tr><th scope="row">TurnRunner</th><td>Next</td><td>Split: delete dead CLI copy now, rest gated</td><td>Its main users (Telegram, jobs) are gated or covered by vendors</td></tr>
                 <tr><th scope="row">HUB-02a context export</th><td>After AON-02</td><td>Before AON-02, doc-level first</td><td>An <code>@</code>-import of <code>data/context/</code> in CLAUDE.md may do it with no code</td></tr>
                 <tr><th scope="row">Jev spike</th><td>In AON-03</td><td>Optional, off-milestone</td><td>It answers curiosity, not a JARVIS need; roadmap weight would be scope creep</td></tr>
-                <tr><th scope="row">Usage gate</th><td>&mdash;</td><td>Added first</td><td>No item's trigger measured whether anyone uses JARVIS</td></tr>
+                <tr><th scope="row">Usage gate</th><td>&mdash;</td><td>Added first; reframed by ADR-040</td><td>No item's trigger measured whether anyone uses JARVIS. After ADR-040 it steers priorities rather than scope</td></tr>
                 <tr><th scope="row">Spend report</th><td>Ledger gated</td><td>Read-only monthly report now</td><td>Billed usage exists per message but nothing adds it up</td></tr>
                 <tr><th scope="row">P6 write-up</th><td>After close-out</td><td>Entry gate before the next milestone</td><td>Write-ups are already owed; &ldquo;after&rdquo; has been skipped before</td></tr>
               </tbody>
             </table>
           </div>
-          <p>One weakness this method exposed: most metric-based triggers (&ldquo;3 misroutes a month&rdquo;) can never fire at about 7 sessions a month. Every gated item below therefore names the log or script that would show its trigger firing. Items without one get deleted at the next quarterly review.</p>
+          <p>One weakness this method exposed: most metric-based triggers (&ldquo;3 misroutes a month&rdquo;) can never fire at today's handful of sessions a month. A second weakness surfaced afterwards: none of the three agents noticed that the conversation folder mixes imports with native sessions, so the first usage figures were too high. Evidence counts need a check against the data's own metadata. Every gated item below therefore names the log or script that would show its trigger firing. Items without one get deleted at the next quarterly review.</p>
         </section>
 
         <!-- 08 -->
         <section id="s8">
           <div class="sec-head"><span class="idx">08</span><h2>Roadmap</h2></div>
-          <p>In order. Item codes follow <code>docs/product/roadmap.md</code>, which remains the authoritative plan. This dossier is a dated research snapshot. S/M/L is effort.</p>
+          <p>In order, as recorded in the &ldquo;Current focus&rdquo; section of <code>docs/product/roadmap.md</code>, which remains the authoritative plan. This dossier is a dated research snapshot. S/M/L is effort.</p>
 
-          <div class="phase">
+          <div class="phase gate">
             <div class="phase-top">
-              <span class="phase-no">0</span>
-              <div class="phase-ttl"><h3>Today</h3><p class="goal">Remove the live risk before any debate.</p></div>
-              <div class="phase-meta"><span class="pill who">Needs your OK: config file</span></div>
+              <span class="phase-no">&#10003;</span>
+              <div class="phase-ttl"><h3>Done on 30 September</h3><p class="goal">The live risk is gone and the scope question is answered.</p></div>
             </div>
             <ul class="steps">
-              <li><span>Set <code>developer.enabled: false</code>. AGENTS.md reserves config changes for an explicit request, so this waits for you.</span><span class="e">S</span></li>
-              <li><span>Reproduce the GUI approval hang with one vault write (2 minutes). It confirms or kills the top finding.</span><span class="e">S</span></li>
+              <li><span>Developer agent switched off (PR #79), then removed with ADR-039 (PR #80). This also closed the unconfirmed-pytest item and the FilesystemGuard-bypass half of an AON-04 item, by deletion.</span><span class="e">S</span></li>
+              <li><span>What JARVIS is for: ADR-040. An owned daily assistant and learning platform, with a Dots-like assistant as the north star. <code>vision.md</code> updated.</span><span class="e">S</span></li>
             </ul>
           </div>
 
@@ -564,37 +567,37 @@ EOF</code></pre>
               <div class="phase-meta"><span class="pill eff">Effort <b>M</b></span></div>
             </div>
             <ul class="steps">
-              <li><span><strong>Usage gate:</strong> a small script that counts sessions per front end per week from <code>data/conversations/</code>.</span><span class="e">S</span></li>
-              <li><span>Fix GUI approvals: run the turn as a task so approvals arrive mid-turn, reset handler state per approval, add a timeout that defaults to reject, and add one end-to-end WebSocket test with two writes in one turn. (Art.&nbsp;14)</span><span class="e M">M</span></li>
-              <li><span>Retire <code>/develop</code>: new ADR, delete code and <code>--auto-confirm</code>, repoint the golden delegation case. Closes the pytest and FilesystemGuard-bypass items by deletion. (LLM06)</span><span class="e M">M</span></li>
+              <li><span>Reproduce the GUI approval hang with one vault write (2 minutes). Then fix it: run the turn as a task, reset handler state per approval, add a timeout that defaults to reject, and one end-to-end WebSocket test with two writes in one turn. (Art.&nbsp;14)</span><span class="e M">M</span></li>
+              <li><span>Count native sessions per week and front end, excluding imports (<code>metadata.import_source</code>).</span><span class="e">S</span></li>
               <li><span>Check the OpenRouter account data policy (15 minutes) and document it.</span><span class="e">S</span></li>
               <li><span>TOK step 1: caching baseline from billed logs, plus a read-only monthly spend report that shares the parsing code.</span><span class="e">S</span></li>
-              <li><span>Delete the dead tool-assembly copy in <code>apps/cli/main.py</code>. Fix doc drift: &ldquo;max 5 iterations&rdquo;, ADR-008 &rarr; ADR-037 pointer.</span><span class="e">S</span></li>
+              <li><span>Delete the dead tool-assembly copy in <code>apps/cli/main.py</code>. Fix doc drift: the ADR-008 &rarr; ADR-037 pointer.</span><span class="e">S</span></li>
             </ul>
-            <p class="tok-note">Token impact: <b>negative</b>. Mostly deletions; the baseline tells whether caching is worth building.</p>
           </div>
 
           <div class="phase gate">
             <div class="phase-top">
               <span class="phase-no">&#9670;</span>
-              <div class="phase-ttl"><h3>Gate: write-up and scope decision</h3><p class="goal">Nothing below starts until both are done.</p></div>
-              <div class="phase-meta"><span class="pill who">You write (P6, P7)</span></div>
+              <div class="phase-ttl"><h3>Gate: write-up</h3><p class="goal">Before the next milestone starts (P6).</p></div>
+              <div class="phase-meta"><span class="pill who">You write (P7)</span></div>
             </div>
             <ul class="steps">
-              <li><span>One write-up for AON-01 and the <code>/develop</code> retirement: &ldquo;removing excess agency&rdquo;, framed as Art.&nbsp;14 and OWASP LLM06. I supply facts and sources; you write the prose.</span><span class="e M">M</span></li>
-              <li><span>Read the usage gate. Under about 8 real sessions in 4 weeks: write a scope ADR on what JARVIS-the-runtime is still for before building AON-02.</span><span class="e">S</span></li>
+              <li><span>One write-up for AON-01 and the developer-agent retirement: &ldquo;removing excess agency&rdquo;, framed as Art.&nbsp;14 and OWASP LLM06. I supply facts and sources; you write the prose.</span><span class="e M">M</span></li>
             </ul>
           </div>
 
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">2</span>
-              <div class="phase-ttl"><h3>HUB-02a: context everywhere</h3><p class="goal">Get JARVIS's context into the tools you actually use.</p></div>
+              <div class="phase-ttl"><h3>Daily use: the conversation archive</h3><p class="goal">Make JARVIS the place where all your AI conversations live, and keep it current.</p></div>
               <div class="phase-meta"><span class="pill eff">Effort <b>S&ndash;M</b></span></div>
             </div>
             <ul class="steps">
-              <li><span>First try the doc-level route: <code>@</code>-import <code>data/context/*.md</code> in <code>~/.claude/CLAUDE.md</code> and add an AGENTS.md pointer for Codex.</span><span class="e">S</span></li>
-              <li><span>Only if that fails on token cost or staleness: expose the context files as read-only Cortex MCP tools, with descriptions under 2,048 characters.</span><span class="e M">M</span></li>
+              <li><span>Refresh the archive: export from ChatGPT and Claude and run the existing importers. No code needed.</span><span class="e">S</span></li>
+              <li><span>Check that imported conversations are listed and searchable in the GUI history.</span><span class="e">S</span></li>
+              <li><span>Conversation recall through Cortex (HUB-02), so Claude Code and other tools can reach the archive too. Scoped and opt-in, because it is the most private data you have.</span><span class="e M">M</span></li>
+              <li><span>More sources, one at a time: Claude Code sessions, Codex, Gemini. Each is a small learning project with its own write-up.</span><span class="e M">M</span></li>
+              <li><span>Context files for other tools: try an <code>@</code>-import of <code>data/context/*.md</code> in <code>~/.claude/CLAUDE.md</code> before building MCP tools for them.</span><span class="e">S</span></li>
             </ul>
           </div>
 
@@ -614,12 +617,12 @@ EOF</code></pre>
           <div class="phase">
             <div class="phase-top">
               <span class="phase-no">4</span>
-              <div class="phase-ttl"><h3>AON-02/03, only if the gate says the runtime earns it</h3><p class="goal">Unify the core, then guard it with evals.</p></div>
+              <div class="phase-ttl"><h3>AON-02/03: toward the always-on assistant</h3><p class="goal">One core, then front ends and jobs, guarded by evals.</p></div>
               <div class="phase-meta"><span class="pill eff">Effort <b>L</b></span></div>
             </div>
             <ul class="steps">
               <li><span>TurnRunner; hand-back in the GUI; session-per-conversation with atomic saves; redact secrets in settings GET.</span><span class="e L">L</span></li>
-              <li><span>Before building a job runner, check whether Claude's scheduled tasks can do the briefing. Things needs a local Shortcut, so probably not.</span><span class="e">S</span></li>
+              <li><span>First job and first phone front end. Vendors ship both, but under ADR-040 learning and daily use count as reasons, with a named learning goal and a write-up. A monthly import job fits here.</span><span class="e M">M</span></li>
               <li><span>Golden evals through the real loop; fallback scores become failures; judge calibration at the next model decision.</span><span class="e M">M</span></li>
             </ul>
           </div>
@@ -629,10 +632,9 @@ EOF</code></pre>
             <table>
               <thead><tr><th scope="col">Item</th><th scope="col">Trigger</th><th scope="col">Data source</th></tr></thead>
               <tbody>
-                <tr><th scope="row">DEV-02 dispatcher (rebuild)</th><td>&ge;3 coding requests/month from a JARVIS-only front end</td><td>Usage-gate script</td></tr>
+                <tr><th scope="row">DEV-02 dispatcher (rebuild)</th><td>&ge;3 coding requests/month from a JARVIS-only front end</td><td>Session count</td></tr>
                 <tr><th scope="row">Jev as tier router</th><td>&ge;3 logged misroutes/month</td><td>One route field in conversation JSON</td></tr>
                 <tr><th scope="row">Cost ledger + hard stops</th><td>First unattended job exists</td><td>Job runner</td></tr>
-                <tr><th scope="row">Telegram bot</th><td>A JARVIS workflow needed from the phone that Claude Channels can't serve</td><td>Your own note of the attempt</td></tr>
                 <tr><th scope="row">Headless Mac host</th><td>A job must run while the laptop sleeps</td><td>Job runner</td></tr>
                 <tr><th scope="row">HUB-02b typed memory</th><td>Quarantined fact extraction exists</td><td>AON-03 output</td></tr>
                 <tr><th scope="row">MCP description vetting</th><td>First network MCP server</td><td><code>config/local.yaml</code></td></tr>
@@ -647,35 +649,31 @@ EOF</code></pre>
         <section id="s9">
           <div class="sec-head"><span class="idx">09</span><h2>Pre-mortem</h2></div>
           <p>Assume it is 31 March 2027 and this roadmap failed. These are the most likely stories, each with the signal already visible and the cheapest prevention, which is now part of &sect;08.</p>
-          <div class="usage" role="img" aria-label="Conversation logs per month from October 2025 to September 2026: 18, 19, 11, 22, 33, 43, 4, 0, 0, 0, 0, 4.">
-            <p class="cap">Conversation logs per month · Oct 2025 &ndash; Sep 2026</p>
+          <div class="usage" role="img" aria-label="Native JARVIS sessions per month in 2026, February to September: 15, 20, 2, 0, 0, 0, 0, 4.">
+            <p class="cap">Native JARVIS sessions per month · Feb &ndash; Sep 2026</p>
             <div class="bars">
-              <div class="bar" style="height:41.9%"><span>18</span></div>
-              <div class="bar" style="height:44.2%"><span>19</span></div>
-              <div class="bar" style="height:25.6%"><span>11</span></div>
-              <div class="bar" style="height:51.2%"><span>22</span></div>
-              <div class="bar" style="height:76.7%"><span>33</span></div>
-              <div class="bar" style="height:100%"><span>43</span></div>
-              <div class="bar" style="height:9.3%"><span>4</span></div>
+              <div class="bar" style="height:75%"><span>15</span></div>
+              <div class="bar" style="height:100%"><span>20</span></div>
+              <div class="bar" style="height:10%"><span>2</span></div>
               <div class="bar zero"><span>0</span></div>
               <div class="bar zero"><span>0</span></div>
               <div class="bar zero"><span>0</span></div>
               <div class="bar zero"><span>0</span></div>
-              <div class="bar" style="height:9.3%"><span>4</span></div>
+              <div class="bar" style="height:20%"><span>4</span></div>
             </div>
-            <div class="blabels"><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div>
+            <div class="blabels"><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div>
           </div>
-          <p style="font-size:0.86rem;color:var(--muted)">Counted by filename in <code>data/conversations/</code>. Assumes every front end writes a log there, which is not verified for the GUI.</p>
+          <p style="font-size:0.86rem;color:var(--muted)">Files in <code>data/conversations/</code> without import metadata. Imported ChatGPT and Claude conversations (162 files) are excluded; an earlier version of this chart counted them. JARVIS wrote no native logs before February 2026. Assumes every front end writes a log, which is not verified for the GUI.</p>
           <div class="table-wrap">
             <table>
               <thead><tr><th scope="col">Failure story</th><th scope="col">Odds</th><th scope="col">Signal today</th><th scope="col">Prevention</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Hardening a tool nobody uses</th><td>High</td><td>Usage chart above</td><td>Usage gate + scope decision</td></tr>
+                <tr><th scope="row">Hardening a tool nobody uses</th><td>High</td><td>Usage chart above</td><td>Session count; daily-use work before AON-02 (ADR-040)</td></tr>
                 <tr><th scope="row">Write-ups never come</th><td>High</td><td>Write-ups already owed; 9 tags in 25 days</td><td>Write-up as an entry gate</td></tr>
-                <tr><th scope="row">The hub wins and the runtime is redundant</th><td>Med&ndash;high</td><td>Vendors now cover phone access and scheduling</td><td>HUB-02a before AON-02</td></tr>
+                <tr><th scope="row">The hub wins and the runtime is redundant</th><td>Med</td><td>Vendors now cover phone access and scheduling</td><td>ADR-040 keeps the runtime for learning and ownership</td></tr>
                 <tr><th scope="row">Oversight exists only on paper</th><td>Med</td><td>Approval hang not reproduced; oversight code outside mutation scope</td><td>End-to-end two-write test</td></tr>
                 <tr><th scope="row">Spend creeps unseen</th><td>Med</td><td>Billed usage recorded but never summed</td><td>Monthly spend report</td></tr>
-                <tr><th scope="row">Retirement stalls halfway</th><td>Med</td><td>Frozen code already drifted from its docs</td><td>Config flag today</td></tr>
+                <tr><th scope="row">Retirement stalls halfway</th><td>Resolved</td><td>&mdash;</td><td>Retired in full on 30 September (ADR-039)</td></tr>
                 <tr><th scope="row">Plan sprawl</th><td>Med</td><td>Dossier, roadmap.md and developer roadmap disagree</td><td>roadmap.md is the only plan</td></tr>
                 <tr><th scope="row">A Jev spike grows into infrastructure</th><td>Low&ndash;med</td><td>Novelty pull; no telemetry to judge it</td><td>Exit criteria; ADR before any non-LiteLLM path</td></tr>
               </tbody>
@@ -685,13 +683,18 @@ EOF</code></pre>
 
         <!-- 10 -->
         <section id="s10">
-          <div class="sec-head"><span class="idx">10</span><h2>Open questions for you</h2></div>
-          <ul class="plain">
-            <li><strong>Retire or harden <code>/develop</code>?</strong> And did you keep ADR-034's tiny-edit path on purpose, as portfolio evidence? The ADR-028 write-up and tag v0.27.0 preserve it either way.</li>
-            <li><strong>&ldquo;The developer agent in the other skill repo&rdquo;:</strong> nothing coding-related exists in <code>agent-capability-specifications</code> or <code>~/.claude/agents</code>. Did you mean a different place?</li>
-            <li><strong>Jev smoke test:</strong> is sending repo-only text to TypeSafe or OpenRouter acceptable before the DPA has been read?</li>
-            <li><strong>What is JARVIS-the-runtime for</strong> now that Claude covers scheduling, memory and mobile? The usage gate gives data, but the answer is yours.</li>
-          </ul>
+          <div class="sec-head"><span class="idx">10</span><h2>Decisions and open questions</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Question</th><th scope="col">Answer (30 September)</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Retire or harden <code>/develop</code>?</th><td>Retired: PR #79, PR #80, ADR-039.</td></tr>
+                <tr><th scope="row">The &ldquo;other skill repo&rdquo;?</th><td><code>agent-capability-specifications</code>. It has no developer agent; nothing to change there.</td></tr>
+                <tr><th scope="row">What is JARVIS for?</th><td>ADR-040: an owned daily assistant and a place to learn and show your work; the central archive for your AI conversations; Dots as the north star.</td></tr>
+                <tr><th scope="row">Jev smoke test with an unread DPA?</th><td><strong>Open.</strong> The test sends only made-up text about the repo. TypeSafe says it doesn't train on customer data; zero retention is enterprise-only; the DPA (retention, subprocessors, data location) is unread. Low risk for this test; read the DPA before any real data goes there.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <!-- 11 -->
@@ -719,12 +722,14 @@ EOF</code></pre>
             <li id="r18"><a href="https://openrouter.ai/docs/features/prompt-caching">openrouter.ai/docs/features/prompt-caching</a></li>
             <li id="r19"><a href="https://openrouter.ai/blog/tutorials/prompt-caching-sticky-routing/">openrouter.ai — prompt caching and sticky routing</a></li>
             <li id="r20"><a href="https://claude.com/blog/the-advisor-strategy">claude.com/blog/the-advisor-strategy</a></li>
+            <li id="r21"><a href="https://openai.com/index/introducing-dots/">openai.com/index/introducing-dots</a></li>
+            <li id="r22"><a href="https://techcrunch.com/2026/09/29/openai-launches-dots-its-bubbly-agentic-avatar/">techcrunch.com — OpenAI launches Dots</a></li>
           </ol>
         </section>
 
         <footer>
           <span>JARVIS Deep-Research Dossier</span>
-          <span>2026-07-04 · rev. 2026-08-19 (ADR-034) · rev. 2026-09-30 (8 agents · 77 commits · roadmap.md is authoritative)</span>
+          <span>2026-07-04 · rev. 2026-08-19 (ADR-034) · rev. 2026-09-30 (ADR-039, ADR-040 · roadmap.md is authoritative)</span>
         </footer>
 
       </main>
