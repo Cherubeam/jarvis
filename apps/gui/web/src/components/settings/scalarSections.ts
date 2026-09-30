@@ -61,11 +61,6 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['enabled'], label: 'enabled' },
     { path: ['cache_ttl_seconds'], label: 'cache_ttl_seconds' },
   ],
-  developer: [
-    { path: ['enabled'], label: 'enabled' },
-    { path: ['scope'], label: 'scope (one per line)' },
-    { path: ['allowed_extensions'], label: 'allowed_extensions (one per line)' },
-  ],
 }
 
 export const SECTION_SUBTITLES: Partial<Record<SectionKey, string>> = {
@@ -83,5 +78,4 @@ export const SECTION_SUBTITLES: Partial<Record<SectionKey, string>> = {
   filesystem: 'Per-path access rules enforced by FilesystemGuard.',
   readwise: 'Readwise reading list, highlights, and persona.',
   pattern_cards: 'Pattern card generator output + image generation.',
-  developer: 'Self-improvement agent scope and allowed file types.',
 }

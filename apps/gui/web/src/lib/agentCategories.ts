@@ -15,7 +15,6 @@ export const AGENT_CATEGORIES: AgentCategory[] = [
   { id: 'planning',   label: 'Planning',    members: ['navigator', 'okr_architect', 'tactics_coach'] },
   { id: 'analysis',   label: 'Analysis',    members: ['content_reviewer', 'strategyzer', 'simplifier'] },
   { id: 'generation', label: 'Generation',  members: ['pattern_card_generator'] },
-  { id: 'dev',        label: 'Engineering', members: ['developer'] },
 ]
 
 /** Group agent ids into category buckets; unknown ids fall into `other`. */

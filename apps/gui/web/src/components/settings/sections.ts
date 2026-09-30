@@ -17,7 +17,6 @@ export type SectionKey =
   | 'filesystem'
   | 'readwise'
   | 'pattern_cards'
-  | 'developer'
 
 export type Section = { key: SectionKey; label: string }
 
@@ -36,5 +35,4 @@ export const SECTIONS: Section[] = [
   { key: 'filesystem', label: 'Filesystem' },
   { key: 'readwise', label: 'Readwise' },
   { key: 'pattern_cards', label: 'Pattern Cards' },
-  { key: 'developer', label: 'Developer' },
 ]
