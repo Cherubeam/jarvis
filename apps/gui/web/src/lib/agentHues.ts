@@ -18,7 +18,6 @@ export const AGENT_HUE_MAP: Record<string, string | null> = {
   strategyzer: 'oklch(0.78 0.12 280)',
   simplifier: 'oklch(0.78 0.12 45)',
   pattern_card_generator: 'oklch(0.78 0.12 330)',
-  developer: 'oklch(0.78 0.12 300)',
 }
 
 export function hueFor(id: string | undefined, accent: string): string {
