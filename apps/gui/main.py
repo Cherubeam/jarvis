@@ -61,13 +61,15 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(jarvis_dir / ".env")
 
     # A second load_config() — the first is inside build_gui_session() during
-    # lifespan. Only gui.allowed_origins is read here, before the app exists.
+    # lifespan. Only gui.allowed_origins and gui.token_file are read here,
+    # before the app exists.
     settings = load_config(jarvis_dir)
 
     auth = GuiAuth.create(
         args.host,
         args.port,
         project_root=jarvis_dir,
+        token_file=settings.gui.token_file,
         extra_origins=settings.gui.allowed_origins,
     )
     # uvicorn's access log records the full request line, query string included,

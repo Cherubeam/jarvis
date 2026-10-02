@@ -16,8 +16,8 @@ import pytest
 
 from apps.gui.server.auth import (
     COOKIE_NAME,
+    DEFAULT_TOKEN_FILE,
     TOKEN_ENV_VAR,
-    TOKEN_FILE,
     GuiAuth,
     TokenRedactingFilter,
     bearer_from_header,
@@ -29,6 +29,7 @@ from apps.gui.server.auth import (
     redact_token,
     resolve_token,
 )
+from packages.core.settings import GuiSettings
 
 
 def _auth(token: str = "test-token", origins: set[str] | None = None) -> GuiAuth:
@@ -47,19 +48,19 @@ def test_resolve_token_prefers_env_var(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv(TOKEN_ENV_VAR, "from-the-environment")
     assert resolve_token(tmp_path) == "from-the-environment"
     # No file written — the env var is authoritative.
-    assert not (tmp_path / "data" / TOKEN_FILE).exists()
+    assert not (tmp_path / "data" / ".gui_token").exists()
 
 
 def test_resolve_token_ignores_blank_env_var(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(TOKEN_ENV_VAR, "   ")
     token = resolve_token(tmp_path)
     assert token != "   "
-    assert (tmp_path / "data" / TOKEN_FILE).is_file()
+    assert (tmp_path / "data" / ".gui_token").is_file()
 
 
 def test_resolve_token_reads_existing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
-    path = tmp_path / "data" / TOKEN_FILE
+    path = tmp_path / "data" / ".gui_token"
     path.parent.mkdir(parents=True)
     path.write_text("persisted-token\n", encoding="utf-8")
     assert resolve_token(tmp_path) == "persisted-token"
@@ -67,7 +68,7 @@ def test_resolve_token_reads_existing_file(tmp_path: Path, monkeypatch: pytest.M
 
 def test_resolve_token_regenerates_when_file_is_blank(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
-    path = tmp_path / "data" / TOKEN_FILE
+    path = tmp_path / "data" / ".gui_token"
     path.parent.mkdir(parents=True)
     path.write_text("  \n", encoding="utf-8")
     token = resolve_token(tmp_path)
@@ -79,7 +80,7 @@ def test_resolve_token_regenerates_when_file_is_blank(tmp_path: Path, monkeypatc
 def test_resolve_token_mints_and_persists_at_mode_600(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
     token = resolve_token(tmp_path)
-    path = tmp_path / "data" / TOKEN_FILE
+    path = tmp_path / "data" / ".gui_token"
 
     assert path.read_text(encoding="utf-8") == token + "\n"
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
@@ -352,6 +353,53 @@ def test_bearer_from_header(header: str | None, expected: str | None) -> None:
     assert bearer_from_header(header) == expected
 
 
+def test_default_token_file_matches_the_settings_default() -> None:
+    """The auth-module fallback and the gui.token_file default must not drift."""
+    assert DEFAULT_TOKEN_FILE == "data/.gui_token"
+    assert GuiSettings().token_file == DEFAULT_TOKEN_FILE
+
+
+def test_resolve_token_uses_a_configured_relative_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    token = resolve_token(tmp_path, "state/gui-token")
+
+    assert (tmp_path / "state" / "gui-token").read_text(encoding="utf-8") == token + "\n"
+    assert not (tmp_path / "data" / ".gui_token").exists()
+
+
+def test_resolve_token_uses_a_configured_absolute_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """HUB-03 moves data out of the repo: an absolute path (with a space, as in
+    the real target) is used as-is, not nested under the project root."""
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    project_root = tmp_path / "repo"
+    project_root.mkdir()
+    token_path = tmp_path / "03 Resources" / "JARVIS" / "data" / ".gui_token"
+
+    token = resolve_token(project_root, str(token_path))
+
+    assert token_path.read_text(encoding="utf-8") == token + "\n"
+    assert stat.S_IMODE(token_path.stat().st_mode) == 0o600
+    assert list(project_root.iterdir()) == []
+
+
+def test_resolve_token_reads_an_existing_configured_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    token_path = tmp_path / "elsewhere" / "token"
+    token_path.parent.mkdir()
+    token_path.write_text("configured-token\n", encoding="utf-8")
+    assert resolve_token(tmp_path / "repo", str(token_path)) == "configured-token"
+
+
+def test_env_var_beats_a_configured_token_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(TOKEN_ENV_VAR, "from-the-environment")
+    token_path = tmp_path / "elsewhere" / "token"
+    token_path.parent.mkdir()
+    token_path.write_text("configured-token\n", encoding="utf-8")
+
+    assert resolve_token(tmp_path, str(token_path)) == "from-the-environment"
+    assert token_path.read_text(encoding="utf-8") == "configured-token\n"
+
+
 # ---------------------------------------------------------------------------
 # GuiAuth.create
 
@@ -368,6 +416,24 @@ def test_create_derives_the_cookie_and_unions_extra_origins(tmp_path: Path, monk
     assert auth.token == "env-token"
     assert auth.cookie_value == derive_cookie_value("env-token")
     assert auth.allowed_origins == frozenset(default_origins("127.0.0.1", 8123) | {"https://jarvis.example.ts.net"})
+
+
+def test_create_reads_the_configured_token_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    token_path = tmp_path / "elsewhere" / "token"
+    token_path.parent.mkdir()
+    token_path.write_text("configured-token\n", encoding="utf-8")
+
+    auth = GuiAuth.create("127.0.0.1", 8123, project_root=tmp_path, token_file=str(token_path))
+
+    assert auth.token == "configured-token"
+    assert auth.cookie_value == derive_cookie_value("configured-token")
+
+
+def test_create_defaults_to_data_gui_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(TOKEN_ENV_VAR, raising=False)
+    auth = GuiAuth.create("127.0.0.1", 8123, project_root=tmp_path)
+    assert (tmp_path / "data" / ".gui_token").read_text(encoding="utf-8") == auth.token + "\n"
 
 
 def test_create_without_extra_origins_uses_the_computed_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

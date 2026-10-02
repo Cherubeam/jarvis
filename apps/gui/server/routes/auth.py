@@ -64,8 +64,8 @@ _SIGN_IN_PAGE = """<!doctype html>
 <body>
 <main>
   <h1>JARVIS</h1>
-  <p>Paste the token printed by <code>jarvis-gui</code>, or find it in
-     <code>data/.gui_token</code>.</p>
+  <p>Paste the token printed by <code>jarvis-gui</code>, or find it in the
+     file set by <code>gui.token_file</code> (default <code>data/.gui_token</code>).</p>
   {error}
   <form method="post" action="/auth">
     <input type="password" name="token" placeholder="Access token" autofocus
@@ -148,8 +148,8 @@ async def sign_in_via_form(request: Request) -> Response:
 async def sign_out() -> Response:
     """Clear the session cookie on this browser.
 
-    Does not rotate the token — to revoke every client, delete
-    ``data/.gui_token`` and restart.
+    Does not rotate the token — to revoke every client, delete the token file
+    (``gui.token_file``, default ``data/.gui_token``) and restart.
     """
     response = PlainTextResponse("signed out", status_code=200)
     response.delete_cookie(key=COOKIE_NAME, path="/")
