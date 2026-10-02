@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from packages.core.frontmatter import write_atomic
+
 if TYPE_CHECKING:
     from packages.core.context_builder import ContextMetadata
 
@@ -525,7 +527,7 @@ class ConversationLogger:
             "metadata": self.metadata,
         }
 
-        filepath.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        write_atomic(filepath, json.dumps(data, indent=2, ensure_ascii=False))
         print(f"\nConversation saved to {filepath}")
         self._print_session_summary()
 

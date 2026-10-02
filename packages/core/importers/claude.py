@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from packages.core.frontmatter import write_atomic
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
 
@@ -386,7 +387,7 @@ def update_conversation(existing_path: Path, claude_conv: dict[str, Any], *, dry
         now_iso = datetime.now(tz=UTC).isoformat()
         jarvis_data.setdefault("metadata", {})["last_sync_timestamp"] = now_iso
         if not dry_run:
-            existing_path.write_text(json.dumps(jarvis_data, indent=2, ensure_ascii=False))
+            write_atomic(existing_path, json.dumps(jarvis_data, indent=2, ensure_ascii=False))
 
     return changed
 
@@ -485,7 +486,7 @@ def import_conversations(
             jarvis_conv = convert_conversation(conv)
 
             if not dry_run:
-                filepath.write_text(json.dumps(jarvis_conv, indent=2, ensure_ascii=False))
+                write_atomic(filepath, json.dumps(jarvis_conv, indent=2, ensure_ascii=False))
 
             used_filenames.add(filename)
             summary.imported += 1

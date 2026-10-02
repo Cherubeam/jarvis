@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Conversation files are written atomically (2026-10-02)
+
+- **A crash or full disk mid-save no longer leaves a half-written
+  conversation.** `ConversationLogger.save()`, the ChatGPT and Claude
+  importers, `scripts/backfill_billed_usage.py` and the pattern-card renderer
+  now write to a temporary file in the same folder and swap it in with
+  `os.replace`, using the existing `frontmatter.write_atomic`. This is a
+  precondition for the iCloud-synced data home (ADR-041), so iCloud never
+  uploads a partial file (record-keeping integrity, EU AI Act Art. 12).
+- **New conversation files are readable only by you** (mode `600`), a side
+  effect of the temporary-file helper. Existing files keep their mode until
+  they're next saved.
+
 ### Changed — Where each kind of data lives (2026-10-02)
 
 - **[ADR-041](product/decisions.md#adr-041-where-each-kind-of-data-lives)

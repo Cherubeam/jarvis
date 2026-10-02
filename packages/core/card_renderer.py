@@ -22,6 +22,7 @@ from typing import Any
 from jinja2 import Template
 
 from packages.core.context_builder import parse_frontmatter
+from packages.core.frontmatter import write_atomic
 from packages.core.settings import PatternCardImageGenerationSettings
 
 logger = logging.getLogger(__name__)
@@ -587,7 +588,7 @@ def generate_card_files(
     html_content = render_card_html(pattern, image_path=rel_image_path)
 
     html_path = cards_dir / f"{slug}.html"
-    html_path.write_text(html_content, encoding="utf-8")
+    write_atomic(html_path, html_content)
 
     # WeasyPrint render uses absolute paths for reliable image loading
     png_html = render_card_html(pattern, image_path=abs_image_path) if abs_image_path else html_content
@@ -753,7 +754,7 @@ def export_image_prompts(
             ]
         )
 
-    output_path.write_text("\n".join(lines), encoding="utf-8")
+    write_atomic(output_path, "\n".join(lines))
     return output_path
 
 

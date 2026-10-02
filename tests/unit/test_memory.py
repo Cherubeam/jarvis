@@ -711,6 +711,27 @@ class TestConversationLogger:
         expected_path = temp_conversations_dir / "2026" / "2026-01-15_14-30-45.json"
         assert expected_path.exists()
 
+    @freeze_time("2026-01-15 14:30:45")
+    def test_save_keeps_previous_file_when_write_fails(self, temp_conversations_dir: Path, monkeypatch):
+        """A save that fails mid-write leaves the last good copy intact (no half-written JSON)."""
+        logger = ConversationLogger(temp_conversations_dir)
+        logger.add_message("user", "First")
+        logger.save()
+        path = temp_conversations_dir / "2026" / "2026-01-15_14-30-45.json"
+        before = path.read_text()
+
+        def failing_replace(src, dst):
+            raise OSError("disk full")
+
+        logger.add_message("assistant", "Second")
+        monkeypatch.setattr("os.replace", failing_replace)
+        with pytest.raises(OSError, match="disk full"):
+            logger.save()
+
+        assert path.read_text() == before
+        assert [m["content"][0]["text"] for m in json.loads(before)["messages"]] == ["First"]
+        assert list(path.parent.glob("*.tmp")) == []
+
     def test_save_empty_conversation(self, temp_conversations_dir: Path):
         """Test that save doesn't create file for empty conversation."""
         logger = ConversationLogger(temp_conversations_dir)
