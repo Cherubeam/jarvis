@@ -499,11 +499,12 @@ class PatternCardsSettings(BaseModel):
 
 
 class GuiSettings(BaseModel):
-    """GUI server — browser-facing origin policy. Holds no secrets.
+    """GUI server — browser-facing origin policy and token location. Holds no secrets.
 
-    The auth token deliberately lives outside Settings (``data/.gui_token`` or
-    ``JARVIS_GUI_TOKEN``): ``GET /api/settings`` dumps this whole tree to the
-    browser, so a credential here would be handed to every client.
+    The auth token deliberately lives outside Settings (in the file named by
+    ``token_file``, or ``JARVIS_GUI_TOKEN``): ``GET /api/settings`` dumps this
+    whole tree to the browser, so a credential here would be handed to every
+    client. The file's *path* is fine there; its contents are not.
 
     Not surfaced in the Settings GUI — ``apps/gui/web/src/components/settings/
     sections.ts`` is a hand-maintained list. Edit ``config/local.yaml`` directly.
@@ -518,6 +519,14 @@ class GuiSettings(BaseModel):
             "scheme://host:port. Additive: the server's own origin and the Vite "
             "dev origins are always allowed on top of this list. Needed when "
             "binding to a non-loopback host with --host. Restart required."
+        ),
+    )
+    token_file: str = Field(
+        default="data/.gui_token",
+        description=(
+            "File holding the GUI auth token, joined onto the project root "
+            "(absolute paths work). Created at mode 0600 on first start; "
+            "JARVIS_GUI_TOKEN overrides it. Restart required."
         ),
     )
 

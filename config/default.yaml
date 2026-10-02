@@ -150,8 +150,11 @@ pattern_cards:
     max_images_per_run: 10
 
 # GUI server — browser-facing origin policy (see docs/engineering/gui.md).
-# The auth token is NOT here: it lives in data/.gui_token or $JARVIS_GUI_TOKEN.
+# The auth token itself is NOT here: only the path of the file that holds it.
 gui:
   # Additive — the server's own origin and the Vite dev origins are always
   # allowed. Set this when binding to a non-loopback host with --host.
   allowed_origins: []
+  # Where the GUI auth token is stored (created at mode 0600). Joined onto the
+  # project root; absolute paths work. JARVIS_GUI_TOKEN overrides the file.
+  token_file: data/.gui_token

@@ -185,7 +185,7 @@ def test_sign_in_page_is_not_cached() -> None:
 
 def test_sign_in_page_names_where_to_find_the_token() -> None:
     r = _client().get("/auth", follow_redirects=False)
-    assert "data/.gui_token" in r.text
+    assert "<code>gui.token_file</code> (default <code>data/.gui_token</code>)" in r.text
     assert "jarvis-gui" in r.text
 
 

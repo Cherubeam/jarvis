@@ -121,6 +121,11 @@ class TestGuiSettings:
     def test_defaults_match_default_yaml(self) -> None:
         gui = GuiSettings()
         assert gui.allowed_origins == []
+        assert gui.token_file == "data/.gui_token"
+
+    def test_token_file_override(self) -> None:
+        gui = GuiSettings(token_file="/Users/someone/Documents/03 Resources/JARVIS/data/.gui_token")
+        assert gui.token_file == "/Users/someone/Documents/03 Resources/JARVIS/data/.gui_token"
 
     def test_allowed_origins_default_is_independent(self) -> None:
         a = GuiSettings()
@@ -135,9 +140,10 @@ class TestGuiSettings:
     def test_holds_no_secret_fields(self) -> None:
         """GET /api/settings dumps this tree to the browser — no credentials here.
 
-        The auth token lives in data/.gui_token / $JARVIS_GUI_TOKEN instead.
+        The auth token lives in the gui.token_file file / $JARVIS_GUI_TOKEN
+        instead; only the file's path is a setting.
         """
-        assert set(GuiSettings.model_fields) == {"allowed_origins"}
+        assert set(GuiSettings.model_fields) == {"allowed_origins", "token_file"}
 
 
 class TestThings3Settings:
@@ -543,6 +549,7 @@ class TestSettingsAggregator:
         assert settings.readwise.enabled is False
         assert settings.pattern_cards.output_dir == "data/pattern-cards"
         assert settings.gui.allowed_origins == []
+        assert settings.gui.token_file == "data/.gui_token"
 
     def test_retired_developer_section_is_rejected(self) -> None:
         """The developer agent was retired (ADR-039); a leftover local.yaml block fails loudly."""
@@ -588,6 +595,17 @@ class TestClassifyChanges:
         result = classify_changes(current, new)
         assert result["restart_required"] is True
         assert result["restart_required_fields"] == ["gui.allowed_origins"]
+        assert result["hot_applied_fields"] == []
+
+    def test_gui_token_file_requires_restart(self) -> None:
+        """Read once at GuiAuth.create() before the app exists — the token is
+        fixed for the process, so a new path only applies after a restart."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["gui"]["token_file"] = "/srv/jarvis/.gui_token"
+        result = classify_changes(current, new)
+        assert result["restart_required"] is True
+        assert result["restart_required_fields"] == ["gui.token_file"]
         assert result["hot_applied_fields"] == []
 
     def test_no_change_empty_buckets(self) -> None:

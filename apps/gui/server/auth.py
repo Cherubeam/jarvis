@@ -17,7 +17,8 @@ postinstall script. If the cookie carried the raw token, any of them could read
 one header and walk away with a durable credential that also works over
 ``Authorization: Bearer``. So the cookie carries a one-way HMAC of the token:
 
-- ``Authorization: Bearer`` accepts **only** the raw token (``data/.gui_token``).
+- ``Authorization: Bearer`` accepts **only** the raw token (the ``gui.token_file``
+  file, default ``data/.gui_token``).
 - the cookie accepts **only** the derived value.
 
 See ADR-035 and docs/engineering/gui.md.
@@ -48,7 +49,9 @@ DEFAULT_PORT = 8123
 COOKIE_NAME = "jarvis_gui_token"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 TOKEN_ENV_VAR = "JARVIS_GUI_TOKEN"
-TOKEN_FILE = ".gui_token"
+#: Mirrors the ``gui.token_file`` default in packages/core/settings.py (a test pins
+#: the two together); used when a caller passes no configured path.
+DEFAULT_TOKEN_FILE = "data/.gui_token"
 COOKIE_HMAC_LABEL = b"jarvis-gui-cookie-v1"
 
 #: Paths served before the client can possibly hold a credential. Gating these
@@ -91,8 +94,11 @@ def derive_cookie_value(token: str) -> str:
     return hmac.new(token.encode("utf-8"), COOKIE_HMAC_LABEL, hashlib.sha256).hexdigest()
 
 
-def resolve_token(project_root: Path) -> str:
-    """Resolve the GUI auth token: env var, then ``data/.gui_token``, then mint one.
+def resolve_token(project_root: Path, token_file: str = DEFAULT_TOKEN_FILE) -> str:
+    """Resolve the GUI auth token: env var, then the token file, then mint one.
+
+    ``token_file`` is the ``gui.token_file`` setting, joined onto
+    ``project_root`` like every other configured path (an absolute path wins).
 
     ``project_root`` is required — defaulting it to the real project root would
     mean every incidental call (a test, a bare ``create_app``) writes a token
@@ -102,7 +108,7 @@ def resolve_token(project_root: Path) -> str:
     if env_token:
         return env_token
 
-    path = project_root / "data" / TOKEN_FILE
+    path = project_root / token_file
     try:
         existing = path.read_text(encoding="utf-8").strip()
     except OSError:
@@ -197,9 +203,10 @@ class GuiAuth:
         port: int,
         *,
         project_root: Path,
+        token_file: str = DEFAULT_TOKEN_FILE,
         extra_origins: Iterable[str] = (),
     ) -> GuiAuth:
-        token = resolve_token(project_root)
+        token = resolve_token(project_root, token_file)
         if host in WILDCARD_BIND_HOSTS:
             logger.warning(  # pragma: no mutate
                 "binding to %s: browsers reach this server under some other hostname, "  # pragma: no mutate
