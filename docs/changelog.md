@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Act Art. 14). Indexes go to `~/Library/Application Support/{JARVIS,Cortex}/indexes/`
   (not Caches, which macOS may empty), caches to `~/Library/Caches/JARVIS/`,
   machine-local state to `~/Library/Application Support/JARVIS/`. The work is
-  HUB-03 in `roadmap.md`; the data-home path is still to be chosen.
+  HUB-03 in `roadmap.md`. The data home is `/Users/marcobraun/Documents/03 Resources/JARVIS/data`.
 - **The README no longer tells you to run `import_claude_context.py`**: it
   overwrites context files without comparing dates and reads an outdated
   export format.

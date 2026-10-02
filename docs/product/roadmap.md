@@ -545,7 +545,9 @@ Extend the server beyond search to JARVIS's curated context.
 
 Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
 
-- [ ] Marco picks the data-home path (iCloud-synced, Backblaze-backed; "Optimize Mac Storage" off for it) *(S)*
+- [x] Data-home path: `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (2026-10-02)
+- [ ] Mark the folder "Keep Downloaded" in Finder (or turn off "Optimize Mac Storage") before anything moves *(S)*
+- [ ] Atomic conversation saves first (AON-01 item), so iCloud never uploads a half-written file *(S)*
 - [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml`; make scripts and importers read the path settings instead of defaulting to `data/…` *(S)*
 - [ ] Rebuild indexes in `~/Library/Application Support/JARVIS/indexes/` (RAG) and `~/Library/Application Support/Cortex/indexes/` (ChromaDB) *(S)*
 - [ ] Move CLI history and GUI token to `~/Library/Application Support/JARVIS/` (token file mode `600`) *(S)*
