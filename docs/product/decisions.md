@@ -2878,3 +2878,144 @@ knows he can't compete with those products, and that isn't the point.
 - ADR-034 (Context Hub Positioning — amended: the commodity argument applies to coding harnesses, not to the assistant itself)
 - ADR-039 (Retire the Developer Agent)
 - ADR-029 (Cortex — the reach for the conversation archive)
+
+---
+
+## ADR-041: Where Each Kind of Data Lives
+
+**Date**: 2026-10-02
+**Status**: Accepted — path of the data home still to be chosen by Marco
+
+### Context
+
+ADR-040 made the conversation archive and a growing personal memory part of
+JARVIS's purpose. A fresh Claude export (2026-09-30) showed how many places now
+hold overlapping data about Marco:
+
+- **Claude's own memory** is now a set of dated files in `/areas`,
+  `/projects/<id>`, `/topics` and `/people`, the same structure as the Obsidian
+  vault. Claude projects carry their own documents and memory.
+- **JARVIS's repo** holds, gitignored under `data/`: the conversation archive
+  (234 files, of which 193 imported), the context files (`soul.md`,
+  `preferences.md`, `personal_context.md`, `professional_context.md`,
+  `current_focus.md`, `reader_persona.md`, generated `tasks.md`), outcomes,
+  pattern cards, one brainstorm note, the ChromaDB index, CLI history and the
+  GUI token.
+- **Cortex** keeps a ChromaDB index of the vault (`cortex/data/`).
+- **The vault** holds notes, projects, areas and people. **Things 3** holds tasks.
+
+Problems with the current layout:
+
+1. **The same entity in several places.** One project can exist as a Claude
+   project, a Claude memory folder, a vault note, a file under
+   `data/context/projects/` and a Things project.
+2. **Imports overwrite current facts.** `packages/core/importers/claude_context.py`
+   rewrites `personal_context.md` and `professional_context.md` wholesale,
+   replaces "top of mind" in `current_focus.md` and deletes `profile.md`, with
+   no date comparison. It also expects the old export format and no longer
+   matches the 2026-09 export.
+3. **Data inside a code repo.** Gitignored files are not in git worktrees, so
+   agents working in a worktree (Claude Code's parallel tasks) see no context
+   and no conversations. Nothing backs the data up.
+4. **No dates or sources on facts**, so there is no way to tell which of two
+   statements is current, and context exported to other tools can come back in
+   the next import as if it were new (a feedback loop).
+
+### Decision
+
+**1. Four homes, one per kind of data.**
+
+| Data | Home | Written by | Read by |
+|---|---|---|---|
+| Authored knowledge: notes, projects, areas, people | Obsidian vault | Marco; JARVIS only with approval | JARVIS, Cortex |
+| **Memory**: short dated facts about Marco, plus today's context files (soul, preferences, personal and professional context, current focus, reader persona) | **Obsidian vault**, one dedicated folder | JARVIS and importers *propose*, Marco approves | JARVIS, other tools via Cortex/HUB |
+| Tasks | Things 3 | Marco | JARVIS (read-only, ADR-037) |
+| Machine data: conversation archive (native and imported), raw exports, outcomes, prompt history, pattern-card output | **Data home**: a folder outside every repo, synced by iCloud and backed up by Backblaze | JARVIS, importers | JARVIS, Cortex |
+| Indexes and caches: JARVIS RAG, Cortex ChromaDB, generated `tasks.md` | **Local, unsynced**, e.g. `~/Library/Caches/JARVIS/` | Indexers | JARVIS, Cortex |
+| Machine-local state: CLI history, GUI token | Local, unsynced, e.g. `~/Library/Application Support/JARVIS/` | JARVIS | JARVIS |
+
+Everything else points to the home instead of copying it. A Claude project
+maps to its vault note by ID; JARVIS does not keep its own project files.
+
+**2. Data is synced, indexes are local.** Indexes are database files that are
+written constantly; a synced copy taken mid-write is corrupt, iCloud resolves
+conflicts by keeping two files the database does not know about, and offloaded
+placeholders make an index unreadable. Indexes hold nothing that isn't in the
+data or the vault, so they are rebuilt instead of backed up (JARVIS re-indexes
+`data/conversations` at startup; Cortex via `POST /index/refresh`). A rebuild
+re-sends the text to the embedding model (`text-embedding-3-small` via
+OpenRouter), so it costs a little time and money.
+
+**3. Facts carry a date and a source.** Every memory fact records when it was
+last true (`updated`) and where it came from (`source`: `marco`, `jarvis`,
+`claude-export`, …). Facts that expire (current focus, "working on X") also
+carry a review-by date.
+
+**4. Imports propose; they never overwrite.**
+
+- **Conversations** are append-only, keyed by the source's ID. A conversation
+  continued at the source replaces its earlier copy; nothing else changes.
+- **Facts** from an import become proposals with a diff, approved like vault
+  writes today (human oversight, EU AI Act Art. 14). An imported fact newer
+  than the current one is proposed as an update; an older one is shown as a
+  conflict or dropped, never applied. Anything Marco wrote in the vault wins
+  over an import.
+- **Facts JARVIS exported** (source `jarvis` or `marco`) are recognised when
+  they come back in a later import and are not proposed again.
+- **Deletions at the source** do not delete from the archive; a fact replaced
+  or removed at the source is marked superseded.
+- **Raw exports are kept** in the data home as the record of origin, and each
+  importer states which export format it reads.
+
+**5. The import hub.** The existing importers (ChatGPT, Claude) become one
+import step that writes conversations to the data home and fact proposals to
+the memory review. Sources are added one at a time; Claude Code sessions come
+next, because Claude Code keeps only about the last 30 days on disk. ChatGPT
+is low priority.
+
+**6. Conversations are searchable from other tools.** Cortex indexes the
+conversation archive as a source, so Claude Code and other harnesses can
+recall them (HUB-02). Marco agreed because these conversations come from
+Claude and other harnesses in the first place. Login history and account data
+from exports are never imported.
+
+### Alternatives Considered
+
+- **Move the data into the Cortex service.** Rejected: Cortex is a search
+  index ("index, don't proxy", HUB source policy) and its store can be rebuilt;
+  making it the store of record would mix the two. Cortex reads the data home
+  instead.
+- **Memory in the data home instead of the vault.** Rejected by Marco: in the
+  vault he can see and edit it in Obsidian, next to the notes it points to.
+- **Everything in the vault, including conversations.** Thousands of JSON
+  files would clutter the vault and Cortex would index them as notes.
+- **A private git repo for the data.** Gives history but puts private
+  conversations on GitHub.
+- **Keep data in the repo.** Invisible to worktrees, no backup.
+
+### Consequences
+
+- Moving is mostly configuration: every path is already a setting
+  (`paths.conversations_dir`, `paths.context_dir`, `paths.prompt_history_dir`,
+  `outcomes.dir`, `rag.db_path`, `pattern_cards.output_dir`). They are joined
+  onto the repo root, so absolute paths work; `~` is not expanded. A few
+  scripts and the importers default to `data/…` and need to read the settings
+  instead. Context files move into the vault folder; the rest into the data
+  home; indexes are rebuilt in the cache folder rather than moved.
+- The data home path is still open. Until Marco picks it, nothing moves.
+- `claude_context.py` must not be run. It is replaced by an importer that reads
+  the 2026-09 memory-file format and produces proposals.
+- `paths.learned_facts` is a setting with no consumer (`packages/core/settings.py`);
+  it is removed or becomes the memory folder setting.
+- The one note in `data/brainstorms/` is authored knowledge and belongs in the
+  vault.
+- iCloud "Optimize Mac Storage" must be off for the data home, or importers and
+  indexers must detect placeholders.
+- Imported conversations contain AI-written text and never feed the voice
+  profile (P7).
+- Work is tracked as HUB-03 in `roadmap.md`.
+
+### Related ADRs
+- ADR-040 (What JARVIS Is For — the archive and memory are core)
+- ADR-034 (Context Hub Positioning) and ADR-029 (Cortex) — Cortex indexes, it does not store
+- ADR-037 (Things 3 read-only)
