@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Scripts and the GUI token follow the path settings (2026-10-02)
+
+- **The GUI token file location is a setting**: `gui.token_file` (default
+  `data/.gui_token`, joined onto the project root; absolute paths work).
+  `JARVIS_GUI_TOKEN` still wins, the file is still created at mode `600`,
+  and only the path is in Settings, never the token. Restart required.
+- **Scripts and importers default to the configured paths** instead of
+  `data/…`: `import_claude.py`, `import_chatgpt.py` and
+  `backfill_billed_usage.py` use `paths.conversations_dir`;
+  `analyze_costs.py` and `analyze_context.py` use `paths.conversations_dir`
+  and `paths.context_dir`. Explicit flags keep their meaning. Prepares the
+  move of the data out of the repo (HUB-03,
+  [ADR-041](product/decisions.md#adr-041-where-each-kind-of-data-lives)).
+
 ### Fixed — Conversation files are written atomically (2026-10-02)
 
 - **A crash or full disk mid-save no longer leaves a half-written

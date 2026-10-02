@@ -548,7 +548,8 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [x] Data-home path: `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (2026-10-02)
 - [ ] Mark the folder "Keep Downloaded" in Finder (or turn off "Optimize Mac Storage") before anything moves *(S)*
 - [x] Atomic conversation saves first (AON-01 item), so iCloud never uploads a half-written file *(S)* ✅ 2026-10-02
-- [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml`; make scripts and importers read the path settings instead of defaulting to `data/…` *(S)*
+- [x] Scripts, importers and the GUI token read their paths from settings (`paths.*`, new `gui.token_file`) instead of defaulting to `data/…` *(S)* ✅ 2026-10-02
+- [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml` *(S)*
 - [ ] Rebuild indexes in `~/Library/Application Support/JARVIS/indexes/` (RAG) and `~/Library/Application Support/Cortex/indexes/` (ChromaDB) *(S)*
 - [ ] Move CLI history and GUI token to `~/Library/Application Support/JARVIS/` (token file mode `600`) *(S)*
 - [ ] Give the generated `tasks.md` its own path setting, pointing to `~/Library/Caches/JARVIS/`, so it doesn't follow the context files into the vault *(S)*

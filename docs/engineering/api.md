@@ -229,7 +229,7 @@ Convert a single ChatGPT conversation to Jarvis schema v1.0.0.
 
 #### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to, model_filter, include_archived) -> ImportSummary`
 
-Orchestrate bulk import with filters. Writes to `data/conversations/YYYY/` subdirectories. Idempotent — skips already-imported conversations by `chatgpt_id`.
+Orchestrate bulk import with filters. Writes to `<target_dir>/YYYY/` subdirectories (`scripts/import_*.py` default `--target-dir` to `paths.conversations_dir`). Idempotent — skips already-imported conversations by `chatgpt_id`.
 
 ### `class ImportSummary`
 
@@ -255,7 +255,7 @@ Incrementally sync an existing JARVIS conversation with new data from Claude. Sy
 
 #### `import_conversations(source_path, target_dir, *, dry_run, date_from, date_to) -> ImportSummary`
 
-Orchestrate bulk import with date filters. Writes to `data/conversations/YYYY/` subdirectories. For existing conversations, calls `update_conversation` instead of skipping. New conversations are converted and written. Idempotent — unchanged conversations are skipped.
+Orchestrate bulk import with date filters. Writes to `<target_dir>/YYYY/` subdirectories (`scripts/import_*.py` default `--target-dir` to `paths.conversations_dir`). For existing conversations, calls `update_conversation` instead of skipping. New conversations are converted and written. Idempotent — unchanged conversations are skipped.
 
 ### `class ImportSummary`
 

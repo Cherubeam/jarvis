@@ -44,11 +44,13 @@ Two independent checks, because they stop two different attackers:
 
 ### The token
 
-Resolved in order: `$JARVIS_GUI_TOKEN` → `data/.gui_token` (mode `0600`,
-gitignored) → freshly minted and persisted. It survives restarts, so an open tab
+Resolved in order: `$JARVIS_GUI_TOKEN` → the file named by `gui.token_file`
+(default `data/.gui_token`, joined onto the project root; absolute paths work;
+mode `0600`, gitignored) → freshly minted and persisted there. Changing
+`gui.token_file` needs a restart. It survives restarts, so an open tab
 keeps working.
 
-**To rotate or revoke**: delete `data/.gui_token` and restart. Every browser must
+**To rotate or revoke**: delete the token file and restart. Every browser must
 then sign in again. `GET /sign-out` clears the cookie on one browser only.
 
 ### Two credentials, not one
@@ -64,6 +66,7 @@ HMAC of the token, not the token itself:
 A stolen cookie cannot be replayed as a Bearer credential, and vice versa.
 
 ```bash
+# default gui.token_file; use your configured path if you changed it
 curl -H "Authorization: Bearer $(cat data/.gui_token)" http://127.0.0.1:8123/api/session
 ```
 

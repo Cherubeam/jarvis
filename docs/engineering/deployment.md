@@ -287,7 +287,9 @@ See [architecture.md](architecture.md#file-structure) for the project structure.
 ### Conversation Logs
 
 Saved to `data/conversations/YYYY/YYYY-MM-DD_HH-MM-SS.json` (by year). **Gitignored** — they
-contain sensitive data.
+contain sensitive data. The folder is the `paths.conversations_dir` setting (an absolute path in
+`config/local.yaml` moves it out of the repo); the import, backfill and analysis scripts in
+`scripts/` default to the same `paths.*` settings.
 
 ### Backup Strategy
 
