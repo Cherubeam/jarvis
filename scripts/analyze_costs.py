@@ -20,6 +20,7 @@ from typing import Any
 
 from packages.core.memory import migrate_conversation
 from packages.core.pricing import format_cost
+from packages.core.settings import load_config
 
 
 @dataclass
@@ -184,12 +185,13 @@ def format_full_report(
     return "\n".join(lines)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Analyze costs per conversation type.")
     parser.add_argument(
         "--conversations-dir",
-        default="data/conversations",
-        help="Path to conversations directory.",
+        default=None,
+        help="Path to conversations directory, relative to the project root "
+        "(default: paths.conversations_dir from config/).",
     )
     parser.add_argument(
         "--by",
@@ -203,8 +205,8 @@ def main() -> int:
         help="Write report to file instead of stdout.",
     )
 
-    args = parser.parse_args()
-    conversations_dir = PROJECT_ROOT / args.conversations_dir
+    args = parser.parse_args(argv)
+    conversations_dir = PROJECT_ROOT / (args.conversations_dir or load_config(PROJECT_ROOT).paths.conversations_dir)
 
     if not conversations_dir.exists():
         print(f"Error: Conversations directory not found: {conversations_dir}")

@@ -26,13 +26,18 @@ from dotenv import load_dotenv
 from packages.core.frontmatter import write_atomic
 from packages.core.memory import reconcile_estimated_messages
 from packages.core.model_resolver import collect_api_keys, get_api_key
+from packages.core.settings import load_config
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--dir", type=Path, default=PROJECT_ROOT / "data" / "conversations")
+    parser.add_argument(
+        "--dir", type=Path, default=None, help="conversation logs (default: paths.conversations_dir from config/)"
+    )
     parser.add_argument("--dry-run", action="store_true", help="report what would change, write nothing")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if args.dir is None:
+        args.dir = PROJECT_ROOT / load_config(PROJECT_ROOT).paths.conversations_dir
 
     load_dotenv(PROJECT_ROOT / ".env")
     api_key = get_api_key("openrouter", collect_api_keys())
