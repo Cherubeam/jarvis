@@ -44,8 +44,10 @@ Each step names its milestone below; this list only sets the order.
    OpenRouter data policy, TOK caching baseline with a monthly spend report.
 2. **Write-up** (P6) — AON-01 and the developer-agent retirement, before the
    next milestone starts.
-3. **Daily use: the conversation archive** — refresh the ChatGPT and Claude
-   imports (the newest imported conversation is from April 2026), then
+3. **Daily use: the conversation archive** — Claude imports refreshed
+   2026-10-01 (126 conversations, newest 2026-09-24; ChatGPT is low priority).
+   Next: put each kind of data in its home and memory in the vault (HUB-03,
+   [ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)), then
    conversation recall via Cortex (HUB-02), then more sources.
 4. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
 5. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
@@ -158,7 +160,7 @@ Sep 4. Imported conversations are not counted.
 - [x] Claude conversation import with date filters
 - [x] Claude context import (memories, projects)
 - [x] Shared importer utilities (`ImportSummary`, `make_conv_id`)
-- [ ] Refresh the archive: re-export and re-import ChatGPT and Claude (newest imported conversation: April 2026) *(S)*
+- [x] Refresh the archive: Claude re-imported 2026-10-01 (31 new, 7 continued; 126 total, newest 2026-09-24). ChatGPT is low priority *(S)*
 - [ ] Check that imported conversations are listed and searchable in the GUI history *(S)*
 - [ ] More sources, one at a time, each with its own trigger: Claude Code sessions, Codex, Gemini *(M each)*
 - [ ] Make re-importing routine (a documented monthly step or a scheduled job under AON-02) *(S)*
@@ -536,6 +538,22 @@ Extend the server beyond search to JARVIS's curated context.
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
 - [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
+
+### HUB-03 — Data homes, memory in the vault, import hub
+
+**Status**: 📋 Planned · **Effort**: M · **Risk**: Medium (moves private data)
+
+Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
+
+- [ ] Marco picks the data-home path (iCloud-synced, Backblaze-backed; "Optimize Mac Storage" off for it) *(S)*
+- [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml`; make scripts and importers read the path settings instead of defaulting to `data/…` *(S)*
+- [ ] Move indexes (JARVIS RAG, Cortex ChromaDB) to an unsynced cache folder and rebuild them there *(S)*
+- [ ] Move CLI history and GUI token to an unsynced app-support folder *(S)*
+- [ ] Memory folder in the vault: move the context files there (except generated `tasks.md`), with `updated` and `source` frontmatter; remove or repurpose the unused `paths.learned_facts` setting *(M)*
+- [ ] Replace `claude_context.py` (do not run it: it overwrites context files and reads the old export format) with an importer that reads the 2026-09 memory-file format and turns changes into dated proposals for approval (Art. 14) *(M)*
+- [ ] Keep raw exports in the data home; skip login history and account data *(S)*
+- [ ] Map Claude projects to vault notes by ID instead of keeping project copies *(S)*
+- [ ] Claude Code session importer (only ~30 days stay on disk) *(M)*
 
 ### Source policy — index, don't proxy (2026-08-20)
 

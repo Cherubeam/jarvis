@@ -198,11 +198,12 @@ uv run python scripts/import_claude.py imports/conversations.json --dry-run
 uv run python scripts/import_claude.py imports/conversations.json
 uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
 
-# Claude context (memories + projects)
-uv run python scripts/import_claude_context.py --dry-run
-uv run python scripts/import_claude_context.py
-uv run python scripts/import_claude_context.py --memories imports/memories.json --projects imports/projects.json
 ```
+
+Don't run `scripts/import_claude_context.py` (Claude memories and projects): it
+overwrites your context files without comparing dates and reads an export format
+Claude no longer produces. A replacement that proposes changes for approval is
+planned ([ADR-041](docs/product/decisions.md#adr-041-where-each-kind-of-data-lives)).
 
 Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude), or skips unchanged conversations (ChatGPT).
 

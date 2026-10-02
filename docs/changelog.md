@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Where each kind of data lives (2026-10-02)
+
+- **[ADR-041](product/decisions.md#adr-041-where-each-kind-of-data-lives)
+  gives every kind of data one home**: authored knowledge and memory in the
+  Obsidian vault, tasks in Things 3, the conversation archive and other machine
+  data in a data home outside every repo (iCloud-synced, Backblaze-backed),
+  indexes and caches local and unsynced, because they can be rebuilt and synced
+  database files get corrupted. Facts carry a date and a source; imports
+  propose changes for approval instead of overwriting (human oversight, EU AI
+  Act Art. 14). The work is HUB-03 in `roadmap.md`; the data-home path is still
+  to be chosen.
+- **The README no longer tells you to run `import_claude_context.py`**: it
+  overwrites context files without comparing dates and reads an outdated
+  export format.
+
 ### Removed — Developer agent retired (2026-09-30)
 
 - **`/develop` and its 16 tools are gone** ([ADR-039](product/decisions.md#adr-039-retire-the-developer-agent),
