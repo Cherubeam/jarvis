@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from packages.core.frontmatter import write_atomic
 from packages.core.importers.common import ImportSummary, make_conv_id, make_filename, year_subdir
 from packages.core.memory import SCHEMA_VERSION
 
@@ -370,7 +371,7 @@ def import_conversations(
             jarvis_conv = convert_conversation(conv)
 
             if not dry_run:
-                filepath.write_text(json.dumps(jarvis_conv, indent=2, ensure_ascii=False))
+                write_atomic(filepath, json.dumps(jarvis_conv, indent=2, ensure_ascii=False))
 
             used_filenames.add(filename)
             summary.imported += 1

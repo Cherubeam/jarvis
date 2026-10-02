@@ -23,6 +23,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
 
+from packages.core.frontmatter import write_atomic
 from packages.core.memory import reconcile_estimated_messages
 from packages.core.model_resolver import collect_api_keys, get_api_key
 
@@ -55,7 +56,7 @@ def main() -> int:
         metrics = data.setdefault("metrics", {})
         for name, delta in deltas.items():
             metrics[name] = metrics.get(name, 0) + delta
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        write_atomic(path, json.dumps(data, indent=2, ensure_ascii=False))
 
     verb = "Would update" if args.dry_run else "Updated"
     print(f"{verb} {messages} message(s) in {files} file(s); cost {cost_delta:+.4f} USD")

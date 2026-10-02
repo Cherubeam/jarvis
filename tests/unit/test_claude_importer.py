@@ -761,6 +761,24 @@ class TestIncrementalSync:
         assert data["messages"][2]["content"][0]["text"] == "Follow-up question"
         assert data["messages"][3]["content"][0]["text"] == "Here's the answer"
 
+    def test_update_keeps_previous_file_when_write_fails(self, tmp_path, monkeypatch):
+        """A failed update leaves the earlier copy intact and no temp file behind."""
+        conv = _make_claude_conv()
+        path = _import_and_get_path(conv, tmp_path)
+        before = path.read_text()
+        conv["name"] = "Renamed"
+        conv["updated_at"] = "2025-12-10T10:40:00.000000Z"
+
+        def failing_replace(src, dst):
+            raise OSError("disk full")
+
+        monkeypatch.setattr("os.replace", failing_replace)
+        with pytest.raises(OSError, match="disk full"):
+            update_conversation(path, conv)
+
+        assert path.read_text() == before
+        assert list(path.parent.glob("*.tmp")) == []
+
     def test_update_title_sync(self, tmp_path):
         """Title change is synced; prefix is stripped, tag is added."""
         conv = _make_claude_conv(name="My Chat")

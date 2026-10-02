@@ -445,7 +445,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [ ] Fix the confirmation deadlock: run the turn as a task so `chat_ws.py` can receive approvals mid-turn, add a timeout to `apps/gui/server/confirmation.py` that defaults to reject, and add an end-to-end WebSocket test with two writes in one turn. A timeout alone would turn every GUI approval into a rejection; reproduce the hang first (read from the code, not yet seen live). Ship together with the per-approval reset below *(M)*
 - [ ] Reset `WebConfirmationHandler._event`/`_pending_id` per approval, not per turn — `bridge.py` creates one handler per turn, so a second vault write in the same turn silently replays the first decision without prompting. Found during AON-01; current behaviour is pinned in `test_confirmation.py` *(S)*
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
-- [ ] Atomic conversation saves in `packages/core/memory.py` (write-temp-then-rename) *(S)*
+- [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
 - [ ] Count native sessions per week and per front end from `data/conversations/`, excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
 - [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline *(S)*
@@ -547,7 +547,7 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 
 - [x] Data-home path: `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (2026-10-02)
 - [ ] Mark the folder "Keep Downloaded" in Finder (or turn off "Optimize Mac Storage") before anything moves *(S)*
-- [ ] Atomic conversation saves first (AON-01 item), so iCloud never uploads a half-written file *(S)*
+- [x] Atomic conversation saves first (AON-01 item), so iCloud never uploads a half-written file *(S)* ✅ 2026-10-02
 - [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml`; make scripts and importers read the path settings instead of defaulting to `data/…` *(S)*
 - [ ] Rebuild indexes in `~/Library/Application Support/JARVIS/indexes/` (RAG) and `~/Library/Application Support/Cortex/indexes/` (ChromaDB) *(S)*
 - [ ] Move CLI history and GUI token to `~/Library/Application Support/JARVIS/` (token file mode `600`) *(S)*
