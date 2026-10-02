@@ -547,8 +547,9 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 
 - [ ] Marco picks the data-home path (iCloud-synced, Backblaze-backed; "Optimize Mac Storage" off for it) *(S)*
 - [ ] Move conversations, outcomes, prompt history and pattern-card output to the data home via `local.yaml`; make scripts and importers read the path settings instead of defaulting to `data/…` *(S)*
-- [ ] Move indexes (JARVIS RAG, Cortex ChromaDB) to an unsynced cache folder and rebuild them there *(S)*
-- [ ] Move CLI history and GUI token to an unsynced app-support folder *(S)*
+- [ ] Rebuild indexes in `~/Library/Application Support/JARVIS/indexes/` (RAG) and `~/Library/Application Support/Cortex/indexes/` (ChromaDB) *(S)*
+- [ ] Move CLI history and GUI token to `~/Library/Application Support/JARVIS/` (token file mode `600`) *(S)*
+- [ ] Give the generated `tasks.md` its own path setting, pointing to `~/Library/Caches/JARVIS/`, so it doesn't follow the context files into the vault *(S)*
 - [ ] Memory folder in the vault: move the context files there (except generated `tasks.md`), with `updated` and `source` frontmatter; remove or repurpose the unused `paths.learned_facts` setting *(M)*
 - [ ] Replace `claude_context.py` (do not run it: it overwrites context files and reads the old export format) with an importer that reads the 2026-09 memory-file format and turns changes into dated proposals for approval (Art. 14) *(M)*
 - [ ] Keep raw exports in the data home; skip login history and account data *(S)*

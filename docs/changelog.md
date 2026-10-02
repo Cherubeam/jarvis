@@ -18,8 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   indexes and caches local and unsynced, because they can be rebuilt and synced
   database files get corrupted. Facts carry a date and a source; imports
   propose changes for approval instead of overwriting (human oversight, EU AI
-  Act Art. 14). The work is HUB-03 in `roadmap.md`; the data-home path is still
-  to be chosen.
+  Act Art. 14). Indexes go to `~/Library/Application Support/{JARVIS,Cortex}/indexes/`
+  (not Caches, which macOS may empty), caches to `~/Library/Caches/JARVIS/`,
+  machine-local state to `~/Library/Application Support/JARVIS/`. The work is
+  HUB-03 in `roadmap.md`; the data-home path is still to be chosen.
 - **The README no longer tells you to run `import_claude_context.py`**: it
   overwrites context files without comparing dates and reads an outdated
   export format.

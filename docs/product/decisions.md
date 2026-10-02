@@ -2884,7 +2884,7 @@ knows he can't compete with those products, and that isn't the point.
 ## ADR-041: Where Each Kind of Data Lives
 
 **Date**: 2026-10-02
-**Status**: Accepted — path of the data home still to be chosen by Marco
+**Status**: Accepted — local paths fixed 2026-10-02; path of the data home still to be chosen by Marco
 
 ### Context
 
@@ -2931,8 +2931,9 @@ Problems with the current layout:
 | **Memory**: short dated facts about Marco, plus today's context files (soul, preferences, personal and professional context, current focus, reader persona) | **Obsidian vault**, one dedicated folder | JARVIS and importers *propose*, Marco approves | JARVIS, other tools via Cortex/HUB |
 | Tasks | Things 3 | Marco | JARVIS (read-only, ADR-037) |
 | Machine data: conversation archive (native and imported), raw exports, outcomes, prompt history, pattern-card output | **Data home**: a folder outside every repo, synced by iCloud and backed up by Backblaze | JARVIS, importers | JARVIS, Cortex |
-| Indexes and caches: JARVIS RAG, Cortex ChromaDB, generated `tasks.md` | **Local, unsynced**, e.g. `~/Library/Caches/JARVIS/` | Indexers | JARVIS, Cortex |
-| Machine-local state: CLI history, GUI token | Local, unsynced, e.g. `~/Library/Application Support/JARVIS/` | JARVIS | JARVIS |
+| Indexes: JARVIS RAG, Cortex ChromaDB | **Local, unsynced, not purged**: `~/Library/Application Support/JARVIS/indexes/` and `~/Library/Application Support/Cortex/indexes/` | Indexers | JARVIS, Cortex |
+| Caches: generated `tasks.md`, anything re-created at each start | **Local, purgeable**: `~/Library/Caches/JARVIS/` | JARVIS | JARVIS |
+| Machine-local state: CLI history, GUI token (file mode `600`) | **Local, unsynced**: `~/Library/Application Support/JARVIS/` | JARVIS | JARVIS |
 
 Everything else points to the home instead of copying it. A Claude project
 maps to its vault note by ID; JARVIS does not keep its own project files.
@@ -3001,7 +3002,15 @@ from exports are never imported.
   onto the repo root, so absolute paths work; `~` is not expanded. A few
   scripts and the importers default to `data/…` and need to read the settings
   instead. Context files move into the vault folder; the rest into the data
-  home; indexes are rebuilt in the cache folder rather than moved.
+  home; indexes are rebuilt in their Application Support folders rather than
+  moved.
+- Indexes go to Application Support, not Caches: macOS may empty
+  `~/Library/Caches` when disk space runs low, which would trigger a full,
+  paid re-embedding without warning. Backblaze will likely back up the index
+  folders (about 0.5 GB, harmless; they can be excluded).
+- `tasks.md` is written into `paths.context_dir` today. When the context files
+  move into the vault it needs its own path setting pointing to the cache
+  folder, so the vault doesn't get a file rewritten at every start.
 - The data home path is still open. Until Marco picks it, nothing moves.
 - `claude_context.py` must not be run. It is replaced by an importer that reads
   the 2026-09 memory-file format and produces proposals.
