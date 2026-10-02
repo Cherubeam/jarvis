@@ -2884,7 +2884,7 @@ knows he can't compete with those products, and that isn't the point.
 ## ADR-041: Where Each Kind of Data Lives
 
 **Date**: 2026-10-02
-**Status**: Accepted — local paths fixed 2026-10-02; path of the data home still to be chosen by Marco
+**Status**: Accepted — all paths fixed 2026-10-02
 
 ### Context
 
@@ -2930,7 +2930,7 @@ Problems with the current layout:
 | Authored knowledge: notes, projects, areas, people | Obsidian vault | Marco; JARVIS only with approval | JARVIS, Cortex |
 | **Memory**: short dated facts about Marco, plus today's context files (soul, preferences, personal and professional context, current focus, reader persona) | **Obsidian vault**, one dedicated folder | JARVIS and importers *propose*, Marco approves | JARVIS, other tools via Cortex/HUB |
 | Tasks | Things 3 | Marco | JARVIS (read-only, ADR-037) |
-| Machine data: conversation archive (native and imported), raw exports, outcomes, prompt history, pattern-card output | **Data home**: a folder outside every repo, synced by iCloud and backed up by Backblaze | JARVIS, importers | JARVIS, Cortex |
+| Machine data: conversation archive (native and imported), raw exports, outcomes, prompt history, pattern-card output | **Data home**: `/Users/marcobraun/Documents/03 Resources/JARVIS/data`, outside every repo, synced by iCloud (Desktop & Documents) and backed up by Backblaze | JARVIS, importers | JARVIS, Cortex |
 | Indexes: JARVIS RAG, Cortex ChromaDB | **Local, unsynced, not purged**: `~/Library/Application Support/JARVIS/indexes/` and `~/Library/Application Support/Cortex/indexes/` | Indexers | JARVIS, Cortex |
 | Caches: generated `tasks.md`, anything re-created at each start | **Local, purgeable**: `~/Library/Caches/JARVIS/` | JARVIS | JARVIS |
 | Machine-local state: CLI history, GUI token (file mode `600`) | **Local, unsynced**: `~/Library/Application Support/JARVIS/` | JARVIS | JARVIS |
@@ -3011,7 +3011,7 @@ from exports are never imported.
 - `tasks.md` is written into `paths.context_dir` today. When the context files
   move into the vault it needs its own path setting pointing to the cache
   folder, so the vault doesn't get a file rewritten at every start.
-- The data home path is still open. Until Marco picks it, nothing moves.
+- The data home is `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (chosen 2026-10-02). It lives in iCloud's Desktop & Documents sync, so the folder must be kept downloaded ("Keep Downloaded", or "Optimize Mac Storage" off) and only one Mac runs JARVIS against it.
 - `claude_context.py` must not be run. It is replaced by an importer that reads
   the 2026-09 memory-file format and produces proposals.
 - `paths.learned_facts` is a setting with no consumer (`packages/core/settings.py`);
