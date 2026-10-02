@@ -10,9 +10,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.core.importers.chatgpt import import_conversations
+from packages.core.settings import load_config
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Import ChatGPT conversations into Jarvis schema v1.0.0.")
     parser.add_argument(
         "source",
@@ -22,8 +23,8 @@ def main() -> int:
     parser.add_argument(
         "--target-dir",
         type=Path,
-        default=PROJECT_ROOT / "data" / "conversations",
-        help="Target directory for converted files (default: data/conversations/).",
+        default=None,
+        help="Target directory for converted files (default: paths.conversations_dir from config/).",
     )
     parser.add_argument(
         "--dry-run",
@@ -54,7 +55,9 @@ def main() -> int:
         help="Include archived conversations (excluded by default).",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if args.target_dir is None:
+        args.target_dir = PROJECT_ROOT / load_config(PROJECT_ROOT).paths.conversations_dir
 
     if not args.source.exists():
         print(f"Error: source file not found: {args.source}")

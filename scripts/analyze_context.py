@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from typing import Any
 
 from packages.core.memory import migrate_conversation
+from packages.core.settings import load_config
 
 
 @dataclass
@@ -292,17 +293,19 @@ def format_report(result: AnalysisResult) -> str:
     return "\n".join(lines)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Analyze context utilization across conversations.")
     parser.add_argument(
         "--conversations-dir",
-        default="data/conversations",
-        help="Path to conversations directory.",
+        default=None,
+        help="Path to conversations directory, relative to the project root "
+        "(default: paths.conversations_dir from config/).",
     )
     parser.add_argument(
         "--context-dir",
-        default="data/context",
-        help="Path to context files directory (for keyword extraction).",
+        default=None,
+        help="Path to context files directory (for keyword extraction), relative to the "
+        "project root (default: paths.context_dir from config/).",
     )
     parser.add_argument(
         "--output",
@@ -310,9 +313,10 @@ def main() -> int:
         help="Write report to file instead of stdout.",
     )
 
-    args = parser.parse_args()
-    conversations_dir = PROJECT_ROOT / args.conversations_dir
-    context_dir = PROJECT_ROOT / args.context_dir
+    args = parser.parse_args(argv)
+    paths = load_config(PROJECT_ROOT).paths
+    conversations_dir = PROJECT_ROOT / (args.conversations_dir or paths.conversations_dir)
+    context_dir = PROJECT_ROOT / (args.context_dir or paths.context_dir)
 
     if not conversations_dir.exists():
         print(f"Error: Conversations directory not found: {conversations_dir}")
