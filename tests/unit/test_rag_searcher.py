@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from packages.core.rag.searcher import _MAX_EMBED_CHARS, _date_str_to_int, _invert_date
+from packages.core.rag.embed_limits import MAX_EMBED_TOKENS, count_tokens
+from packages.core.rag.searcher import _date_str_to_int, _invert_date
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -161,19 +162,20 @@ class TestSearch:
         assert call_kwargs["n_results"] == 2
 
     def test_long_query_truncated_before_embedding(self, tmp_path):
-        """Queries exceeding _MAX_EMBED_CHARS must be truncated before the
+        """Queries exceeding MAX_EMBED_TOKENS must be truncated before the
         embedding call, otherwise the provider returns a token-limit error."""
         searcher, mock_collection = _make_searcher(tmp_path, collection_count=1)
         mock_collection.query.return_value = _fake_chroma_result(1)
 
-        long_query = "q" * (_MAX_EMBED_CHARS + 5000)
+        long_query = '{"q":1,' * 2500  # ~10,000 tokens of dense text
         with patch("packages.core.rag.searcher.litellm.embedding") as mock_embed:
             mock_embed.return_value = MagicMock(data=[{"embedding": [0.1, 0.2, 0.3]}])
             searcher.search(long_query)
 
         call_kwargs = mock_embed.call_args
         texts_sent = call_kwargs.kwargs.get("input") or call_kwargs[1].get("input")
-        assert all(len(t) <= _MAX_EMBED_CHARS for t in texts_sent)
+        assert texts_sent != [long_query]
+        assert all(count_tokens(t) <= MAX_EMBED_TOKENS for t in texts_sent)
 
     def test_recency_tiebreaker_prefers_newer_at_same_distance(self, tmp_path):
         """When two results have the same bucketed distance, the newer one should come first."""

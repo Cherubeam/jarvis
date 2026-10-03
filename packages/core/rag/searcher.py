@@ -8,7 +8,7 @@ from typing import Any
 
 import litellm
 
-_MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
+from packages.core.rag.embed_limits import truncate_to_tokens
 
 
 def _date_str_to_int(date_str: str) -> int:
@@ -94,7 +94,7 @@ class ConversationSearcher:
         # Embed the query
         embed_kwargs: dict[str, Any] = {
             "model": self.embedding_model,
-            "input": [query[:_MAX_EMBED_CHARS]],
+            "input": [truncate_to_tokens(query)],
             "api_key": self.api_key,
             "encoding_format": "float",
         }
