@@ -315,7 +315,32 @@ paths:
 ```
 
 Frontmatter on these notes is stripped before it reaches the prompt, and a missing file is
-skipped. Changes need a restart.
+skipped. Invalid frontmatter stays in the prompt and logs a warning naming the file; quote
+values that contain `: `. Changes need a restart.
+
+**Memory frontmatter** ([ADR-041](../product/decisions.md#adr-041-where-each-kind-of-data-lives)):
+every note records when it was last true and where it came from, so later imports can tell
+newer facts from older ones. Fields follow the vault's own conventions:
+
+```yaml
+---
+created: 2026-04-09
+updated: 2026-04-09          # when the content was last true; imports compare against this
+aliases:
+tags:
+  - type/jarvis-memory        # type/jarvis-soul for the soul note
+  - project/jarvis
+type: jarvis-memory
+memory-section: professional  # key in paths.context_files
+summary: "One line; quote it if it contains ': '"
+source:                       # marco | jarvis | claude-export | readwise | …
+  - marco
+  - claude-export
+review-by: 2026-10-09         # past this date the note is due for a review
+assist:                       # P7: present when the note holds AI-written prose
+  - prose
+---
+```
 
 ### Backup Strategy
 

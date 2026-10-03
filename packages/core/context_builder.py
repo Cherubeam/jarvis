@@ -10,6 +10,7 @@ Project files support YAML frontmatter for selective loading:
   ---
 """
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,8 @@ from typing import Any
 import yaml
 
 from packages.core.settings import ContextFilesSettings
+
+logger = logging.getLogger(__name__)
 
 
 def _approx_tokens(text: str) -> int:
@@ -64,17 +67,24 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     return _fm.parse(text)
 
 
-def strip_frontmatter(text: str) -> str:
+def strip_frontmatter(text: str, name: str = "context file") -> str:
     """Return ``text`` without its YAML frontmatter block (e.g. ``updated``/``source``).
 
     Text without frontmatter is returned unchanged. Malformed frontmatter is left
-    in place rather than guessed at.
+    in place rather than guessed at, with a warning naming the file: it would
+    otherwise reach the prompt unnoticed.
     """
     from packages.core import frontmatter as _fm
 
     try:
         _meta, body = _fm.parse(text)
-    except yaml.YAMLError:
+    except yaml.YAMLError as e:
+        logger.warning(  # pragma: no mutate
+            "Invalid YAML frontmatter in %s; it stays in the system prompt. "  # pragma: no mutate
+            "Quote values that contain ': '. (%s)",  # pragma: no mutate
+            name,
+            str(e).splitlines()[0],
+        )
         return text
     if body == text:
         return text
@@ -115,7 +125,7 @@ def build_system_prompt_with_metadata(
     tasks_path = tasks_file if tasks_file is not None else context_dir / "tasks.md"
     metadata = ContextMetadata()
 
-    soul = strip_frontmatter(load_context_file(context_dir / files.soul))
+    soul = strip_frontmatter(load_context_file(context_dir / files.soul), name=files.soul)
     if soul:
         metadata.sections.append(
             ContextSection(
@@ -137,7 +147,7 @@ def build_system_prompt_with_metadata(
     ]
 
     for section_name, path, header in context_sections:
-        content = strip_frontmatter(load_context_file(path))
+        content = strip_frontmatter(load_context_file(path), name=path.name)
         if content:
             section_text = f"{header}{content}"
             sections.append(section_text)

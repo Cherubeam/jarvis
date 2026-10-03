@@ -45,7 +45,6 @@ paths:
   # Generated from Things 3 on startup; read into the prompt from here, not from context_dir
   tasks_file: "data/context/tasks.md"
   conversations_dir: "data/conversations"
-  learned_facts: "data/learned_facts.md"
   prompt_history_dir: "data/prompt-history"
 
 # Things 3 integration — read-only, via the "JARVIS Things Export" Shortcut
