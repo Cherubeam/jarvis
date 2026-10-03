@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Context files live in the vault (2026-10-03)
+
+- **JARVIS's soul and memory notes moved to the Obsidian vault**
+  (`07 – Personal System/JARVIS/`: `JARVIS Soul.md` and `Memory/*.md`), set in
+  `config/local.yaml` with `paths.context_dir` and `paths.context_files`; the
+  generated `tasks.md` moved to `~/Library/Caches/JARVIS/` via
+  `paths.tasks_file`. JARVIS may write only inside that folder; the rest of
+  `07 – Personal System` stays read-only. Verified: the system prompt built from
+  the vault is byte-identical to the one built from `data/context/`, and a CLI
+  start syncs tasks to the cache folder. The old `data/context/` went to the
+  Trash (ADR-041, HUB-03).
+- **ADR-041 corrected:** the brainstorm note in `data/brainstorms/` was written
+  by Claude, not by Marco. It moved to the JARVIS project folder in the vault,
+  and the ADR now separates the two JARVIS vault folders: project notes in
+  `02 – Projects/Private/JARVIS/`, memory in `07 – Personal System/JARVIS/`.
+
 ### Added — Context files can live in the vault (2026-10-03)
 
 - **Context file names and the tasks path are settings** (HUB-03, ADR-041):

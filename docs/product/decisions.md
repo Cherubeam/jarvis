@@ -3016,8 +3016,15 @@ from exports are never imported.
   the 2026-09 memory-file format and produces proposals.
 - `paths.learned_facts` is a setting with no consumer (`packages/core/settings.py`);
   it is removed or becomes the memory folder setting.
-- The one note in `data/brainstorms/` is authored knowledge and belongs in the
-  vault.
+- The one note in `data/brainstorms/` was written by Claude in a session, not by
+  Marco; it is project knowledge about JARVIS and moved to the JARVIS project
+  folder in the vault (`02 – Projects/Private/JARVIS/Brainstorms/`, tagged
+  `assist: [prose]`). Corrected 2026-10-03; an earlier wording called it
+  authored knowledge.
+- **Two JARVIS folders in the vault, two jobs:** `02 – Projects/Private/JARVIS/`
+  holds notes about JARVIS as a project (project memory, brainstorms);
+  `07 – Personal System/JARVIS/` holds what JARVIS knows about Marco (soul and
+  memory). Project knowledge never goes into the memory folder.
 - iCloud "Optimize Mac Storage" must be off for the data home, or importers and
   indexers must detect placeholders.
 - Imported conversations contain AI-written text and never feed the voice
