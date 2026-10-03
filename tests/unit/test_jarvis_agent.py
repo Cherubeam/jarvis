@@ -1,9 +1,13 @@
 """Tests for JARVIS agent — delegation directive builder."""
 
+from unittest.mock import MagicMock
+
 from packages.agents.jarvis.agent import (
+    JarvisAgent,
     _build_delegation_directive,
     _build_outcome_tracking_directive,
 )
+from packages.core.settings import ContextFilesSettings
 
 
 class TestBuildOutcomeTrackingDirective:
@@ -73,3 +77,47 @@ class TestBuildDelegationDirective:
         assert "delegate_to_agent" in result
         assert "context" in result
         assert "read_note" in result
+
+
+class TestJarvisAgentContextFiles:
+    """HUB-03: JARVIS builds and refreshes its prompt from the configured files and tasks path."""
+
+    def test_uses_configured_files_and_tasks_file(self, tmp_path):
+        context_dir = tmp_path / "JARVIS"
+        (context_dir / "Memory").mkdir(parents=True)
+        (context_dir / "JARVIS Soul.md").write_text("SOUL\n")
+        (context_dir / "Memory" / "Current Focus.md").write_text("FOCUS\n")
+        (context_dir / "soul.md").write_text("OLD SOUL\n")
+        tasks_file = tmp_path / "cache" / "tasks.md"
+        tasks_file.parent.mkdir()
+        tasks_file.write_text("TASKS\n")
+        files = ContextFilesSettings(soul="JARVIS Soul.md", focus="Memory/Current Focus.md")
+
+        agent = JarvisAgent(MagicMock(), context_dir, context_files=files, tasks_file=tasks_file)
+
+        assert agent.config.system_prompt == "SOUL\n\n## Current focus\n\nFOCUS\n\n\n---\n\n## Their tasks\n\nTASKS\n"
+        assert agent.context_files is files
+        assert agent.tasks_file == tasks_file
+
+    def test_refresh_context_rereads_configured_files(self, tmp_path):
+        (tmp_path / "Soul.md").write_text("FIRST\n")
+        tasks_file = tmp_path / "tasks-cache.md"
+        agent = JarvisAgent(
+            MagicMock(), tmp_path, context_files=ContextFilesSettings(soul="Soul.md"), tasks_file=tasks_file
+        )
+        (tmp_path / "Soul.md").write_text("SECOND\n")
+        tasks_file.write_text("TASKS\n")
+
+        agent.refresh_context()
+
+        assert agent.config.system_prompt == "SECOND\n\n## Their tasks\n\nTASKS\n"
+
+    def test_defaults_keep_todays_names(self, tmp_path):
+        (tmp_path / "soul.md").write_text("SOUL\n")
+        (tmp_path / "tasks.md").write_text("TASKS\n")
+
+        agent = JarvisAgent(MagicMock(), tmp_path)
+
+        assert agent.config.system_prompt == "SOUL\n\n## Their tasks\n\nTASKS\n"
+        assert agent.context_files is None
+        assert agent.tasks_file is None

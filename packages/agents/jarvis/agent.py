@@ -11,6 +11,7 @@ from typing import Any, cast
 from packages.agents.base import AgentConfig, BaseAgent
 from packages.core.context_builder import build_system_prompt
 from packages.core.llm_client import LLMClient, StreamingResponse
+from packages.core.settings import ContextFilesSettings
 from packages.core.stream_handler import StreamHandler, StreamResult
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import DelegationState, make_delegate_tool
@@ -121,6 +122,8 @@ class JarvisAgent(BaseAgent):
         model: str = "anthropic/claude-sonnet-4",
         extra_tools: list[ToolDefinition] | None = None,
         available_agents: list[dict[str, Any]] | None = None,
+        context_files: ContextFilesSettings | None = None,
+        tasks_file: Path | None = None,
     ):
         """
         Initialize JARVIS.
@@ -131,9 +134,11 @@ class JarvisAgent(BaseAgent):
             model: Model to use
             extra_tools: Additional tools to register beyond the defaults
             available_agents: List of {"name": ..., "description": ...} for delegation
+            context_files: Context file names relative to context_dir (default: today's names)
+            tasks_file: Tasks markdown file (default: context_dir / "tasks.md")
         """
-        # Build system prompt from context (soul.md is loaded internally)
-        system_prompt = build_system_prompt(context_dir)
+        # Build system prompt from context (the soul file is loaded internally)
+        system_prompt = build_system_prompt(context_dir, context_files, tasks_file)
 
         tools = []
         if extra_tools:
@@ -161,6 +166,8 @@ class JarvisAgent(BaseAgent):
 
         super().__init__(config, llm_client)
         self.context_dir = context_dir
+        self.context_files = context_files
+        self.tasks_file = tasks_file
 
     def run(
         self,
@@ -215,4 +222,4 @@ class JarvisAgent(BaseAgent):
 
     def refresh_context(self) -> None:
         """Reload context files and rebuild system prompt."""
-        self.config.system_prompt = build_system_prompt(self.context_dir)
+        self.config.system_prompt = build_system_prompt(self.context_dir, self.context_files, self.tasks_file)

@@ -33,6 +33,17 @@ models:
 # Paths (relative to project root)
 paths:
   context_dir: "data/context"
+  # Context files loaded into JARVIS's system prompt, relative to context_dir
+  # (subfolders work, e.g. "Memory/Personal Context.md"; missing files are skipped).
+  context_files:
+    soul: "soul.md"
+    personal: "personal_context.md"
+    professional: "professional_context.md"
+    preferences: "preferences.md"
+    focus: "current_focus.md"
+    reading: "reader_persona.md"
+  # Generated from Things 3 on startup; read into the prompt from here, not from context_dir
+  tasks_file: "data/context/tasks.md"
   conversations_dir: "data/conversations"
   learned_facts: "data/learned_facts.md"
   prompt_history_dir: "data/prompt-history"

@@ -126,12 +126,35 @@ class ModelsSettings(BaseModel):
     )
 
 
+class ContextFilesSettings(BaseModel):
+    """File names of the context files JARVIS loads into its system prompt.
+
+    Each value is a path relative to ``paths.context_dir``; subfolders work
+    (e.g. ``Memory/Personal Context.md``). A missing file is skipped.
+    """
+
+    soul: str = Field(default="soul.md", description="JARVIS identity; placed first in the prompt.")
+    personal: str = Field(default="personal_context.md", description="About the person.")
+    professional: str = Field(default="professional_context.md", description="Professional context.")
+    preferences: str = Field(default="preferences.md", description="Their preferences.")
+    focus: str = Field(default="current_focus.md", description="Current focus.")
+    reading: str = Field(default="reader_persona.md", description="Reading profile.")
+
+
 class PathsSettings(BaseModel):
     """Project-relative data paths."""
 
     context_dir: str = Field(
         default="data/context",
         description="Directory holding user/personal context markdown files.",
+    )
+    context_files: ContextFilesSettings = Field(
+        default_factory=ContextFilesSettings,
+        description="Context file names, relative to context_dir (subfolders allowed).",
+    )
+    tasks_file: str = Field(
+        default="data/context/tasks.md",
+        description="Markdown file the Things 3 sync writes and the system prompt reads tasks from.",
     )
     conversations_dir: str = Field(
         default="data/conversations",

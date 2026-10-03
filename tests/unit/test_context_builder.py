@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from packages.core.settings import ContextFilesSettings
+
 # Try new import path first, fall back to old for backward compatibility
 try:
     from packages.core.context_builder import (
@@ -18,6 +20,7 @@ try:
         build_system_prompt_with_metadata,
         load_context_file,
         parse_frontmatter,
+        strip_frontmatter,
     )
 except ImportError:
     from context_builder import (
@@ -28,6 +31,7 @@ except ImportError:
         build_system_prompt_with_metadata,
         load_context_file,
         parse_frontmatter,
+        strip_frontmatter,
     )
 
 
@@ -430,3 +434,181 @@ class TestBuildSystemPromptWithMetadata:
         for section in meta.sections:
             assert section.approx_tokens > 0
             assert section.size_bytes > 0
+
+
+def _write_default_layout(context_dir: Path) -> None:
+    """Every context file under today's default names, one line each."""
+    (context_dir / "soul.md").write_text("SOUL\n")
+    (context_dir / "personal_context.md").write_text("PERSONAL\n")
+    (context_dir / "professional_context.md").write_text("PROFESSIONAL\n")
+    (context_dir / "preferences.md").write_text("PREFERENCES\n")
+    (context_dir / "current_focus.md").write_text("FOCUS\n")
+    (context_dir / "tasks.md").write_text("TASKS\n")
+    (context_dir / "reader_persona.md").write_text("READING\n")
+
+
+EXPECTED_DEFAULT_PROMPT = (
+    "SOUL\n\n"
+    "## About this person\n\nPERSONAL\n"
+    "\n\n---\n\n"
+    "## Professional context\n\nPROFESSIONAL\n"
+    "\n\n---\n\n"
+    "## Their preferences\n\nPREFERENCES\n"
+    "\n\n---\n\n"
+    "## Current focus\n\nFOCUS\n"
+    "\n\n---\n\n"
+    "## Their tasks\n\nTASKS\n"
+    "\n\n---\n\n"
+    "## Reading profile\n\nREADING\n"
+)
+
+VAULT_FILES = ContextFilesSettings(
+    soul="JARVIS Soul.md",
+    personal="Memory/Personal Context.md",
+    professional="Memory/Professional Context.md",
+    preferences="Memory/Preferences.md",
+    focus="Memory/Current Focus.md",
+    reading="Memory/Reading Profile.md",
+)
+
+
+@pytest.mark.unit
+class TestConfigurableContextFiles:
+    """HUB-03: file names and the tasks path come from settings; defaults keep today's prompt."""
+
+    def test_defaults_reproduce_todays_prompt_exactly(self, temp_context_dir: Path):
+        _write_default_layout(temp_context_dir)
+
+        assert build_system_prompt(temp_context_dir) == EXPECTED_DEFAULT_PROMPT
+
+    def test_explicit_default_settings_match_implicit_defaults(self, temp_context_dir: Path):
+        _write_default_layout(temp_context_dir)
+
+        explicit = build_system_prompt(temp_context_dir, ContextFilesSettings(), temp_context_dir / "tasks.md")
+
+        assert explicit == EXPECTED_DEFAULT_PROMPT
+
+    def test_default_section_order_in_metadata(self, temp_context_dir: Path):
+        _write_default_layout(temp_context_dir)
+
+        _prompt, metadata = build_system_prompt_with_metadata(temp_context_dir)
+
+        assert [s.name for s in metadata.sections] == [
+            "soul",
+            "personal",
+            "professional",
+            "preferences",
+            "focus",
+            "tasks",
+            "reading",
+        ]
+
+    def test_vault_layout_with_subfolder_spaces_and_en_dash(self, tmp_path: Path):
+        context_dir = tmp_path / "07 – Personal System" / "JARVIS"
+        (context_dir / "Memory").mkdir(parents=True)
+        (context_dir / "JARVIS Soul.md").write_text("SOUL\n")
+        (context_dir / "Memory" / "Personal Context.md").write_text("PERSONAL\n")
+        (context_dir / "Memory" / "Professional Context.md").write_text("PROFESSIONAL\n")
+        (context_dir / "Memory" / "Preferences.md").write_text("PREFERENCES\n")
+        (context_dir / "Memory" / "Current Focus.md").write_text("FOCUS\n")
+        (context_dir / "Memory" / "Reading Profile.md").write_text("READING\n")
+        tasks_file = tmp_path / "Caches" / "JARVIS" / "tasks.md"
+        tasks_file.parent.mkdir(parents=True)
+        tasks_file.write_text("TASKS\n")
+
+        result = build_system_prompt(context_dir, VAULT_FILES, tasks_file)
+
+        assert result == EXPECTED_DEFAULT_PROMPT
+
+    def test_default_names_are_ignored_when_names_are_configured(self, temp_context_dir: Path):
+        _write_default_layout(temp_context_dir)
+
+        result = build_system_prompt(temp_context_dir, VAULT_FILES, temp_context_dir / "none.md")
+
+        assert result == ""
+
+    def test_tasks_read_from_tasks_file_not_context_dir(self, tmp_path: Path):
+        context_dir = tmp_path / "context"
+        context_dir.mkdir()
+        (context_dir / "tasks.md").write_text("STALE TASKS IN CONTEXT DIR\n")
+        tasks_file = tmp_path / "cache" / "tasks.md"
+        tasks_file.parent.mkdir()
+        tasks_file.write_text("FRESH TASKS\n")
+
+        result = build_system_prompt(context_dir, tasks_file=tasks_file)
+
+        assert result == "## Their tasks\n\nFRESH TASKS\n"
+
+    def test_missing_tasks_file_is_skipped(self, tmp_path: Path):
+        context_dir = tmp_path / "context"
+        context_dir.mkdir()
+        (context_dir / "tasks.md").write_text("STALE\n")
+        (context_dir / "soul.md").write_text("SOUL\n")
+
+        prompt, metadata = build_system_prompt_with_metadata(context_dir, tasks_file=tmp_path / "missing.md")
+
+        assert prompt == "SOUL"
+        assert [s.name for s in metadata.sections] == ["soul"]
+
+    def test_missing_configured_file_is_skipped(self, tmp_path: Path):
+        context_dir = tmp_path / "JARVIS"
+        (context_dir / "Memory").mkdir(parents=True)
+        (context_dir / "JARVIS Soul.md").write_text("SOUL\n")
+        (context_dir / "Memory" / "Current Focus.md").write_text("FOCUS\n")
+
+        prompt, metadata = build_system_prompt_with_metadata(context_dir, VAULT_FILES, tmp_path / "tasks.md")
+
+        assert prompt == "SOUL\n\n## Current focus\n\nFOCUS\n"
+        assert [s.name for s in metadata.sections] == ["soul", "focus"]
+
+
+@pytest.mark.unit
+class TestStripFrontmatter:
+    """Memory notes carry frontmatter that must not reach the prompt."""
+
+    def test_strips_frontmatter_and_leading_blank_lines(self):
+        text = "---\nupdated: 2026-10-03\nsource: chat\n---\n\n# Focus\nShip HUB-03.\n"
+
+        assert strip_frontmatter(text) == "# Focus\nShip HUB-03.\n"
+
+    def test_text_without_frontmatter_is_unchanged(self):
+        text = "\n# Focus\n---\nShip HUB-03.\n"
+
+        assert strip_frontmatter(text) == text
+
+    def test_frontmatter_only_file_becomes_empty(self):
+        assert strip_frontmatter("---\nupdated: 2026-10-03\n---\n") == ""
+
+    def test_malformed_frontmatter_is_left_in_place(self):
+        text = "---\nupdated: [unclosed\n---\nBody\n"
+
+        assert strip_frontmatter(text) == text
+
+    def test_frontmatter_stripped_from_every_section(self, temp_context_dir: Path):
+        fm = "---\nupdated: 2026-10-03\nsource: memory\n---\n"
+        (temp_context_dir / "soul.md").write_text(fm + "SOUL\n")
+        (temp_context_dir / "personal_context.md").write_text(fm + "PERSONAL\n")
+        (temp_context_dir / "professional_context.md").write_text(fm + "PROFESSIONAL\n")
+        (temp_context_dir / "preferences.md").write_text(fm + "PREFERENCES\n")
+        (temp_context_dir / "current_focus.md").write_text(fm + "FOCUS\n")
+        (temp_context_dir / "tasks.md").write_text(fm + "TASKS\n")
+        (temp_context_dir / "reader_persona.md").write_text(fm + "READING\n")
+
+        assert build_system_prompt(temp_context_dir) == EXPECTED_DEFAULT_PROMPT
+
+    def test_metadata_counts_stripped_text(self, temp_context_dir: Path):
+        (temp_context_dir / "soul.md").write_text("---\nupdated: 2026-10-03\n---\nSOUL BODY!\n")
+        (temp_context_dir / "current_focus.md").write_text("---\nsource: chat\n---\nFOCUS BODY\n")
+
+        _prompt, metadata = build_system_prompt_with_metadata(temp_context_dir)
+
+        soul, focus = metadata.sections
+        assert (soul.name, soul.size_bytes, soul.approx_tokens) == ("soul", 11, 2)
+        section_text = "## Current focus\n\nFOCUS BODY\n"
+        assert (focus.name, focus.size_bytes, focus.approx_tokens) == ("focus", len(section_text), 7)
+
+    def test_frontmatter_only_file_is_skipped(self, temp_context_dir: Path):
+        (temp_context_dir / "soul.md").write_text("SOUL\n")
+        (temp_context_dir / "preferences.md").write_text("---\nupdated: 2026-10-03\n---\n")
+
+        assert build_system_prompt(temp_context_dir) == "SOUL"
