@@ -31,7 +31,7 @@ from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
 from packages.core.model_resolver import collect_api_keys, get_api_key, resolve_model, session_extra_body
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import ModelsSettings, Settings
+from packages.core.settings import ContextFilesSettings, ModelsSettings, Settings
 from packages.core.stream_handler import StreamHandler
 from packages.core.tools.base import ToolDefinition
 from packages.integrations.obsidian.vault import load_vault_config
@@ -181,6 +181,68 @@ def session_model_source(cli_model: str | None, models: ModelsSettings) -> str:
     return cli_model or ("auto" if models.auto_router.enabled else models.default)
 
 
+def _snapshot_path(path: Path, jarvis_dir: Path) -> str:
+    """Project-relative path when ``path`` is inside the repo, else absolute (e.g. a vault folder)."""
+    try:
+        return str(path.relative_to(jarvis_dir))
+    except ValueError:
+        return str(path)
+
+
+def _snapshot_context_files(
+    jarvis_dir: Path,
+    context_dir: Path,
+    context_files: ContextFilesSettings,
+    tasks_file: Path,
+) -> list[dict[str, Any]]:
+    """Record the context files this session loaded, in prompt order, plus ``projects/*.md``.
+
+    Only the configured files are recorded (missing ones are skipped), so a
+    context_dir that is a vault folder with other notes and subfolders is fine.
+    """
+    configured = [
+        context_dir / context_files.soul,
+        context_dir / context_files.personal,
+        context_dir / context_files.professional,
+        context_dir / context_files.preferences,
+        context_dir / context_files.focus,
+        tasks_file,
+        context_dir / context_files.reading,
+    ]
+    entries: list[dict[str, Any]] = []
+    for f in configured:
+        if not f.is_file():
+            continue
+        content = f.read_text(encoding="utf-8")
+        size_bytes = f.stat().st_size
+        entries.append(
+            {
+                "path": _snapshot_path(f, jarvis_dir),
+                "hash": f"sha256:{hash_content(content)}",
+                "size_bytes": size_bytes,
+                "approx_tokens": size_bytes // 4,
+            }
+        )
+
+    projects_dir = context_dir / "projects"
+    if projects_dir.is_dir():
+        for f in sorted(projects_dir.glob("*.md")):
+            content = f.read_text(encoding="utf-8")
+            meta_fm, _ = parse_frontmatter(content)
+            size_bytes = f.stat().st_size
+            entry: dict[str, Any] = {
+                "path": _snapshot_path(f, jarvis_dir),
+                "hash": f"sha256:{hash_content(content)}",
+                "size_bytes": size_bytes,
+                "approx_tokens": size_bytes // 4,
+                "active": meta_fm.get("active", True),
+            }
+            if meta_fm:
+                entry["frontmatter"] = meta_fm
+            entries.append(entry)
+    return entries
+
+
 def build_session(
     args: Any,
     settings: Settings,
@@ -217,9 +279,12 @@ def build_session(
     context_dir = jarvis_dir / settings.paths.context_dir
     conversations_dir = jarvis_dir / settings.paths.conversations_dir
 
-    sync_tasks_to_file(context_dir / "tasks.md", settings.things3)
+    context_files = settings.paths.context_files
+    tasks_file = jarvis_dir / settings.paths.tasks_file
 
-    system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir)
+    sync_tasks_to_file(tasks_file, settings.things3)
+
+    system_prompt, context_metadata = build_system_prompt_with_metadata(context_dir, context_files, tasks_file)
 
     conversation_id = generate_conversation_id()
     client = LLMClient(
@@ -455,6 +520,8 @@ def build_session(
             model=model_id,
             extra_tools=jarvis_tools or None,
             available_agents=available_agents or None,
+            context_files=context_files,
+            tasks_file=tasks_file,
         )
         agent_name = "JARVIS"
 
@@ -470,39 +537,10 @@ def build_session(
         "metadata": {},
     }
 
-    context_files = []
-    if context_dir.exists():
-        for f in sorted(context_dir.iterdir()):
-            if f.is_file() and f.suffix == ".md":
-                content = f.read_text(encoding="utf-8")
-                size_bytes = f.stat().st_size
-                context_files.append(
-                    {
-                        "path": str(f.relative_to(jarvis_dir)),
-                        "hash": f"sha256:{hash_content(content)}",
-                        "size_bytes": size_bytes,
-                        "approx_tokens": size_bytes // 4,
-                    }
-                )
-        projects_dir = context_dir / "projects"
-        if projects_dir.is_dir():
-            for f in sorted(projects_dir.glob("*.md")):
-                content = f.read_text(encoding="utf-8")
-                meta_fm, _ = parse_frontmatter(content)
-                is_active = meta_fm.get("active", True)
-                size_bytes = f.stat().st_size
-                entry = {
-                    "path": str(f.relative_to(jarvis_dir)),
-                    "hash": f"sha256:{hash_content(content)}",
-                    "size_bytes": size_bytes,
-                    "approx_tokens": size_bytes // 4,
-                    "active": is_active,
-                }
-                if meta_fm:
-                    entry["frontmatter"] = meta_fm
-                context_files.append(entry)
-
-    context_snapshot = {"files_loaded": context_files, "metadata": {}}
+    context_snapshot = {
+        "files_loaded": _snapshot_context_files(jarvis_dir, context_dir, context_files, tasks_file),
+        "metadata": {},
+    }
 
     environment = {
         "client": client_label,
