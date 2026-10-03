@@ -17,6 +17,13 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
   ],
   paths: [
     { path: ['context_dir'], label: 'context_dir' },
+    { path: ['context_files', 'soul'], label: 'context_files.soul' },
+    { path: ['context_files', 'personal'], label: 'context_files.personal' },
+    { path: ['context_files', 'professional'], label: 'context_files.professional' },
+    { path: ['context_files', 'preferences'], label: 'context_files.preferences' },
+    { path: ['context_files', 'focus'], label: 'context_files.focus' },
+    { path: ['context_files', 'reading'], label: 'context_files.reading' },
+    { path: ['tasks_file'], label: 'tasks_file' },
     { path: ['conversations_dir'], label: 'conversations_dir' },
     { path: ['learned_facts'], label: 'learned_facts' },
     { path: ['prompt_history_dir'], label: 'prompt_history_dir' },
