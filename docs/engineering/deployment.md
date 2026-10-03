@@ -28,9 +28,10 @@ The merged result is validated by the typed `Settings` model in
 and the GUI's Settings view edits the same model. Lists replace wholesale when overridden; dicts
 merge key by key.
 
-API keys come from `.env`, never from the YAML files. The system prompt is assembled from
-`data/context/*.md` (identity from `soul.md`), not from config — see
-[architecture.md](architecture.md#2-context-builder-packagescorecontext_builderpy).
+API keys come from `.env`, never from the YAML files. The system prompt is assembled from the
+context files (default `data/context/*.md`, identity from `soul.md`), not from config — see
+[architecture.md](architecture.md#2-context-builder-packagescorecontext_builderpy). To keep them
+elsewhere, see [Context files](#context-files).
 
 ---
 
@@ -291,10 +292,35 @@ contain sensitive data. The folder is the `paths.conversations_dir` setting (an 
 `config/local.yaml` moves it out of the repo); the import, backfill and analysis scripts in
 `scripts/` default to the same `paths.*` settings.
 
+### Context files
+
+The context files live in `paths.context_dir` under the names in `paths.context_files`; the
+Things tasks file is written to `paths.tasks_file` (defaults in
+[`config/default.yaml`](../../config/default.yaml)). Relative paths are joined onto the project
+root; absolute paths work. To keep the context files in an Obsidian vault folder, with the
+memory notes in a subfolder, and the generated tasks file out of the vault:
+
+```yaml
+# config/local.yaml
+paths:
+  context_dir: "/path/to/vault/JARVIS"
+  context_files:
+    soul: "JARVIS Soul.md"
+    personal: "Memory/Personal Context.md"
+    professional: "Memory/Professional Context.md"
+    preferences: "Memory/Preferences.md"
+    focus: "Memory/Current Focus.md"
+    reading: "Memory/Reading Profile.md"
+  tasks_file: "/Users/<you>/Library/Caches/JARVIS/tasks.md"
+```
+
+Frontmatter on these notes is stripped before it reaches the prompt, and a missing file is
+skipped. Changes need a restart.
+
 ### Backup Strategy
 
 **What to back up:**
-- `data/context/*.md` (your context files)
+- your context files (`paths.context_dir`; default `data/context/*.md`)
 - `config/local.yaml` (your configuration)
 - `data/conversations/` and `data/outcomes/` (optional, if you want history)
 

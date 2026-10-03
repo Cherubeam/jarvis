@@ -290,7 +290,7 @@ Filenames use `%Y%m%dT%H%M%S_%fZ.md` — microsecond resolution — so rapid con
 
 ### JARVIS read-only
 
-JARVIS's prompt isn't backed by a single file — `context_builder.build_system_prompt()` assembles it at session boot from `data/context/*.md`. So:
+JARVIS's prompt isn't backed by a single file — `context_builder.build_system_prompt()` assembles it at session boot from the context files (`paths.context_dir` + `paths.context_files`, tasks from `paths.tasks_file`). So:
 
 - `GET /prompt` for JARVIS returns `editable: false` + an explanation + the assembled prompt.
 - `PUT /prompt` and `POST /prompt/restore` return 403.
@@ -615,7 +615,7 @@ flag for delegation, just the tool invocation. If
 - **`uvicorn --reload` breaks MCP subprocess lifecycle** — don't use it.
   Restart manually when changing Python that owns subprocesses.
 - **Running CLI and GUI concurrently** both run the Things export Shortcut
-  and write `data/context/tasks.md` (`sync_tasks_to_file`). Low risk,
+  and write `paths.tasks_file` (`sync_tasks_to_file`). Low risk,
   last-writer-wins.
 
 ## Visual identity rules (non-negotiable)

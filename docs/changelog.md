@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Context files can live in the vault (2026-10-03)
+
+- **Context file names and the tasks path are settings** (HUB-03, ADR-041):
+  `paths.context_files` (`soul`, `personal`, `professional`, `preferences`,
+  `focus`, `reading`; relative to `paths.context_dir`, subfolders such as
+  `Memory/Personal Context.md` work) and `paths.tasks_file` (where the Things
+  sync writes and the prompt reads tasks, so the generated file can stay out
+  of the vault). Defaults are today's names; without `config/local.yaml`
+  changes the prompt is byte-identical. Restart required; editable in the
+  GUI's Paths settings.
+- **YAML frontmatter is stripped from context files** before they enter the
+  system prompt, so `updated`/`source` on memory notes cost no prompt
+  tokens; section token counts reflect the stripped text.
+- The conversation's context snapshot records the configured files that
+  exist (plus `projects/*.md`) instead of every `*.md` in `context_dir`, and
+  records files outside the repo by absolute path (previously a crash).
+- The Things sync creates the tasks file's folder if it is missing.
+
 ### Changed — Data moved out of the repo (2026-10-03)
 
 - **Conversations, outcomes, prompt history and pattern cards now live in the
