@@ -8,10 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.core.rag.embed_limits import MAX_EMBED_TOKENS, count_tokens
 from packages.core.rag.indexer import (
-    _CHUNK_OVERLAP_CHARS,
-    _MAX_EMBED_CHARS,
-    _chunk_document,
     _date_str_to_int,
 )
 
@@ -57,51 +55,6 @@ def _make_messages(pairs: list[tuple[str, str]]) -> list[dict]:
             }
         )
     return msgs
-
-
-# ---------------------------------------------------------------------------
-# _chunk_document
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestChunkDocument:
-    def test_short_doc_returned_unchanged(self):
-        doc = "Short text"
-        assert _chunk_document(doc) == [doc]
-
-    def test_exactly_max_chars_is_single_chunk(self):
-        doc = "x" * _MAX_EMBED_CHARS
-        chunks = _chunk_document(doc)
-        assert len(chunks) == 1
-        assert chunks[0] == doc
-
-    def test_long_doc_produces_multiple_chunks_within_limit(self):
-        doc = "a" * (_MAX_EMBED_CHARS * 3)
-        chunks = _chunk_document(doc)
-        assert len(chunks) > 1
-        for chunk in chunks:
-            assert len(chunk) <= _MAX_EMBED_CHARS
-
-    def test_overlap_region_present(self):
-        doc = "".join(str(i % 10) for i in range(_MAX_EMBED_CHARS + 5000))
-        chunks = _chunk_document(doc)
-        assert len(chunks) == 2
-        # The tail of the first chunk and the head of the second must overlap
-        overlap = chunks[0][-_CHUNK_OVERLAP_CHARS:]
-        assert chunks[1].startswith(overlap)
-
-    def test_all_characters_covered(self):
-        doc = "".join(str(i % 10) for i in range(_MAX_EMBED_CHARS * 2 + 1000))
-        chunks = _chunk_document(doc)
-        # Reconstruct: every character in doc must appear in at least one chunk
-        covered = set()
-        step = _MAX_EMBED_CHARS - _CHUNK_OVERLAP_CHARS
-        for idx, chunk in enumerate(chunks):
-            start = idx * step
-            for j, _ch in enumerate(chunk):
-                covered.add(start + j)
-        assert all(i in covered for i in range(len(doc)))
 
 
 # ---------------------------------------------------------------------------
@@ -270,10 +223,10 @@ class TestExtractPairs:
         assert pairs[0]["metadata"]["title"] == "My Test Session"
 
     def test_long_pair_produces_multiple_chunks(self):
-        """A message pair whose document exceeds _MAX_EMBED_CHARS must be
+        """A message pair whose document exceeds MAX_EMBED_TOKENS must be
         split into multiple entries with _chunk_N suffixed IDs."""
         indexer = self._make_indexer()
-        long_text = "x" * (_MAX_EMBED_CHARS * 2)
+        long_text = '{"a":1,' * 3000  # dense text: ~12,000 tokens in 21,000 chars
         conv = _make_v1_conversation(
             "conv_20260220_100000_abc123",
             _make_messages([(long_text, "Short answer")]),
@@ -296,7 +249,7 @@ class TestExtractPairs:
             assert pair["id"] == f"conv_20260220_100000_abc123_pair_0_chunk_{i}"
             assert pair["metadata"]["chunk_index"] == i
             assert pair["metadata"]["total_chunks"] == len(pairs)
-            assert len(pair["document"]) <= _MAX_EMBED_CHARS
+            assert count_tokens(pair["document"]) <= MAX_EMBED_TOKENS
             assert set(pair["metadata"].keys()) == expected_keys
 
     def test_short_pair_keeps_original_id_format(self):
@@ -370,11 +323,11 @@ class TestIndexNew:
         mock_collection.upsert.assert_called_once()
 
     def test_long_documents_chunked_before_embedding(self, tmp_path):
-        """Documents exceeding _MAX_EMBED_CHARS must be chunked (not truncated)
+        """Documents exceeding MAX_EMBED_TOKENS must be chunked (not truncated)
         before the embedding call, with every chunk within the limit."""
         indexer, mock_collection = self._setup(tmp_path)
 
-        long_text = "x" * (_MAX_EMBED_CHARS * 2)
+        long_text = '{"a":1,' * 3000  # dense text: ~12,000 tokens in 21,000 chars
         conv = _make_v1_conversation(
             "conv_20260220_100000_abc123",
             _make_messages([(long_text, "Short answer")]),
@@ -393,7 +346,7 @@ class TestIndexNew:
         call_kwargs = mock_embed.call_args
         texts_sent = call_kwargs.kwargs.get("input") or call_kwargs[1].get("input")
         assert len(texts_sent) > 1, "Long document should produce multiple chunks"
-        assert all(len(t) <= _MAX_EMBED_CHARS for t in texts_sent)
+        assert all(count_tokens(t) <= MAX_EMBED_TOKENS for t in texts_sent)
 
     def test_no_duplicate_ids_when_conversations_lack_id_field(self, tmp_path):
         """Conversations without an 'id' field should use filepath.stem as
@@ -553,31 +506,6 @@ class TestDateStrToInt:
 
     def test_none_returns_zero(self):
         assert _date_str_to_int(None) == 0
-
-
-# ---------------------------------------------------------------------------
-# _chunk_document boundary: exact boundary at max_chars + 1
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestChunkDocumentBoundary:
-    def test_one_char_over_max_produces_two_chunks(self):
-        doc = "a" * (_MAX_EMBED_CHARS + 1)
-        chunks = _chunk_document(doc)
-        assert len(chunks) == 2
-        assert len(chunks[0]) == _MAX_EMBED_CHARS
-        # Second chunk = overlap region + 1 extra char
-        expected_second_len = _CHUNK_OVERLAP_CHARS + 1
-        assert len(chunks[1]) == expected_second_len
-
-    def test_custom_max_and_overlap(self):
-        doc = "abcdefghij"  # 10 chars
-        chunks = _chunk_document(doc, max_chars=6, overlap=2)
-        # step = 6 - 2 = 4; chunks at [0:6], [4:10], [8:10]
-        assert chunks == ["abcdef", "efghij", "ij"]
-        # Overlap between first two chunks
-        assert chunks[0][-2:] == chunks[1][:2]
 
 
 # ---------------------------------------------------------------------------

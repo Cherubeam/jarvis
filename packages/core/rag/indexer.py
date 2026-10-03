@@ -1,8 +1,9 @@
 """
 Conversation indexer — embeds and stores conversation message-pairs in ChromaDB.
 
-Scans data/conversations/*.json on startup, skips already-indexed conversations,
-and upserts new chunks into the "conversations" collection.
+Scans the conversations folder (``paths.conversations_dir``, including year
+subfolders) on startup, skips already-indexed conversations, and upserts new
+chunks into the "conversations" collection.
 """
 
 from pathlib import Path
@@ -11,10 +12,9 @@ from typing import Any
 import litellm
 
 from packages.core.memory import ConversationLogger, _extract_text_from_content
+from packages.core.rag.embed_limits import chunk_by_tokens
 
 _EMBED_BATCH_SIZE = 64
-_MAX_EMBED_CHARS = 24_000  # ~8K tokens; text-embedding-3-small limit is 8 191 tokens
-_CHUNK_OVERLAP_CHARS = 2_400  # ~10 % of _MAX_EMBED_CHARS
 
 
 def _date_str_to_int(date_str: str) -> int:
@@ -23,23 +23,6 @@ def _date_str_to_int(date_str: str) -> int:
         return int(date_str.replace("-", ""))
     except (ValueError, AttributeError):
         return 0
-
-
-def _chunk_document(text: str, max_chars: int = _MAX_EMBED_CHARS, overlap: int = _CHUNK_OVERLAP_CHARS) -> list[str]:
-    """Split *text* into overlapping windows of at most *max_chars* characters.
-
-    Short documents (≤ max_chars) are returned as-is in a single-element list.
-    """
-    if len(text) <= max_chars:
-        return [text]
-
-    step = max_chars - overlap
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        chunks.append(text[start : start + max_chars])
-        start += step
-    return chunks
 
 
 class ConversationIndexer:
@@ -194,7 +177,7 @@ class ConversationIndexer:
                     continue
 
                 doc = f"User: {user_text}\n\nAssistant: {assistant_text}"
-                chunks = _chunk_document(doc)
+                chunks = chunk_by_tokens(doc)
                 for chunk_idx, chunk in enumerate(chunks):
                     if len(chunks) == 1:
                         chunk_id = f"{conv_id}_pair_{pair_index}"

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Conversation search switched itself off on long, dense messages (2026-10-03)
+
+- **Chunks are now measured in tokens, not characters.** The indexer split
+  text into 24,000-character windows on the assumption of about 3 characters
+  per token. Dense text (code, JSON, German) has more tokens than that, so a
+  window could exceed `text-embedding-3-small`'s 8,191-token limit; the
+  provider rejected the batch, and JARVIS caught the error and disabled
+  conversation recall for the whole session ("[RAG] Startup failed"). Several
+  conversations from the 2026-10-01 Claude import triggered it. New
+  `packages/core/rag/embed_limits.py` counts with the model's own tokenizer
+  (`cl100k_base`, bundled with LiteLLM, works offline): chunks of at most
+  8,000 tokens with 800 overlap; search queries are cut to 8,000 tokens.
+- Known gap, not fixed here: a conversation updated by a later import is not
+  re-indexed, so its new messages are missing from recall.
+
 ### Changed — Scripts and the GUI token follow the path settings (2026-10-02)
 
 - **The GUI token file location is a setting**: `gui.token_file` (default

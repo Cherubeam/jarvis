@@ -407,7 +407,8 @@ StreamHandler supports both streaming and non-streaming modes (`streaming` flag)
 **Location**: `packages/core/rag/`
 
 **Modules:**
-- `indexer.py`: `ConversationIndexer` — recursively scans `data/conversations/YYYY/*.json`, skips already-indexed conv_ids, embeds message-pair chunks via LiteLLM, upserts into ChromaDB
+- `indexer.py`: `ConversationIndexer` — recursively scans the conversations folder (`paths.conversations_dir`, year subfolders), skips already-indexed conv_ids, embeds message-pair chunks via LiteLLM, upserts into ChromaDB. A conversation updated by a later import is not re-indexed (only new IDs are)
+- `embed_limits.py`: token limits for the embedding model, counted with its own tokenizer (`cl100k_base`, bundled with LiteLLM): chunks of at most 8,000 tokens with 800 overlap, queries cut to 8,000
 - `searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — embeds a query, runs cosine similarity search, returns ranked results with optional date range filter
 
 **Tool Integration:**
@@ -674,6 +675,7 @@ jarvis/
 │   │   ├── card_renderer.py        # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
 │   │   ├── rag/                    # Conversation recall (RAG)
+│   │   │   ├── embed_limits.py     # Token-based chunking for the embedding model
 │   │   │   ├── indexer.py          # ConversationIndexer
 │   │   │   ├── outcome_indexer.py  # OutcomeIndexer (scored outcomes)
 │   │   │   ├── card_indexer.py     # CardIndexer (deck-skill cards)

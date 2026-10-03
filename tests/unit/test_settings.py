@@ -476,7 +476,9 @@ class TestReadYamlLayers:
         merged = read_yaml_layers(default, local if local.exists() else None)
         settings = Settings.model_validate(merged)
         assert settings.models.default.startswith("openrouter/")
-        assert settings.outcomes.dir == "data/outcomes"
+        # The repo default; a local.yaml may move it to the data home (ADR-041).
+        defaults_only = Settings.model_validate(read_yaml_layers(default, None))
+        assert defaults_only.outcomes.dir == "data/outcomes"
 
 
 class TestGetProjectRoot:
