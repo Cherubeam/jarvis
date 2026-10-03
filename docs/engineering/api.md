@@ -129,26 +129,30 @@ Load a single markdown file, return empty string if missing.
 
 ---
 
-### `build_system_prompt(context_dir: Path) -> str`
+### `build_system_prompt(context_dir: Path, context_files: ContextFilesSettings | None = None, tasks_file: Path | None = None) -> str`
 
-Assemble full system prompt from context files. Identity is sourced from `soul.md` (if present) and placed first. Project knowledge is no longer loaded statically from `projects/*.md` — it now lives in the Obsidian vault and is reached via `mcp_cortex__search_knowledge` (Cortex over MCP) and the vault read tools.
+Assemble full system prompt from context files. Identity is sourced from the soul file (if present) and placed first. Project knowledge is no longer loaded statically from `projects/*.md` — it now lives in the Obsidian vault and is reached via `mcp_cortex__search_knowledge` (Cortex over MCP) and the vault read tools.
 
 **Parameters:**
-- `context_dir` - Directory containing context/*.md files
+- `context_dir` - Directory holding the context files (`paths.context_dir`)
+- `context_files` - File names relative to `context_dir` (`paths.context_files`); subfolders work, e.g. `Memory/Personal Context.md`. `None` uses the default names.
+- `tasks_file` - The generated tasks file (`paths.tasks_file`). `None` means `context_dir / "tasks.md"`.
 
 **Returns:**
 - `str` - Complete system prompt
 
-**Context File Loading Order:**
-1. `soul.md` - Identity / values (placed first, ungated by header)
-2. `personal_context.md` - Personal background
-3. `professional_context.md` - Professional background
-4. `preferences.md` - Behavior guidelines
-5. `current_focus.md` - Current priorities
-6. `tasks.md` - Things 3 tasks (auto-generated via the `JARVIS Things Export` Shortcut; see [architecture.md](architecture.md#5-task-sync-packagesintegrationsthings3))
-7. `reader_persona.md` - Reading profile (optional, loaded by Readwise flow)
+**Context File Loading Order** (`paths.context_files` key — default name, from [`config/default.yaml`](../../config/default.yaml)):
+1. `soul` — `soul.md` - Identity / values (placed first, ungated by header)
+2. `personal` — `personal_context.md` - Personal background
+3. `professional` — `professional_context.md` - Professional background
+4. `preferences` — `preferences.md` - Behavior guidelines
+5. `focus` — `current_focus.md` - Current priorities
+6. `paths.tasks_file` — Things 3 tasks (auto-generated via the `JARVIS Things Export` Shortcut; see [architecture.md](architecture.md#5-task-sync-packagesintegrationsthings3)). Read from its own path, not from `context_dir`, so it can stay out of the vault.
+7. `reading` — `reader_persona.md` - Reading profile (optional, loaded by Readwise flow)
 
-See `build_system_prompt_with_metadata()` for the same assembly plus per-section token counts.
+Missing files are skipped. YAML frontmatter (e.g. `updated`/`source` on memory notes) is stripped from every file before it enters the prompt (`strip_frontmatter()`, built on [`frontmatter.parse`](#module-frontmatter--yaml-frontmatter-utilities)); malformed frontmatter is left in place. All three settings need a restart (they are read by `build_session()`).
+
+See `build_system_prompt_with_metadata()` for the same assembly plus per-section token counts (of the stripped text).
 
 **Usage Example:**
 ```python

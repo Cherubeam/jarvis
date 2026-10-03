@@ -146,16 +146,9 @@ See [docs/engineering/gui.md](gui.md) for the full per-phase architecture and th
 **Key Functions:**
 - `load_context_file(filepath)`: Load single markdown file
 - `parse_frontmatter(text)`: Extract YAML frontmatter from markdown, returns `(metadata, content)`
-- `build_system_prompt(context_dir, prefix)`: Assemble full prompt with tiered project loading
+- `build_system_prompt(context_dir, context_files, tasks_file)`: Assemble full prompt, frontmatter stripped
 
-**Context Loading Order:**
-1. `soul.md` - JARVIS's identity (placed first)
-2. `personal_context.md` - Who the user is (personal background)
-3. `professional_context.md` - Professional background and skills
-4. `preferences.md` - How to behave
-5. `current_focus.md` - What's currently relevant (includes project names and Obsidian vault pointer)
-6. `tasks.md` - Current tasks from Things 3 (auto-generated)
-7. `reader_persona.md` - Reading profile (Readwise)
+**Context Loading Order:** soul → personal → professional → preferences → current focus → tasks → reading profile. File names come from `paths.context_files` (relative to `paths.context_dir`, so the files can live in a vault folder) and tasks from `paths.tasks_file`; the full list with default names is in [api.md](api.md#module-context_builder).
 
 **Project Knowledge:**
 Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on demand via `mcp_cortex__search_knowledge` (Cortex over MCP), `search_notes` and `read_note` tools, rather than being statically loaded into the system prompt. This keeps the prompt lean and ensures project knowledge is always up to date with the single source of truth in the vault.
@@ -271,7 +264,7 @@ Project details are maintained in Obsidian (`02 – Projects/`) and retrieved on
 **How it works:**
 - `shortcut_source.run_export()` runs the user-built **`JARVIS Things Export`** Shortcut (`shortcuts run … --output-type public.json`, 10 s timeout) and returns `{"inbox": [...], "scheduled": [...]}`. It raises `ThingsUnavailableError` with an actionable reason when not on macOS, the Shortcut is missing or failing, it times out, or the output isn't the expected JSON.
 - `task_sync.fetch_tasks()` maps each item to a `Task` (`_to_task()`: localized dates → ISO, tags one-per-line → comma list, parent title → `project`; there are no areas), splits `scheduled` into Today (start ≤ today, incl. overdue) and Upcoming (later), honours `things3.lists_to_include`, and caches successes only (`TaskSyncCache`, 5-minute TTL).
-- `sync_tasks_to_file()` writes `data/context/tasks.md` at startup (grouped by parent). On any failure it keeps the previous file and logs why.
+- `sync_tasks_to_file()` writes `paths.tasks_file` (default `data/context/tasks.md`) at startup (grouped by parent). On any failure it keeps the previous file and logs why.
 - The GUI Home view calls `fetch_tasks()` via `asyncio.to_thread`, so a cache miss doesn't block the event loop.
 
 No Full Disk Access, no database access, no write tools. Setting up the Shortcut: [deployment.md#things-3](deployment.md#things-3). History: ADR-008 (AppleScript) → `things.py` SQLite (2026-03) → Shortcut (ADR-037).
@@ -603,10 +596,10 @@ skills:
    ↓
 3. Resolve session model (see Model Selection above)
    ↓
-4. Sync Things 3 tasks → tasks.md
+4. Sync Things 3 tasks → paths.tasks_file
    ↓
-5. Build system prompt from context/*.md
-   (includes auto-generated tasks.md)
+5. Build system prompt from paths.context_files
+   (plus the auto-generated tasks file)
    ↓
 6. Initialize LLM client (api_keys dict, resolved model)
    ↓
@@ -880,7 +873,7 @@ Unit, integration and golden tests (LLM-as-judge). Strategy and mutation testing
 
 1. **New providers**: Just configure LiteLLM
 2. **New context files**: Add to `context/` directory
-3. **Custom prompts**: Edit an agent's `prompts/system.md` or the context files in `data/context/`
+3. **Custom prompts**: Edit an agent's `prompts/system.md` or the context files in `paths.context_dir`
 4. **Alternative UIs**: Import and use existing modules
 
 ### Future Extensibility
