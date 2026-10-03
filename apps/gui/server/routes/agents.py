@@ -12,7 +12,8 @@
 
 JARVIS (the orchestrator) is excluded from registry discovery but still
 appears here as the first list item and supports detail lookups by id.
-JARVIS's system prompt is assembled dynamically from ``data/context/`` —
+JARVIS's system prompt is assembled dynamically from the context files
+(``paths.context_dir`` + ``paths.context_files``, tasks from ``paths.tasks_file``) —
 write endpoints return 403 for that agent, read endpoints return the
 already-assembled prompt from the running session.
 """
@@ -171,7 +172,7 @@ async def get_agent_detail(agent_id: str, request: Request) -> dict[str, Any]:
             "max_tokens": None,
             "max_iterations": None,
             "skills": [],
-            # JARVIS builds its prompt dynamically from data/context/ via
+            # JARVIS builds its prompt dynamically from paths.context_dir via
             # packages/core/context_builder.py — no single canonical file.
             "prompt_path": None,
             "prompt_includes_count": 0,
@@ -233,8 +234,8 @@ async def get_prompt(agent_id: str, request: Request) -> dict[str, Any]:
             "bytes": len(content.encode("utf-8")),
             "last_modified_iso": None,
             "editable": False,
-            "explanation": "JARVIS's prompt is assembled at session start from data/context/. "
-            "Edit source files there, not here.",
+            "explanation": "JARVIS's prompt is assembled at session start from the context files "
+            "in paths.context_dir (names: paths.context_files). Edit source files there, not here.",
         }
 
     registry = session.components.agent_registry
@@ -267,7 +268,7 @@ async def save_prompt(agent_id: str, payload: PromptSaveRequest, request: Reques
     if agent_id == "JARVIS":
         raise HTTPException(
             status_code=403,
-            detail="JARVIS prompt is not editable. Edit source files in data/context/.",
+            detail="JARVIS prompt is not editable. Edit the context files in paths.context_dir.",
         )
 
     content = payload.content

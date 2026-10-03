@@ -110,7 +110,10 @@ def test_get_prompt_jarvis_is_read_only(client_with_writer: TestClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["editable"] is False
-    assert "data/context/" in body["explanation"]
+    assert body["explanation"] == (
+        "JARVIS's prompt is assembled at session start from the context files "
+        "in paths.context_dir (names: paths.context_files). Edit source files there, not here."
+    )
     assert body["content"].startswith("JARVIS assembled")
 
 
@@ -151,6 +154,7 @@ def test_put_prompt_writes_file_and_snapshots_prior(client_with_writer: TestClie
 def test_put_prompt_jarvis_returns_403(client_with_writer: TestClient) -> None:
     r = client_with_writer.put("/api/agents/JARVIS/prompt", json={"content": "hi"})
     assert r.status_code == 403
+    assert r.json()["detail"] == "JARVIS prompt is not editable. Edit the context files in paths.context_dir."
 
 
 def test_put_prompt_over_size_limit_returns_413(client_with_writer: TestClient) -> None:

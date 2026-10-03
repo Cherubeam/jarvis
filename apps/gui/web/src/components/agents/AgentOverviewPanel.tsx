@@ -154,7 +154,7 @@ export function AgentOverviewPanel({
         <div>
           prompt ·{' '}
           <span style={{ color: theme.textPrimary }}>
-            {detail.prompt_path ?? '(assembled from data/context/)'}
+            {detail.prompt_path ?? '(assembled from paths.context_dir)'}
           </span>
         </div>
         <div>
