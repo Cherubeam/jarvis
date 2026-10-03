@@ -140,7 +140,6 @@ def sample_config(tmp_path: Path) -> dict:
         "paths": {
             "context_dir": "data/context",
             "conversations_dir": "data/conversations",
-            "learned_facts": "data/learned_facts.md",
         },
         "_paths": {
             "jarvis_dir": tmp_path,

@@ -25,7 +25,6 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['context_files', 'reading'], label: 'context_files.reading' },
     { path: ['tasks_file'], label: 'tasks_file' },
     { path: ['conversations_dir'], label: 'conversations_dir' },
-    { path: ['learned_facts'], label: 'learned_facts' },
     { path: ['prompt_history_dir'], label: 'prompt_history_dir' },
   ],
   cli: [

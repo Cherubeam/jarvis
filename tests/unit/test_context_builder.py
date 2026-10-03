@@ -4,6 +4,7 @@ Unit tests for context_builder module.
 Tests the functionality of loading context files and building system prompts.
 """
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -583,6 +584,22 @@ class TestStripFrontmatter:
         text = "---\nupdated: [unclosed\n---\nBody\n"
 
         assert strip_frontmatter(text) == text
+
+    def test_malformed_frontmatter_logs_a_warning_naming_the_file(self, caplog):
+        text = "---\nsummary: How JARVIS behaves: identity\n---\nBody\n"
+
+        with caplog.at_level(logging.WARNING, logger="packages.core.context_builder"):
+            assert strip_frontmatter(text, name="JARVIS Soul.md") == text
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert len(messages) == 1
+        assert messages[0].startswith("Invalid YAML frontmatter in JARVIS Soul.md; it stays in the system prompt.")
+
+    def test_valid_frontmatter_logs_nothing(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="packages.core.context_builder"):
+            strip_frontmatter('---\nsummary: "How JARVIS behaves: identity"\n---\nBody\n', name="x.md")
+
+        assert caplog.records == []
 
     def test_frontmatter_stripped_from_every_section(self, temp_context_dir: Path):
         fm = "---\nupdated: 2026-10-03\nsource: memory\n---\n"

@@ -160,10 +160,6 @@ class PathsSettings(BaseModel):
         default="data/conversations",
         description="Root directory for persisted conversation logs (organized by year).",
     )
-    learned_facts: str = Field(
-        default="data/learned_facts.md",
-        description="Markdown file capturing facts JARVIS has learned about the user.",
-    )
     prompt_history_dir: str = Field(
         default="data/prompt-history",
         description="Directory for snapshots of edited agent prompts.",

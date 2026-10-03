@@ -555,7 +555,7 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [x] Context file names, tasks path and frontmatter stripping are configurable (prerequisite for the memory folder): `paths.context_files`, `paths.tasks_file`; frontmatter is stripped before the prompt *(S)* ✅ 2026-10-03
 - [x] Point `paths.tasks_file` to `~/Library/Caches/JARVIS/tasks.md` in `local.yaml`, so the generated tasks file doesn't follow the context files into the vault *(S)* ✅ 2026-10-03
 - [x] Memory folder in the vault: context files moved to `07 – Personal System/JARVIS/` (`JARVIS Soul.md`, `Memory/*.md`) via `paths.context_dir` and `paths.context_files`, with a read-write access rule for that folder only; the system prompt built from the vault is byte-identical to the old one *(M)* ✅ 2026-10-03
-- [ ] Give memory notes `updated` and `source` frontmatter (stripped from the prompt since #89); remove or repurpose the unused `paths.learned_facts` setting *(S)*
+- [x] Memory notes carry `created`/`updated`/`source`/`review-by` frontmatter (schema in `docs/engineering/deployment.md#context-files`); invalid frontmatter now logs a warning; the unused `paths.learned_facts` setting is removed *(S)* ✅ 2026-10-03
 - [x] Brainstorm note (written by Claude, 2026-04-18) moved to the JARVIS project folder `02 – Projects/Private/JARVIS/Brainstorms/` with discovery frontmatter (`type`, `status`, `summary`, `source`, `assist: [prose]`) *(S)* ✅ 2026-10-03
 - [ ] Replace `claude_context.py` (do not run it: it overwrites context files and reads the old export format) with an importer that reads the 2026-09 memory-file format and turns changes into dated proposals for approval (Art. 14) *(M)*
 - [ ] Keep raw exports in the data home; skip login history and account data *(S)*

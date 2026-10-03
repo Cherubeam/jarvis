@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Memory notes carry dates and sources (2026-10-03)
+
+- **The six notes in the vault's JARVIS folder now have frontmatter**:
+  `created`, `updated`, `type`, `memory-section`, `summary`, `source`
+  (`marco`, `claude-export`, `readwise`, `jarvis`), `review-by` and, where they
+  hold AI-written text, `assist: [prose]`. Imports can now tell newer facts from
+  older ones (ADR-041). The frontmatter is stripped before the prompt; the
+  system prompt stays byte-identical. Schema: `docs/engineering/deployment.md`.
+- **Invalid frontmatter logs a warning** naming the file. It stays in the
+  prompt rather than being guessed at, which previously happened silently
+  (found while adding the frontmatter: an unquoted `summary` containing `: `).
+- **Removed `paths.learned_facts`**: no code read it. A leftover key in
+  `config/local.yaml` now fails validation at startup; delete it.
+
 ### Changed — Context files live in the vault (2026-10-03)
 
 - **JARVIS's soul and memory notes moved to the Obsidian vault**

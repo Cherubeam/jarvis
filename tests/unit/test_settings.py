@@ -88,7 +88,6 @@ class TestPathsSettings:
         paths = PathsSettings()
         assert paths.context_dir == "data/context"
         assert paths.conversations_dir == "data/conversations"
-        assert paths.learned_facts == "data/learned_facts.md"
         assert paths.prompt_history_dir == "data/prompt-history"
 
     def test_override(self) -> None:
