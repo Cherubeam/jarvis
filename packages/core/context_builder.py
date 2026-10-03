@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
+
+from packages.core.settings import ContextFilesSettings
+
 
 def _approx_tokens(text: str) -> int:
     """Approximate token count from text (1 token ≈ 4 bytes for English)."""
@@ -60,31 +64,58 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     return _fm.parse(text)
 
 
-def build_system_prompt(context_dir: Path) -> str:
+def strip_frontmatter(text: str) -> str:
+    """Return ``text`` without its YAML frontmatter block (e.g. ``updated``/``source``).
+
+    Text without frontmatter is returned unchanged. Malformed frontmatter is left
+    in place rather than guessed at.
+    """
+    from packages.core import frontmatter as _fm
+
+    try:
+        _meta, body = _fm.parse(text)
+    except yaml.YAMLError:
+        return text
+    if body == text:
+        return text
+    return body.lstrip("\n")
+
+
+def build_system_prompt(
+    context_dir: Path,
+    context_files: ContextFilesSettings | None = None,
+    tasks_file: Path | None = None,
+) -> str:
     """
     Assemble the full system prompt from context files.
 
-    Identity comes from soul.md (placed first in the prompt).
-    Order: soul → personal → professional → preferences → current focus → tasks →
-           project index → active project contexts.
+    Identity comes from the soul file (placed first in the prompt).
+    Order: soul → personal → professional → preferences → current focus → tasks → reading.
 
-    Project files with frontmatter `active: false` appear only in the
-    project index (summary line). Files without frontmatter default to active.
+    ``context_files`` names each file relative to ``context_dir`` (default: today's
+    names, e.g. ``soul.md``); ``tasks_file`` defaults to ``context_dir / "tasks.md"``.
+    YAML frontmatter is stripped from every file; missing files are skipped.
     """
-    prompt, _metadata = build_system_prompt_with_metadata(context_dir)
+    prompt, _metadata = build_system_prompt_with_metadata(context_dir, context_files, tasks_file)
     return prompt
 
 
-def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMetadata]:
+def build_system_prompt_with_metadata(
+    context_dir: Path,
+    context_files: ContextFilesSettings | None = None,
+    tasks_file: Path | None = None,
+) -> tuple[str, ContextMetadata]:
     """
     Assemble the full system prompt and return section-level metadata.
 
     Returns (prompt_text, metadata) where metadata contains per-section
-    token counts for instrumentation.
+    token counts (of the frontmatter-stripped text) for instrumentation.
     """
+    files = context_files or ContextFilesSettings()
+    tasks_path = tasks_file if tasks_file is not None else context_dir / "tasks.md"
     metadata = ContextMetadata()
 
-    soul = load_context_file(context_dir / "soul.md")
+    soul = strip_frontmatter(load_context_file(context_dir / files.soul))
     if soul:
         metadata.sections.append(
             ContextSection(
@@ -96,18 +127,17 @@ def build_system_prompt_with_metadata(context_dir: Path) -> tuple[str, ContextMe
 
     sections = []
 
-    # Load split profile files (replaces old profile.md)
-    context_files = [
-        ("personal", "personal_context.md", "## About this person\n\n"),
-        ("professional", "professional_context.md", "## Professional context\n\n"),
-        ("preferences", "preferences.md", "## Their preferences\n\n"),
-        ("focus", "current_focus.md", "## Current focus\n\n"),
-        ("tasks", "tasks.md", "## Their tasks\n\n"),
-        ("reading", "reader_persona.md", "## Reading profile\n\n"),
+    context_sections = [
+        ("personal", context_dir / files.personal, "## About this person\n\n"),
+        ("professional", context_dir / files.professional, "## Professional context\n\n"),
+        ("preferences", context_dir / files.preferences, "## Their preferences\n\n"),
+        ("focus", context_dir / files.focus, "## Current focus\n\n"),
+        ("tasks", tasks_path, "## Their tasks\n\n"),
+        ("reading", context_dir / files.reading, "## Reading profile\n\n"),
     ]
 
-    for section_name, filename, header in context_files:
-        content = load_context_file(context_dir / filename)
+    for section_name, path, header in context_sections:
+        content = strip_frontmatter(load_context_file(path))
         if content:
             section_text = f"{header}{content}"
             sections.append(section_text)

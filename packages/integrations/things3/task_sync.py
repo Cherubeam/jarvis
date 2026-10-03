@@ -317,7 +317,8 @@ def sync_tasks_to_file(output_path: Path, things3: Things3Settings) -> bool:
             max_tasks=things3.max_tasks_per_list,
         )
 
-        # Write to file
+        # Write to file (the folder may not exist yet, e.g. ~/Library/Caches/JARVIS)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(markdown)
         logger.info(f"Synced tasks to {output_path}")
         return True

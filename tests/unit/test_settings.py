@@ -7,6 +7,7 @@ parity is covered later in PR-8a (commit 8 wires the YAML source loader).
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from packages.core.settings import (
@@ -93,6 +94,35 @@ class TestPathsSettings:
     def test_override(self) -> None:
         paths = PathsSettings(context_dir="custom/context")
         assert paths.context_dir == "custom/context"
+
+    def test_context_file_and_tasks_defaults_are_todays_names(self) -> None:
+        paths = PathsSettings()
+        assert paths.context_files.model_dump() == {
+            "soul": "soul.md",
+            "personal": "personal_context.md",
+            "professional": "professional_context.md",
+            "preferences": "preferences.md",
+            "focus": "current_focus.md",
+            "reading": "reader_persona.md",
+        }
+        assert paths.tasks_file == "data/context/tasks.md"
+
+    def test_default_yaml_matches_context_file_defaults(self) -> None:
+        raw = yaml.safe_load((Path(__file__).parents[2] / "config" / "default.yaml").read_text())
+        assert raw["paths"]["context_files"] == PathsSettings().context_files.model_dump()
+        assert raw["paths"]["tasks_file"] == "data/context/tasks.md"
+
+    def test_partial_context_files_override_keeps_other_defaults(self) -> None:
+        paths = PathsSettings.model_validate(
+            {
+                "context_files": {"soul": "JARVIS Soul.md", "personal": "Memory/Personal Context.md"},
+                "tasks_file": "/Users/me/Library/Caches/JARVIS/tasks.md",
+            }
+        )
+        assert paths.context_files.soul == "JARVIS Soul.md"
+        assert paths.context_files.personal == "Memory/Personal Context.md"
+        assert paths.context_files.focus == "current_focus.md"
+        assert paths.tasks_file == "/Users/me/Library/Caches/JARVIS/tasks.md"
 
 
 class TestCliSettings:
@@ -671,6 +701,19 @@ class TestClassifyChanges:
         assert result == {
             "hot_applied_fields": [],
             "restart_required_fields": ["paths.context_dir"],
+            "restart_required": True,
+        }
+
+    def test_context_files_and_tasks_file_are_cold(self) -> None:
+        """Read once by build_session(), like paths.context_dir — a restart applies them."""
+        current = Settings().model_dump()
+        new = Settings().model_dump()
+        new["paths"]["context_files"]["soul"] = "JARVIS Soul.md"
+        new["paths"]["tasks_file"] = "/tmp/tasks.md"
+        result = classify_changes(current, new)
+        assert result == {
+            "hot_applied_fields": [],
+            "restart_required_fields": ["paths.context_files.soul", "paths.tasks_file"],
             "restart_required": True,
         }
 

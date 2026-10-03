@@ -462,6 +462,16 @@ class TestSyncTasksToFile:
         assert "Task 2" in content
 
     @patch("packages.integrations.things3.task_sync.fetch_tasks")
+    def test_sync_creates_missing_parent_folder(self, mock_fetch, tmp_path):
+        """paths.tasks_file may point at a cache folder that doesn't exist yet."""
+        things3 = Things3Settings(enabled=True, sync_on_startup=True)
+        output_path = tmp_path / "Library" / "Caches" / "JARVIS" / "tasks.md"
+        mock_fetch.return_value = {"inbox": [Task(title="Task 1")], "today": [], "upcoming": []}
+
+        assert sync_tasks_to_file(output_path, things3) is True
+        assert "Task 1" in output_path.read_text()
+
+    @patch("packages.integrations.things3.task_sync.fetch_tasks")
     def test_sync_handles_errors(self, mock_fetch, tmp_path):
         """Test sync handles errors gracefully."""
         things3 = Things3Settings(enabled=True, sync_on_startup=True)
