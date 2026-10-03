@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Data moved out of the repo (2026-10-03)
+
+- **Conversations, outcomes, prompt history and pattern cards now live in the
+  data home** (`/Users/marcobraun/Documents/03 Resources/JARVIS/data`, iCloud
+  and Backblaze), set in `config/local.yaml` (ADR-041, HUB-03). Indexes (JARVIS
+  RAG, Cortex ChromaDB and its index state) and machine-local state (CLI
+  history, GUI token) live in `~/Library/Application Support/{JARVIS,Cortex}/`.
+  Verified: 234 conversations identical after copying, a new CLI session saved
+  to the data home, conversation recall indexes without errors, Cortex answers
+  searches from the moved index. The old copies went to the Trash, not deleted.
+- **Outcome writes work again.** `config/local.yaml` replaced the whole
+  `filesystem.access_rules` list, which dropped the default rule for
+  `data/outcomes`, so outcome writes were refused; the moved outcomes folder
+  has its own read-write rule now.
+
 ### Fixed — Conversation search switched itself off on long, dense messages (2026-10-03)
 
 - **Chunks are now measured in tokens, not characters.** The indexer split

@@ -2380,7 +2380,7 @@ Meanwhile the interop layer has standardized: all of the harnesses above are **M
 ## ADR-035: GUI Authentication — Derived-Value Cookie + Origin Allowlist
 
 **Date**: 2026-09-05
-**Status**: Accepted
+**Status**: Accepted — token file location is now the `gui.token_file` setting (default `data/.gui_token`); on Marco's machine it lives in `~/Library/Application Support/JARVIS/` (ADR-041, 2026-10-03)
 **Milestone**: `AON-01`
 
 ### Context
