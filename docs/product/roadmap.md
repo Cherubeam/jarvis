@@ -670,6 +670,7 @@ The rule for "should Cortex integrate source X?":
 
 - [ ] Voice input/output *(now scoped under `AON-05`)*
 - [ ] API server mode (for integrations) *(context access now scoped under `HUB`; anything beyond that is out per ADR-034's scope guard)*
+- [ ] MCP servers log "disconnect error: Attempted to exit cancel scope in a different task than it was entered in" on every `/exit` (seen 2026-10-03 for `cortex` and `n8n`). Likely cause, not yet verified: `MCPClientManager.shutdown()` (`packages/integrations/mcp/client.py`) runs each `disconnect()` as a new task via `_run_async`, while the stdio connection's anyio context was entered in the connect task, so it must be exited in that same task. Harmless so far (the servers still stop), but it hides real shutdown errors *(S)*
 
 > Dropped 2026-07-31: *Mobile companion app* — Telegram (`AON-02`) plus the GUI
 > over Tailscale reaches parity at near-zero build cost.
