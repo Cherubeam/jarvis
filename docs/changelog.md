@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — GUI vault-write approvals hung, and a second write replayed the first decision (2026-10-04)
+
+- **Approvals and cancels now reach a running turn.** The WebSocket loop
+  awaited the turn before reading the next message, while the turn waited for
+  the approval: neither could move until the tab closed, and the write then
+  counted as rejected. Cancel had the same problem. The turn now runs as its
+  own task. Reproduced first with three WebSocket tests that failed before the
+  fix (the hang was read from the code and never seen live: vault writes had
+  only been approved in the CLI).
+- **Every write asks for its own approval.** The handler is created once per
+  turn and never reset, so a second vault write in the same turn reused the
+  first decision without showing its card. State now resets per approval, a
+  decision for an old id is refused, and after the tab closes, the turn ends
+  or a cancel, further writes are rejected without asking.
+- **An approval nobody answers is rejected after 10 minutes.** Human
+  oversight (EU AI Act Art. 14(4)); OWASP LLM06.
+
 ## [0.30.0] - 2026-10-04
 
 ### Changed — Memory notes carry dates and sources (2026-10-03)

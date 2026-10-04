@@ -1,10 +1,11 @@
 """Tests for apps.gui.server.confirmation.WebConfirmationHandler."""
 
+import logging
 import threading
 import time
 from queue import Queue
 
-from apps.gui.server.confirmation import WebConfirmationHandler, _diff_lines
+from apps.gui.server.confirmation import APPROVAL_TIMEOUT_S, WebConfirmationHandler, _diff_lines
 from packages.integrations.obsidian.diff import DiffLine, VaultDiff, compute_diff
 
 
@@ -353,37 +354,69 @@ def test_resolve_after_discard_returns_false():
     worker.join(timeout=1)
     assert result == [False]
 
-    # The id still matches, so resolve() returns True, but the worker is gone
-    # and the recorded outcome stays False for the caller that already read it.
-    assert h.resolve(True, approval_id=pending["id"]) is True
+    # The approval is over, so a late decision for its id is refused outright.
+    assert h.resolve(True, approval_id=pending["id"]) is False
     assert result == [False]
 
 
-def test_second_confirmation_in_same_turn_replays_first_decision():
-    """Known limitation, pinned so a fix is a deliberate change.
-
-    Neither _event nor _pending_id is reset after a decision, and bridge.py
-    creates one handler per TURN, not per tool call. So a second vault write in
-    the same turn returns the first decision without prompting. Tracked as a
-    separate AON-01 roadmap item.
-    """
+def test_second_confirmation_in_same_turn_asks_again():
+    """bridge.py creates one handler per turn, so state must reset per approval:
+    a second vault write emits its own approval_pending and waits for its own
+    decision instead of replaying the first one."""
     q: Queue = Queue(maxsize=10)
     h = WebConfirmationHandler(q, turn_id="t1")
+    result: list[bool] = []
+
+    def two_writes() -> None:
+        h.present_diff(_fake_diff())
+        result.append(h.get_confirmation())
+        h.present_diff(_fake_diff(path="second.md"))
+        result.append(h.get_confirmation())
+
+    worker = threading.Thread(target=two_writes, daemon=True)
+    worker.start()
+    first = q.get(timeout=1)
+    h.resolve(True, approval_id=first["id"])
+    assert q.get(timeout=1) == {"type": "approval_resolved", "id": first["id"], "approved": True}
+
+    second = q.get(timeout=1)
+    assert second["type"] == "approval_pending"
+    assert second["path"] == "second.md"
+    assert second["id"] != first["id"]
+    assert h.resolve(True, approval_id=first["id"]) is False  # the old id can't approve it
+    h.resolve(False, approval_id=second["id"])
+    worker.join(timeout=1)
+    assert result == [True, False]
+
+
+def test_an_unanswered_approval_times_out_as_rejected(caplog):
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1", timeout_s=0.05)
+    h.present_diff(_fake_diff(path="slow.md"))
+
+    with caplog.at_level(logging.WARNING, logger="apps.gui.server.confirmation"):
+        assert h.get_confirmation() is False
+
+    pending = q.get(timeout=1)
+    assert q.get(timeout=1) == {"type": "approval_resolved", "id": pending["id"], "approved": False}
+    assert any("timed out" in r.getMessage() and "slow.md" in r.getMessage() for r in caplog.records)
+    assert h.pending_id() is None
+
+
+def test_default_timeout_is_ten_minutes():
+    h = WebConfirmationHandler(Queue(), turn_id="t1")
+    assert h._timeout_s == APPROVAL_TIMEOUT_S == 600.0
+
+
+def test_a_discarded_handler_rejects_later_writes_without_asking():
+    """After the tab closes or the turn ends nobody can see an approval card."""
+    q: Queue = Queue(maxsize=10)
+    h = WebConfirmationHandler(q, turn_id="t1")
+    h.discard()
     h.present_diff(_fake_diff())
 
-    result: list[bool] = []
-    worker = threading.Thread(target=lambda: result.append(h.get_confirmation()), daemon=True)
-    worker.start()
-    _wait_for_queue(q)
-    pending = q.get(timeout=1)
-    h.resolve(True, approval_id=pending["id"])
-    worker.join(timeout=1)
-    assert result == [True]
-    _ = q.get(timeout=1)  # approval_resolved
-
-    # Second write in the same turn: returns immediately, reusing the decision.
-    h.present_diff(_fake_diff(path="second.md"))
-    assert h.get_confirmation() is True
+    assert h.get_confirmation() is False
+    assert q.empty()
 
 
 # ---------------------------------------------------------------------------

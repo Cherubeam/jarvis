@@ -178,8 +178,9 @@ def test_submit_while_in_flight_is_refused(monkeypatch: pytest.MonkeyPatch) -> N
     assert called == []
 
 
-def test_in_flight_is_reset_when_run_turn_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Without the finally, one failed turn would wedge the session forever."""
+def test_a_failed_turn_is_reported_and_releases_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The turn runs in its own task: a failure reaches the client as an error
+    event, the socket stays open, and in_flight is reset so the next submit works."""
     session = _make_session()
 
     async def boom(sess: Any, text: str, queue: Queue[Any]) -> None:
@@ -187,11 +188,12 @@ def test_in_flight_is_reset_when_run_turn_raises(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(chat_ws_module, "run_turn", boom)
 
-    with pytest.raises(RuntimeError), _connect(session) as ws:
+    with _connect(session) as ws:
         _skip_handshake(ws)
         ws.send_json({"type": "submit", "text": "hello"})
-        ws.receive_json()
+        event = ws.receive_json()
 
+    assert event == {"type": "error", "message": "Turn failed: turn exploded"}
     assert session.in_flight is False
 
 

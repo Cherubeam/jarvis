@@ -12,6 +12,11 @@ pending approval id — a decision that names no id, names the wrong one, or
 arrives before anything is pending is rejected. discard() is the *force-release*
 path used by the bridge and the WS handler on disconnect / turn end; it is the
 only way to unblock the worker without a matching id.
+
+Every approval starts from fresh state, so a second vault write in the same
+turn asks again instead of replaying the first decision. An approval nobody
+answers within APPROVAL_TIMEOUT_S is rejected, and once discarded the handler
+rejects every further write without asking: no person is there to see it.
 """
 
 from __future__ import annotations
@@ -26,6 +31,8 @@ from packages.integrations.obsidian.diff import VaultDiff
 from packages.integrations.obsidian.writer import ConfirmationHandler
 
 logger = logging.getLogger(__name__)
+
+APPROVAL_TIMEOUT_S = 600.0  # an unanswered approval is rejected after 10 minutes
 
 
 _KIND = {"added": "add", "removed": "del", "unchanged": "ctx"}
@@ -44,14 +51,23 @@ class WebConfirmationHandler(ConfirmationHandler):
     left blocked.
     """
 
-    def __init__(self, event_queue: Queue[dict[str, Any]], turn_id: str, agent: str = "JARVIS") -> None:
+    def __init__(
+        self,
+        event_queue: Queue[dict[str, Any]],
+        turn_id: str,
+        agent: str = "JARVIS",
+        timeout_s: float = APPROVAL_TIMEOUT_S,
+    ) -> None:
         self._queue = event_queue
         self._turn_id = turn_id
         self._agent = agent
+        self._timeout_s = timeout_s
         self._buffered_diff: VaultDiff | None = None
         self._event = threading.Event()
+        self._lock = threading.Lock()
         self._approved = False
         self._pending_id: str | None = None
+        self._closed = False
 
     def present_diff(self, diff: VaultDiff) -> None:  # called from worker thread
         self._buffered_diff = diff
@@ -63,7 +79,13 @@ class WebConfirmationHandler(ConfirmationHandler):
             return False
 
         approval_id = str(uuid.uuid4())
-        self._pending_id = approval_id
+        with self._lock:
+            if self._closed:
+                return False
+            # Fresh state per approval: a decision never carries over to the next write.
+            self._event.clear()
+            self._approved = False
+            self._pending_id = approval_id
         path = diff.file_path
         summary = diff.summary or prompt
 
@@ -80,15 +102,22 @@ class WebConfirmationHandler(ConfirmationHandler):
             }
         )
 
-        self._event.wait()  # released by resolve()
+        decided = self._event.wait(timeout=self._timeout_s)  # released by resolve() or discard()
+        with self._lock:
+            approved = self._approved if decided else False
+            self._pending_id = None
+        if not decided:
+            logger.warning(  # pragma: no mutate
+                "approval %s for %s timed out after %.0f s; rejected", approval_id, path, self._timeout_s
+            )
         self._queue.put(
             {
                 "type": "approval_resolved",
                 "id": approval_id,
-                "approved": self._approved,
+                "approved": approved,
             }
         )
-        return self._approved
+        return approved
 
     def resolve(self, approved: bool, approval_id: str | None = None) -> bool:
         """Apply a client's approval_decision. Returns False if it was rejected.
@@ -102,19 +131,20 @@ class WebConfirmationHandler(ConfirmationHandler):
 
         Use discard() to force-release; this method deliberately cannot.
         """
-        if self._pending_id is None or approval_id != self._pending_id:
-            return False
-        self._release(approved)
-        return True
-
-    def _release(self, approved: bool) -> None:
-        self._approved = approved
-        self._event.set()
+        with self._lock:
+            if self._pending_id is None or approval_id != self._pending_id or self._event.is_set():
+                return False
+            self._approved = approved
+            self._event.set()
+            return True
 
     def discard(self) -> None:
-        """Force-resolve as not-approved so any blocked worker thread exits."""
-        if not self._event.is_set():
-            self._release(False)
+        """Reject any pending approval and every later one: nobody is there to decide."""
+        with self._lock:
+            self._closed = True
+            if self._pending_id is not None and not self._event.is_set():
+                self._approved = False
+                self._event.set()
 
     def pending_id(self) -> str | None:
         return self._pending_id

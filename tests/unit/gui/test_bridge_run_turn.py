@@ -407,15 +407,17 @@ async def test_run_turn_agent_exception_clears_session_confirmation(tmp_path):
     """A confirmation handler is bound during a turn — it must be discarded on error."""
     session = _make_session(tmp_path)
     session.components.active_agent.run.side_effect = RuntimeError("boom")
-    await run_turn(session, "hi", Queue(maxsize=64))
-    # session.confirmation gets reset to None at the cleanup step in the
-    # success path, but the error path leaves it bound. The discard call
-    # makes any blocked worker exit. Verify it WAS bound before the run
-    # body raised.
-    assert session.confirmation is not None
-    # discard() was effectively called (idempotent — verify by triggering it
-    # again; the handler should have its event set).
-    assert session.confirmation._event.is_set()
+    queue: Queue = Queue(maxsize=64)
+    await run_turn(session, "hi", queue)
+    # The error path leaves the handler bound but discarded: any write still
+    # asking for approval is refused without showing a card nobody will see.
+    handler = session.confirmation
+    assert handler is not None
+    while not queue.empty():
+        queue.get_nowait()
+    handler.present_diff(SimpleNamespace(file_path="late.md", summary="", diff_lines=[], link_warnings=[]))
+    assert handler.get_confirmation() is False
+    assert queue.empty()
 
 
 # ---------------------------------------------------------------------------
