@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-10-04
+
 ### Changed — Memory notes carry dates and sources (2026-10-03)
 
 - **The six notes in the vault's JARVIS folder now have frontmatter**:
@@ -56,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exist (plus `projects/*.md`) instead of every `*.md` in `context_dir`, and
   records files outside the repo by absolute path (previously a crash).
 - The Things sync creates the tasks file's folder if it is missing.
+
+## [0.29.0] - 2026-10-03
 
 ### Changed — Data moved out of the repo (2026-10-03)
 
@@ -131,6 +135,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   overwrites context files without comparing dates and reads an outdated
   export format.
 
+### Changed — What JARVIS is for, and the order of work (2026-09-30)
+
+- **[ADR-040](product/decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)
+  states JARVIS's purpose**: an owned, local-first daily assistant and a
+  platform to learn and show work, the central archive for conversations
+  imported from other AI tools, with a Dots-like personal assistant as the
+  north star. It amends ADR-034: the commodity argument covers coding
+  harnesses, not the assistant itself. `vision.md` gains a "Why Jarvis
+  exists" section, daily-use success criteria and a non-goal (not a competitor
+  to commercial assistants).
+- **`roadmap.md` gets a "Current focus" order**: finish AON-01, the owed
+  write-up, then the conversation archive (refresh the existing importers,
+  check GUI listing, more sources, recall via Cortex in HUB-02), then caching,
+  then AON-02. New AON-01 items: count native sessions, check the OpenRouter
+  data policy, a monthly spend report. The confirmation-deadlock item now
+  says a timeout alone would reject every GUI approval.
+
+### Changed — Deep-research dossier revised for September (2026-09-30)
+
+- **`docs/research/jarvis-deep-research-dossier.html` now reflects the repo as
+  of v0.27.0.** It re-checks the 41 August items against the code (3 done, 5
+  partial, 30 open), refreshes the audit, records the developer-agent
+  retirement (ADR-039) and ADR-040, evaluates Jev and other decision models as
+  runtime classifiers, and replaces the phased roadmap with one scored by
+  trigger, attacked by a skeptic and pre-mortemed. A finding recorded there
+  but not yet fixed: GUI vault approvals likely hang (read from the code, not
+  reproduced; human oversight, EU AI Act Art. 14). Usage is counted from native
+  sessions only; a first draft counted imported conversations and overstated
+  it. The August version stays in git at v0.27.0; `docs/product/roadmap.md`
+  remains the authoritative plan.
+
+## [0.28.0] - 2026-09-30
+
 ### Removed — Developer agent retired (2026-09-30)
 
 - **`/develop` and its 16 tools are gone** ([ADR-039](product/decisions.md#adr-039-retire-the-developer-agent),
@@ -167,37 +204,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `..`. Removing unused write and exec permissions is a control against
   excessive agency (OWASP LLM06; NIST AI RMF Manage). The agent, its code and
   the setting itself were then removed (ADR-039, entry above).
-
-### Changed — What JARVIS is for, and the order of work (2026-09-30)
-
-- **[ADR-040](product/decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)
-  states JARVIS's purpose**: an owned, local-first daily assistant and a
-  platform to learn and show work, the central archive for conversations
-  imported from other AI tools, with a Dots-like personal assistant as the
-  north star. It amends ADR-034: the commodity argument covers coding
-  harnesses, not the assistant itself. `vision.md` gains a "Why Jarvis
-  exists" section, daily-use success criteria and a non-goal (not a competitor
-  to commercial assistants).
-- **`roadmap.md` gets a "Current focus" order**: finish AON-01, the owed
-  write-up, then the conversation archive (refresh the existing importers,
-  check GUI listing, more sources, recall via Cortex in HUB-02), then caching,
-  then AON-02. New AON-01 items: count native sessions, check the OpenRouter
-  data policy, a monthly spend report. The confirmation-deadlock item now
-  says a timeout alone would reject every GUI approval.
-
-### Changed — Deep-research dossier revised for September (2026-09-30)
-
-- **`docs/research/jarvis-deep-research-dossier.html` now reflects the repo as
-  of v0.27.0.** It re-checks the 41 August items against the code (3 done, 5
-  partial, 30 open), refreshes the audit, records the developer-agent
-  retirement (ADR-039) and ADR-040, evaluates Jev and other decision models as
-  runtime classifiers, and replaces the phased roadmap with one scored by
-  trigger, attacked by a skeptic and pre-mortemed. A finding recorded there
-  but not yet fixed: GUI vault approvals likely hang (read from the code, not
-  reproduced; human oversight, EU AI Act Art. 14). Usage is counted from native
-  sessions only; a first draft counted imported conversations and overstated
-  it. The August version stays in git at v0.27.0; `docs/product/roadmap.md`
-  remains the authoritative plan.
 
 ## [0.27.0] - 2026-09-30
 
