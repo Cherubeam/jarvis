@@ -156,7 +156,10 @@ Server → client events (each a JSON object with a `type` discriminator):
 - `approval_pending { id, tool, agent, path, diff, summary, link_warnings }` —
   vault-write diff awaiting user decision. `link_warnings` lists URLs and link
   targets present in only one version; the card shows them above the diff.
-  Client must respond with `approval_decision`.
+  Client must respond with `approval_decision`. Every write gets its own card
+  and id, also within one turn; an approval nobody answers is rejected after 10
+  minutes (`APPROVAL_TIMEOUT_S` in `confirmation.py`). The turn runs as its own
+  task, so `approval_decision` and `cancel` are read while it is running.
 - `approval_resolved { id, approved }` — echoed after resolution.
 - `rag_result { id, query, matches }` — recall cards.
 - `error { id?, message }` — turn failed.
@@ -601,9 +604,10 @@ flag for delegation, just the tool invocation. If
 
 ## Known limitations (WEB-01)
 
-- **Cancel is dispatch-only.** The `{ "type": "cancel" }` message stops
-  emitting events to the WS but the in-flight LLM call keeps running in the
-  worker thread; its tokens/cost still land in the conversation log.
+- **Cancel only stops vault writes.** The `{ "type": "cancel" }` message
+  rejects the pending approval and every later one in that turn, but the
+  in-flight LLM call keeps running in the worker thread; its tokens/cost still
+  land in the conversation log.
 - **Single session, single turn.** Second `submit` while a turn is running is
   rejected. Second WS connection takes over; any pending approval on the
   first is auto-rejected.

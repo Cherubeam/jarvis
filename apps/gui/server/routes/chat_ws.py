@@ -16,6 +16,9 @@ from apps.gui.server.resume import ResumeError, load_and_replay
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# The event loop holds tasks only weakly; keep running turns referenced until done.
+_turn_tasks: set[asyncio.Task[None]] = set()
+
 
 @router.websocket("/ws/chat")
 async def chat_ws(websocket: WebSocket) -> None:
@@ -61,10 +64,11 @@ async def chat_ws(websocket: WebSocket) -> None:
                 if not user_text:
                     continue
                 session.in_flight = True
-                try:
-                    await run_turn(session, user_text, queue)
-                finally:
-                    session.in_flight = False
+                # The turn runs as its own task so this loop keeps reading: an
+                # approval or a cancel sent mid-turn must reach the waiting turn.
+                task = asyncio.create_task(_run_turn_in_background(session, user_text, queue))
+                _turn_tasks.add(task)
+                task.add_done_callback(_turn_tasks.discard)
             elif kind == "resume":
                 if session.in_flight:
                     await websocket.send_json(
@@ -108,6 +112,17 @@ async def chat_ws(websocket: WebSocket) -> None:
         # Clean up any pending approval so the worker thread can exit.
         if session.confirmation is not None:
             session.confirmation.discard()
+
+
+async def _run_turn_in_background(session: Any, user_text: str, queue: Queue[dict[str, Any]]) -> None:
+    """Run one turn off the receive loop; a failure is reported, never fatal to the socket."""
+    try:
+        await run_turn(session, user_text, queue)
+    except Exception as e:
+        logger.exception("turn failed")  # pragma: no mutate
+        queue.put({"type": "error", "message": f"Turn failed: {e}"})
+    finally:
+        session.in_flight = False
 
 
 async def _drain_queue(queue: Queue[dict[str, Any]], websocket: WebSocket) -> None:
