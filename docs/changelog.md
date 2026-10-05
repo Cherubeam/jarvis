@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.32.0] - 2026-10-05
+## [0.32.0] - 2026-10-06
 
 ### Decided — One conversation index (HUB-02, 2026-10-05)
 
