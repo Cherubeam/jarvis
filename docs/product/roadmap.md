@@ -34,7 +34,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
-## Current focus (2026-10-05)
+## Current focus (2026-10-05, evening)
 
 Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
 [ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
@@ -50,9 +50,10 @@ Each step names its milestone below; this list only sets the order.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
-   since April restored). Claude Code session importer
-   and proposal-based memory importer (2026-10-05). Claude projects map to
-   vault notes by ID (2026-10-05). Next: conversation recall via Cortex (HUB-02).
+   since April restored). Claude Code session importer, proposal-based memory
+   importer, Claude projects mapped to vault notes by ID, raw exports in the
+   data home (all 2026-10-05). **Next: conversation recall via Cortex (HUB-02)**,
+   so Claude Code and other MCP clients can search the archive.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
 4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
    daily use count as reasons (ADR-040), with a named learning goal.
@@ -542,7 +543,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 Extend the server beyond search to JARVIS's curated context.
 
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
-- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code
+- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code. **Next (prepared 2026-10-05).** Starting point: Cortex has a `Source` plugin protocol (`src/cortex/sources/base.py`: discover, needs_update, extract, compute_state) with one Obsidian source, one ChromaDB collection (`knowledge`) and two MCP tools (`search_knowledge`, `index_status`). The archive is 358 conversation JSON files (schema v1.0.0) in the data home's `conversations/`; JARVIS's own index embeds user→assistant pairs with a per-pair `doc_hash` (`packages/core/rag/indexer.py`). Open decisions: separate collection or a `source` filter; a separate opt-in tool (e.g. `search_conversations`) vs a parameter on `search_knowledge`; which sources (native, Claude, Claude Code, ChatGPT) are exposed; whether JARVIS keeps its own index or reads Cortex
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
 ### HUB-03 — Data homes, memory in the vault, import hub
