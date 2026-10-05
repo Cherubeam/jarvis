@@ -355,8 +355,12 @@ uv run python scripts/import_claude_memory.py ~/Downloads/claude-export         
 
 - Facts about you are routed to one note each (profile, people and areas → professional;
   communication → preferences; recent work → focus; other topics → personal; table in
-  `packages/core/importers/claude_memory.py`). Project memories wait for the project mapping;
-  the soul and the reading profile are never touched.
+  `packages/core/importers/claude_memory.py`). The soul and the reading profile are never touched.
+- Project memories go to the vault note whose frontmatter has `claude-project: <project uuid>`
+  (the uuid is in the export's `projects/*.json`); a project without such a note is skipped and
+  named. JARVIS keeps no project copies. The model is told to follow a note's own maintenance
+  rules and says whether an entry goes to the top of its section (logs ordered newest first).
+  `--only memory` or `--only projects` reviews just one kind.
 - A model (`models.presets.quality`, override with `--model`) drafts add/update proposals per
   note and drops facts the note already covers. A fact older than the note's `updated` date is
   shown as a conflict and never applied.

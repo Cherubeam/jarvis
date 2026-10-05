@@ -2,7 +2,8 @@
 
 Reads the 2026-09 export format: ``memories/<account>.json`` with ``memory_files`` (one Markdown
 file of ``- [stated] …`` facts per topic, each with ``updated_at``). Facts about the user are routed
-to one memory note each; project memories are left to the project mapping (HUB-03).
+to one memory note each. Project memories (``/projects/<id>/…``) go to the vault note whose
+frontmatter carries ``claude-project: <id>``; JARVIS keeps no project copies (ADR-041).
 
 Imports propose, they never overwrite. A model drafts the proposals per note (add a fact, update a
 line), dropping facts the note already covers. Code, not the model, enforces the date rule: a fact
@@ -43,6 +44,9 @@ PROPOSABLE_SECTIONS = ("personal", "professional", "preferences", "focus")
 # Not archived: login history and account data (ADR-041).
 _ARCHIVE_EXCLUDE = ("light_metadata*", ".DS_Store")
 
+_PROJECT_PATH_RE = re.compile(r"^/projects/([^/]+)/")
+_PROJECT_ID_RE = re.compile(r"^claude-project:\s*[\"']?([0-9a-fA-F-]+)", re.MULTILINE)
+
 _FACT_RE = re.compile(r"^\s*-\s+(?:\[[a-z-]+\]\s+)?(.+?)\s*$")
 _JSON_BLOCK_RE = re.compile(r"\[.*\]", re.DOTALL)
 
@@ -70,6 +74,7 @@ class Proposal:
     fact_date: str
     reason: str
     conflict: bool = False  # fact older than the note: shown, never applied
+    position: str = "bottom"  # "top" for sections ordered newest first
 
     @property
     def appliable(self) -> bool:
@@ -81,7 +86,7 @@ class ExportFacts:
     """Facts routed to memory sections, plus what was left out."""
 
     by_section: dict[str, list[Fact]] = field(default_factory=dict)
-    skipped_projects: int = 0
+    by_project: dict[str, list[Fact]] = field(default_factory=dict)
     unrouted: list[str] = field(default_factory=list)
 
 
@@ -137,18 +142,54 @@ def load_export_facts(memory_file: Path) -> ExportFacts:
     for entry in data.get("memory_files", []):
         path = entry.get("path", "")
         section = route(path)
-        if section is None:
-            if path.startswith("/projects/"):
-                result.skipped_projects += 1
-            else:
-                result.unrouted.append(path)
+        project = _PROJECT_PATH_RE.match(path)
+        if section is None and project is None:
+            result.unrouted.append(path)
             continue
         updated = str(entry.get("updated_at", ""))[:10]
         for text in parse_facts(entry.get("content", "")):
             counter += 1
             fact = Fact(id=f"f{counter}", text=text, source_file=path, updated=updated)
-            result.by_section.setdefault(section, []).append(fact)
+            if project is not None:
+                result.by_project.setdefault(project.group(1), []).append(fact)
+            elif section is not None:
+                result.by_section.setdefault(section, []).append(fact)
     return result
+
+
+def load_project_names(export_dir: Path) -> dict[str, str]:
+    """Claude project id → name, from the export's ``projects/*.json``."""
+    names: dict[str, str] = {}
+    for path in sorted((export_dir / "projects").glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(data, dict) and data.get("uuid"):
+            names[str(data["uuid"])] = str(data.get("name") or data["uuid"])
+    return names
+
+
+def find_project_notes(vault_path: Path) -> dict[str, Path]:
+    """Claude project id → the vault note whose frontmatter says ``claude-project: <id>``.
+
+    Hidden folders (``.obsidian``, ``.trash``) are skipped. Only the frontmatter is searched.
+    """
+    notes: dict[str, Path] = {}
+    for path in sorted(vault_path.rglob("*.md")):
+        if any(part.startswith(".") for part in path.relative_to(vault_path).parts):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if not text.startswith("---\n"):
+            continue
+        end = text.find("\n---", 4)
+        match = _PROJECT_ID_RE.search(text[4:end] if end != -1 else "")
+        if match:
+            notes[match.group(1)] = path
+    return notes
 
 
 def export_date(export_dir: Path) -> str:
@@ -181,7 +222,7 @@ def note_updated(note_text: str) -> str:
     return str(value)[:10] if value else ""
 
 
-PROMPT = """You compare facts from a Claude memory export with one of Marco's memory notes and propose \
+PROMPT = """You compare facts from a Claude memory export with one of Marco's notes and propose \
 changes to the note. Marco reviews every proposal; nothing is applied without his yes.
 
 Rules:
@@ -189,15 +230,18 @@ Rules:
 - "add": a fact the note lacks. Give the existing "## heading" it belongs under, or a new heading.
 - "update": a fact that changes or contradicts an existing bullet. "old" is that bullet's text \
 copied exactly, without the leading "- ".
+- "position": "top" when the section is ordered newest first, else "bottom".
 - Merge related facts into one bullet where natural. Keep Marco's terse bullet style, English.
 - Never propose deleting anything.
+- If the note states its own maintenance rules, follow them, and propose nothing for sections the \
+rules reserve for the owner.
 
 Answer with a JSON array only, no prose:
 [{{"action": "add"|"update", "heading": "...", "old": "..."|null, "new": "...", \
-"fact_ids": ["f1"], "reason": "..."}}]
+"position": "top"|"bottom", "fact_ids": ["f1"], "reason": "..."}}]
 Return [] if nothing is worth proposing.
 
-Memory note "{section}" (last updated {updated}):
+Note "{section}" (last updated {updated}):
 <note>
 {body}
 </note>
@@ -260,6 +304,7 @@ def parse_proposals(raw: str, section: str, facts: list[Fact], note_text: str) -
                 fact_date=fact_date,
                 reason=str(item.get("reason") or "").strip(),
                 conflict=bool(updated) and fact_date < updated,
+                position="top" if item.get("position") == "top" else "bottom",
             )
         )
     return proposals
@@ -300,7 +345,9 @@ def apply_proposal(note_text: str, proposal: Proposal, *, today: str) -> str | N
         else:
             return None
     else:
-        lines = _insert_under_heading(lines, body_start, proposal.heading, f"- {proposal.new}")
+        lines = _insert_under_heading(
+            lines, body_start, proposal.heading, f"- {proposal.new}", top=proposal.position == "top"
+        )
 
     return _update_frontmatter("\n".join(lines), today=today)
 
@@ -313,8 +360,11 @@ def _body_start(lines: list[str]) -> int:
     return 0
 
 
-def _insert_under_heading(lines: list[str], body_start: int, heading: str, bullet: str) -> list[str]:
-    """Insert bullet after the last line of the ``## heading`` section, or add the section at the end."""
+def _insert_under_heading(lines: list[str], body_start: int, heading: str, bullet: str, *, top: bool) -> list[str]:
+    """Insert bullet at the top or after the last line of the ``## heading`` section.
+
+    A missing section is added at the end of the note.
+    """
     target = f"## {heading}".lower()
     start = next((i for i in range(body_start, len(lines)) if lines[i].strip().lower() == target), None)
     if start is None:
@@ -322,9 +372,16 @@ def _insert_under_heading(lines: list[str], body_start: int, heading: str, bulle
             lines.pop()
         return [*lines, "", f"## {heading}", bullet, ""]
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("#")), len(lines))
-    insert_at = end
-    while insert_at > start + 1 and not lines[insert_at - 1].strip():
-        insert_at -= 1
+    if top:
+        insert_at = start + 1
+        while insert_at < end and not lines[insert_at].strip():
+            insert_at += 1
+        if insert_at == end:  # empty section: keep the blank line before the next heading
+            insert_at = start + 1
+    else:
+        insert_at = end
+        while insert_at > start + 1 and not lines[insert_at - 1].strip():
+            insert_at -= 1
     return [*lines[:insert_at], bullet, *lines[insert_at:]]
 
 

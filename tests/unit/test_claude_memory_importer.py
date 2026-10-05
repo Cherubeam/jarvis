@@ -14,7 +14,9 @@ from packages.core.importers.claude_memory import (
     draft_proposals,
     export_date,
     find_memory_file,
+    find_project_notes,
     load_export_facts,
+    load_project_names,
     log_decision,
     note_updated,
     parse_facts,
@@ -124,7 +126,7 @@ class TestLoadExport:
             ("f2", "B", "2026-09-12"),
         ]
         assert [f.text for f in facts.by_section["personal"]] == ["C"]
-        assert facts.skipped_projects == 1
+        assert {k: [f.text for f in v] for k, v in facts.by_project.items()} == {"p1": ["P"]}
         assert facts.unrouted == ["/odd.md"]
 
     def test_find_memory_file_requires_exactly_one(self, tmp_path):
@@ -160,13 +162,44 @@ class TestLoadExport:
         assert archive_export(export, target) is False
 
 
+class TestProjects:
+    def test_load_project_names(self, tmp_path):
+        (tmp_path / "projects").mkdir()
+        (tmp_path / "projects" / "a.json").write_text(json.dumps({"uuid": "p1", "name": "JARVIS"}))
+        (tmp_path / "projects" / "b.json").write_text(json.dumps({"uuid": "p2"}))
+        (tmp_path / "projects" / "c.json").write_text("{broken")
+        assert load_project_names(tmp_path) == {"p1": "JARVIS", "p2": "p2"}
+
+    def test_find_project_notes_by_frontmatter_id(self, tmp_path):
+        vault = tmp_path / "vault"
+        (vault / "Projects" / "J").mkdir(parents=True)
+        (vault / ".trash").mkdir()
+        (vault / "Projects" / "J" / "_Project Memory.md").write_text(
+            "---\ncreated: 2026-03-26\nclaude-project: 019ac6f0-be8c\n---\n# JARVIS\n"
+        )
+        (vault / "Projects" / "quoted.md").write_text('---\nclaude-project: "019d-aa"\n---\nbody\n')
+        (vault / "body-only.md").write_text("no frontmatter\nclaude-project: 019x-body\n")
+        (vault / "in-body.md").write_text("---\ntitle: x\n---\nclaude-project: 019y-body\n")
+        (vault / ".trash" / "old.md").write_text("---\nclaude-project: 019z-trash\n---\n")
+        notes = find_project_notes(vault)
+        assert notes == {
+            "019ac6f0-be8c": vault / "Projects" / "J" / "_Project Memory.md",
+            "019d-aa": vault / "Projects" / "quoted.md",
+        }
+
+    def test_prompt_asks_to_follow_note_rules(self):
+        prompt = build_prompt("project:JARVIS", NOTE, FACTS)
+        assert "follow them, and propose nothing for sections the rules reserve for the owner" in prompt
+        assert 'Note "project:JARVIS"' in prompt
+
+
 # ==================== prompt and proposals ====================
 
 
 class TestPrompt:
     def test_contains_note_body_date_and_facts(self):
         prompt = build_prompt("professional", NOTE, FACTS)
-        assert 'Memory note "professional" (last updated 2026-04-09)' in prompt
+        assert 'Note "professional" (last updated 2026-04-09)' in prompt
         assert "## Skills\n- Python" in prompt
         assert "created: 2026-04-09" not in prompt
         assert "f1 (2026-09-12, /profile.md): Knows Go" in prompt
@@ -185,6 +218,7 @@ class TestParseProposals:
 ```"""
         proposals = parse_proposals(raw, "professional", FACTS, NOTE)
         assert proposals[0] == _proposal()
+        assert proposals[0].position == "bottom"
         assert proposals[1].action == "update"
         assert proposals[1].old == "Python"
         assert proposals[1].fact_ids == ["f1"]
@@ -218,6 +252,10 @@ class TestParseProposals:
         raw = json.dumps([{"action": "add", "heading": "Skills", "new": "Both", "fact_ids": ["f2", "f1"]}])
         assert parse_proposals(raw, "professional", FACTS, NOTE)[0].conflict is False
 
+    def test_position_top(self):
+        raw = json.dumps([{"action": "add", "heading": "Skills", "new": "Go", "fact_ids": ["f1"], "position": "top"}])
+        assert parse_proposals(raw, "professional", FACTS, NOTE)[0].position == "top"
+
     def test_missing_heading_gets_default(self):
         raw = json.dumps([{"action": "add", "new": "Go", "fact_ids": ["f1"]}])
         assert parse_proposals(raw, "professional", FACTS, NOTE)[0].heading == "From Claude export"
@@ -243,6 +281,20 @@ class TestApplyProposal:
         result = apply_proposal(NOTE, _proposal(), today="2026-10-05")
         assert result is not None
         assert "## Skills\n- Python\n- Agile coaching\n- Go\n\n## Trajectory" in result
+
+    def test_add_at_top_of_section(self):
+        note = NOTE.replace("## Trajectory\n", "## Log (newest first)\n\n- **2026-03** — old\n\n## Trajectory\n")
+        result = apply_proposal(
+            note, _proposal(heading="Log (newest first)", new="**2026-09** — new", position="top"), today="2026-10-05"
+        )
+        assert result is not None
+        assert "## Log (newest first)\n\n- **2026-09** — new\n- **2026-03** — old\n\n## Trajectory" in result
+
+    def test_add_at_top_of_empty_section(self):
+        note = NOTE.replace("## Trajectory\n", "## Log\n\n## Trajectory\n")
+        result = apply_proposal(note, _proposal(heading="Log", new="first", position="top"), today="2026-10-05")
+        assert result is not None
+        assert "## Log\n- first\n\n## Trajectory" in result
 
     def test_add_to_last_section(self):
         result = apply_proposal(NOTE, _proposal(heading="Trajectory", new="Writing a book"), today="2026-10-05")

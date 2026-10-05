@@ -23,13 +23,16 @@ from prompt_toolkit import PromptSession
 from packages.core.frontmatter import write_atomic
 from packages.core.importers.claude_memory import (
     PROPOSABLE_SECTIONS,
+    Fact,
     Proposal,
     apply_proposal,
     archive_export,
     draft_proposals,
     export_date,
     find_memory_file,
+    find_project_notes,
     load_export_facts,
+    load_project_names,
     log_decision,
 )
 from packages.core.llm_client import LLMClient
@@ -41,7 +44,8 @@ _MAX_TOKENS = 16000
 
 
 def _show(proposal: Proposal, note_name: str) -> None:
-    print(f"\n── {note_name} › ## {proposal.heading}  ({proposal.action}, facts from {proposal.fact_date})")
+    where = ", at the top" if proposal.position == "top" and proposal.action == "add" else ""
+    print(f"\n── {note_name} › ## {proposal.heading}  ({proposal.action}{where}, facts from {proposal.fact_date})")
     if proposal.old:
         print(f"  - {proposal.old}")
         print(f"  + {proposal.new}")
@@ -59,6 +63,12 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run",
         action="store_true",
         help="Draft and show proposals; archive, apply and log nothing.",
+    )
+    parser.add_argument(
+        "--only",
+        choices=("memory", "projects"),
+        default=None,
+        help="Review only the memory notes, or only the project notes (default: both).",
     )
     args = parser.parse_args(argv)
 
@@ -85,9 +95,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  Raw export {'archived to' if archived else 'already archived in'} {import_dir / 'export'}")
 
     facts = load_export_facts(memory_file)
-    print(f"  Project memories left for the project mapping: {facts.skipped_projects} files")
     if facts.unrouted:
         print(f"  Not routed to any note (add a route if they matter): {', '.join(facts.unrouted)}")
+
+    # Review targets: (label, section key stored in the log, note path, facts)
+    targets: list[tuple[str, str, Path, list[Fact]]] = []
+    if args.only in (None, "memory"):
+        for section in PROPOSABLE_SECTIONS:
+            if facts.by_section.get(section):
+                note_name = context_files[section]
+                targets.append((note_name, section, context_dir / note_name, facts.by_section[section]))
+    if args.only in (None, "projects") and facts.by_project:
+        names = load_project_names(args.export_dir)
+        notes = find_project_notes(Path(settings.obsidian.vault_path)) if settings.obsidian.vault_path else {}
+        for project_id, project_facts in facts.by_project.items():
+            name = names.get(project_id, project_id)
+            if project_id not in notes:
+                print(f"  No vault note with claude-project: {project_id} ({name}); skipped")
+                continue
+            targets.append((f"{name} (project)", f"project:{name}", notes[project_id], project_facts))
 
     client = LLMClient(api_keys=collect_api_keys(), default_model=model)
 
@@ -99,12 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     prompts: PromptSession[str] = PromptSession()
     counts = {"applied": 0, "edited": 0, "rejected": 0, "conflict": 0, "stale": 0}
 
-    for section in PROPOSABLE_SECTIONS:
-        section_facts = facts.by_section.get(section, [])
-        if not section_facts:
-            continue
-        note_name = context_files[section]
-        note_path = context_dir / note_name
+    for note_name, section, note_path, section_facts in targets:
         if not note_path.exists():
             print(f"\n  {note_name}: missing, skipped")
             continue
