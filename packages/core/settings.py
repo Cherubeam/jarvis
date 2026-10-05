@@ -164,6 +164,10 @@ class PathsSettings(BaseModel):
         default="data/prompt-history",
         description="Directory for snapshots of edited agent prompts.",
     )
+    imports_dir: str = Field(
+        default="data/imports",
+        description="Raw exports kept as the record of origin, plus import decision logs (ADR-041).",
+    )
 
 
 class CliSettings(BaseModel):
