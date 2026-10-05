@@ -6,7 +6,9 @@ share ``message.id``. The desktop app keeps titles and archive flags in separate
 
 One Jarvis turn = one prompt the user typed + everything the assistant did until the next prompt.
 Tool calls are kept as one-line summaries; tool results become a stub with their size, so the archive
-and the RAG index hold what was said, not file dumps. Subagent transcripts are not imported.
+and the RAG index hold what was said, not file dumps. Subagent transcripts are not imported, but the
+report a subagent returns is kept verbatim: as its tool result, or for a background subagent, as the
+``<result>`` of the task notification that delivers it.
 """
 
 from __future__ import annotations
@@ -60,6 +62,12 @@ _INJECTED_PREFIXES = (
     "<bash-stdout>",
     "[Request interrupted",
 )
+
+# Tools that run a subagent; their final report is kept instead of a size stub.
+_SUBAGENT_TOOLS = ("Agent", "Task")
+
+_NOTIFICATION_TOOL_USE_RE = re.compile(r"<tool-use-id>(.*?)</tool-use-id>", re.DOTALL)
+_NOTIFICATION_RESULT_RE = re.compile(r"<result>(.*?)</result>", re.DOTALL)
 
 _COMMAND_NAME_RE = re.compile(r"<command-name>(.*?)</command-name>", re.DOTALL)
 _COMMAND_ARGS_RE = re.compile(r"<command-args>(.*?)</command-args>", re.DOTALL)
@@ -124,6 +132,15 @@ def summarize_tool_input(tool_input: Any) -> str:
     return one_line
 
 
+def _tool_result_text(content: Any) -> str:
+    """Text of a tool result, which is either a string or a list of content blocks."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(item.get("text", "") for item in content if isinstance(item, dict) and item.get("text"))
+    return ""
+
+
 def _tool_result_chars(content: Any) -> int:
     """Size of a tool result's text content in characters."""
     if isinstance(content, str):
@@ -131,6 +148,14 @@ def _tool_result_chars(content: Any) -> int:
     if isinstance(content, list):
         return sum(len(item.get("text", "")) for item in content if isinstance(item, dict))
     return 0
+
+
+def _subagent_report(description: str, text: str) -> dict[str, Any]:
+    return {
+        "type": "text",
+        "text": f"[Subagent report: {description}]\n{text}",
+        "metadata": {"tool_result": True, "subagent_report": True, "is_error": False, "result_chars": len(text)},
+    }
 
 
 def user_prompt_text(record: dict[str, Any]) -> str | None:
@@ -224,16 +249,24 @@ def _assistant_blocks(content: Any) -> list[dict[str, Any]]:
     return result
 
 
-def _tool_result_stubs(content: Any) -> list[dict[str, Any]]:
-    """One stub block per tool result: its size and whether it was an error, not its text."""
+def _tool_result_blocks(content: Any, subagent_calls: dict[str, str]) -> list[dict[str, Any]]:
+    """One block per tool result: the report of a foreground subagent, else a stub with the size.
+
+    ``subagent_calls`` maps the tool_use id of each foreground subagent call to its description.
+    """
     result: list[dict[str, Any]] = []
     if not isinstance(content, list):
         return result
     for block in content:
         if not isinstance(block, dict) or block.get("type") != "tool_result":
             continue
-        chars = _tool_result_chars(block.get("content"))
         is_error = bool(block.get("is_error"))
+        description = subagent_calls.get(block.get("tool_use_id", ""))
+        report = _tool_result_text(block.get("content")).strip()
+        if description is not None and not is_error and report:
+            result.append(_subagent_report(description, report))
+            continue
+        chars = _tool_result_chars(block.get("content"))
         label = "Tool error" if is_error else "Tool result"
         result.append(
             {
@@ -243,6 +276,43 @@ def _tool_result_stubs(content: Any) -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def _notification_report(record: dict[str, Any], background_calls: dict[str, str]) -> dict[str, Any] | None:
+    """Report block for a task notification that delivers a background subagent's result."""
+    if record.get("type") != "user":
+        return None
+    content = (record.get("message") or {}).get("content")
+    if not isinstance(content, str) or not content.lstrip().startswith("<task-notification>"):
+        return None
+    tool_use = _NOTIFICATION_TOOL_USE_RE.search(content)
+    report = _NOTIFICATION_RESULT_RE.search(content)
+    if not tool_use or not report or tool_use.group(1).strip() not in background_calls:
+        return None
+    text = report.group(1).strip()
+    if not text:
+        return None
+    return _subagent_report(background_calls[tool_use.group(1).strip()], text)
+
+
+def _subagent_calls(content: Any) -> tuple[dict[str, str], dict[str, str]]:
+    """Foreground and background subagent calls in an assistant record: tool_use id → description."""
+    foreground: dict[str, str] = {}
+    background: dict[str, str] = {}
+    if not isinstance(content, list):
+        return foreground, background
+    for block in content:
+        if not isinstance(block, dict) or block.get("type") != "tool_use" or block.get("name") not in _SUBAGENT_TOOLS:
+            continue
+        raw_input = block.get("input")
+        tool_input: dict[str, Any] = raw_input if isinstance(raw_input, dict) else {}
+        raw_description = tool_input.get("description")
+        description = "subagent"
+        if isinstance(raw_description, str) and raw_description.strip():
+            description = summarize_tool_input({"description": raw_description})
+        target = background if tool_input.get("run_in_background") else foreground
+        target[block.get("id", "")] = description
+    return foreground, background
 
 
 def _add_usage(totals: dict[str, int], usage: dict[str, Any]) -> None:
@@ -255,13 +325,15 @@ def _add_usage(totals: dict[str, int], usage: dict[str, Any]) -> None:
 def build_messages(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Group transcript records into alternating user prompts and assistant turns.
 
-    Assistant records and tool-result stubs before the first prompt are dropped. Token usage
+    Assistant records and tool results before the first prompt are dropped. Token usage
     (repeated on every streamed line of one API message) is counted once per ``message.id``
     and kept in the turn's metadata, not in ``usage``, so imported turns never count as spend.
     """
     messages: list[dict[str, Any]] = []
     turn: dict[str, Any] | None = None
     seen_usage_ids: set[str] = set()
+    foreground_calls: dict[str, str] = {}
+    background_calls: dict[str, str] = {}
 
     for record in records:
         record_type = record.get("type")
@@ -279,9 +351,20 @@ def build_messages(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not messages:
             continue
 
+        report = _notification_report(record, background_calls)
+        if report is not None:
+            if turn is None:
+                turn = _new_message("assistant", record.get("timestamp"))
+                messages.append(turn)
+            turn["content"].append(report)
+            continue
+
         if record_type == "assistant":
             message = record.get("message") or {}
             blocks = _assistant_blocks(message.get("content"))
+            foreground, background = _subagent_calls(message.get("content"))
+            foreground_calls.update(foreground)
+            background_calls.update(background)
             if turn is None:
                 turn = _new_message("assistant", record.get("timestamp"))
                 messages.append(turn)
@@ -297,7 +380,7 @@ def build_messages(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 seen_usage_ids.add(msg_id)
                 _add_usage(turn["metadata"].setdefault("claude_code_usage", {}), usage)
         elif record_type == "user" and turn is not None:
-            turn["content"].extend(_tool_result_stubs((record.get("message") or {}).get("content")))
+            turn["content"].extend(_tool_result_blocks((record.get("message") or {}).get("content"), foreground_calls))
 
     for i, msg in enumerate(messages, start=1):
         msg["id"] = f"msg_{i:03d}"

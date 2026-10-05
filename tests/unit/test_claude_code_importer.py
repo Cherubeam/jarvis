@@ -228,6 +228,94 @@ class TestBuildMessages:
         assert "model" not in build_messages([_user("Hi"), record])[1]["metadata"]
 
 
+class TestSubagentReports:
+    def _call(self, tool_id: str, background: bool = False) -> dict[str, Any]:
+        tool_input = {"description": "Map the importers", "prompt": "long prompt", "run_in_background": background}
+        return _assistant([{"type": "tool_use", "id": tool_id, "name": "Agent", "input": tool_input}], msg_id=tool_id)
+
+    def _result(self, tool_id: str, content: Any, is_error: bool = False) -> dict[str, Any]:
+        block = {"type": "tool_result", "tool_use_id": tool_id, "content": content, "is_error": is_error}
+        return _user([block], ts="2026-10-05T08:00:06.000Z")
+
+    def test_foreground_report_kept_verbatim(self):
+        records = [
+            _user("Go"),
+            self._call("t1"),
+            self._result("t1", [{"type": "text", "text": "Found 3 importers."}, {"type": "text", "text": "Done."}]),
+        ]
+        block = build_messages(records)[1]["content"][1]
+        assert block["text"] == "[Subagent report: Map the importers]\nFound 3 importers.\nDone."
+        assert block["metadata"] == {
+            "tool_result": True,
+            "subagent_report": True,
+            "is_error": False,
+            "result_chars": len("Found 3 importers.\nDone."),
+        }
+
+    def test_failed_subagent_gets_stub(self):
+        records = [_user("Go"), self._call("t1"), self._result("t1", "boom", is_error=True)]
+        assert build_messages(records)[1]["content"][1]["text"] == "[Tool error: 4 chars]"
+
+    def test_other_tool_result_still_a_stub(self):
+        records = [
+            _user("Go"),
+            _assistant([{"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "ls"}}]),
+            self._result("t2", "file.txt"),
+        ]
+        assert build_messages(records)[1]["content"][1]["text"] == "[Tool result: 8 chars]"
+
+    def test_background_ack_stub_and_notification_report(self):
+        notification = (
+            "<task-notification>\n<task-id>a1</task-id>\n<tool-use-id>t3</tool-use-id>\n"
+            "<status>completed</status>\n<summary>Agent done</summary>\n<result>The report.</result>\n"
+            "</task-notification>"
+        )
+        records = [
+            _user("Go"),
+            self._call("t3", background=True),
+            self._result("t3", "Async agent launched"),
+            _user(notification),
+            _assistant([{"type": "text", "text": "Combined."}], msg_id="m9"),
+        ]
+        messages = build_messages(records)
+        assert [m["role"] for m in messages] == ["user", "assistant"]
+        texts = [b["text"] for b in messages[1]["content"]]
+        assert texts == [
+            "[Tool: Agent] Map the importers",
+            "[Tool result: 20 chars]",
+            "[Subagent report: Map the importers]\nThe report.",
+            "Combined.",
+        ]
+
+    def test_notification_for_background_shell_skipped(self):
+        notification = "<task-notification><tool-use-id>t4</tool-use-id><result>output</result></task-notification>"
+        records = [
+            _user("Go"),
+            _assistant([{"type": "tool_use", "id": "t4", "name": "Bash", "input": {"command": "sleep 1"}}]),
+            _user(notification),
+        ]
+        assert [b["text"] for b in build_messages(records)[1]["content"]] == ["[Tool: Bash] sleep 1"]
+
+    def test_notification_without_result_skipped(self):
+        notification = "<task-notification><tool-use-id>t5</tool-use-id><status>killed</status></task-notification>"
+        records = [_user("Go"), self._call("t5", background=True), _user(notification)]
+        assert [b["text"] for b in build_messages(records)[1]["content"]] == ["[Tool: Agent] Map the importers"]
+
+    def test_notification_opens_turn_after_new_prompt(self):
+        notification = (
+            "<task-notification><tool-use-id>t6</tool-use-id><result>Late report</result></task-notification>"
+        )
+        records = [_user("Go"), self._call("t6", background=True), _user("Next question"), _user(notification)]
+        messages = build_messages(records)
+        assert [m["role"] for m in messages] == ["user", "assistant", "user", "assistant"]
+        assert messages[3]["content"][0]["text"] == "[Subagent report: Map the importers]\nLate report"
+
+    def test_description_missing(self):
+        call = _assistant([{"type": "tool_use", "id": "t7", "name": "Task", "input": None}])
+        records = [_user("Go"), call, self._result("t7", "ok")]
+        assert build_messages(records)[1]["content"][1]["text"] == "[Subagent report: subagent]\nok"
+
+
 # ==================== session_title ====================
 
 
