@@ -34,25 +34,29 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
-## Current focus (2026-09-30)
+## Current focus (2026-10-05)
 
 Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
 [ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
 Each step names its milestone below; this list only sets the order.
 
-1. **Finish AON-01** — fix GUI approvals, count native sessions, check the
-   OpenRouter data policy, TOK caching baseline with a monthly spend report.
-2. **Write-up** (P6) — AON-01 and the developer-agent retirement, before the
-   next milestone starts.
-3. **Daily use: the conversation archive** — Claude imports refreshed
-   2026-10-01 (126 conversations, newest 2026-09-24; ChatGPT is low priority).
-   Next: put each kind of data in its home and memory in the vault (HUB-03,
-   [ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)), then
-   conversation recall via Cortex (HUB-02), then more sources.
-4. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
-5. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
-   daily use count as reasons (ADR-040), with a named learning goal and a
-   write-up.
+1. **Finish AON-01.** Done: GUI auth, vault oversight, atomic saves, GUI
+   approvals reach the running turn (2026-10-04). **Next: measurement** — one
+   parser over the conversation JSON for the native-session count, the monthly
+   spend report and the TOK caching baseline. Then the OpenRouter data policy
+   (Marco's account), the cost ledger, tool descriptions, the dead CLI copy.
+   The caching baseline needs real use first: on 2026-10-05 only 2 native
+   messages carried billed usage (recorded since PR #73, 2026-09-29).
+2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
+   local, context files and memory in the vault with dates and sources, Claude
+   import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
+   since April restored). Next: the proposal-based context importer, a Claude
+   Code session importer, then conversation recall via Cortex (HUB-02).
+3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
+4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
+   daily use count as reasons (ADR-040), with a named learning goal.
+
+Write-ups are optional per topic; Marco decides which to write.
 
 Native JARVIS sessions per month (2026): Feb 15 · Mar 20 · Apr 2 · May–Aug 0 ·
 Sep 4. Imported conversations are not counted.
@@ -424,7 +428,7 @@ per ADR-033. Each landed on its own feature branch, merged via
 
 ## AON — Always-On & Loop Engineering
 
-**Status**: 🔄 In progress — AON-01 underway (GUI auth shipped 2026-09-05)
+**Status**: 🔄 In progress — AON-01 underway (GUI auth 2026-09-05; approvals and atomic saves 2026-10-04)
 **Motivation**: 2026-07-04 deep-research review (codebase audit + verified web research), amended 2026-07-31 by an adversarial re-check against newer developments (loop-engineering discipline, cache-economics results, memory-benchmark audits). See ADR-033 for the naming scheme this initiative introduces.
 
 **Goal**: Make JARVIS safe to leave running, reachable without a terminal, and
@@ -449,6 +453,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [ ] Count native sessions per week and per front end from `data/conversations/`, excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
 - [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline *(S)*
+- [ ] Delete the dead tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_make_agent_vault_tools` at the top, shadowed by the `session_factory` imports in `main()`); repoint `tests/unit/test_cli_agents.py` *(S)*
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*
 
@@ -541,7 +546,7 @@ Extend the server beyond search to JARVIS's curated context.
 
 ### HUB-03 — Data homes, memory in the vault, import hub
 
-**Status**: 🔄 In progress — data, indexes, machine state and context files moved 2026-10-03; memory frontmatter and the proposal-based context importer next · **Effort**: M · **Risk**: Medium (moves private data)
+**Status**: 🔄 In progress — data, indexes, machine state, context files and memory frontmatter done 2026-10-03; the proposal-based context importer and a Claude Code session importer next · **Effort**: M · **Risk**: Medium (moves private data)
 
 Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
 
@@ -560,7 +565,7 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [ ] Replace `claude_context.py` (do not run it: it overwrites context files and reads the old export format) with an importer that reads the 2026-09 memory-file format and turns changes into dated proposals for approval (Art. 14) *(M)*
 - [ ] Keep raw exports in the data home; skip login history and account data *(S)*
 - [ ] Map Claude projects to vault notes by ID instead of keeping project copies *(S)*
-- [ ] Claude Code session importer (only ~30 days stay on disk) *(M)*
+- [ ] Claude Code session importer. Transcripts are kept 365 days since 2026-10-04 (`cleanupPeriodDays`); all 90 sessions since April 2026 are on disk after a Time Machine restore. Seven desktop-list entries have no `cliSessionId` and match their transcript only by start time *(M)*
 
 ### Source policy — index, don't proxy (2026-08-20)
 
