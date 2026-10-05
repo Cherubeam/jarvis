@@ -3031,6 +3031,18 @@ from exports are never imported.
   profile (P7).
 - Work is tracked as HUB-03 in `roadmap.md`.
 
+### Amendment (2026-10-05) — the archive gets its own folder
+
+The conversation archive and the raw exports are not JARVIS's alone: they
+hold Claude, Claude Code and ChatGPT conversations, and Cortex will read them
+(HUB-02). They moved out of the data home into a neutral folder,
+`/Users/marcobraun/Documents/03 Resources/AI Conversation Archive/`
+(`conversations/`, `imports/`), before Cortex became a second reader. The
+data home `03 Resources/JARVIS/data` keeps JARVIS's own working data
+(outcomes, prompt history, pattern-card output, soul history). Same rules as
+above: iCloud-synced, kept downloaded, written only by JARVIS and its
+importers. Indexes are unchanged; they store conversation IDs, not paths.
+
 ### Related ADRs
 - ADR-040 (What JARVIS Is For — the archive and memory are core)
 - ADR-034 (Context Hub Positioning) and ADR-029 (Cortex) — Cortex indexes, it does not store

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — The conversation archive has its own folder (2026-10-05)
+
+- Conversations and raw exports moved from the JARVIS data home to
+  `03 Resources/AI Conversation Archive/` (`conversations/`, `imports/`):
+  they hold Claude, Claude Code and ChatGPT conversations, and Cortex becomes
+  a second reader in HUB-02. JARVIS's own working data stays in
+  `03 Resources/JARVIS/data`. Moved by rename (358 + 29 files, byte counts
+  identical); `paths.conversations_dir` and `paths.imports_dir` updated in
+  `config/local.yaml`. ADR-041 amended.
+
 ### Changed — Raw exports moved out of the repo (2026-10-05)
 
 - The seven raw exports from 2026-02-07 and 2026-04-09 (ChatGPT, Claude

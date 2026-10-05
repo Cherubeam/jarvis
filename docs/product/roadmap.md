@@ -543,7 +543,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 Extend the server beyond search to JARVIS's curated context.
 
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
-- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code. **Next (prepared 2026-10-05).** Starting point: Cortex has a `Source` plugin protocol (`src/cortex/sources/base.py`: discover, needs_update, extract, compute_state) with one Obsidian source, one ChromaDB collection (`knowledge`) and two MCP tools (`search_knowledge`, `index_status`). The archive is 358 conversation JSON files (schema v1.0.0) in the data home's `conversations/`; JARVIS's own index embeds user→assistant pairs with a per-pair `doc_hash` (`packages/core/rag/indexer.py`). Open decisions: separate collection or a `source` filter; a separate opt-in tool (e.g. `search_conversations`) vs a parameter on `search_knowledge`; which sources (native, Claude, Claude Code, ChatGPT) are exposed; whether JARVIS keeps its own index or reads Cortex
+- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code. **Next (prepared 2026-10-05).** Starting point: Cortex has a `Source` plugin protocol (`src/cortex/sources/base.py`: discover, needs_update, extract, compute_state) with one Obsidian source, one ChromaDB collection (`knowledge`) and two MCP tools (`search_knowledge`, `index_status`). The archive is 358 conversation JSON files (schema v1.0.0) in `03 Resources/AI Conversation Archive/conversations/` (`paths.conversations_dir`); JARVIS's own index embeds user→assistant pairs with a per-pair `doc_hash` (`packages/core/rag/indexer.py`). Open decisions: separate collection or a `source` filter; a separate opt-in tool (e.g. `search_conversations`) vs a parameter on `search_knowledge`; which sources (native, Claude, Claude Code, ChatGPT) are exposed; whether JARVIS keeps its own index or reads Cortex
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
 ### HUB-03 — Data homes, memory in the vault, import hub
@@ -552,7 +552,7 @@ Extend the server beyond search to JARVIS's curated context.
 
 Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
 
-- [x] Data-home path: `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (2026-10-02)
+- [x] Data-home path: `/Users/marcobraun/Documents/03 Resources/JARVIS/data` (2026-10-02); conversations and raw exports moved to `03 Resources/AI Conversation Archive/` on 2026-10-05 (ADR-041 amendment)
 - [x] Mark the folder "Keep Downloaded" in Finder (or turn off "Optimize Mac Storage") before anything moves *(S)* ✅ 2026-10-02
 - [x] Atomic conversation saves first (AON-01 item), so iCloud never uploads a half-written file *(S)* ✅ 2026-10-02
 - [x] Scripts, importers and the GUI token read their paths from settings (`paths.*`, new `gui.token_file`) instead of defaulting to `data/…` *(S)* ✅ 2026-10-02
