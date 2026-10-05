@@ -1,14 +1,15 @@
 """Propose memory changes from a Claude memory export; apply only what you approve.
 
 Archives the raw export in ``paths.imports_dir`` (without login history and account data), asks
-a model for proposals per memory note, then shows each one: [y]es applies it, [e]dit applies your
-own wording, [n]o rejects it, [q]uit stops. Conflicts (facts older than the note) are only shown.
+a model for proposals per memory note, then shows each one: [y]es applies it, [e]dit opens the
+proposed text for editing, [n]o rejects it, [q]uit stops. Conflicts (facts older than the note) are only shown.
 Every decision is logged next to the archived export.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import sys
 from datetime import date
 from pathlib import Path
@@ -17,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+from prompt_toolkit import PromptSession
 
 from packages.core.frontmatter import write_atomic
 from packages.core.importers.claude_memory import (
@@ -94,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         return str(response.choices[0].message.content or "")
 
     today = date.today().isoformat()
+    prompts: PromptSession[str] = PromptSession()
     counts = {"applied": 0, "edited": 0, "rejected": 0, "conflict": 0, "stale": 0}
 
     for section in PROPOSABLE_SECTIONS:
@@ -124,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             answer = ""
             while answer not in ("y", "n", "e", "q"):
-                answer = input("  apply? [y]es / [e]dit / [n]o / [q]uit: ").strip().lower()
+                answer = prompts.prompt("  apply? [y]es / [e]dit / [n]o / [q]uit: ").strip().lower()
             if answer == "q":
                 print("\nStopped. Decisions so far are applied and logged.")
                 print(f"  {counts}")
@@ -133,26 +136,26 @@ def main(argv: list[str] | None = None) -> int:
                 counts["rejected"] += 1
                 log_decision(log_file, proposal, "rejected", model=model, applied_text=None)
                 continue
-            own_words = answer == "e"
-            if own_words:
-                typed = input("  your wording: ").strip()
-                if not typed:
+            to_apply = proposal
+            if answer == "e":
+                # Pre-filled and pasteable; a bullet is one line, so pasted line breaks are collapsed.
+                edited = " ".join(prompts.prompt("  edit: ", default=proposal.new).split())
+                if not edited:
                     counts["rejected"] += 1
                     log_decision(log_file, proposal, "rejected", model=model, applied_text=None)
                     continue
-                proposal.new = typed
+                to_apply = dataclasses.replace(proposal, new=edited)
             current = note_path.read_text(encoding="utf-8")
-            updated = apply_proposal(current, proposal, today=today, own_words=own_words)
+            updated = apply_proposal(current, to_apply, today=today)
             if updated is None:
                 print("  the note changed and this line no longer fits; skipped")
                 counts["stale"] += 1
                 log_decision(log_file, proposal, "stale", model=model, applied_text=None)
                 continue
             write_atomic(note_path, updated)
-            counts["edited" if own_words else "applied"] += 1
-            log_decision(
-                log_file, proposal, "edited" if own_words else "applied", model=model, applied_text=proposal.new
-            )
+            decision = "edited" if to_apply is not proposal else "applied"
+            counts[decision] += 1
+            log_decision(log_file, proposal, decision, model=model, applied_text=to_apply.new)
 
     print(f"\nDone. {counts}")
     if not args.dry_run:

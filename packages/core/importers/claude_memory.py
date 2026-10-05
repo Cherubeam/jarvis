@@ -280,11 +280,11 @@ def _bullet_text(line: str) -> str | None:
     return None
 
 
-def apply_proposal(note_text: str, proposal: Proposal, *, today: str, own_words: bool = False) -> str | None:
+def apply_proposal(note_text: str, proposal: Proposal, *, today: str) -> str | None:
     """Return the note with the proposal applied, or None if it no longer fits the note.
 
     Only the lines involved change. The frontmatter gets ``updated: today``, ``claude-export`` in
-    ``source`` and, unless the user typed the text, ``prose`` in ``assist`` (P7).
+    ``source`` and ``prose`` in ``assist`` (P7): the text starts as model wording, edited or not.
     """
     if not proposal.appliable:
         return None
@@ -302,7 +302,7 @@ def apply_proposal(note_text: str, proposal: Proposal, *, today: str, own_words:
     else:
         lines = _insert_under_heading(lines, body_start, proposal.heading, f"- {proposal.new}")
 
-    return _update_frontmatter("\n".join(lines), today=today, add_prose=not own_words)
+    return _update_frontmatter("\n".join(lines), today=today)
 
 
 def _body_start(lines: list[str]) -> int:
@@ -328,7 +328,7 @@ def _insert_under_heading(lines: list[str], body_start: int, heading: str, bulle
     return [*lines[:insert_at], bullet, *lines[insert_at:]]
 
 
-def _update_frontmatter(text: str, *, today: str, add_prose: bool) -> str:
+def _update_frontmatter(text: str, *, today: str) -> str:
     """Edit the frontmatter as text, so fields and formatting Obsidian shows stay as they are."""
     lines = text.split("\n")
     end = _body_start(lines) - 1
@@ -363,8 +363,7 @@ def _update_frontmatter(text: str, *, today: str, add_prose: bool) -> str:
 
     set_scalar("updated", today)
     add_list_item("source", SOURCE_TAG)
-    if add_prose:
-        add_list_item("assist", "prose")
+    add_list_item("assist", "prose")
     return "\n".join([lines[0], *head, *lines[end:]])
 
 

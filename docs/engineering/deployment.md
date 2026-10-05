@@ -360,9 +360,9 @@ uv run python scripts/import_claude_memory.py ~/Downloads/claude-export         
 - A model (`models.presets.quality`, override with `--model`) drafts add/update proposals per
   note and drops facts the note already covers. A fact older than the note's `updated` date is
   shown as a conflict and never applied.
-- Each proposal asks `[y]es / [e]dit / [n]o / [q]uit`; `e` applies your own wording. Applying
-  re-reads the note, changes only the lines involved, sets `updated`, adds `claude-export` to
-  `source` and, unless you typed the text, `prose` to `assist`.
+- Each proposal asks `[y]es / [e]dit / [n]o / [q]uit`; `e` opens the proposed text for editing
+  (paste works; line breaks are collapsed). Applying re-reads the note, changes only the lines
+  involved, sets `updated`, adds `claude-export` to `source` and `prose` to `assist`.
 - The raw export is copied once to `<paths.imports_dir>/claude/<export date>/export/` (without
   login history and account data), and every decision is appended to `memory-decisions.jsonl`
   next to it. Point `paths.imports_dir` at the data home in `config/local.yaml`.
