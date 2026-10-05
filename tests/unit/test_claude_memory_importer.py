@@ -278,14 +278,14 @@ class TestApplyProposal:
         assert head.endswith("assist:\n  - prose")
         assert "aliases:\ntags:" in head  # untouched fields keep their formatting
 
-    def test_own_words_not_marked_prose_and_no_duplicates(self):
-        once = apply_proposal(NOTE, _proposal(), today="2026-10-05", own_words=True)
+    def test_repeated_apply_adds_no_duplicates(self):
+        once = apply_proposal(NOTE, _proposal(), today="2026-10-05")
         assert once is not None
-        assert "assist" not in once
         twice = apply_proposal(once, _proposal(new="Rust"), today="2026-10-06")
         assert twice is not None
         assert twice.count("claude-export") == 1
         assert twice.count("  - prose") == 1
+        assert "updated: 2026-10-06" in twice
 
     def test_inline_list_converted(self):
         note = "---\nupdated: 2026-01-01\nsource: [marco, readwise]\nassist: prose\n---\n## Skills\n- Python\n"

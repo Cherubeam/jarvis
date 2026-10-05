@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Memory importer's edit prompt (2026-10-05)
+
+- **[e]dit opens the proposed text for editing** instead of an empty line,
+  and pasting works: the review uses prompt_toolkit instead of `input()`,
+  which left a pasted line glued to the typed text and uneditable (seen in
+  the first live review). Pasted line breaks are collapsed, since a bullet is
+  one line.
+- **The log keeps the model's proposal** next to the edited text; before, the
+  edit overwrote it, so `applied_text` was missing for edited entries.
+- Edited bullets are marked `assist: prose` too: they start as model wording.
+
 ### Fixed — Memory importer said "found 0" when the export folder wasn't readable (2026-10-05)
 
 - `find_memory_file` used `glob`, which returns nothing on a PermissionError,
