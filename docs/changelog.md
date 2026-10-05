@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Claude memory imports propose instead of overwriting (HUB-03, 2026-10-05)
+
+- **`scripts/import_claude_memory.py`** reads the 2026-09 Claude memory export
+  and proposes changes to the memory notes in the vault. A model (the quality
+  preset) drafts add/update proposals per note and drops facts the note
+  already covers; code checks every proposal (known fact ids, an `old` line
+  that exists in the note) and marks facts older than the note's `updated`
+  date as conflicts, which are shown and never applied.
+- **Every change needs a yes** (`[y]es / [e]dit / [n]o / [q]uit`; edit
+  applies your own wording) — human oversight, EU AI Act Art. 14. Applying
+  re-reads the note, changes only the lines involved and updates `updated`,
+  `source` (`claude-export`) and `assist` (`prose`, unless you typed it, P7).
+  Every decision is appended to a JSONL log next to the archived export —
+  record-keeping, Art. 12.
+- **Raw exports are kept** in the new `paths.imports_dir`, without login
+  history and account data (ADR-041). A test caught that the first exclude
+  pattern missed the real folder name `light_metadata-000`.
+- Dry run on the real export: 17 proposals for three notes and 2 conflicts
+  for Current Focus (updated 2026-10-04, after the export's facts).
+
+### Removed
+
+- **`scripts/import_claude_context.py`** and `packages/core/importers/claude_context.py`:
+  they overwrote the context files without comparing dates and read an export
+  format Claude no longer produces.
+
 ### Added — Subagent reports in Claude Code imports (HUB-03, 2026-10-05)
 
 - The report a subagent returns is now kept verbatim instead of a size stub:
