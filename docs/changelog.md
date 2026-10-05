@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Memory importer said "found 0" when the export folder wasn't readable (2026-10-05)
+
+- `find_memory_file` used `glob`, which returns nothing on a PermissionError,
+  so a terminal without macOS access to Downloads got "Expected one file …,
+  found 0" for a folder that had the file. It now lists the folder directly
+  and names the permission problem and where to grant access.
+
 ### Added — Claude memory imports propose instead of overwriting (HUB-03, 2026-10-05)
 
 - **`scripts/import_claude_memory.py`** reads the 2026-09 Claude memory export
