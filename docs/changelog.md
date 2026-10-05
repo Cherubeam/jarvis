@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Claude Code session importer (HUB-03, 2026-10-05)
+
+- **`scripts/import_claude_code.py`** converts Claude Code transcripts
+  (`~/.claude/projects/*/*.jsonl`) into the conversation archive, tagged
+  `imported`, `claude-code` and `project:<repo>`. One turn is one typed prompt
+  plus everything the assistant did until the next one; harness-injected lines
+  (meta lines, task notifications, local-command echoes, compaction summaries)
+  are skipped, slash commands become `/name args`.
+- **What's kept:** prompts, replies, thinking, and each tool call as one line
+  (`[Tool: Bash] git status`). Tool results become a size stub, so the archive
+  and the RAG index hold what was said, not file dumps (35 MB of tool output
+  across the 123 sessions on disk). Token usage goes into turn metadata, not
+  `usage`, so imports never count as JARVIS spend. Subagent transcripts are
+  counted, not imported.
+- **Titles** come from the desktop app's session list, matched by
+  `cliSessionId` or, for entries without one, by cwd and start time (the
+  entry precedes the transcript by 0.8–1.5 s). All 92 desktop sessions matched
+  in a dry run against the real transcripts.
+- Re-runs rewrite a session in place when its transcript grew and skip it
+  otherwise. Known gap (unchanged): the RAG index doesn't re-index a
+  conversation that a later import updated.
+
 ### Fixed — GUI vault-write approvals hung, and a second write replayed the first decision (2026-10-04)
 
 - **Approvals and cancels now reach a running turn.** The WebSocket loop

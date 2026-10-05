@@ -198,6 +198,9 @@ uv run python scripts/import_claude.py imports/conversations.json --dry-run
 uv run python scripts/import_claude.py imports/conversations.json
 uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
 
+# Claude Code sessions (reads ~/.claude/projects and the desktop app's session titles)
+uv run python scripts/import_claude_code.py --dry-run
+uv run python scripts/import_claude_code.py --date-from 2026-10-01
 ```
 
 Don't run `scripts/import_claude_context.py` (Claude memories and projects): it
@@ -205,7 +208,7 @@ overwrites your context files without comparing dates and reads an export format
 Claude no longer produces. A replacement that proposes changes for approval is
 planned ([ADR-041](docs/product/decisions.md#adr-041-where-each-kind-of-data-lives)).
 
-Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude), or skips unchanged conversations (ChatGPT).
+Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude, Claude Code), or skips unchanged conversations (ChatGPT). Claude Code imports keep prompts, replies, thinking and one-line tool-call summaries; tool output is reduced to its size, and subagent transcripts are not imported.
 
 ### Connecting MCP Servers
 
