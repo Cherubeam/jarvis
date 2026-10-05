@@ -342,6 +342,31 @@ assist:                       # P7: present when the note holds AI-written prose
 ---
 ```
 
+### Importing Claude memory
+
+`scripts/import_claude_memory.py <export folder>` reads a Claude data export (the unzipped
+folder with `memories/`, 2026-09 format) and proposes changes to the memory notes; it never
+overwrites them ([ADR-041](../product/decisions.md#adr-041-where-each-kind-of-data-lives)).
+
+```bash
+uv run python scripts/import_claude_memory.py ~/Downloads/claude-export --dry-run   # show proposals only
+uv run python scripts/import_claude_memory.py ~/Downloads/claude-export             # review and apply
+```
+
+- Facts about you are routed to one note each (profile, people and areas → professional;
+  communication → preferences; recent work → focus; other topics → personal; table in
+  `packages/core/importers/claude_memory.py`). Project memories wait for the project mapping;
+  the soul and the reading profile are never touched.
+- A model (`models.presets.quality`, override with `--model`) drafts add/update proposals per
+  note and drops facts the note already covers. A fact older than the note's `updated` date is
+  shown as a conflict and never applied.
+- Each proposal asks `[y]es / [e]dit / [n]o / [q]uit`; `e` applies your own wording. Applying
+  re-reads the note, changes only the lines involved, sets `updated`, adds `claude-export` to
+  `source` and, unless you typed the text, `prose` to `assist`.
+- The raw export is copied once to `<paths.imports_dir>/claude/<export date>/export/` (without
+  login history and account data), and every decision is appended to `memory-decisions.jsonl`
+  next to it. Point `paths.imports_dir` at the data home in `config/local.yaml`.
+
 ### Backup Strategy
 
 **What to back up:**

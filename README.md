@@ -203,10 +203,9 @@ uv run python scripts/import_claude_code.py --dry-run
 uv run python scripts/import_claude_code.py --date-from 2026-10-01
 ```
 
-Don't run `scripts/import_claude_context.py` (Claude memories and projects): it
-overwrites your context files without comparing dates and reads an export format
-Claude no longer produces. A replacement that proposes changes for approval is
-planned ([ADR-041](docs/product/decisions.md#adr-041-where-each-kind-of-data-lives)).
+Claude memory exports don't overwrite anything: `scripts/import_claude_memory.py <export folder>`
+proposes changes to your memory notes and applies only what you approve
+([how it works](docs/engineering/deployment.md#importing-claude-memory)).
 
 Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude, Claude Code), or skips unchanged conversations (ChatGPT). Claude Code imports keep prompts, replies, thinking and one-line tool-call summaries; tool output is reduced to its size except the reports subagents return, and subagent transcripts are not imported.
 
