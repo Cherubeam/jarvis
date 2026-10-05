@@ -103,6 +103,7 @@ class TestExtractPairs:
             "user_snippet",
             "assistant_snippet",
             "title",
+            "doc_hash",
         }
         assert set(pairs[0]["metadata"].keys()) == expected_keys
 
@@ -242,6 +243,7 @@ class TestExtractPairs:
             "user_snippet",
             "assistant_snippet",
             "title",
+            "doc_hash",
             "chunk_index",
             "total_chunks",
         }
@@ -273,18 +275,23 @@ class TestExtractPairs:
 
 @pytest.mark.unit
 class TestIndexNew:
-    def _setup(self, tmp_path, already_indexed_ids=None):
-        """Return (indexer, mock_collection) with mocked chromadb."""
+    def _setup(self, tmp_path, already_indexed_ids=None, existing_metas=None):
+        """Return (indexer, mock_collection) with mocked chromadb.
+
+        ``already_indexed_ids`` indexes pair 0 of each conversation without a hash (as before
+        hashes existed); ``existing_metas`` gives the full metadata list instead.
+        """
         mock_chroma_module = MagicMock()
         mock_collection = MagicMock()
-        mock_collection.count.return_value = len(already_indexed_ids or [])
 
-        # Simulate _get_indexed_conv_ids and _migrate_date_metadata returning the pre-existing set
-        existing_ids = [f"id_{i}" for i in range(len(already_indexed_ids or []))]
-        existing_metas = [
-            {"conv_id": cid, "session_date": "2026-01-01", "session_date_int": 20260101}
-            for cid in (already_indexed_ids or [])
-        ]
+        # Simulate _get_indexed_pairs and _migrate_date_metadata returning the pre-existing records
+        if existing_metas is None:
+            existing_metas = [
+                {"conv_id": cid, "session_date": "2026-01-01", "session_date_int": 20260101, "pair_index": 0}
+                for cid in (already_indexed_ids or [])
+            ]
+        existing_ids = [f"id_{i}" for i in range(len(existing_metas))]
+        mock_collection.count.return_value = len(existing_metas)
         mock_collection.get.return_value = {"ids": existing_ids, "metadatas": existing_metas}
         mock_chroma_module.PersistentClient.return_value.get_or_create_collection.return_value = mock_collection
 
@@ -394,6 +401,92 @@ class TestIndexNew:
         assert n_new == 0
         mock_embed.assert_not_called()
         mock_collection.upsert.assert_not_called()
+
+    def _indexed_meta(self, indexer, conv: dict, pair_index: int) -> dict:
+        """Metadata of a pair exactly as index_new would have stored it."""
+        pair = indexer._extract_pairs(conv)[pair_index]
+        return {**pair["metadata"]}
+
+    def test_appended_pair_embedded_alone(self, tmp_path):
+        conv_id = "conv_20260220_100000_abc123"
+        old = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1")]))
+        probe, _ = self._setup(tmp_path)
+        meta = self._indexed_meta(probe, old, 0)
+        indexer, mock_collection = self._setup(tmp_path, existing_metas=[meta])
+
+        grown = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1"), ("Q2", "A2")]))
+        self._write_conv(tmp_path, "2026-02-20_10-00-00.json", grown)
+
+        with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            n = indexer.index_new(tmp_path)
+
+        assert n == 1
+        assert mock_embed.call_args.kwargs["input"] == ["User: Q2\n\nAssistant: A2"]
+        assert mock_collection.upsert.call_args.kwargs["ids"] == [f"{conv_id}_pair_1"]
+        mock_collection.delete.assert_not_called()
+
+    def test_changed_pair_reembedded_and_old_chunks_deleted(self, tmp_path):
+        conv_id = "conv_20260220_100000_abc123"
+        old = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1 partial")]))
+        probe, _ = self._setup(tmp_path)
+        meta = self._indexed_meta(probe, old, 0)
+        indexer, mock_collection = self._setup(tmp_path, existing_metas=[meta])
+
+        finished = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1 partial, then done")]))
+        self._write_conv(tmp_path, "2026-02-20_10-00-00.json", finished)
+
+        with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            n = indexer.index_new(tmp_path)
+
+        assert n == 1
+        mock_collection.delete.assert_called_once_with(ids=["id_0"])
+        upserted_meta = mock_collection.upsert.call_args.kwargs["metadatas"][0]
+        assert upserted_meta["doc_hash"] != meta["doc_hash"]
+        assert len(upserted_meta["doc_hash"]) == 16
+
+    def test_unchanged_hashed_pair_skipped(self, tmp_path):
+        conv_id = "conv_20260220_100000_abc123"
+        conv = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1")]))
+        probe, _ = self._setup(tmp_path)
+        indexer, mock_collection = self._setup(tmp_path, existing_metas=[self._indexed_meta(probe, conv, 0)])
+        self._write_conv(tmp_path, "2026-02-20_10-00-00.json", conv)
+
+        with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
+            assert indexer.index_new(tmp_path) == 0
+
+        mock_embed.assert_not_called()
+        mock_collection.delete.assert_not_called()
+
+    def test_pair_indexed_without_hash_is_trusted(self, tmp_path):
+        """Pairs indexed before doc_hash existed are not re-embedded even if the text differs."""
+        conv_id = "conv_20260220_100000_abc123"
+        indexer, mock_collection = self._setup(tmp_path, already_indexed_ids=[conv_id])
+        conv = _make_v1_conversation(conv_id, _make_messages([("Q1", "changed answer")]))
+        self._write_conv(tmp_path, "2026-02-20_10-00-00.json", conv)
+
+        with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
+            assert indexer.index_new(tmp_path) == 0
+
+        mock_embed.assert_not_called()
+
+    def test_multi_chunk_pair_deletes_every_old_chunk(self, tmp_path):
+        conv_id = "conv_20260220_100000_abc123"
+        metas = [
+            {"conv_id": conv_id, "pair_index": 0, "doc_hash": "old", "chunk_index": 0, "session_date_int": 1},
+            {"conv_id": conv_id, "pair_index": 0, "doc_hash": "old", "chunk_index": 1, "session_date_int": 1},
+            {"conv_id": "other", "pair_index": 0, "doc_hash": "x", "session_date_int": 1},
+        ]
+        indexer, mock_collection = self._setup(tmp_path, existing_metas=metas)
+        conv = _make_v1_conversation(conv_id, _make_messages([("Q1", "A1")]))
+        self._write_conv(tmp_path, "2026-02-20_10-00-00.json", conv)
+
+        with patch("packages.core.rag.indexer.litellm.embedding") as mock_embed:
+            mock_embed.return_value = MagicMock(data=[{"embedding": [0.1]}])
+            assert indexer.index_new(tmp_path) == 1
+
+        mock_collection.delete.assert_called_once_with(ids=["id_0", "id_1"])
 
     def test_returns_zero_for_empty_directory(self, tmp_path):
         indexer, mock_collection = self._setup(tmp_path)
