@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-10-05
+
+### Decided — One conversation index (HUB-02, 2026-10-05)
+
+- Cortex will hold the only index of the conversation archive. JARVIS's own
+  RAG index (`packages/core/rag/indexer.py`,
+  `~/Library/Application Support/JARVIS/indexes/rag`) is retired once
+  Cortex's conversation search covers what `recall_conversations` does today
+  (query, date range, result count). Until then both exist. Recorded in the
+  roadmap (HUB-02); nothing changed in code yet.
+
 ### Changed — The conversation archive has its own folder (2026-10-05)
 
 - Conversations and raw exports moved from the JARVIS data home to
@@ -85,6 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   they overwrote the context files without comparing dates and read an export
   format Claude no longer produces.
 
+## [0.31.0] - 2026-10-05
+
 ### Added — Subagent reports in Claude Code imports (HUB-03, 2026-10-05)
 
 - The report a subagent returns is now kept verbatim instead of a size stub:
@@ -125,6 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in a dry run against the real transcripts.
 - Re-runs rewrite a session in place when its transcript grew and skip it
   otherwise.
+
+## [0.30.1] - 2026-10-05
 
 ### Fixed — GUI vault-write approvals hung, and a second write replayed the first decision (2026-10-04)
 
