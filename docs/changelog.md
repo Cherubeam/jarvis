@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Raw exports moved out of the repo (2026-10-05)
+
+- The seven raw exports from 2026-02-07 and 2026-04-09 (ChatGPT, Claude
+  conversations, memories, projects; 34 MB, never committed) moved from the
+  repo's `imports/` folder to the data home under `paths.imports_dir`, in the
+  archive layout `<source>/<export date>/export/` (ADR-041). The README
+  examples no longer point at `imports/`; the `.gitignore` entry stays as a
+  guard.
+
 ### Added — Claude project memories go to their vault notes (HUB-03, 2026-10-05)
 
 - A Claude project maps to its vault note by ID: `claude-project: <uuid>` in

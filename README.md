@@ -189,21 +189,23 @@ rm -rf .venv && uv sync
 
 ```bash
 # ChatGPT
-uv run python scripts/import_chatgpt.py imports/conversations.json --dry-run
-uv run python scripts/import_chatgpt.py imports/conversations.json
-uv run python scripts/import_chatgpt.py imports/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
+uv run python scripts/import_chatgpt.py ~/Downloads/chatgpt-export/conversations.json --dry-run
+uv run python scripts/import_chatgpt.py ~/Downloads/chatgpt-export/conversations.json
+uv run python scripts/import_chatgpt.py ~/Downloads/chatgpt-export/conversations.json --date-from 2025-01-01 --model gpt-4o --include-archived
 
 # Claude conversations
-uv run python scripts/import_claude.py imports/conversations.json --dry-run
-uv run python scripts/import_claude.py imports/conversations.json
-uv run python scripts/import_claude.py imports/conversations.json --date-from 2025-01-01
+uv run python scripts/import_claude.py ~/Downloads/claude-export/conversations.json --dry-run
+uv run python scripts/import_claude.py ~/Downloads/claude-export/conversations.json
+uv run python scripts/import_claude.py ~/Downloads/claude-export/conversations.json --date-from 2025-01-01
 
 # Claude Code sessions (reads ~/.claude/projects and the desktop app's session titles)
 uv run python scripts/import_claude_code.py --dry-run
 uv run python scripts/import_claude_code.py --date-from 2026-10-01
 ```
 
-Claude memory exports don't overwrite anything: `scripts/import_claude_memory.py <export folder>`
+Raw exports are kept in `paths.imports_dir` (`<source>/<export date>/export/`) as the record
+of origin; the memory importer archives a Claude export there on its first run. Claude memory
+exports don't overwrite anything: `scripts/import_claude_memory.py <export folder>`
 proposes changes to your memory notes and applies only what you approve
 ([how it works](docs/engineering/deployment.md#importing-claude-memory)).
 
