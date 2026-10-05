@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Subagent reports in Claude Code imports (HUB-03, 2026-10-05)
+
+- The report a subagent returns is now kept verbatim instead of a size stub:
+  as the `Agent`/`Task` tool result, or for a background subagent, as the
+  `<result>` of the task notification that delivers it. Other tool results
+  and background shell output stay stubs. On the real transcripts: 96 reports,
+  0.86 MB; subagent transcripts themselves (54 MB) are still not imported.
+
+### Fixed — Conversations updated after indexing reach recall (2026-10-05)
+
+- **The RAG index re-embeds pairs that were added or changed.** It used to
+  skip any conversation ID it had seen, so turns added by a resumed session or
+  a later import (Claude, Claude Code) never became searchable. Each pair's
+  chunks now carry a hash of its text; on startup only new or changed pairs
+  are embedded, and the old chunks of a changed pair are deleted. Pairs
+  indexed before this change have no hash and are trusted as they are, so
+  there is no one-time re-embed. Checked against a real ChromaDB with fake
+  embeddings: an unchanged run embeds nothing, one edited and one appended
+  pair embed exactly 2 chunks.
+
 ### Added — Claude Code session importer (HUB-03, 2026-10-05)
 
 - **`scripts/import_claude_code.py`** converts Claude Code transcripts
@@ -28,8 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entry precedes the transcript by 0.8–1.5 s). All 92 desktop sessions matched
   in a dry run against the real transcripts.
 - Re-runs rewrite a session in place when its transcript grew and skip it
-  otherwise. Known gap (unchanged): the RAG index doesn't re-index a
-  conversation that a later import updated.
+  otherwise.
 
 ### Fixed — GUI vault-write approvals hung, and a second write replayed the first decision (2026-10-04)
 
