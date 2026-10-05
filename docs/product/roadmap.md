@@ -563,10 +563,11 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [x] Memory folder in the vault: context files moved to `07 – Personal System/JARVIS/` (`JARVIS Soul.md`, `Memory/*.md`) via `paths.context_dir` and `paths.context_files`, with a read-write access rule for that folder only; the system prompt built from the vault is byte-identical to the old one *(M)* ✅ 2026-10-03
 - [x] Memory notes carry `created`/`updated`/`source`/`review-by` frontmatter (schema in `docs/engineering/deployment.md#context-files`); invalid frontmatter now logs a warning; the unused `paths.learned_facts` setting is removed *(S)* ✅ 2026-10-03
 - [x] Brainstorm note (written by Claude, 2026-04-18) moved to the JARVIS project folder `02 – Projects/Private/JARVIS/Brainstorms/` with discovery frontmatter (`type`, `status`, `summary`, `source`, `assist: [prose]`) *(S)* ✅ 2026-10-03
+- [x] RAG re-embeds conversation pairs that were added or changed after indexing (per-pair `doc_hash`), so re-imports and resumed sessions reach recall *(S)* ✅ 2026-10-05
 - [ ] Replace `claude_context.py` (do not run it: it overwrites context files and reads the old export format) with an importer that reads the 2026-09 memory-file format and turns changes into dated proposals for approval (Art. 14) *(M)*
 - [ ] Keep raw exports in the data home; skip login history and account data *(S)*
 - [ ] Map Claude projects to vault notes by ID instead of keeping project copies *(S)*
-- [x] Claude Code session importer (`scripts/import_claude_code.py`): one turn per typed prompt, tool calls as one-line summaries, tool results as size stubs, subagents counted but not imported; desktop titles matched by `cliSessionId` or by cwd and start time (≤ 2 s) for the seven entries without one. Transcripts are kept 365 days since 2026-10-04 (`cleanupPeriodDays`) *(M)* ✅ 2026-10-05
+- [x] Claude Code session importer (`scripts/import_claude_code.py`): one turn per typed prompt, tool calls as one-line summaries, tool results as size stubs except subagent reports (kept verbatim), subagent transcripts counted but not imported; desktop titles matched by `cliSessionId` or by cwd and start time (≤ 2 s) for the seven entries without one. Transcripts are kept 365 days since 2026-10-04 (`cleanupPeriodDays`) *(M)* ✅ 2026-10-05
 
 ### Source policy — index, don't proxy (2026-08-20)
 

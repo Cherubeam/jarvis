@@ -208,7 +208,7 @@ overwrites your context files without comparing dates and reads an export format
 Claude no longer produces. A replacement that proposes changes for approval is
 planned ([ADR-041](docs/product/decisions.md#adr-041-where-each-kind-of-data-lives)).
 
-Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude, Claude Code), or skips unchanged conversations (ChatGPT). Claude Code imports keep prompts, replies, thinking and one-line tool-call summaries; tool output is reduced to its size, and subagent transcripts are not imported.
+Imports are idempotent — re-running safely updates existing conversations with new messages and title changes (Claude, Claude Code), or skips unchanged conversations (ChatGPT). Claude Code imports keep prompts, replies, thinking and one-line tool-call summaries; tool output is reduced to its size except the reports subagents return, and subagent transcripts are not imported.
 
 ### Connecting MCP Servers
 

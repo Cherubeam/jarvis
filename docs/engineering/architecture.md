@@ -400,7 +400,7 @@ StreamHandler supports both streaming and non-streaming modes (`streaming` flag)
 **Location**: `packages/core/rag/`
 
 **Modules:**
-- `indexer.py`: `ConversationIndexer` — recursively scans the conversations folder (`paths.conversations_dir`, year subfolders), skips already-indexed conv_ids, embeds message-pair chunks via LiteLLM, upserts into ChromaDB. A conversation updated by a later import is not re-indexed (only new IDs are)
+- `indexer.py`: `ConversationIndexer` — recursively scans the conversations folder (`paths.conversations_dir`, year subfolders), embeds message-pair chunks via LiteLLM, upserts into ChromaDB. Each pair's chunks carry a `doc_hash`; on startup only pairs that are new or whose text changed (a resumed session, a later import) are re-embedded, and their old chunks deleted. Pairs indexed before hashes existed are trusted as they are
 - `embed_limits.py`: token limits for the embedding model, counted with its own tokenizer (`cl100k_base`, bundled with LiteLLM): chunks of at most 8,000 tokens with 800 overlap, queries cut to 8,000
 - `searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — embeds a query, runs cosine similarity search, returns ranked results with optional date range filter
 
