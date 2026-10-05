@@ -2,10 +2,13 @@
 Conversation indexer — embeds and stores conversation message-pairs in ChromaDB.
 
 Scans the conversations folder (``paths.conversations_dir``, including year
-subfolders) on startup, skips already-indexed conversations, and upserts new
-chunks into the "conversations" collection.
+subfolders) on startup and upserts chunks into the "conversations" collection.
+Each pair's chunks carry a hash of the pair's text (``doc_hash``), so pairs that
+a resumed session or a later import added or changed are re-embedded; unchanged
+pairs are skipped. Pairs indexed before hashes existed are trusted as they are.
 """
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -50,21 +53,22 @@ class ConversationIndexer:
         )
 
     def index_new(self, conversations_dir: str | Path) -> int:
-        """Scan conversations_dir, embed and index any not yet in ChromaDB.
+        """Scan conversations_dir and embed every pair that is new or changed since it was indexed.
 
-        Returns the number of newly indexed conversations.
+        Returns the number of conversations with at least one newly embedded pair.
         """
         conversations_dir = Path(conversations_dir)
         if not conversations_dir.exists():
             return 0
 
         self._migrate_date_metadata()
-        already_indexed = self._get_indexed_conv_ids()
+        indexed = self._get_indexed_pairs()
 
-        new_count = 0
+        touched = 0
         all_ids: list[str] = []
         all_documents: list[str] = []
         all_metadatas: list[dict[str, Any]] = []
+        stale_ids: list[str] = []
 
         for filepath in sorted(conversations_dir.rglob("*.json")):
             conversation = self._load_conversation(filepath)
@@ -72,19 +76,32 @@ class ConversationIndexer:
                 continue
 
             conv_id = conversation.get("id") or filepath.stem
-            if conv_id in already_indexed:
-                continue
+            known = indexed.get(conv_id, {})
 
-            pairs = self._extract_pairs(conversation, conv_id=conv_id)
+            pairs = [
+                pair
+                for pair in self._extract_pairs(conversation, conv_id=conv_id)
+                if self._needs_embedding(pair["metadata"], known)
+            ]
             if not pairs:
                 continue
+
+            for pair_index in {pair["metadata"]["pair_index"] for pair in pairs}:
+                if pair_index in known:
+                    stale_ids.extend(known[pair_index][1])
 
             for pair in pairs:
                 all_ids.append(pair["id"])
                 all_documents.append(pair["document"])
                 all_metadatas.append(pair["metadata"])
 
-            new_count += 1
+            touched += 1
+
+        if not all_ids:
+            return 0
+
+        if stale_ids:
+            self._collection.delete(ids=stale_ids)
 
         if not all_ids:
             return 0
@@ -103,7 +120,7 @@ class ConversationIndexer:
                 metadatas=batch_metas,
             )
 
-        return new_count
+        return touched
 
     def delete_conversation(self, conv_id: str) -> int:
         """Remove every chunk belonging to *conv_id* from ChromaDB.
@@ -177,6 +194,7 @@ class ConversationIndexer:
                     continue
 
                 doc = f"User: {user_text}\n\nAssistant: {assistant_text}"
+                doc_hash = hashlib.sha256(doc.encode()).hexdigest()[:16]
                 chunks = chunk_by_tokens(doc)
                 for chunk_idx, chunk in enumerate(chunks):
                     if len(chunks) == 1:
@@ -198,6 +216,7 @@ class ConversationIndexer:
                                 "user_snippet": user_text[:200],
                                 "assistant_snippet": assistant_text[:200],
                                 "title": title,
+                                "doc_hash": doc_hash,
                                 **chunk_meta,
                             },
                         }
@@ -240,12 +259,30 @@ class ConversationIndexer:
         if ids_to_update:
             self._collection.update(ids=ids_to_update, metadatas=metas_to_update)
 
-    def _get_indexed_conv_ids(self) -> set[str]:
-        """Return the set of conv_ids already in the ChromaDB collection."""
-        count = self._collection.count()
-        if count == 0:
-            return set()
+    @staticmethod
+    def _needs_embedding(meta: dict[str, Any], known: dict[int, tuple[str | None, list[str]]]) -> bool:
+        """True if the pair is new, or was indexed with a hash that no longer matches."""
+        entry = known.get(meta["pair_index"])
+        if entry is None:
+            return True
+        indexed_hash = entry[0]
+        return indexed_hash is not None and indexed_hash != meta["doc_hash"]
+
+    def _get_indexed_pairs(self) -> dict[str, dict[int, tuple[str | None, list[str]]]]:
+        """Map conv_id → pair_index → (doc_hash or None, chunk ids) for everything in ChromaDB."""
+        indexed: dict[str, dict[int, tuple[str | None, list[str]]]] = {}
+        if self._collection.count() == 0:
+            return indexed
 
         # Fetch all metadatas (no embeddings needed)
         result = self._collection.get(include=["metadatas"])
-        return {m["conv_id"] for m in result["metadatas"] if m.get("conv_id")}
+        for doc_id, meta in zip(result["ids"], result["metadatas"], strict=True):
+            conv_id = meta.get("conv_id")
+            if not conv_id:
+                continue
+            pair_index = int(meta.get("pair_index", 0))
+            pairs = indexed.setdefault(conv_id, {})
+            doc_hash, ids = pairs.get(pair_index, (meta.get("doc_hash"), []))
+            ids.append(doc_id)
+            pairs[pair_index] = (doc_hash, ids)
+        return indexed

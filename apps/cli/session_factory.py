@@ -313,7 +313,7 @@ def build_session(
             indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
             n_new = indexer.index_new(conversations_dir)
             if n_new:
-                print_system(f"[RAG] Indexed {n_new} new conversation(s).")
+                print_system(f"[RAG] Indexed {n_new} new or updated conversation(s).")
 
             shared_tools.append(make_conversation_recall_tool(db_path, embedding_model, rag_api_key))
 
