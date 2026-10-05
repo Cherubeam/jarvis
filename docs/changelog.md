@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Claude project memories go to their vault notes (HUB-03, 2026-10-05)
+
+- A Claude project maps to its vault note by ID: `claude-project: <uuid>` in
+  the note's frontmatter (added to the 7 `_Project Memory.md` notes, `updated`
+  left as is because the content didn't change). The memory importer now
+  proposes project facts to that note through the same review; JARVIS keeps
+  no project copies (ADR-041). `--only memory|projects` reviews one kind.
+- The model is told to follow a note's own maintenance rules (sections only
+  the owner edits) and returns a `position`: entries for a log ordered newest
+  first go to the top of the section, others to the bottom.
+- Dry run on the real export: all 7 notes found by ID, 18 proposals, mostly
+  dated decision-log entries in the notes' "decision — because" format.
+
 ### Fixed — Memory importer's edit prompt (2026-10-05)
 
 - **[e]dit opens the proposed text for editing** instead of an empty line,

@@ -51,8 +51,8 @@ Each step names its milestone below; this list only sets the order.
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
    since April restored). Claude Code session importer
-   and proposal-based memory importer (2026-10-05). Next: map Claude projects
-   to vault notes, then conversation recall via Cortex (HUB-02).
+   and proposal-based memory importer (2026-10-05). Claude projects map to
+   vault notes by ID (2026-10-05). Next: conversation recall via Cortex (HUB-02).
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
 4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
    daily use count as reasons (ADR-040), with a named learning goal.
@@ -547,7 +547,7 @@ Extend the server beyond search to JARVIS's curated context.
 
 ### HUB-03 — Data homes, memory in the vault, import hub
 
-**Status**: 🔄 In progress — data, indexes, machine state, context files and memory frontmatter done 2026-10-03; Claude Code session importer and proposal-based memory importer 2026-10-05; Claude project → vault mapping next · **Effort**: M · **Risk**: Medium (moves private data)
+**Status**: 🔄 In progress — data, indexes, machine state, context files and memory frontmatter done 2026-10-03; Claude Code session importer, proposal-based memory importer and project mapping 2026-10-05; HUB-02 conversation recall via Cortex next · **Effort**: M · **Risk**: Medium (moves private data)
 
 Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
 
@@ -566,7 +566,7 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [x] RAG re-embeds conversation pairs that were added or changed after indexing (per-pair `doc_hash`), so re-imports and resumed sessions reach recall *(S)* ✅ 2026-10-05
 - [x] Replace `claude_context.py` with `scripts/import_claude_memory.py`: reads the 2026-09 memory-file format, a model drafts add/update proposals per memory note, facts older than the note are conflicts, each change needs a yes in the CLI (Art. 14) and is logged (Art. 12); the old importer is removed *(M)* ✅ 2026-10-05
 - [x] Keep raw exports in the data home (`paths.imports_dir`); skip login history and account data. Done for Claude exports via the memory importer *(S)* ✅ 2026-10-05
-- [ ] Map Claude projects to vault notes by ID instead of keeping project copies *(S)*
+- [x] Map Claude projects to vault notes by ID instead of keeping project copies: `claude-project: <uuid>` in the note's frontmatter (7 project notes, 2026-10-05); the memory importer proposes project facts to that note *(S)* ✅ 2026-10-05
 - [x] Claude Code session importer (`scripts/import_claude_code.py`): one turn per typed prompt, tool calls as one-line summaries, tool results as size stubs except subagent reports (kept verbatim), subagent transcripts counted but not imported; desktop titles matched by `cliSessionId` or by cwd and start time (≤ 2 s) for the seven entries without one. Transcripts are kept 365 days since 2026-10-04 (`cleanupPeriodDays`) *(M)* ✅ 2026-10-05
 
 ### Source policy — index, don't proxy (2026-08-20)
