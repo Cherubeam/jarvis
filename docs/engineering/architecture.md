@@ -687,6 +687,7 @@ jarvis/
 │   │       ├── common.py           # Shared importer utilities
 │   │       ├── chatgpt.py          # ChatGPT export converter
 │   │       ├── claude.py           # Claude export converter
+│   │       ├── claude_code.py      # Claude Code session transcript converter
 │   │       └── claude_context.py   # Claude memories/projects importer
 │   ├── agents/                     # Agent implementations
 │   │   ├── base.py                 # BaseAgent + DataDrivenAgent classes
