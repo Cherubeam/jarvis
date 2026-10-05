@@ -132,6 +132,20 @@ class TestLoadExport:
         with pytest.raises(ValueError, match="Expected one file"):
             find_memory_file(tmp_path)
 
+    def test_find_memory_file_missing_folder(self, tmp_path):
+        with pytest.raises(ValueError, match="No memories folder"):
+            find_memory_file(tmp_path)
+
+    def test_find_memory_file_permission_error_is_explained(self, tmp_path, monkeypatch):
+        (tmp_path / "memories").mkdir()
+
+        def deny(self):
+            raise PermissionError("Operation not permitted")
+
+        monkeypatch.setattr(Path, "iterdir", deny)
+        with pytest.raises(ValueError, match=r"No permission to read .*Privacy & Security"):
+            find_memory_file(tmp_path)
+
     def test_export_date_from_manifest_or_today(self, tmp_path):
         assert export_date(_write_export(tmp_path)) == "2026-09-30"
         empty = tmp_path / "empty"

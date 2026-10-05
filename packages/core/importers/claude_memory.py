@@ -109,8 +109,21 @@ def parse_facts(content: str) -> list[str]:
 
 
 def find_memory_file(export_dir: Path) -> Path:
-    """The single memories JSON file of an export directory."""
-    candidates = sorted((export_dir / "memories").glob("*.json"))
+    """The single memories JSON file of an export directory.
+
+    Lists the folder with ``iterdir`` rather than ``glob``: glob hides a PermissionError (macOS
+    blocks terminals without access to Downloads) behind an empty result.
+    """
+    memories_dir = export_dir / "memories"
+    try:
+        candidates = sorted(p for p in memories_dir.iterdir() if p.suffix == ".json")
+    except PermissionError as e:
+        raise ValueError(
+            f"No permission to read {memories_dir}. On macOS, give your terminal app access to this "
+            "folder (System Settings > Privacy & Security > Files and Folders), or move the export."
+        ) from e
+    except FileNotFoundError as e:
+        raise ValueError(f"No memories folder in {export_dir}") from e
     if len(candidates) != 1:
         raise ValueError(f"Expected one file in {export_dir / 'memories'}, found {len(candidates)}")
     return candidates[0]
