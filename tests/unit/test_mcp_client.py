@@ -119,6 +119,40 @@ class TestMCPConnection:
             await conn.call_tool("echo", {"text": "hello"})
 
     @pytest.mark.asyncio
+    async def test_disconnect_exits_contexts_in_the_task_that_entered_them(self):
+        """anyio cancel scopes must be exited by the task that entered them."""
+        import asyncio
+
+        tasks: dict[str, object] = {}
+
+        class TaskCheckingCM:
+            async def __aenter__(self):
+                tasks["enter"] = asyncio.current_task()
+                return (MagicMock(), MagicMock())
+
+            async def __aexit__(self, *exc):
+                tasks["exit"] = asyncio.current_task()
+                return False
+
+        session_cm = AsyncMock()
+        session_cm.__aenter__ = AsyncMock(return_value=_make_mock_session())
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+
+        conn = MCPConnection("testserver", _make_stdio_settings())
+        with (
+            patch("packages.integrations.mcp.client.stdio_client", return_value=TaskCheckingCM()),
+            patch("packages.integrations.mcp.client.ClientSession", return_value=session_cm),
+        ):
+            # connect() and disconnect() run in different tasks, as in MCPManager.
+            await asyncio.create_task(conn.connect())
+            assert conn.connected is True
+            await asyncio.create_task(conn.disconnect())
+
+        assert tasks["enter"] is tasks["exit"]
+        assert conn.connected is False
+        assert conn.session is None
+
+    @pytest.mark.asyncio
     async def test_disconnect_resets_state(self):
         settings = _make_stdio_settings()
         conn = MCPConnection("testserver", settings)

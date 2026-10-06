@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — MCP servers no longer report a disconnect error on every exit (2026-10-06)
+
+- `/exit` printed "MCP server 'cortex' disconnect error: Attempted to exit
+  cancel scope in a different task than it was entered in" (same for `n8n`).
+  Each MCP connection was opened in one asyncio task and closed in another,
+  and anyio, which the MCP transports use, requires the same task. Each
+  connection now lives in one task (`MCPConnection._lifetime`) that opens the
+  transport, waits for `disconnect()`, and closes it. A new test checks that
+  enter and exit run in the same task; it fails on the old code. Real
+  shutdown errors are still logged, and no longer drowned out by this one.
+  The remaining "stdin closed…" lines on exit are n8n-mcp's own output.
+
 ### Changed — Conversation recall comes from Cortex (HUB-02, 2026-10-06)
 
 - **One conversation index.** JARVIS searches past conversations with

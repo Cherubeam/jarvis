@@ -337,7 +337,7 @@ The `shared: true` flag (introduced for this integration, generic to any MCP ser
 
 **Key Classes:**
 - `MCPServerSettings` (in `packages/core/settings.py`): Validated pydantic model for server config
-- `MCPConnection`: Manages one server connection using `AsyncExitStack`
+- `MCPConnection`: Manages one server connection; one long-lived task per connection opens the transport and session (`AsyncExitStack`), waits for `disconnect()`, and closes them in that same task (anyio requires it)
 - `MCPManager`: Manages all connections, background event loop, and sync/async bridge
 - `mcp_tools_to_tool_definitions()`: Converts MCP tools to namespaced `ToolDefinition` instances
 

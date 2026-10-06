@@ -26,7 +26,14 @@ logger = logging.getLogger(__name__)
 
 
 class MCPConnection:
-    """Manages a single MCP server connection and its async resources."""
+    """Manages a single MCP server connection and its async resources.
+
+    The transport and session are entered and exited inside one long-lived
+    task (``_lifetime``). anyio, which the MCP transports use, requires a
+    cancel scope to be exited in the task that entered it; opening in the
+    ``connect()`` task and closing in the ``disconnect()`` task failed on
+    every shutdown with "Attempted to exit cancel scope in a different task".
+    """
 
     def __init__(self, name: str, settings: MCPServerSettings):
         self.name = name
@@ -34,7 +41,8 @@ class MCPConnection:
         self.session: ClientSession | None = None
         self._tools: list[types.Tool] = []
         self._connected: bool = False
-        self._exit_stack = AsyncExitStack()
+        self._task: asyncio.Task[None] | None = None
+        self._stop: asyncio.Event | None = None
 
     @property
     def tools(self) -> list[types.Tool]:
@@ -46,29 +54,45 @@ class MCPConnection:
         return self._connected
 
     async def connect(self) -> None:
-        """Open transport, initialize session, discover tools."""
+        """Open transport, initialize session, discover tools; raise if that fails."""
+        ready: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self._stop = asyncio.Event()
+        self._task = asyncio.create_task(self._lifetime(ready), name=f"mcp-{self.name}")
+        await ready
+
+    async def _lifetime(self, ready: asyncio.Future[None]) -> None:
+        """Hold the connection open until ``disconnect()``; enter and exit in this task."""
+        assert self._stop is not None
         try:
-            transport = await self._open_transport()
-            read_stream, write_stream, *_ = transport
+            async with AsyncExitStack() as stack:
+                transport = await self._open_transport(stack)
+                read_stream, write_stream, *_ = transport
 
-            session = await self._exit_stack.enter_async_context(ClientSession(read_stream, write_stream))
-            await session.initialize()
+                session = await stack.enter_async_context(ClientSession(read_stream, write_stream))
+                await session.initialize()
 
-            result = await session.list_tools()
-            self._tools = result.tools
-            self.session = session
-            self._connected = True
+                result = await session.list_tools()
+                self._tools = result.tools
+                self.session = session
+                self._connected = True
 
-            logger.info(
-                "MCP server '%s' connected — %d tool(s) discovered.",
-                self.name,
-                len(self._tools),
-            )
-        except Exception:
-            await self._exit_stack.aclose()
-            raise
+                logger.info(
+                    "MCP server '%s' connected — %d tool(s) discovered.",
+                    self.name,
+                    len(self._tools),
+                )
+                ready.set_result(None)
+                await self._stop.wait()
+        except Exception as exc:
+            if not ready.done():
+                ready.set_exception(exc)
+            else:
+                logger.warning("MCP server '%s' disconnect error: %s", self.name, exc)
+        finally:
+            self._connected = False
+            self.session = None
 
-    async def _open_transport(self) -> Any:
+    async def _open_transport(self, stack: AsyncExitStack) -> Any:
         """Open the appropriate transport based on settings."""
         s = self.settings
         if s.transport == "stdio":
@@ -79,10 +103,10 @@ class MCPConnection:
                 env=s.env,
                 cwd=s.cwd,
             )
-            return await self._exit_stack.enter_async_context(stdio_client(params))
+            return await stack.enter_async_context(stdio_client(params))
         elif s.transport == "sse":
             assert s.url is not None, "sse transport requires `url`"
-            return await self._exit_stack.enter_async_context(
+            return await stack.enter_async_context(
                 sse_client(
                     url=s.url,
                     headers=s.headers,
@@ -90,7 +114,7 @@ class MCPConnection:
             )
         elif s.transport == "streamable_http":
             assert s.url is not None, "streamable_http transport requires `url`"
-            return await self._exit_stack.enter_async_context(
+            return await stack.enter_async_context(
                 streamablehttp_client(
                     url=s.url,
                     headers=s.headers,
@@ -110,10 +134,14 @@ class MCPConnection:
         )
 
     async def disconnect(self) -> None:
-        """Gracefully close the session and transport."""
+        """Gracefully close the session and transport (in the task that opened them)."""
         self._connected = False
         self.session = None
-        await self._exit_stack.aclose()
+        if self._task is None or self._stop is None:
+            return
+        self._stop.set()
+        await self._task
+        self._task = None
 
 
 class MCPManager:
