@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-06
+
 ### Fixed — MCP servers no longer report a disconnect error on every exit (2026-10-06)
 
 - `/exit` printed "MCP server 'cortex' disconnect error: Attempted to exit
