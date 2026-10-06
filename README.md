@@ -81,7 +81,7 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Model Routing** (opt-in): heuristic routing by query complexity (`routing.enabled`), or OpenRouter's Auto Router picking the model per turn (`models.auto_router.enabled`, `/model auto`; ADR-036). The model that answered and its billed cost are shown and logged
 - **Safe Vault Edits**: Every write shows a diff for approval, lists changed links above it, and is refused if the note changed on disk since the agent read it ([details](docs/engineering/obsidian-integration.md#data-flow-summary))
 - **Web Fetch & Search Tools**: URL fetching with content extraction (httpx + trafilatura) and DuckDuckGo search
-- **Conversation Recall (RAG)**: Semantic search over conversation history via ChromaDB (on by default; `rag.enabled`)
+- **Conversation Recall**: Meaning-based search over past JARVIS, Claude, Claude Code and ChatGPT conversations via Cortex's `search_conversations` (opt-in in Cortex, HUB-02); new conversations are searchable seconds after they are saved
 - **Vault Semantic Search**: Meaning-based search over the Obsidian vault via the Cortex MCP server (opt-in, HUB-01)
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files

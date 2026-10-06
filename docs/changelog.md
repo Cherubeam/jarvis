@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Conversation recall comes from Cortex (HUB-02, 2026-10-06)
+
+- **One conversation index.** JARVIS searches past conversations with
+  Cortex's `search_conversations`, which every agent gets through the shared
+  `cortex` MCP server as `mcp_cortex__search_conversations`. Removed:
+  `packages/core/rag/indexer.py`, `searcher.py`, `embed_limits.py`,
+  `packages/core/tools/conversation_recall.py` (`recall_conversations`) and
+  their tests. JARVIS no longer embeds conversations at startup; Cortex's file
+  watcher re-indexes a conversation seconds after it is saved and drops a
+  deleted one, so the GUI delete route no longer touches an index.
+- **What recall gained**: the archive's Claude, Claude Code and ChatGPT
+  conversations are reachable from Claude Code too; an exchange now keeps all
+  assistant text up to the next user message (the old pairing lost answers
+  that followed a tool call); results filter by origin. Kept: query, date
+  range, result count (≤ 20), newest first on near-equal scores, today's date
+  in the tool description.
+- **Scope of exposure** is set in Cortex: off unless enabled there, client-work
+  projects excluded (`exclude_projects`). Data minimisation for the most
+  private data class (OWASP LLM02:2025 Sensitive Information Disclosure; NIST
+  AI RMF Manage). Known limit: Claude.ai conversations carry no project, so
+  client work held there is indexed.
+- **Cost note**: a 5-result call returns ~9,300 chars (~2,300 tokens; measured
+  on 8 queries), more than the old 6,000-char cap. Not capped yet.
+- The local RAG store (`rag.db_path`) keeps outcomes and deck cards; its old
+  `conversations` collection is no longer read or written.
+
 ## [0.32.0] - 2026-10-06
 
 ### Decided — One conversation index (HUB-02, 2026-10-05)

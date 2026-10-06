@@ -301,21 +301,14 @@ def build_session(
     tool_groups: dict[str, list[Any]] = {}
     card_search_tool = None
 
+    # Conversation recall is Cortex's `search_conversations`, reached through
+    # the shared `cortex` MCP server (HUB-02: one conversation index). The
+    # local RAG store keeps outcomes and deck cards.
     if settings.rag.enabled:
         try:
-            from packages.core.rag.indexer import ConversationIndexer
-            from packages.core.tools.conversation_recall import make_conversation_recall_tool
-
             db_path = jarvis_dir / settings.rag.db_path
             embedding_model = settings.rag.embedding_model
             rag_api_key = get_api_key("openrouter", api_keys) or ""
-
-            indexer = ConversationIndexer(db_path, embedding_model, rag_api_key)
-            n_new = indexer.index_new(conversations_dir)
-            if n_new:
-                print_system(f"[RAG] Indexed {n_new} new or updated conversation(s).")
-
-            shared_tools.append(make_conversation_recall_tool(db_path, embedding_model, rag_api_key))
 
             if settings.outcomes.enabled:
                 from packages.core.rag.outcome_indexer import OutcomeIndexer

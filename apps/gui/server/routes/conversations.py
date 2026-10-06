@@ -8,12 +8,9 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/conversations")
 
@@ -92,25 +89,6 @@ async def delete_conversation(request: Request, conv_id: str) -> Response:
     if not idx.delete(conv_id):
         raise HTTPException(404, f"conversation not found: {conv_id}")
 
-    # Best-effort RAG cleanup — only when RAG is enabled and the DB is on disk.
-    # Constructing the indexer here is cheap (chromadb opens the persistent
-    # client) and avoids holding an indexer instance for the lifetime of the
-    # GUI process.
-    if gs is not None:
-        try:
-            settings = gs.components.settings
-            if settings.rag.enabled:
-                from packages.core.rag.indexer import ConversationIndexer
-
-                db_path = gs.components.jarvis_dir / settings.rag.db_path
-                if db_path.exists():
-                    indexer = ConversationIndexer(
-                        db_path,
-                        settings.rag.embedding_model,
-                        api_key=None,
-                    )
-                    indexer.delete_conversation(conv_id)
-        except Exception:
-            logger.exception("RAG cleanup failed for %s", conv_id)
-
+    # No search-index cleanup here: Cortex indexes the conversation archive
+    # and its file watcher drops a deleted file's chunks (HUB-02).
     return Response(status_code=204)

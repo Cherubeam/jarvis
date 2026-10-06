@@ -393,40 +393,25 @@ StreamHandler supports both streaming and non-streaming modes (`streaming` flag)
 
 ---
 
-### 8. RAG / Conversation Recall (`packages/core/rag/`)
+### 8. Recall: conversations via Cortex, outcomes and cards in `packages/core/rag/`
 
-**Purpose**: Semantic search over past conversations via ChromaDB vector storage.
+**Conversation recall lives in Cortex** (HUB-02, one index, decided 2026-10-05).
+JARVIS reaches it through the shared `cortex` MCP server as
+`mcp_cortex__search_conversations(query, date_from?, date_to?, origins?, n_results?)`.
+Cortex indexes the conversation archive (`paths.conversations_dir`) on its own,
+one chunk per exchange, and its file watcher re-indexes a conversation seconds
+after JARVIS saves it; deleting a conversation file removes its chunks the same
+way. JARVIS's own conversation indexer, searcher and `recall_conversations`
+tool were removed. Turning conversations on is Cortex config
+(`sources.conversations` in Cortex's `config/local.yaml`), see the Cortex README.
 
-**Location**: `packages/core/rag/`
-
-**Modules:**
-- `indexer.py`: `ConversationIndexer` — recursively scans the conversations folder (`paths.conversations_dir`, year subfolders), embeds message-pair chunks via LiteLLM, upserts into ChromaDB. Each pair's chunks carry a `doc_hash`; on startup only pairs that are new or whose text changed (a resumed session, a later import) are re-embedded, and their old chunks deleted. Pairs indexed before hashes existed are trusted as they are
-- `embed_limits.py`: token limits for the embedding model, counted with its own tokenizer (`cl100k_base`, bundled with LiteLLM): chunks of at most 8,000 tokens with 800 overlap, queries cut to 8,000
-- `searcher.py`: `ConversationSearcher` + `SearchResult` dataclass — embeds a query, runs cosine similarity search, returns ranked results with optional date range filter
-
-**Tool Integration:**
-- `packages/core/tools/conversation_recall.py`: `make_conversation_recall_tool()` factory — wraps a `ConversationSearcher` in a `ToolDefinition` callable by the LLM
-- LLM calls: `recall_conversations(query, date_from?, date_to?)`
-
-**Chunking Strategy:**
-Message-pair chunks (user + assistant turns together) preserve conversational context and are more semantically coherent than individual messages.
-
-**ChromaDB Document Schema:**
-
-| Field | Value |
-|---|---|
-| `id` | `{conv_id}_pair_{n}` |
-| `document` | `"User: {text}\n\nAssistant: {text}"` |
-| `metadata.conv_id` | e.g. `"conv_20260226_112019_dfa2a9"` |
-| `metadata.session_date` | `"YYYY-MM-DD"` (for date range filters) |
-| `metadata.pair_index` | 0-based int |
-| `metadata.user_snippet` | first 200 chars of user turn |
-| `metadata.assistant_snippet` | first 200 chars of assistant turn |
-| `metadata.title` | conversation title or `""` |
+**Local RAG store** (`packages/core/rag/`, `rag.db_path`) keeps two collections:
+- `outcome_indexer.py`: `OutcomeIndexer` / `OutcomeSearcher` — scored outcomes, searched via `recall_outcomes`
+- `card_indexer.py`: `CardIndexer` / `CardSearcher` — deck-skill cards, searched via `card_search`
 
 **Configuration**: the `rag:` section of [`config/default.yaml`](../../config/default.yaml) (store path, embedding model, card indexing).
 
-**On by default**: `rag.enabled` is `true` and `chromadb` is a regular dependency, so recall works after `uv sync`. Embeddings go through the same `OPENROUTER_API_KEY` as chat. Set `rag.enabled: false` in `config/local.yaml` to turn it off; if ChromaDB fails at startup, recall is disabled with a warning and the session continues. When `outcomes.enabled` is also on, scored outcomes are indexed and searchable via `recall_outcomes`.
+**On by default**: `rag.enabled` is `true` and `chromadb` is a regular dependency. Embeddings go through the same `OPENROUTER_API_KEY` as chat. Set `rag.enabled: false` in `config/local.yaml` to turn it off; if ChromaDB fails at startup, outcome and card recall are disabled with a warning and the session continues. Scored outcomes are indexed when `outcomes.enabled` is also on.
 
 ---
 
@@ -604,9 +589,9 @@ skills:
 6. Initialize LLM client (api_keys dict, resolved model)
    ↓
 7. RAG initialization (if rag.enabled)
-   ├─ ConversationIndexer.index_new(conversations_dir)
-   │   Embed + upsert any new conversation files
-   └─ make_conversation_recall_tool() → shared_tools
+   ├─ OutcomeIndexer.index_new(outcomes_dir) (if outcomes.enabled)
+   └─ CardIndexer.index_new(deck_dirs) → tool_groups["card_search"]
+   (conversation recall comes from the shared cortex MCP server)
    ↓
 7b. Blog tools initialization (if obsidian.enabled and blog_dir set)
    └─ make_blog_tools(vault_config, ...) → tool_groups["blog_tools"]
@@ -667,17 +652,14 @@ jarvis/
 │   │   ├── daily_summary.py        # /daily-summary request builder (CLI + GUI)
 │   │   ├── card_renderer.py        # Pattern card rendering (parse, HTML/CSS, WeasyPrint PNG)
 │   │   ├── benchmark_costs.py      # Benchmark cost estimation
-│   │   ├── rag/                    # Conversation recall (RAG)
-│   │   │   ├── embed_limits.py     # Token-based chunking for the embedding model
-│   │   │   ├── indexer.py          # ConversationIndexer
+│   │   ├── rag/                    # Outcome and card recall (conversations: Cortex)
 │   │   │   ├── outcome_indexer.py  # OutcomeIndexer (scored outcomes)
-│   │   │   ├── card_indexer.py     # CardIndexer (deck-skill cards)
-│   │   │   └── searcher.py         # ConversationSearcher + SearchResult
+│   │   │   └── card_indexer.py     # CardIndexer (deck-skill cards)
 │   │   ├── tools/                  # Function calling tools (groups: agents.md)
 │   │   │   ├── base.py             # ToolDefinition + ToolRegistry
 │   │   │   ├── executor.py         # execute_tool_calls()
 │   │   │   ├── delegate.py         # delegate_to_agent (JARVIS only)
-│   │   │   ├── conversation_recall.py, outcome_tools.py, outcome_recall.py
+│   │   │   ├── outcome_tools.py, outcome_recall.py
 │   │   │   ├── vault_read_tools.py, vault_write_tools.py
 │   │   │   ├── web_fetch.py, web_search.py
 │   │   │   ├── blog_tools.py, text_edits.py, content_evaluator.py, suggest_improvements.py
@@ -790,7 +772,7 @@ jarvis/
 - `python-dotenv` - Environment variables
 
 **Also core** (listed in `pyproject.toml`):
-- `chromadb` - Vector storage for conversation recall (`rag.enabled`, on by default)
+- `chromadb` - Vector storage for outcome and card recall (`rag.enabled`, on by default)
 
 **Future:**
 - `sentence-transformers` - Local embeddings (alternative to API embeddings)
