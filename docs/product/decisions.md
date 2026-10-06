@@ -1279,7 +1279,7 @@ JARVIS always has a non-empty `ToolRegistry` (contains `FETCH_URL_TOOL`), so `_r
 ## ADR-024: Conversation Recall via ChromaDB + LiteLLM Embeddings (RAG)
 
 **Date**: 2026-02-27
-**Status**: ✅ Accepted
+**Status**: ✅ Accepted — conversation part superseded 2026-10-06 (HUB-02): Cortex indexes and searches conversations (`search_conversations` via the shared MCP server, one index); JARVIS's `ConversationIndexer`, `ConversationSearcher` and `recall_conversations` were removed. The ChromaDB + LiteLLM approach still holds for outcomes and cards.
 
 ### Context
 
