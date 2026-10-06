@@ -452,7 +452,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
-- [ ] Count native sessions per week and per front end from `data/conversations/`, excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
+- [ ] Count native sessions per week and per front end from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
 - [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline *(S)*
 - [ ] Delete the dead tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_make_agent_vault_tools` at the top, shadowed by the `session_factory` imports in `main()`); repoint `tests/unit/test_cli_agents.py` *(S)*
@@ -520,7 +520,7 @@ Do this only when AON-01…04 feel boring.
 
 ## HUB — Context Hub (Cortex/Memory via MCP)
 
-**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; allocated 2026-08-19
+**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 next; allocated 2026-08-19
 **Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
 
 **Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
@@ -548,7 +548,7 @@ Extend the server beyond search to JARVIS's curated context.
 
 ### HUB-03 — Data homes, memory in the vault, import hub
 
-**Status**: 🔄 In progress — data, indexes, machine state, context files and memory frontmatter done 2026-10-03; Claude Code session importer, proposal-based memory importer and project mapping 2026-10-05; HUB-02 conversation recall via Cortex next · **Effort**: M · **Risk**: Medium (moves private data)
+**Status**: ✅ Complete 2026-10-05 (v0.31.0, v0.32.0) — data, indexes, machine state, context files and memory frontmatter 2026-10-03; Claude Code session importer, proposal-based memory importer, project mapping and the archive folder 2026-10-05 · **Effort**: M · **Risk**: Medium (moves private data)
 
 Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kind-of-data-lives)).
 
