@@ -4,7 +4,7 @@ Card indexer — embeds and stores deck-skill card content in ChromaDB.
 Scans deck-skill directories (those containing a ``deck.yaml``) for card
 markdown files, and upserts them into a ``"pip_deck_cards"`` collection.
 
-Follows the same patterns as :mod:`packages.core.rag.indexer` for
+Follows the same patterns as :mod:`packages.core.rag.outcome_indexer` for
 embedding and ChromaDB interaction.
 """
 

@@ -52,8 +52,8 @@ Each step names its milestone below; this list only sets the order.
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
    since April restored). Claude Code session importer, proposal-based memory
    importer, Claude projects mapped to vault notes by ID, raw exports in the
-   data home (all 2026-10-05). **Next: conversation recall via Cortex (HUB-02)**,
-   so Claude Code and other MCP clients can search the archive.
+   data home (all 2026-10-05). Conversation recall via Cortex (HUB-02,
+   2026-10-06): Claude Code and JARVIS search the archive through one index.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
 4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
    daily use count as reasons (ADR-040), with a named learning goal.
@@ -520,7 +520,7 @@ Do this only when AON-01…04 feel boring.
 
 ## HUB — Context Hub (Cortex/Memory via MCP)
 
-**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 next; allocated 2026-08-19
+**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 conversation recall ✅ 2026-10-06 (context-file read tools open); allocated 2026-08-19
 **Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
 
 **Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
@@ -543,7 +543,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 Extend the server beyond search to JARVIS's curated context.
 
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
-- [ ] Conversation-recall search (scoped, opt-in — most private data class). Moved up by ADR-040: the imported archive is only reachable from JARVIS's own index today, not from Claude Code. **Next (prepared 2026-10-05).** Starting point: Cortex has a `Source` plugin protocol (`src/cortex/sources/base.py`: discover, needs_update, extract, compute_state) with one Obsidian source, one ChromaDB collection (`knowledge`) and two MCP tools (`search_knowledge`, `index_status`). The archive is 358 conversation JSON files (schema v1.0.0) in `03 Resources/AI Conversation Archive/conversations/` (`paths.conversations_dir`); JARVIS's own index embeds user→assistant pairs with a per-pair `doc_hash` (`packages/core/rag/indexer.py`). **Decided 2026-10-05: one index.** Cortex holds the only index of the archive; JARVIS's `recall_conversations` moves to Cortex and its own RAG index (`packages/core/rag/indexer.py`, `~/Library/Application Support/JARVIS/indexes/rag`) is retired once Cortex covers query, date range and result count. Open decisions: separate collection or a `source` filter; a separate opt-in tool (e.g. `search_conversations`) vs a parameter on `search_knowledge`; which sources (native, Claude, Claude Code, ChatGPT) are exposed
+- [x] Conversation-recall search (scoped, opt-in — most private data class) ✅ 2026-10-06. Cortex indexes the archive in its own `conversations` collection (cortex #1); its file watcher keeps it current, renames included (cortex #2). Opt-in tool `search_conversations` (query, date range, origins, ≤ 20 results), all four origins (native, Claude, Claude Code, ChatGPT), client-work projects excluded by `exclude_projects`. One index: JARVIS's conversation indexer, searcher and `recall_conversations` are removed; JARVIS uses `mcp_cortex__search_conversations` through the shared MCP server. Open: Claude.ai conversations carry no project, so client work held there is indexed (owner's call); the MCP result is ~2,300 tokens for 5 results vs the old 6,000-char cap
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
 ### HUB-03 — Data homes, memory in the vault, import hub

@@ -242,11 +242,15 @@ class EvaluationSettings(BaseModel):
 
 
 class RagSettings(BaseModel):
-    """RAG layer — conversation recall via ChromaDB + LiteLLM embeddings."""
+    """RAG layer — recall over scored outcomes and deck-skill cards (ChromaDB + LiteLLM).
+
+    Conversation recall moved to Cortex (`search_conversations` via the shared
+    `cortex` MCP server, HUB-02).
+    """
 
     enabled: bool = Field(
         default=True,
-        description="Enable retrieval over past conversations and indexed cards.",
+        description="Enable retrieval over scored outcomes and indexed cards.",
     )
     db_path: str = Field(
         default="data/rag/chroma",
@@ -258,7 +262,7 @@ class RagSettings(BaseModel):
     )
     index_cards: bool = Field(
         default=True,
-        description="Index deck-skill cards alongside conversations when RAG is enabled.",
+        description="Index deck-skill cards when RAG is enabled.",
     )
 
 

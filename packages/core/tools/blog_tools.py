@@ -2,7 +2,7 @@
 Blog post tools for the Writing Agent.
 
 Factory function that creates scoped tools for reading, creating, and editing
-blog posts in the Obsidian vault. Uses the closure pattern (like conversation_recall)
+blog posts in the Obsidian vault. Uses the closure pattern (like outcome_recall)
 to capture VaultConfig and ConfirmationHandler.
 """
 

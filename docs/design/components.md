@@ -48,7 +48,7 @@ See also: [principles.md](principles.md) for design principles,
 | Component | Description |
 |-----------|-------------|
 | **ConversationBrowser** | List of past conversations from `data/conversations/YYYY/*.json`. Shows date, title (if set), model, cost, and message count. Sorted by date, grouped by year. |
-| **ConversationSearch** | Search input for finding past conversations. Supports text search across titles and content. When RAG is enabled, supports semantic search via `ConversationSearcher`. |
+| **ConversationSearch** | Search input for finding past conversations. Supports text search across titles and content. Semantic search goes through Cortex (`/conversations/search`, HUB-02). |
 | **SessionHeader** | Top bar for the active session showing the current agent name, model ID, and session duration. Equivalent to the CLI startup banner (`print_startup()`). |
 
 ## Integrations
@@ -58,7 +58,7 @@ See also: [principles.md](principles.md) for design principles,
 | **VaultNoteBrowser** | File browser scoped to the configured Obsidian vault. Lists notes with path validation via `VaultConfig`. Respects `FilesystemGuard` access rules. |
 | **DailyNoteSummary** | Rendered view of today's daily note from the Obsidian vault, focused on the `> [!JARVIS]` callout block. Equivalent to `/daily-summary` output. |
 | **TaskList** | Display of Things 3 tasks synced via `task_sync.py`. Grouped by project (each task's parent in Things), matching the markdown format written to `tasks.md`. |
-| **RAGResultCard** | A single result from conversation recall. Shows the query match, source conversation date, and a snippet of the matched message pair. Maps to `SearchResult` from `searcher.py`. |
+| **RAGResultCard** | A single result from conversation recall. Shows the query match, source conversation date, and a snippet of the matched message pair. Maps to a Cortex `/conversations/search` result. |
 
 ## Settings
 

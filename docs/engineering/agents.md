@@ -45,10 +45,9 @@ Each shared tool is registered only when its feature is enabled.
 | Tool | Source | Registered when | Description |
 |------|--------|-----------------|-------------|
 | Vault read tools | `packages/core/tools/vault_read_tools.py` | `obsidian.enabled` | `read_note`, `search_notes`, `read_daily_note` |
-| `recall_conversations` | `packages/core/tools/conversation_recall.py` | `rag.enabled` | RAG search over past conversations |
 | `track_recommendation` | `packages/core/tools/outcome_tools.py` | `outcomes.enabled` | Capture a concrete recommendation for later review |
 | `recall_outcomes` | `packages/core/tools/outcome_recall.py` | `outcomes.enabled` and `rag.enabled` | Search scored past recommendations |
-| Shared MCP tools, e.g. `mcp_cortex__search_knowledge` | MCP servers with `shared: true` ([setup](deployment.md#connecting-mcp-servers)) | `mcp.enabled` | Vault semantic search via Cortex (HUB-01), or any other shared server |
+| Shared MCP tools, e.g. `mcp_cortex__search_knowledge` | MCP servers with `shared: true` ([setup](deployment.md#connecting-mcp-servers)) | `mcp.enabled` | Vault semantic search via Cortex (HUB-01), conversation recall via `mcp_cortex__search_conversations` (HUB-02, when enabled in Cortex), or any other shared server |
 
 **JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools` and `readwise_tools` groups (`jarvis_tools` in `build_session()`).
 

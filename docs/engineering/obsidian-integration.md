@@ -156,7 +156,7 @@ This section is the reference for vault safety behaviour; other docs link here.
 | `search_notes` | List notes matching glob patterns, sorted by name or modification time |
 | `read_daily_note` | Read today's or a specified date's daily note |
 | `mcp_cortex__search_knowledge` | Meaning-based search via the Cortex MCP server (optional) |
-| `recall_conversations` | Semantic search across past JARVIS conversations (`rag.enabled`) |
+| `mcp_cortex__search_conversations` | Meaning-based search across past AI conversations via Cortex (optional, HUB-02) |
 
 ### Scoped Write Tools (per agent, declared in `meta.yaml`)
 
