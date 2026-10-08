@@ -34,7 +34,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
-## Current focus (2026-10-05, evening)
+## Current focus (2026-10-08)
 
 Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
 [ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
@@ -43,17 +43,21 @@ Each step names its milestone below; this list only sets the order.
 1. **Finish AON-01.** Done: GUI auth, vault oversight, atomic saves, GUI
    approvals reach the running turn (2026-10-04). **Next: measurement** — one
    parser over the conversation JSON for the native-session count, the monthly
-   spend report and the TOK caching baseline. Then the OpenRouter data policy
+   spend report and the TOK caching baseline. Run
+   `scripts/backfill_billed_usage.py` first: the swap to billed usage runs at
+   CLI exit and at each GUI save, so the last turn of a session stays an
+   estimate (checked 2026-10-08: 2 billed messages, 3 estimated in 2 files,
+   6 native sessions since 2026-09-29). Build the parser now; conclude after
+   weeks of real use, not from 6 sessions. Then the OpenRouter data policy
    (Marco's account), the cost ledger, tool descriptions, the dead CLI copy.
-   The caching baseline needs real use first: on 2026-10-05 only 2 native
-   messages carried billed usage (recorded since PR #73, 2026-09-29).
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
    since April restored). Claude Code session importer, proposal-based memory
    importer, Claude projects mapped to vault notes by ID, raw exports in the
    data home (all 2026-10-05). Conversation recall via Cortex (HUB-02,
-   2026-10-06): Claude Code and JARVIS search the archive through one index.
+   2026-10-06, released in v0.33.0): Claude Code and JARVIS search the archive
+   through one index.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
 4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
    daily use count as reasons (ADR-040), with a named learning goal.
@@ -61,7 +65,7 @@ Each step names its milestone below; this list only sets the order.
 Write-ups are optional per topic; Marco decides which to write.
 
 Native JARVIS sessions per month (2026): Feb 15 · Mar 20 · Apr 2 · May–Aug 0 ·
-Sep 4. Imported conversations are not counted.
+Sep 4 · Oct 2 (to 2026-10-08). Imported conversations are not counted.
 
 ---
 
@@ -452,9 +456,9 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
-- [ ] Count native sessions per week and per front end from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
+- [ ] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
-- [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline *(S)*
+- [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline. Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)*
 - [ ] Delete the dead tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_make_agent_vault_tools` at the top, shadowed by the `session_factory` imports in `main()`); repoint `tests/unit/test_cli_agents.py` *(S)*
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*
@@ -543,7 +547,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 Extend the server beyond search to JARVIS's curated context.
 
 - [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
-- [x] Conversation-recall search (scoped, opt-in — most private data class) ✅ 2026-10-06. Cortex indexes the archive in its own `conversations` collection (cortex #1); its file watcher keeps it current, renames included (cortex #2). Opt-in tool `search_conversations` (query, date range, origins, ≤ 20 results), all four origins (native, Claude, Claude Code, ChatGPT), client-work projects excluded by `exclude_projects`. One index: JARVIS's conversation indexer, searcher and `recall_conversations` are removed; JARVIS uses `mcp_cortex__search_conversations` through the shared MCP server. Open: Claude.ai conversations carry no project, so client work held there is indexed (owner's call); the MCP result is ~2,300 tokens for 5 results vs the old 6,000-char cap
+- [x] Conversation-recall search (scoped, opt-in — most private data class) ✅ 2026-10-06. Cortex indexes the archive in its own `conversations` collection (cortex #1); its file watcher keeps it current, renames included (cortex #2). Opt-in tool `search_conversations` (query, date range, origins, ≤ 20 results), all four origins (native, Claude, Claude Code, ChatGPT), client-work projects excluded by `exclude_projects`. One index: JARVIS's conversation indexer, searcher and `recall_conversations` are removed; JARVIS uses `mcp_cortex__search_conversations` through the shared MCP server. Open: Claude.ai conversations carry no project, so client work held there is indexed (owner's call); the MCP result is ~2,300 tokens for 5 results vs the old 6,000-char cap; the tool description's "today" is fixed when the MCP server starts, so a day-old session shows yesterday's date (cortex)
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
 ### HUB-03 — Data homes, memory in the vault, import hub
@@ -606,6 +610,7 @@ The rule for "should Cortex integrate source X?":
 - [x] Summarization for old conversation context
 - [x] Non-streaming mode for prompt caching (workaround for LiteLLM streaming bug) — *superseded 2026-09-30: the "bug" was LiteLLM's usage estimate, not broken caching*
 - [x] Billed usage for streamed turns: logs reconciled against OpenRouter's billing records (PR #73)
+- [ ] *Trigger-gated* — **leftover estimates without the manual backfill.** The swap runs once at CLI exit without waiting and at each GUI save; a record is published 10-15 s after its turn, so the last turn of every session, and every turn of a session shorter than that, stays `usage_source: estimated` until `scripts/backfill_billed_usage.py` runs (2026-10-08: 3 such messages in 2 files). Options: (a) let the CLI exit wait up to ~15 s for the last record (`reconcile_billed_usage(deadline_s=15)`; "Goodbye" arrives later); (b) run the backfill over recent logs at JARVIS startup. Build one when running the backfill by hand before a measurement has been forgotten, not before (P1) *(S)*
 - [ ] **Prompt caching for conversation history**: baseline on billed logs → second `cache_control` breakpoint on the last message → `session_id` on every OpenRouter call → cache-write parsing. Plan and cache busters: [token-economics-next-steps.md](../research/token-economics-next-steps.md#step-c-reopened-prompt-caching-state-and-plan-2026-09-30) *(M)*
 - [ ] Token budget management
 - [ ] Full-text + semantic search over conversations
