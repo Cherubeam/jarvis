@@ -31,6 +31,7 @@ from apps.cli.display import (
     start_live_stream,
     start_waiting_spinner,
 )
+from apps.cli.session_factory import assemble_agent_tools, build_session, instantiate_agent, make_agent_vault_tools
 from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, validate_agent_includes
 from packages.agents.registry import AgentMeta, get_by_command
@@ -45,7 +46,7 @@ from packages.core.memory import ConversationLogger
 from packages.core.model_resolver import AUTO_MODEL_ID, get_api_key, resolve_model
 from packages.core.model_router import route_query
 from packages.core.pricing import ModelPricing, get_model_pricing
-from packages.core.settings import ModelsSettings, Settings, load_config
+from packages.core.settings import Settings, load_config
 from packages.core.stream_handler import StreamHandler, StreamResult, served_metadata
 from packages.core.tools.base import ToolDefinition
 from packages.core.tools.delegate import HandBackState, make_hand_back_tool
@@ -58,84 +59,6 @@ try:
 except PackageNotFoundError:
     # Running outside an editable/installed context (e.g. raw PYTHONPATH).
     CLIENT_VERSION = "dev"
-
-
-def _assemble_agent_tools(
-    meta: AgentMeta,
-    shared_tools: list[Any],
-    tool_groups: dict[str, list[Any]],
-    only_tool_groups: set[str] | None = None,
-    include_shared: bool = True,
-) -> list[Any]:
-    """Assemble tools for an agent from shared_tools + its declared tool_groups.
-
-    Args:
-        only_tool_groups: If set, include only these tool groups
-            (overrides meta.tool_groups). If None, use meta.tool_groups.
-        include_shared: Whether to include shared tools (default True).
-    """
-    agent_tools = list(shared_tools) if include_shared else []
-    groups = only_tool_groups if only_tool_groups is not None else set(meta.tool_groups)
-    for group_name in groups:
-        if group_name in tool_groups:
-            agent_tools.extend(tool_groups[group_name])
-    return agent_tools
-
-
-def _instantiate_agent(
-    meta: AgentMeta,
-    client: LLMClient,
-    model_id: str,
-    extra_tools: list[Any] | None = None,
-    skill_registry: dict[str, Any] | None = None,
-    card_search_tool: ToolDefinition | None = None,
-    skill_names_override: list[str] | None = None,
-    prompt_includes_override: dict[str, str] | None = None,
-    models: ModelsSettings | None = None,
-) -> Any:
-    """Create an agent from AgentMeta (see apps.cli.session_factory.instantiate_agent)."""
-    from apps.cli.session_factory import instantiate_agent
-
-    return instantiate_agent(
-        meta,
-        client,
-        model_id,
-        extra_tools,
-        skill_registry=skill_registry,
-        card_search_tool=card_search_tool,
-        skill_names_override=skill_names_override,
-        prompt_includes_override=prompt_includes_override,
-        models=models,
-    )
-
-
-def _make_agent_vault_tools(meta: AgentMeta, settings: Settings, vault_config: Any) -> list[Any]:
-    """Create vault write tools scoped to an agent's declared vault_writing config section.
-
-    Reads meta.vault_writing (e.g. "patterns", "slip_box"), looks up the
-    corresponding obsidian.writing.<key> typed setting, and calls
-    make_vault_write_tools() with the right target_dir and template_path.
-
-    Returns [] if the agent doesn't declare vault_writing or the section is empty.
-    """
-    if vault_config is None or not meta.vault_writing:
-        return []
-
-    section = getattr(settings.obsidian.writing, meta.vault_writing, None)
-    if section is None or not section.target_dir:
-        return []
-
-    try:
-        from packages.core.tools.vault_write_tools import make_vault_write_tools
-
-        return make_vault_write_tools(
-            vault_config,
-            CLIConfirmationHandler(),
-            target_dir=section.target_dir,
-            template_path=section.template_path,
-        )
-    except Exception:
-        return []
 
 
 def get_project_root() -> Path:
@@ -556,11 +479,11 @@ def _handle_agent_command(
         return True
 
     # Assemble tools: shared + per-agent tool_groups + vault write tools
-    all_tools = _assemble_agent_tools(meta, shared_tools or [], tool_groups or {})
+    all_tools = assemble_agent_tools(meta, shared_tools or [], tool_groups or {})
     if settings is not None:
-        all_tools.extend(_make_agent_vault_tools(meta, settings, vault_config))
+        all_tools.extend(make_agent_vault_tools(meta, settings, vault_config, CLIConfirmationHandler()))
 
-    agent = _instantiate_agent(
+    agent = instantiate_agent(
         meta,
         client,
         model_id,
@@ -607,17 +530,6 @@ def main(argv: list[str] | None = None) -> None:
 
     # All session-component wiring lives in apps/cli/session_factory.build_session.
     # The CLI passes its own ConfirmationHandler + tool-feedback printer.
-    from apps.cli.session_factory import (
-        assemble_agent_tools as _assemble_agent_tools,
-    )
-    from apps.cli.session_factory import (
-        build_session,
-        make_agent_vault_tools,
-    )
-    from apps.cli.session_factory import (
-        instantiate_agent as _instantiate_agent,
-    )
-
     confirmation_handler = CLIConfirmationHandler()
     try:
         components = build_session(
@@ -649,10 +561,6 @@ def main(argv: list[str] | None = None) -> None:
     active_agent = components.active_agent
     agent_name = components.agent_name
     mcp_manager = components.mcp_manager
-
-    # Helper: bind the CLI confirmation handler into delegate-agent vault tools.
-    def _make_agent_vault_tools(meta: AgentMeta, _settings: Settings, _vc: Any) -> list[Any]:
-        return make_agent_vault_tools(meta, _settings, _vc, confirmation_handler)
 
     # Pricing display string for the startup banner.
     price_info = f"({_price_info(model_id, pricing)})"
@@ -845,13 +753,15 @@ def main(argv: list[str] | None = None) -> None:
             # Handle delegation to a specialized agent
             if result.delegate_to and result.delegate_to in agent_registry:
                 delegate_meta = agent_registry[result.delegate_to]
-                all_delegate_tools = _assemble_agent_tools(
+                all_delegate_tools = assemble_agent_tools(
                     delegate_meta,
                     shared_tools,
                     tool_groups,
                 )
-                all_delegate_tools.extend(_make_agent_vault_tools(delegate_meta, settings, vault_config))
-                delegate_agent = _instantiate_agent(
+                all_delegate_tools.extend(
+                    make_agent_vault_tools(delegate_meta, settings, vault_config, confirmation_handler)
+                )
+                delegate_agent = instantiate_agent(
                     delegate_meta,
                     client,
                     model_id,
