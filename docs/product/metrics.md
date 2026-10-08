@@ -71,6 +71,18 @@ For actual cost breakdowns by conversation type, run:
 uv run python scripts/analyze_costs.py --by all
 ```
 
+Usage measures (AON-01) count native JARVIS sessions only, never imports. Run the billed-usage
+backfill first, or recent turns stay estimates:
+```bash
+uv run python scripts/backfill_billed_usage.py
+uv run python scripts/analyze_costs.py --by sessions   # native sessions per ISO week and front end
+uv run python scripts/analyze_costs.py --by spend      # spend per month: billed / estimated / legacy
+uv run python scripts/analyze_costs.py --by caching    # billed turns per model: cache-read share
+```
+"Legacy" turns were logged before usage sources existed (2026-09-29) and are mostly streamed
+estimates. Turns logged before 2026-10-08 carry no per-turn model, so the caching table falls
+back to the session's model, marked "(session)".
+
 ### Cost Targets
 
 | Metric | Target | Current | Notes |

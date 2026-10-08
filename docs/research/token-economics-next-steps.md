@@ -170,6 +170,13 @@ regional us/eu endpoints +10%. OpenAI models (the `gpt-6-luna` default) cache au
    --dry-run` would fix all 3 (billed cost $0.0058 below the estimates). Run the backfill
    before reading the logs. Removing the manual step is trigger-gated in
    [roadmap → TOK](../product/roadmap.md#tok--context-window-management--search).
+
+   **Status 2026-10-08, later: tooling ready, data not.** Backfill run (3 messages swapped
+   to billed). `uv run python scripts/analyze_costs.py --by caching` reads the billed turns per
+   model: 5 turns, all GPT-6 Luna, 66% of prompt tokens from cache (automatic OpenAI caching).
+   There is still no billed Anthropic turn, so the question above stays open. Turns now log
+   the model that answered (`metadata.model`), so pinned Opus agents show up as Opus. Next
+   step: one real multi-turn Opus session, backfill, then read the table.
 2. **Second breakpoint on the last message** of each Anthropic request, next to the system one
    (2 of Anthropic's 4 allowed). Caches the growing history and each tool-loop iteration.
    String content must become `[{"type": "text", "text": ..., "cache_control": ...}]`.

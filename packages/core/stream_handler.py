@@ -63,10 +63,14 @@ class StreamResult:
 def served_metadata(result: Any) -> dict[str, Any] | None:
     """Conversation-log metadata for record-keeping.
 
-    Names the models the Auto Router picked, and whether the logged usage is what the
-    provider billed or a local estimate (streamed calls; LiteLLM drops the real usage).
+    Names the model that answered (a pinned agent's, not the session's), the models the Auto
+    Router picked, and whether the logged usage is what the provider billed or a local
+    estimate (streamed calls; LiteLLM drops the real usage).
     """
     meta: dict[str, Any] = {}
+    model = getattr(getattr(result, "metrics", None), "model", "")
+    if isinstance(model, str) and model:
+        meta["model"] = model
     models = getattr(result, "served_models", None)
     if isinstance(models, list) and models:
         meta["served_models"] = list(models)

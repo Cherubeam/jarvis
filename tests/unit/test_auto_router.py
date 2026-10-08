@@ -149,6 +149,11 @@ class TestUsageAndResponseReaders:
         assert served_metadata(SimpleNamespace(served_models=[])) is None
         assert served_metadata(Mock()) is None
 
+    def test_served_metadata_names_the_answering_model(self):
+        result = SimpleNamespace(metrics=SimpleNamespace(model="openrouter/anthropic/claude-opus-5.5"))
+        assert served_metadata(result) == {"model": "openrouter/anthropic/claude-opus-5.5"}
+        assert served_metadata(SimpleNamespace(metrics=SimpleNamespace(model=""))) is None
+
 
 @pytest.mark.unit
 class TestStreamHandlerAuto:
