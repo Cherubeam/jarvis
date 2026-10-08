@@ -7,33 +7,13 @@ system prompt and configured temperature.
 
 import logging
 from pathlib import Path
-from typing import Any
 
 from packages.core.context_builder import parse_frontmatter
 from packages.core.llm_client import LLMClient
 from packages.core.tools.base import ToolDefinition
+from packages.skills.registry import import_skill_module
 
 logger = logging.getLogger(__name__)
-
-
-def _import_skill_module(skill_dir: Path) -> Any:
-    """Import a skill's skill.py module by path (reuses base.py logic)."""
-    import importlib.util
-
-    parts = skill_dir.absolute().parts
-    try:
-        pkg_idx = parts.index("packages")
-    except ValueError as err:
-        raise ImportError(f"Cannot determine module path for {skill_dir}") from err
-
-    module_name = ".".join(parts[pkg_idx:]) + ".skill"
-    skill_py = skill_dir / "skill.py"
-    spec = importlib.util.spec_from_file_location(module_name, skill_py)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot create module spec for {skill_py}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def make_content_evaluator_tool(
@@ -79,7 +59,7 @@ def make_content_evaluator_tool(
     skill_py = skill_dir / "skill.py"
     if skill_py.is_file():
         try:
-            module = _import_skill_module(skill_dir)
+            module = import_skill_module(skill_dir)
             skill_config = getattr(module, "SKILL_CONFIG", {})
             temperature = skill_config.get("temperature", temperature)
             max_tokens = skill_config.get("max_tokens", max_tokens)

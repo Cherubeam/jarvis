@@ -364,7 +364,7 @@ CLI-first Readwise Reader integration: library search, highlight recall, inbox t
 - [x] Task complexity classification (heuristic, `packages/core/model_router.py`, opt-in via `routing.enabled`)
 - [x] Route simple tasks → cheap models, complex → expensive models (presets `fast`/`balanced`/`quality`)
 - [x] Per-agent models (`meta.yaml` `model:`; writer and substack_publisher → `quality`) — 2026-09-27
-- [ ] Skills: send `SkillConfig.temperature` to the model like agents do since v0.26.1 (`packages/skills/base.py` `run()` calls `stream_handler.stream()` without it; same for the `/daily-summary` calls in `apps/cli/main.py` and `apps/gui/server/bridge.py`). Decide first whether the 0.7 default should be sent at all (agents send only an explicit value)
+- [x] ~~Skills: send `SkillConfig.temperature` to the model~~ — closed by deletion: `BaseSkill.run()` had no production caller. Bound skills are prompt text and use their agent's `meta.yaml` temperature; `content-evaluator` sends its own `temperature`/`max_tokens` from `skill.py`. `packages/skills/base.py` removed; `import_skill_module` now lives in `packages/skills/registry.py` (one copy instead of two) ✅ 2026-10-08
 - [x] OpenRouter Auto Router as an opt-in session model (`models.auto_router`, ADR-036) — 2026-09-27
 - [ ] Cost savings tracking
 
