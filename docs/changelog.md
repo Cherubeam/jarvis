@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — No 4,096-token caps left for reasoning models (2026-10-08)
+
+- `/daily-summary` (CLI and GUI) capped `max_tokens` at 4,096 to avoid
+  credit errors, and the golden suite's judge did the same. Reasoning models
+  (Opus 5.5 reasons by default on OpenRouter) spend part of that limit on
+  thinking, which emptied an evaluation in #67. `/daily-summary` now uses the
+  session's `models.default_max_tokens` (the CLI builds its own handler for
+  it, so it passes the setting explicitly); the judge gets 16,000 like the content evaluator and the memory importer. The
+  credit fallback still lowers the limit and retries when the balance is short.
+
+### Removed — Uncalled `BaseSkill` (2026-10-08)
+
+- `packages/skills/base.py` (`BaseSkill`, `SkillConfig`) had no caller
+  outside its own tests: bound skills are prompt text for their agent, and
+  `content-evaluator` runs through its tool. The roadmap item "skills don't
+  send `temperature`" was about this dead path and is closed by deletion.
+  `import_skill_module` moved to `packages/skills/registry.py`; the content
+  evaluator's private copy of it is gone too.
+
 ### Changed — One copy of the agent tool assembly in the CLI (AON-01, 2026-10-08)
 
 - `apps/cli/main.py` kept its own copies of `assemble_agent_tools`,

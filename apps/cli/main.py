@@ -135,8 +135,8 @@ def handle_daily_summary(
     print_assistant_prefix("JARVIS")
     live, buf = start_live_stream()
 
-    handler = StreamHandler(client, metrics_tracker, pricing, model_id)
-    handler.max_tokens = 4096
+    # The session's limit, not a tighter one: reasoning models spend part of it on thinking (see #67)
+    handler = StreamHandler(client, metrics_tracker, pricing, model_id, max_tokens=settings.models.default_max_tokens)
     handler.on_chunk = make_live_chunk_handler(live, buf)
     result = handler.stream(request.messages, print_chunks=True)
 

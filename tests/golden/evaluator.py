@@ -16,7 +16,8 @@ from judge_prompts import build_judge_prompt
 from packages.core.llm_client import LLMClient
 from packages.core.pricing import get_model_pricing
 
-JUDGE_MAX_TOKENS = 4096
+# Opus 5.5 reasons by default on OpenRouter; thinking counts against this limit (see #67)
+JUDGE_MAX_TOKENS = 16000
 
 
 def resolve_thresholds(

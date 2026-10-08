@@ -39,7 +39,7 @@ class TestDailySummaryMaxTokens:
     @patch("packages.core.daily_summary.get_daily_note_path")
     @patch("apps.cli.main.load_vault_config")
     @patch("apps.cli.main.load_filesystem_guard")
-    def test_max_tokens_capped_at_4096(
+    def test_max_tokens_is_the_session_default(
         self,
         mock_fs_guard,
         mock_vault_config,
@@ -53,7 +53,7 @@ class TestDailySummaryMaxTokens:
         mock_make_handler,
         mock_finish_live,
     ):
-        """handle_daily_summary must pass max_tokens=4096 to prevent 402 errors."""
+        """No tighter cap than the session: reasoning models spend part of max_tokens on thinking."""
         from apps.cli.main import handle_daily_summary
         from packages.integrations.obsidian.callout import CalloutBlock
 
@@ -83,8 +83,11 @@ class TestDailySummaryMaxTokens:
             completion_cost=0.000015,
         )
 
+        settings = Settings()
+        settings.models.default_max_tokens = 12345
+
         handle_daily_summary(
-            settings=Settings(),
+            settings=settings,
             client=client,
             logger=logger,
             system_prompt="You are JARVIS.",
@@ -93,12 +96,9 @@ class TestDailySummaryMaxTokens:
             model_id="openrouter/anthropic/claude-sonnet-4.6",
         )
 
-        # Assert chat_stream was called with max_tokens=4096
         client.chat_stream.assert_called_once()
         _, kwargs = client.chat_stream.call_args
-        assert kwargs.get("max_tokens") == 4096, (
-            "handle_daily_summary must cap max_tokens at 4096 to avoid 402 credit errors"
-        )
+        assert kwargs.get("max_tokens") == 12345
 
 
 @pytest.mark.unit
