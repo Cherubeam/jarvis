@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Specialists know whom to hand back to (2026-10-08)
+
+- In a live test a `substack_publisher` session asked for a cover image wrote
+  the image prompt itself instead of calling `hand_back_to_jarvis`, so the
+  request never reached `substack_image_creator`. The tool's description only
+  said "a deliverable another specialist handles" without naming any. It now
+  lists every other specialist with its one-line description (the list JARVIS
+  already gets for `delegate_to_agent`), and "don't improvise" now covers the
+  model's own knowledge, not just notes and search results. With today's 14
+  agents the description grows by about 1,100 characters, roughly 270 input
+  tokens per specialist call (estimate at ~4 characters per token). Narrow specialist agency, OWASP LLM06.
+
 ### Fixed — No 4,096-token caps left for reasoning models (2026-10-08)
 
 - `/daily-summary` (CLI and GUI) capped `max_tokens` at 4,096 to avoid

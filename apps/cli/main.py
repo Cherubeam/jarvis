@@ -267,6 +267,15 @@ def _pinned_model_label(agent: Any) -> str | None:
     return f"{rest.split('/')[-1]} via {provider}" if rest else model
 
 
+def _other_specialists(agent_registry: dict[str, Any], agent_name: str) -> list[dict[str, Any]]:
+    """Name and description of every registered agent except ``agent_name``."""
+    return [
+        {"name": meta.name, "description": meta.description}
+        for meta in agent_registry.values()
+        if meta.name != agent_name
+    ]
+
+
 def _run_agent_session(
     agent: Any,
     agent_name: str,
@@ -277,6 +286,7 @@ def _run_agent_session(
     context: str | None = None,
     prior_session: list[dict[str, Any]] | None = None,
     hand_back: HandBackState | None = None,
+    other_agents: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Run a multi-turn agent session until the user types /exit or /back, or the agent hands back.
 
@@ -291,6 +301,8 @@ def _run_agent_session(
         prior_session: Full conversation history from a previous agent session.
         hand_back: If set, the agent gets ``hand_back_to_jarvis`` and the session ends when
             it calls it; the reason and the handed-back user message are left in this state.
+        other_agents: The other specialists, named in ``hand_back_to_jarvis`` so the agent
+            knows what isn't its job.
 
     Returns:
         The session history (list of user/assistant message dicts).
@@ -302,7 +314,7 @@ def _run_agent_session(
     session_history: list[dict[str, Any]] = []
     if hand_back is not None:
         hand_back.agent_name = agent_name
-        agent.tool_registry.register(make_hand_back_tool(hand_back))
+        agent.tool_registry.register(make_hand_back_tool(hand_back, other_agents))
 
     # Inject prior agent session as conversation context
     if prior_session:
@@ -494,7 +506,15 @@ def _handle_agent_command(
     )
 
     if not payload:
-        _run_agent_session(agent, meta.name, stream_handler, logger, session, hand_back=hand_back)
+        _run_agent_session(
+            agent,
+            meta.name,
+            stream_handler,
+            logger,
+            session,
+            hand_back=hand_back,
+            other_agents=_other_specialists(agent_registry, meta.name),
+        )
         return True
 
     logger.add_message("user", f"{command} {payload}")
@@ -781,6 +801,7 @@ def main(argv: list[str] | None = None) -> None:
                     context=result.delegate_context,
                     prior_session=last_agent_session,
                     hand_back=delegate_hand_back,
+                    other_agents=_other_specialists(agent_registry, delegate_meta.name),
                 )
                 # Store for next delegation + inject summary into JARVIS history
                 last_agent_session = agent_session
