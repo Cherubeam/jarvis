@@ -49,7 +49,7 @@ Each step names its milestone below; this list only sets the order.
    estimate (checked 2026-10-08: 2 billed messages, 3 estimated in 2 files,
    6 native sessions since 2026-09-29). Build the parser now; conclude after
    weeks of real use, not from 6 sessions. Then the OpenRouter data policy
-   (Marco's account), the cost ledger, tool descriptions, the dead CLI copy.
+   (Marco's account), the cost ledger, tool descriptions.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
@@ -459,7 +459,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [ ] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
 - [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline. Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)*
-- [ ] Delete the dead tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_make_agent_vault_tools` at the top, shadowed by the `session_factory` imports in `main()`); repoint `tests/unit/test_cli_agents.py` *(S)*
+- [x] Delete the duplicate tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_instantiate_agent`, `_make_agent_vault_tools`); not fully dead: slash commands still used it, now they call `apps/cli/session_factory.py` like `main()` does; `tests/unit/test_cli_agents.py` repointed *(S)* ✅ 2026-10-08
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*
 

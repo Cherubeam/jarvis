@@ -10,14 +10,12 @@ from unittest.mock import Mock, patch
 import pytest
 
 from apps.cli.main import (
-    _assemble_agent_tools,
     _handed_back_input,
     _handle_agent_command,
-    _instantiate_agent,
-    _make_agent_vault_tools,
     _run_agent_session,
     parse_args,
 )
+from apps.cli.session_factory import assemble_agent_tools, instantiate_agent, make_agent_vault_tools
 from packages.agents.registry import AgentMeta
 from packages.core.llm_client import LLMClient, TokenUsage
 from packages.core.memory import ConversationLogger
@@ -65,24 +63,24 @@ class TestParseArgs:
 
 @pytest.mark.unit
 class TestAssembleAgentTools:
-    """Tests for _assemble_agent_tools helper."""
+    """Tests for assemble_agent_tools."""
 
     def test_shared_tools_always_included(self):
         shared = [Mock(spec=ToolDefinition)]
         meta = AgentMeta(name="test", description="", command="/test")
-        result = _assemble_agent_tools(meta, shared, {})
+        result = assemble_agent_tools(meta, shared, {})
         assert len(result) == 1
 
     def test_tool_groups_resolved(self):
         shared = [Mock(spec=ToolDefinition)]
         blog = [Mock(spec=ToolDefinition), Mock(spec=ToolDefinition)]
         meta = AgentMeta(name="test", description="", command="/test", tool_groups=("blog_tools",))
-        result = _assemble_agent_tools(meta, shared, {"blog_tools": blog})
+        result = assemble_agent_tools(meta, shared, {"blog_tools": blog})
         assert len(result) == 3
 
     def test_unknown_tool_group_ignored(self):
         meta = AgentMeta(name="test", description="", command="/test", tool_groups=("nonexistent",))
-        result = _assemble_agent_tools(meta, [], {})
+        result = assemble_agent_tools(meta, [], {})
         assert len(result) == 0
 
     def test_agent_only_gets_declared_groups(self):
@@ -90,7 +88,7 @@ class TestAssembleAgentTools:
         blog = [Mock(spec=ToolDefinition)]
         web = [Mock(spec=ToolDefinition)]
         meta = AgentMeta(name="test", description="", command="/test", tool_groups=("blog_tools",))
-        result = _assemble_agent_tools(meta, [], {"blog_tools": blog, "web_tools": web})
+        result = assemble_agent_tools(meta, [], {"blog_tools": blog, "web_tools": web})
         assert len(result) == 1
         assert result[0] is blog[0]
 
@@ -105,7 +103,7 @@ class TestAssembleAgentTools:
             command="/test",
             tool_groups=("blog_tools", "web_tools"),
         )
-        result = _assemble_agent_tools(
+        result = assemble_agent_tools(
             meta,
             shared,
             {"blog_tools": blog, "web_tools": web},
@@ -602,7 +600,7 @@ class TestHandedBackInput:
 
 @pytest.mark.unit
 class TestInstantiateAgent:
-    """Tests for the _instantiate_agent helper (all data-driven)."""
+    """Tests for instantiate_agent (all data-driven)."""
 
     def test_data_driven_agent_from_meta_path(self, tmp_path):
         """Uses agent_from_meta() to create DataDrivenAgent."""
@@ -632,7 +630,7 @@ class TestInstantiateAgent:
             meta_path=meta_path,
         )
         client = Mock(spec=LLMClient)
-        agent = _instantiate_agent(meta, client, "test-model")
+        agent = instantiate_agent(meta, client, "test-model")
 
         from packages.agents.base import DataDrivenAgent
 
@@ -672,7 +670,7 @@ class TestInstantiateAgent:
             command="/test",
             meta_path=meta_path,
         )
-        agent = _instantiate_agent(meta, Mock(spec=LLMClient), "model", [dummy_tool])
+        agent = instantiate_agent(meta, Mock(spec=LLMClient), "model", [dummy_tool])
         assert len(agent.config.tools) == 1
 
     def test_delegation_keeps_meta_max_iterations(self, tmp_path):
@@ -702,7 +700,7 @@ class TestInstantiateAgent:
             meta_path=agent_dir / "meta.yaml",
         )
 
-        agent = _instantiate_agent(meta, Mock(spec=LLMClient), "test-model")
+        agent = instantiate_agent(meta, Mock(spec=LLMClient), "test-model")
         assert agent.config.max_iterations == 2
 
     def test_handle_agent_command_with_data_driven_agent(self, tmp_path):
@@ -753,27 +751,27 @@ class TestInstantiateAgent:
 
 @pytest.mark.unit
 class TestMakeAgentVaultTools:
-    """Tests for _make_agent_vault_tools helper."""
+    """Tests for make_agent_vault_tools."""
 
     def test_returns_empty_when_no_vault_config(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
-        result = _make_agent_vault_tools(meta, Settings(), None)
+        result = make_agent_vault_tools(meta, Settings(), None, Mock())
         assert result == []
 
     def test_returns_empty_when_no_vault_writing(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing=None)
-        result = _make_agent_vault_tools(meta, Settings(), Mock())
+        result = make_agent_vault_tools(meta, Settings(), Mock(), Mock())
         assert result == []
 
     def test_returns_empty_when_target_dir_empty(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="patterns")
         # ObsidianSettings defaults have empty target_dir for patterns
-        result = _make_agent_vault_tools(meta, Settings(), Mock())
+        result = make_agent_vault_tools(meta, Settings(), Mock(), Mock())
         assert result == []
 
     def test_returns_empty_when_config_section_missing(self):
         meta = AgentMeta(name="test", description="", command="/test", vault_writing="nonexistent")
-        result = _make_agent_vault_tools(meta, Settings(), Mock())
+        result = make_agent_vault_tools(meta, Settings(), Mock(), Mock())
         assert result == []
 
     @patch("packages.core.tools.vault_write_tools.make_vault_write_tools")
@@ -793,11 +791,14 @@ class TestMakeAgentVaultTools:
         )
         vault_config = Mock()
 
-        result = _make_agent_vault_tools(meta, settings, vault_config)
+        handler = Mock()
+
+        result = make_agent_vault_tools(meta, settings, vault_config, handler)
 
         assert len(result) == 1
         mock_factory.assert_called_once()
         call_kwargs = mock_factory.call_args
+        assert call_kwargs[0] == (vault_config, handler)
         assert call_kwargs[1]["target_dir"] == "04 – Slip Box"
         assert call_kwargs[1]["template_path"] == "Templates/Permanent Note.md"
 
@@ -816,7 +817,7 @@ class TestMakeAgentVaultTools:
                 )
             )
         )
-        result = _make_agent_vault_tools(meta, settings, Mock())
+        result = make_agent_vault_tools(meta, settings, Mock(), Mock())
         assert len(result) == 2
         assert mock_factory.call_args[1]["target_dir"] == "02 – Areas/02 – Patterns"
 

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — One copy of the agent tool assembly in the CLI (AON-01, 2026-10-08)
+
+- `apps/cli/main.py` kept its own copies of `assemble_agent_tools`,
+  `instantiate_agent` and `make_agent_vault_tools` from
+  `apps/cli/session_factory.py`. They were not fully dead as the roadmap
+  said: `main()` shadowed them, but slash commands (`/write` etc.) still
+  called them. Both paths now use the `session_factory` functions, and the
+  copies are gone (~90 lines). Behaviour is unchanged; delegation passes the
+  session's confirmation handler as before. The tests moved to the
+  `session_factory` functions, and one now checks that the handler reaches
+  the vault write tools.
+
 ### Fixed — Memory importer dates undated decisions instead of leaving a placeholder (2026-10-08)
 
 - The Claude memory importer's prompt now tells the model to date an entry
