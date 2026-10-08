@@ -233,6 +233,9 @@ copied exactly, without the leading "- ".
 - "position": "top" when the section is ordered newest first, else "bottom".
 - Merge related facts into one bullet where natural. Keep Marco's terse bullet style, English.
 - Never propose deleting anything.
+- If a bullet needs a date the facts don't give (e.g. a decision log entry), write "≤" plus the \
+fact's date (decided on or before it was recorded), e.g. "≤2026-09-12". Never a placeholder or \
+HTML comment.
 - If the note states its own maintenance rules, follow them, and propose nothing for sections the \
 rules reserve for the owner.
 
