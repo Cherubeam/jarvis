@@ -298,18 +298,15 @@ def _find_deferred_handler(session: GuiSession) -> Any:
 
 
 def _daily_summary_turn_sync(session: GuiSession, messages: list[dict[str, Any]]) -> Any:
-    """Synchronous stream call — runs in asyncio.to_thread. Cap max_tokens
-    at 4096 to mirror the CLI (avoids 402 credit errors on some providers)."""
+    """Synchronous stream call — runs in asyncio.to_thread, with the session's
+    max_tokens (reasoning models spend part of it on thinking, see #67)."""
     handler = session.components.stream_handler
-    prior_max_tokens = handler.max_tokens
     prior_on_chunk = handler.on_chunk
     try:
-        handler.max_tokens = 4096
         # Don't set on_chunk — the GUI uses on_event for streaming.
         handler.on_chunk = None
         return handler.stream(messages, print_chunks=False)
     finally:
-        handler.max_tokens = prior_max_tokens
         handler.on_chunk = prior_on_chunk
 
 

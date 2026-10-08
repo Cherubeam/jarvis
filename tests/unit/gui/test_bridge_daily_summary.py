@@ -332,11 +332,11 @@ async def test_stream_exception_emits_error_and_turn_finished(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_max_tokens_capped_at_4096_during_stream(tmp_path: Path):
-    """Verify the handler.max_tokens is 4096 while streaming and restored afterwards."""
+async def test_session_max_tokens_kept_during_stream(tmp_path: Path):
+    """The session's max_tokens stays as is (no tighter cap); on_chunk is cleared and restored."""
     session = _make_session(tmp_path)
     handler = session.components.stream_handler
-    handler.max_tokens = 2048  # prior value
+    handler.max_tokens = 16384  # session value
     handler.on_chunk = MagicMock()  # prior callback
 
     observed: dict[str, Any] = {}
@@ -379,11 +379,11 @@ async def test_max_tokens_capped_at_4096_during_stream(tmp_path: Path):
     ):
         await run_turn(session, "/daily-summary", Queue(maxsize=64))
 
-    assert observed["max_tokens_during"] == 4096
+    assert observed["max_tokens_during"] == 16384
     assert observed["on_chunk_during"] is None
     assert observed["print_chunks"] is False
     # Restored afterwards
-    assert handler.max_tokens == 2048
+    assert handler.max_tokens == 16384
     assert handler.on_chunk is prior_on_chunk
 
 

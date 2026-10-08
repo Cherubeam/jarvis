@@ -420,7 +420,7 @@ Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands in
 `run_turn` forks on `/daily-summary` to a new `_run_daily_summary_turn`:
 
 - Streams via the existing `WebStreamHandler` pipeline so chunks reach `on_event` instead of leaking out.
-- The critical fix caught in Plan-agent review: **`_daily_summary_turn_sync` scopes `max_tokens=4096` and `on_chunk=None`** for the duration of the call (and restores both afterwards). Setting `on_chunk` would intercept events mid-stream and break the GUI's pipeline.
+- The critical fix caught in Plan-agent review: **`_daily_summary_turn_sync` scopes `on_chunk=None`** for the duration of the call (and restores it afterwards). It used to cap `max_tokens` at 4096 too; since 2026-10-08 it keeps the session's limit, because reasoning models spend part of it on thinking. Setting `on_chunk` would intercept events mid-stream and break the GUI's pipeline.
 - Vault writes flow through the bound `WebConfirmationHandler`, reusing the existing `approval_pending` / `approval_resolved` UI.
 - The bare command (`/daily-summary`) is logged to `ConversationLogger`, not the assembled payload — matches CLI semantics so History rows look identical in both surfaces.
 
