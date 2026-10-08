@@ -123,6 +123,27 @@ class TestHandBackTool:
         assert tool.terminal is True
         assert tool.parameters["required"] == ["reason"]
 
+    def test_description_names_other_specialists(self):
+        others = [
+            {"name": "substack_image_creator", "description": "Generate header image prompts"},
+            {"name": "writer", "description": "Draft blog posts"},
+        ]
+
+        tool = make_hand_back_tool(HandBackState(), others)
+
+        assert tool.description.endswith(
+            "\nOther specialists JARVIS can route to:"
+            "\n- substack_image_creator: Generate header image prompts"
+            "\n- writer: Draft blog posts"
+        )
+        assert "your own knowledge" in tool.description
+
+    def test_description_without_other_specialists_has_no_list(self):
+        tool = make_hand_back_tool(HandBackState())
+
+        assert "Other specialists" not in tool.description
+        assert tool.description.endswith("JARVIS routes the request.")
+
     def test_execute_records_reason(self):
         state = HandBackState()
         tool = make_hand_back_tool(state)

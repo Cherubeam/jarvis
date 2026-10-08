@@ -297,6 +297,29 @@ class TestHandleAgentCommand:
 
         assert mock_session.call_args.kwargs["hand_back"] is state
 
+    def test_no_payload_session_names_the_other_specialists(self):
+        """hand_back_to_jarvis lists every other agent, not the running one."""
+        registry = {
+            "tactics": AgentMeta(
+                name="tactics", description="Tactics", command="/tactics", meta_path=Path("/fake/meta.yaml")
+            ),
+            "substack_image_creator": AgentMeta(
+                name="substack_image_creator", description="Header images", command="/substack-image"
+            ),
+        }
+
+        with (
+            patch("apps.cli.main._run_agent_session") as mock_session,
+            patch("apps.cli.session_factory.agent_from_meta", return_value=Mock()),
+        ):
+            _handle_agent_command(
+                "/tactics", "", Mock(), Mock(), Mock(), "model", registry, session=Mock(), hand_back=HandBackState()
+            )
+
+        assert mock_session.call_args.kwargs["other_agents"] == [
+            {"name": "substack_image_creator", "description": "Header images"}
+        ]
+
     def test_no_payload_shows_usage_when_no_session(self, capsys):
         """No-payload + no session falls back to usage text."""
         registry = {

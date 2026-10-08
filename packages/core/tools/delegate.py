@@ -87,12 +87,20 @@ class HandBackState:
     user_message: str | None = None
 
 
-def make_hand_back_tool(state: HandBackState) -> ToolDefinition:
+def make_hand_back_tool(state: HandBackState, other_agents: list[dict[str, Any]] | None = None) -> ToolDefinition:
     """Create the tool a specialist in an interactive session uses to return a request to JARVIS.
 
     JARVIS stays the only router: the specialist says a request isn't its job, the CLI ends
     the session, and JARVIS routes the user's message again.
+
+    Args:
+        state: Mutable HandBackState, set when the tool is called.
+        other_agents: The other specialists ("name" and "description" keys). Listed in the
+            description so the specialist can tell which requests belong to someone else.
     """
+    specialists = "".join(f"\n- {a['name']}: {a['description']}" for a in other_agents or [])
+    if specialists:
+        specialists = "\nOther specialists JARVIS can route to:" + specialists  # pragma: no mutate
 
     def _hand_back(reason: str) -> str:
         state.reason = reason
@@ -102,8 +110,9 @@ def make_hand_back_tool(state: HandBackState) -> ToolDefinition:
         name="hand_back_to_jarvis",
         description=(
             "Hand the conversation back to JARVIS when the user asks for something outside your job, "  # pragma: no mutate
-            "e.g. a different kind of deliverable another specialist handles. Don't improvise it from "  # pragma: no mutate
-            "notes or search results. Call it as your only tool call; JARVIS routes the request."  # pragma: no mutate
+            "e.g. a deliverable one of the specialists below handles. Don't improvise it from notes, "  # pragma: no mutate
+            "search results or your own knowledge. Call it as your only tool call; JARVIS routes the "  # pragma: no mutate
+            "request." + specialists  # pragma: no mutate
         ),
         parameters={
             "type": "object",
