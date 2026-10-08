@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from packages.skills.registry import SkillMeta, discover_skills, get_skill_by_command
+from packages.skills.registry import SkillMeta, discover_skills, get_skill_by_command, import_skill_module
 
 _SKILLS_ROOT = Path(__file__).parent.parent.parent / "packages" / "skills"
 _REAL_SKILLS_PRESENT = (_SKILLS_ROOT / "technical-humanist-image-architect" / "SKILL.md").exists() and (
@@ -133,3 +133,35 @@ class TestGetSkillByCommand:
         meta = get_skill_by_command("/technical-humanist-image-architect")
         assert meta is not None
         assert meta.name == "technical-humanist-image-architect"
+
+
+@pytest.mark.unit
+class TestImportSkillModuleSymlink:
+    """Tests for import_skill_module with symlinked skill directories."""
+
+    def test_symlinked_skill_dir_loads_skill_py(self, tmp_path):
+        """Verify import_skill_module works when skill_dir is a symlink
+        pointing outside the packages/ tree (e.g. a private skills repo)."""
+        # Create a fake skill.py outside the packages tree
+        external = tmp_path / "external-repo" / "my-skill"
+        external.mkdir(parents=True)
+        (external / "skill.py").write_text('SKILL_CONFIG = {"temperature": 0.9, "max_tokens": 2048}\n')
+
+        # Create a packages/skills/ tree with a symlink to the external skill
+        packages = tmp_path / "packages" / "skills" / "my-skill"
+        packages.parent.mkdir(parents=True)
+        packages.symlink_to(external)
+
+        # Import via the symlink path — should succeed
+        module = import_skill_module(packages)
+        assert module.SKILL_CONFIG["temperature"] == 0.9
+        assert module.SKILL_CONFIG["max_tokens"] == 2048
+
+    def test_non_packages_path_raises_import_error(self, tmp_path):
+        """Paths that don't contain 'packages' should raise ImportError."""
+        bogus = tmp_path / "somewhere" / "else"
+        bogus.mkdir(parents=True)
+        (bogus / "skill.py").write_text("SKILL_CONFIG = {}\n")
+
+        with pytest.raises(ImportError, match="Cannot determine module path"):
+            import_skill_module(bogus)

@@ -680,8 +680,7 @@ jarvis/
 │   │   └── <name>/                 # One directory per data-driven agent: meta.yaml + prompts/system.md
 │   │                               #   (list: docs/engineering/agents.md)
 │   ├── skills/                     # Skills (passive knowledge packs)
-│   │   ├── base.py                 # BaseSkill (parses SKILL.md, optional skill.py)
-│   │   ├── registry.py             # Filesystem-based skill discovery
+│   │   ├── registry.py             # Filesystem-based skill discovery + skill.py import
 │   │   ├── resolver.py             # Skill resolution and binding for agents
 │   │   └── <skill-name>/           # One kebab-case directory per skill (SKILL.md), e.g. content-evaluator/
 │   ├── integrations/               # External service integrations

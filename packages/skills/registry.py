@@ -11,9 +11,11 @@ can also be used with Claude, ChatGPT, or any other LLM.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from packages.core.context_builder import parse_frontmatter
 
@@ -68,9 +70,7 @@ def discover_skills(skills_dir: Path | None = None) -> dict[str, SkillMeta]:
         has_skill_py = (child / "skill.py").is_file()
         if has_skill_py:
             try:
-                from packages.skills.base import _import_skill_module
-
-                mod = _import_skill_module(child)
+                mod = import_skill_module(child)
                 config = getattr(mod, "SKILL_CONFIG", {})
                 if "command" in config:
                     command = config["command"]
@@ -111,3 +111,28 @@ def get_skill_by_command(command: str, skills: dict[str, SkillMeta] | None = Non
         if meta.command == command:
             return meta
     return None
+
+
+def import_skill_module(skill_dir: Path) -> Any:
+    """Import a skill's skill.py module by path.
+
+    Uses absolute() instead of resolve() so symlinked skill directories
+    keep their logical path within the packages/ tree. The actual file is
+    loaded via spec_from_file_location so Python finds the real module on
+    disk regardless of symlink indirection.
+    """
+    # absolute() preserves symlinks; resolve() follows them
+    parts = skill_dir.absolute().parts
+    try:
+        pkg_idx = parts.index("packages")
+    except ValueError as err:
+        raise ImportError(f"Cannot determine module path for {skill_dir}") from err
+
+    module_name = ".".join(parts[pkg_idx:]) + ".skill"
+    skill_py = skill_dir / "skill.py"
+    spec = importlib.util.spec_from_file_location(module_name, skill_py)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot create module spec for {skill_py}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
