@@ -1,7 +1,14 @@
-"""Analyze costs per conversation type.
+"""Analyze costs per conversation type, and measure native JARVIS use.
 
-Classifies conversations by source, model, and length, then
-aggregates cost/token/latency metrics per group.
+Cost tables classify conversations by source, model, and length, then
+aggregate cost/token/latency metrics per group. The usage reports (AON-01
+measurement) count only native sessions, not imports:
+
+- sessions: native sessions per ISO week and front end (environment.client)
+- spend: native spend per month, split by usage_source (billed, estimated, legacy)
+- caching: billed turns per model with cache-read share, the TOK caching baseline
+
+Run scripts/backfill_billed_usage.py first, or recent turns stay estimated.
 """
 
 from __future__ import annotations
@@ -11,6 +18,7 @@ import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -49,7 +57,10 @@ class GroupStats:
 
 
 def classify_source(conversation: dict[str, Any]) -> str:
-    """Classify conversation source from tags."""
+    """Classify conversation source from metadata.import_source, else from tags (older imports)."""
+    import_source = (conversation.get("metadata") or {}).get("import_source")
+    if import_source:
+        return f"imported/{import_source}"
     tags = conversation.get("tags", [])
     if "imported" in tags:
         if "chatgpt" in tags:
@@ -93,6 +104,181 @@ def aggregate_conversation(stats: GroupStats, conversation: dict[str, Any]) -> N
     if avg_latency > 0:
         stats.total_latency_ms += avg_latency
         stats.latency_count += 1
+
+
+def is_native(conversation: dict[str, Any]) -> bool:
+    """A JARVIS session (CLI or GUI), not an imported conversation."""
+    return classify_source(conversation) == "native"
+
+
+def has_user_message(conversation: dict[str, Any]) -> bool:
+    return any(m.get("role") == "user" for m in conversation.get("messages", []))
+
+
+def iso_week(timestamp: str) -> str:
+    """'2026-10-08T21:30:10' -> '2026-W41'."""
+    year, week, _ = datetime.fromisoformat(timestamp).isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def assistant_turns(conversation: dict[str, Any]) -> list[dict[str, Any]]:
+    """Assistant messages that carry usage."""
+    return [m for m in conversation.get("messages", []) if m.get("role") == "assistant" and m.get("usage")]
+
+
+def usage_source(message: dict[str, Any]) -> str:
+    """billed | estimated | legacy (logged before usage_source existed, 2026-09-29)."""
+    source = (message.get("metadata") or {}).get("usage_source")
+    return source if source in ("billed", "estimated") else "legacy"
+
+
+def turn_model(conversation: dict[str, Any], message: dict[str, Any]) -> str:
+    """Model that answered. Logged per turn since 2026-10-08; before that, the session's
+    model with a "(session)" mark, which is wrong for pinned agents such as substack_publisher."""
+    model = (message.get("metadata") or {}).get("model")
+    if model:
+        return str(model)
+    return f"{classify_model(conversation)} (session)"
+
+
+def sessions_by_week(conversations: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    """Native sessions with at least one user message, per ISO week and front end."""
+    weeks: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for conv in conversations:
+        if not is_native(conv) or not has_user_message(conv):
+            continue
+        client = (conv.get("environment") or {}).get("client") or "unknown"
+        weeks[iso_week(conv["session_start"])][client] += 1
+    return {week: dict(clients) for week, clients in weeks.items()}
+
+
+@dataclass
+class SpendStats:
+    """Native spend in one month, split by where the numbers come from."""
+
+    billed: float = 0.0
+    estimated: float = 0.0
+    legacy: float = 0.0
+    turns: int = 0
+
+    @property
+    def total(self) -> float:
+        return self.billed + self.estimated + self.legacy
+
+
+def spend_by_month(conversations: list[dict[str, Any]]) -> dict[str, SpendStats]:
+    """Native spend per month (from the turn's timestamp), by usage_source."""
+    months: dict[str, SpendStats] = defaultdict(SpendStats)
+    for conv in conversations:
+        if not is_native(conv):
+            continue
+        for msg in assistant_turns(conv):
+            stats = months[str(msg.get("timestamp") or conv["session_start"])[:7]]
+            cost = float(msg["usage"].get("cost_usd") or 0.0)
+            setattr(stats, usage_source(msg), getattr(stats, usage_source(msg)) + cost)
+            stats.turns += 1
+    return dict(months)
+
+
+@dataclass
+class CacheStats:
+    """Billed turns of one model: how much of the prompt came from the cache."""
+
+    turns: int = 0
+    prompt_tokens: int = 0
+    cache_read_tokens: int = 0
+    cost: float = 0.0
+    later_turns: int = 0  # billed turns after the session's first turn
+    later_turns_with_reads: int = 0
+
+    @property
+    def read_share(self) -> float:
+        return self.cache_read_tokens / self.prompt_tokens if self.prompt_tokens else 0.0
+
+
+def caching_by_model(conversations: list[dict[str, Any]]) -> dict[str, CacheStats]:
+    """Cache reads per model over billed native turns (estimates carry no cache fields)."""
+    models: dict[str, CacheStats] = defaultdict(CacheStats)
+    for conv in conversations:
+        if not is_native(conv):
+            continue
+        for index, msg in enumerate(assistant_turns(conv)):
+            if usage_source(msg) != "billed":
+                continue
+            usage = msg["usage"]
+            stats = models[turn_model(conv, msg)]
+            stats.turns += 1
+            stats.prompt_tokens += int(usage.get("prompt_tokens") or 0)
+            stats.cache_read_tokens += int(usage.get("cache_read_tokens") or 0)
+            stats.cost += float(usage.get("cost_usd") or 0.0)
+            if index > 0:
+                stats.later_turns += 1
+                stats.later_turns_with_reads += int(bool(usage.get("cache_read_tokens")))
+    return dict(models)
+
+
+def _cost(value: float) -> str:
+    return format_cost(value) if value else "–"
+
+
+def format_sessions(weeks: dict[str, dict[str, int]]) -> str:
+    clients = sorted({c for counts in weeks.values() for c in counts})
+    lines = [
+        "### Native sessions per week",
+        "",
+        "| Week | " + " | ".join(clients) + " | Total |",
+        "| --- |" + " --- |" * (len(clients) + 1),
+    ]
+    for week in sorted(weeks):
+        counts = weeks[week]
+        cells = " | ".join(str(counts.get(c, 0)) for c in clients)
+        lines.append(f"| {week} | {cells} | {sum(counts.values())} |")
+    total = sum(sum(c.values()) for c in weeks.values())
+    lines += ["", f"{total} sessions in {len(weeks)} active weeks (sessions with at least one message)."]
+    return "\n".join(lines)
+
+
+def format_spend(months: dict[str, SpendStats]) -> str:
+    lines = [
+        "### Native spend per month",
+        "",
+        "| Month | Turns | Billed | Estimated | Legacy | Total |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for month in sorted(months):
+        m = months[month]
+        lines.append(
+            f"| {month} | {m.turns} | {_cost(m.billed)} | {_cost(m.estimated)} | {_cost(m.legacy)} | {_cost(m.total)} |"
+        )
+    lines += [
+        "",
+        "Billed = OpenRouter's billing record. Estimated = streamed turn not yet reconciled (run "
+        "scripts/backfill_billed_usage.py). Legacy = logged before 2026-09-29, mostly streamed estimates.",
+    ]
+    return "\n".join(lines)
+
+
+def format_caching(models: dict[str, CacheStats]) -> str:
+    lines = [
+        "### Prompt caching (billed native turns)",
+        "",
+        "| Model | Turns | Prompt tokens | Cache reads | Read share | Turns 2+ with reads | Cost |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for model in sorted(models, key=lambda k: models[k].cost, reverse=True):
+        c = models[model]
+        lines.append(
+            f"| {model} | {c.turns} | {c.prompt_tokens:,} | {c.cache_read_tokens:,} | {c.read_share:.0%} | "
+            f"{c.later_turns_with_reads}/{c.later_turns} | {_cost(c.cost)} |"
+        )
+    if not models:
+        lines.append("| (no billed turns yet) | | | | | | |")
+    lines += [
+        "",
+        "Cache writes aren't in OpenRouter's billing record, so they show only in the cost. "
+        '"(session)" = turn logged before the per-turn model field (2026-10-08); pinned agents may differ.',
+    ]
+    return "\n".join(lines)
 
 
 def load_conversations(conversations_dir: Path) -> list[dict[str, Any]]:
@@ -161,6 +347,19 @@ def format_table(groups: dict[str, GroupStats], group_by: str) -> str:
     return "\n".join(lines)
 
 
+USAGE_REPORTS = ["sessions", "spend", "caching"]
+
+
+def format_usage_report(conversations: list[dict[str, Any]], report: str) -> str:
+    if report == "sessions":
+        return format_sessions(sessions_by_week(conversations))
+    if report == "spend":
+        return format_spend(spend_by_month(conversations))
+    if report == "caching":
+        return format_caching(caching_by_model(conversations))
+    raise ValueError(f"Unknown report: {report}. Use: {USAGE_REPORTS}")
+
+
 def format_full_report(
     conversations: list[dict[str, Any]],
     group_types: list[str],
@@ -178,8 +377,10 @@ def format_full_report(
     lines.append("")
 
     for group_by in group_types:
-        groups = analyze_by_group(conversations, group_by)
-        lines.append(format_table(groups, group_by))
+        if group_by in USAGE_REPORTS:
+            lines.append(format_usage_report(conversations, group_by))
+        else:
+            lines.append(format_table(analyze_by_group(conversations, group_by), group_by))
         lines.append("")
 
     return "\n".join(lines)
@@ -195,9 +396,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--by",
-        choices=["source", "model", "length", "all"],
+        choices=["source", "model", "length", *USAGE_REPORTS, "all"],
         default="all",
-        help="Group conversations by this dimension.",
+        help="Cost table by source/model/length, or a usage report (sessions, spend, caching).",
     )
     parser.add_argument(
         "--output",
@@ -218,7 +419,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.by == "all":
-        group_types = ["source", "model", "length"]
+        group_types = ["source", "model", "length", *USAGE_REPORTS]
     else:
         group_types = [args.by]
 

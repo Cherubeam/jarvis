@@ -41,15 +41,14 @@ Order of work after the September review ([dossier](../research/jarvis-deep-rese
 Each step names its milestone below; this list only sets the order.
 
 1. **Finish AON-01.** Done: GUI auth, vault oversight, atomic saves, GUI
-   approvals reach the running turn (2026-10-04). **Next: measurement** — one
-   parser over the conversation JSON for the native-session count, the monthly
-   spend report and the TOK caching baseline. Run
-   `scripts/backfill_billed_usage.py` first: the swap to billed usage runs at
-   CLI exit and at each GUI save, so the last turn of a session stays an
-   estimate (checked 2026-10-08: 2 billed messages, 3 estimated in 2 files,
-   6 native sessions since 2026-09-29). Build the parser now; conclude after
-   weeks of real use, not from 6 sessions. Then the OpenRouter data policy
-   (Marco's account), the cost ledger, tool descriptions.
+   approvals reach the running turn (2026-10-04). Measurement tooling built
+   (2026-10-08): `scripts/analyze_costs.py --by sessions|spend|caching`
+   ([how to run](metrics.md#current-cost-benchmarks)); run
+   `scripts/backfill_billed_usage.py` first. Each turn now logs the model that
+   answered. **Conclusions wait for weeks of real use**: the archive holds 5
+   billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. **Next:** the
+   OpenRouter data policy (Marco's account), then the cost ledger and tool
+   descriptions.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
@@ -456,9 +455,9 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
-- [ ] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040 *(S)*
+- [x] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040: `analyze_costs.py --by sessions` *(S)* ✅ 2026-10-08
 - [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
-- [ ] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline. Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)*
+- [x] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline (`analyze_costs.py --by spend` / `--by caching`). Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)* ✅ 2026-10-08
 - [x] Delete the duplicate tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_instantiate_agent`, `_make_agent_vault_tools`); not fully dead: slash commands still used it, now they call `apps/cli/session_factory.py` like `main()` does; `tests/unit/test_cli_agents.py` repointed *(S)* ✅ 2026-10-08
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*

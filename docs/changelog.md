@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Usage measurement in `analyze_costs.py` (AON-01, 2026-10-08)
+
+- Three reports over the conversation archive, native JARVIS sessions only
+  (imports are recognised by `metadata.import_source`, older ones by tag):
+  `--by sessions` (sessions per ISO week and front end, the ADR-040 usage
+  measure), `--by spend` (spend per month, split into billed, estimated and
+  legacy turns) and `--by caching` (billed turns per model with cache-read
+  share and how many later turns read from the cache, the TOK baseline).
+  `--by all` includes them. How to run: `docs/product/metrics.md`.
+- Each assistant turn now logs the model that answered (`metadata.model`).
+  Before, only the session's model was recorded, so a pinned agent's Opus
+  turns looked like the session's GPT-6 Luna (record-keeping, EU AI Act
+  Art. 12). Older turns are marked "(session)" in the caching table.
+- `--by source` now reads `metadata.import_source` first, so Claude Code
+  imports show as `imported/claude_code` instead of `imported/other`.
+- First numbers (2026-10-08, after the backfill): 43 native sessions in 11
+  active weeks; 5 billed turns, all GPT-6 Luna, 66% of their prompt tokens
+  read from cache. No billed Anthropic turn yet, so the caching question for
+  Opus stays open (P2: no conclusion from 5 turns).
+
 ## [0.34.0] - 2026-10-08
 
 ### Fixed — Specialists know whom to hand back to (2026-10-08)
