@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-10-08
+
 ### Fixed — Specialists know whom to hand back to (2026-10-08)
 
 - In a live test a `substack_publisher` session asked for a cover image wrote
