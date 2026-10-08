@@ -204,6 +204,11 @@ class TestPrompt:
         assert "created: 2026-04-09" not in prompt
         assert "f1 (2026-09-12, /profile.md): Knows Go" in prompt
 
+    def test_undated_entries_get_fact_date_upper_bound(self):
+        prompt = build_prompt("professional", NOTE, FACTS)
+        assert 'write "≤" plus the fact\'s date (decided on or before it was recorded), e.g. "≤2026-09-12"' in prompt
+        assert "Never a placeholder or HTML comment." in prompt
+
     def test_note_updated(self):
         assert note_updated(NOTE) == "2026-04-09"
         assert note_updated("no frontmatter") == ""

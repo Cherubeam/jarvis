@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Memory importer dates undated decisions instead of leaving a placeholder (2026-10-08)
+
+- The Claude memory importer's prompt now tells the model to date an entry
+  the facts don't date (e.g. a decision log line) as "≤" plus the fact's date,
+  meaning decided on or before it was recorded. Before, the model wrote an
+  HTML-comment placeholder (`<!-- TODO(Marco): date -->`), which Obsidian
+  rendered as an empty bold date (`****`). A test checks the rule is in the
+  prompt; whether the model follows it shows at the next import review.
+
 ### Changed — Measurement prep documented (AON-01, 2026-10-08)
 
 - Roadmap: current focus as of 2026-10-08 (v0.33.0 released, HUB-02 recall
