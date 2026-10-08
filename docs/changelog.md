@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Measurement prep documented (AON-01, 2026-10-08)
+
+- Roadmap: current focus as of 2026-10-08 (v0.33.0 released, HUB-02 recall
+  done). Measurement starts by running `scripts/backfill_billed_usage.py`,
+  because the swap to billed usage runs at CLI exit and GUI save and leaves
+  the last turn of a session estimated; two trigger-gated options for those
+  leftovers are recorded under TOK (wait at exit, backfill at startup).
+  Native sessions per month extended to October; the front-end field named.
+  The caching plan's baseline step notes why it cannot run yet (2 billed
+  messages in the archive).
+
 ## [0.33.0] - 2026-10-06
 
 ### Fixed — MCP servers no longer report a disconnect error on every exit (2026-10-06)

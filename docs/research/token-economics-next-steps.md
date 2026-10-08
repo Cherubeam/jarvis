@@ -161,6 +161,15 @@ regional us/eu endpoints +10%. OpenAI models (the `gpt-6-luna` default) cache au
    `substack_publisher` session), then read the billed logs: is `cache_read_tokens` > 0 on turn
    2+? This answers whether today's system-prompt breakpoint hits at all. Without it, no
    savings claim is checkable.
+
+   **Status 2026-10-08: not yet possible.** The archive holds 2 billed messages (both
+   2026-09-29). The sessions of 2026-10-03 (2 turns in 24 s) and 2026-10-06 (1 turn, the
+   90k-token recall test) are still estimates: the CLI reconciles once at exit without
+   waiting, and a record is published 10-15 s after its turn, so the last turn of every
+   session and every turn of a short session stay estimated. `backfill_billed_usage.py
+   --dry-run` would fix all 3 (billed cost $0.0058 below the estimates). Run the backfill
+   before reading the logs. Removing the manual step is trigger-gated in
+   [roadmap → TOK](../product/roadmap.md#tok--context-window-management--search).
 2. **Second breakpoint on the last message** of each Anthropic request, next to the system one
    (2 of Anthropic's 4 allowed). Caches the growing history and each tool-loop iteration.
    String content must become `[{"type": "text", "text": ..., "cache_control": ...}]`.
