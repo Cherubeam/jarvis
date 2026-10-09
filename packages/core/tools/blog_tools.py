@@ -41,6 +41,9 @@ def make_blog_tools(
     """
     blog_path = vault_config.vault_path / blog_dir
     template_full_path = vault_config.vault_path / template_path
+    # Named in list_blog_posts so the model doesn't guess folder names (read once per session)
+    subfolders = sorted(p.name for p in blog_path.iterdir() if p.is_dir()) if blog_path.is_dir() else []
+    subfolder_hint = f" One of: {', '.join(repr(name) for name in subfolders)}." if subfolders else ""
 
     # --- list_blog_posts ---
 
@@ -62,13 +65,17 @@ def make_blog_tools(
 
     list_tool = ToolDefinition(
         name="list_blog_posts",
-        description="List markdown files in the blog posts directory. Optionally filter by subfolder.",  # pragma: no mutate
+        description=(  # pragma: no mutate
+            f"List the blog's markdown files (everything under '{blog_dir}'). Returns paths from the "  # pragma: no mutate
+            "vault root, ready for read_blog_post and edit_blog_post."  # pragma: no mutate
+        ),
         parameters={
             "type": "object",
             "properties": {
                 "subfolder": {
                     "type": "string",
-                    "description": "Optional subfolder within the blog directory to list.",  # pragma: no mutate
+                    "description": "Folder inside the blog folder; omit to list all."
+                    + subfolder_hint,  # pragma: no mutate
                 },
             },
             "required": [],
@@ -91,13 +98,16 @@ def make_blog_tools(
 
     read_tool = ToolDefinition(
         name="read_blog_post",
-        description="Read the full content of a blog post or template. Path is relative to the vault root.",  # pragma: no mutate
+        description=(  # pragma: no mutate
+            "Read a blog post or the blog template in full. Take the path from list_blog_posts; "  # pragma: no mutate
+            "don't build it from a title."  # pragma: no mutate
+        ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
+                    "description": f"Path from the vault root; blog posts start with '{blog_dir}/'.",  # pragma: no mutate
                 },
             },
             "required": ["path"],
@@ -134,7 +144,7 @@ def make_blog_tools(
     create_tool = ToolDefinition(
         name="create_blog_post",
         description=(  # pragma: no mutate
-            "Create a new blog post in the blog directory. "  # pragma: no mutate
+            f"Create a new blog post under '{blog_dir}'. "  # pragma: no mutate
             "Set use_template=true to prepend the blog post template. "  # pragma: no mutate
             "The user will see a diff and must confirm before the file is written."  # pragma: no mutate
         ),
@@ -143,7 +153,7 @@ def make_blog_tools(
             "properties": {
                 "filename": {
                     "type": "string",
-                    "description": "Filename for the new post (e.g. 'my-new-post.md').",  # pragma: no mutate
+                    "description": "Path inside the blog folder, e.g. 'My New Post.md'; existing subfolders allowed.",  # pragma: no mutate
                 },
                 "content": {
                     "type": "string",
@@ -207,7 +217,7 @@ def make_blog_tools(
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
+                    "description": f"Path from the vault root, as list_blog_posts returns it ('{blog_dir}/…').",  # pragma: no mutate
                 },
                 "edits": {
                     "type": "array",

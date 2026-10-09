@@ -48,13 +48,13 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     read_tool = ToolDefinition(
         name="read_note",
-        description="Read the full content of a note from the Obsidian vault. Path is relative to the vault root.",  # pragma: no mutate
+        description="Read a note from the Obsidian vault in full. Find its path with search_notes first.",  # pragma: no mutate
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the note, relative to the vault root.",  # pragma: no mutate
+                    "description": "Path from the vault root, e.g. 'Folder/Note.md'.",  # pragma: no mutate
                 },
             },
             "required": ["path"],
@@ -101,7 +101,10 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
 
     search_tool = ToolDefinition(
         name="search_notes",
-        description="List notes in the Obsidian vault matching a glob pattern. Returns paths relative to the vault root. Supports sorting by name or modification time.",  # pragma: no mutate
+        description=(  # pragma: no mutate
+            "Find notes by file name or folder with a glob; it doesn't search inside notes. Returns "  # pragma: no mutate
+            "paths from the vault root, ready for read_note."  # pragma: no mutate
+        ),
         parameters={
             "type": "object",
             "properties": {
@@ -111,7 +114,7 @@ def make_vault_read_tools(vault_config: VaultConfig) -> list[ToolDefinition]:
                 },
                 "pattern": {
                     "type": "string",
-                    "description": "Glob pattern to match files (default: '**/*.md').",  # pragma: no mutate
+                    "description": "Glob from `directory` (default '**/*.md'). Start with '**/' to include subfolders, e.g. '**/*Pricing*.md'.",  # pragma: no mutate
                 },
                 "sort_by": {
                     "type": "string",

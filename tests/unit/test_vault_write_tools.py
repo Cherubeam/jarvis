@@ -88,6 +88,21 @@ def _get_tool(tools_list, name):
 
 @pytest.mark.unit
 class TestMakeVaultWriteTools:
+    def test_descriptions_name_the_target_folder(self, tools_with_target):
+        """list_notes_in_dir paths are folder-relative; edit_note wants vault-root paths."""
+        tools, *_ = tools_with_target
+        listing = _get_tool(tools, "list_notes_in_dir").description
+        assert listing == (
+            "List the notes in 'Patterns'. Paths are relative to that folder: use them as is with "
+            "create_note; for read_note and edit_note put 'Patterns/' in front."
+        )
+        assert _get_tool(tools, "create_note").description.startswith("Create a new note in 'Patterns'. ")
+
+    def test_without_target_create_note_names_vault_root(self, tools_no_target):
+        assert _get_tool(tools_no_target[0], "create_note").description.startswith(
+            "Create a new note in the vault root. "
+        )
+
     def test_with_target_returns_three_tools(self, tools_with_target):
         tools, *_ = tools_with_target
         assert len(tools) == 3

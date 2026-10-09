@@ -65,9 +65,8 @@ def make_suggest_improvements_tool(
     return ToolDefinition(
         name="suggest_improvements",
         description=(  # pragma: no mutate
-            "Show suggested improvements to a file as a colored diff — preview only, "  # pragma: no mutate
-            "nothing is written. Use this to propose concrete changes the user can "  # pragma: no mutate
-            "review and discuss before deciding to apply them."  # pragma: no mutate
+            "Show proposed changes to a file as a diff; nothing is written. Use it to discuss "  # pragma: no mutate
+            "changes before applying them with an edit tool. Path from the vault root."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
