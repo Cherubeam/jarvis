@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Tool descriptions say where paths start (AON-01, 2026-10-09)
+
+- **The problem:** the vault and blog tools mix two path bases. `read_note`,
+  `read_blog_post`, `edit_note` and `edit_blog_post` want paths from the vault
+  root. `create_note` and `list_notes_in_dir` work inside the agent's target
+  folder, and `create_blog_post` inside the blog folder. The descriptions only
+  said "relative to the vault root" and never named the folders. In a live
+  review session (2026-10-08) the reviewer passed a blog-folder path it had
+  from its prompt and got "file not found".
+- **The change:** descriptions name the real folders (from config, at factory
+  time) and say which tool's output feeds which: `list_blog_posts` returns
+  vault-root paths and names the blog's actual subfolders;
+  `list_notes_in_dir` says to put `<target>/` in front for `read_note` and
+  `edit_note`; `search_notes` says it matches file names, not note contents,
+  and that `**/` reaches subfolders. `evaluate_content` takes the text, not a
+  path; `suggest_improvements` writes nothing and points to the edit tools.
+- **Measured** with a probe that sends the real tool definitions and a request
+  to the model, runs only the read-only tools, and records the paths
+  (scratch script, not committed: it names private notes). Given a
+  blog-folder path, the first read failed in 5 of 5 runs before (GPT-6 Luna
+  3/3, Opus 5.5 2/2) and 0 of 5 after. Finding a slip-box note by name took
+  Luna 1–4 searches before (7 in 3 runs), 1 per run after. Luna stopped guessing subfolder names
+  ("drafts"). Tool schema for the vault read, blog and slip-box tools: 5,881 →
+  6,034 characters (+2.6%), sent with every call that has these tools.
+- The other tools (web, Readwise, cards, outcomes, delegation) were reviewed
+  and left as they are; no failure was observed.
+
 ### Changed — OpenRouter data policy deferred (AON-01, 2026-10-09)
 
 - Roadmap: the OpenRouter data-policy check moves to the end of AON-01 as

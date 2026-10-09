@@ -46,8 +46,9 @@ Each step names its milestone below; this list only sets the order.
    ([how to run](metrics.md#current-cost-benchmarks)); run
    `scripts/backfill_billed_usage.py` first. Each turn now logs the model that
    answered. **Conclusions wait for weeks of real use**: the archive holds 5
-   billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. **Next:**
-   tool descriptions, then the cost ledger. The OpenRouter data policy is
+   billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. Tool
+   descriptions rewritten (2026-10-09). **Next:** the cost ledger. The
+   OpenRouter data policy is
    deferred (2026-10-09, no time to read the policies now); it blocks nothing
    else.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
@@ -454,7 +455,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
 - [x] Fix the confirmation deadlock: the turn runs as a task so `chat_ws.py` receives approvals and cancels mid-turn; an unanswered approval is rejected after 10 minutes. Reproduced first with WebSocket tests (`test_chat_ws_approvals.py`: approval mid-turn, two writes in one turn, cancel mid-turn), which failed before the fix *(M)* ✅ 2026-10-04
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
-- [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
+- [x] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever): the vault and blog tools name their real folders and say which tool's paths feed which; evaluator and suggest-improvements say what they take. Measured with a probe of real tool calls (failed first reads 5/5 → 0/5); the other tools were reviewed and left as they are, no failure seen *(S)* ✅ 2026-10-09
 - [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
 - [x] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040: `analyze_costs.py --by sessions` *(S)* ✅ 2026-10-08
 - [x] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline (`analyze_costs.py --by spend` / `--by caching`). Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)* ✅ 2026-10-08

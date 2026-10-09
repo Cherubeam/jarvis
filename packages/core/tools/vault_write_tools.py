@@ -96,11 +96,13 @@ def make_vault_write_tools(
         )
         return result.message
 
+    # Named in descriptions so the model knows which folder a relative path starts from
+    where = f"'{target_dir}'" if target_dir else "the vault root"
+
     create_tool = ToolDefinition(
         name="create_note",
         description=(
-            "Create a new note in the vault. "  # pragma: no mutate
-            "Path is relative to the target directory (or vault root if no target directory is configured). "  # pragma: no mutate
+            f"Create a new note in {where}. "  # pragma: no mutate
             "Set use_template=true to prepend the configured template. "  # pragma: no mutate
             "Use descriptive file names with spaces (e.g. 'Concept for Method of the Year.md'). "  # pragma: no mutate
             "The user will see a diff and must confirm before the file is written."  # pragma: no mutate
@@ -111,9 +113,8 @@ def make_vault_write_tools(
                 "path": {
                     "type": "string",
                     "description": (
-                        "File path relative to the target directory "  # pragma: no mutate
-                        "(e.g. 'My Pattern.md' or 'Subfolder/Note.md'). "  # pragma: no mutate
-                        "Do NOT include the target directory prefix."  # pragma: no mutate
+                        f"Path inside {where}, e.g. 'My Pattern.md' or 'Subfolder/Note.md'; "  # pragma: no mutate
+                        "don't repeat the folder."  # pragma: no mutate
                     ),
                 },
                 "content": {
@@ -155,17 +156,15 @@ def make_vault_write_tools(
     edit_tool = ToolDefinition(
         name="edit_note",
         description=(
-            "Edit an existing note by replacing its full content. "  # pragma: no mutate
-            "Path is relative to the vault root. "  # pragma: no mutate
-            "Provide reasoning to explain the changes — it will be shown alongside the diff. "  # pragma: no mutate
-            "The user must confirm before the edit is applied."  # pragma: no mutate
+            "Replace an existing note's whole content: send the complete new text, read the note "  # pragma: no mutate
+            "first. reasoning is shown with the diff; the user must confirm."  # pragma: no mutate
         ),
         parameters={
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Path to the file, relative to the vault root.",  # pragma: no mutate
+                    "description": "Path from the vault root, as read_note and search_notes use it.",  # pragma: no mutate
                 },
                 "new_content": {
                     "type": "string",
@@ -205,10 +204,8 @@ def make_vault_write_tools(
         list_tool = ToolDefinition(
             name="list_notes_in_dir",
             description=(
-                "List markdown files in the target directory. "  # pragma: no mutate
-                "Returns paths relative to the target directory — "  # pragma: no mutate
-                "use these paths directly with create_note. "  # pragma: no mutate
-                "Optionally filter by subfolder."  # pragma: no mutate
+                f"List the notes in {where}. Paths are relative to that folder: use them as is with "  # pragma: no mutate
+                f"create_note; for read_note and edit_note put '{target_dir}/' in front."  # pragma: no mutate
             ),
             parameters={
                 "type": "object",

@@ -84,6 +84,36 @@ class TestMakeBlogTools:
         names = {t.name for t in tool_list}
         assert names == {"list_blog_posts", "read_blog_post", "create_blog_post", "edit_blog_post"}
 
+    def test_descriptions_name_the_blog_folder(self, tools):
+        """Models sent blog-relative paths to a vault-root tool; the folder is spelled out."""
+        tool_list, *_ = tools
+        read = _get_tool(tool_list, "read_blog_post")
+        assert read.parameters["properties"]["path"]["description"] == (
+            "Path from the vault root; blog posts start with '03 – Areas/02 – Substack/'."
+        )
+        assert "everything under '03 – Areas/02 – Substack'" in _get_tool(tool_list, "list_blog_posts").description
+        assert _get_tool(tool_list, "create_blog_post").description.startswith(
+            "Create a new blog post under '03 – Areas/02 – Substack'. "
+        )
+
+    def test_list_names_existing_subfolders(self, blog_vault):
+        config, blog_dir, _ = blog_vault
+        (blog_dir / "02 – Blog Drafts").mkdir()
+        (blog_dir / "01 – Idea Bucket").mkdir()
+        tool_list = make_blog_tools(config, MockConfirmationHandler(confirm=True), "03 – Areas/02 – Substack", "x.md")
+
+        subfolder = _get_tool(tool_list, "list_blog_posts").parameters["properties"]["subfolder"]["description"]
+
+        assert (
+            subfolder
+            == "Folder inside the blog folder; omit to list all. One of: '01 – Idea Bucket', '02 – Blog Drafts'."
+        )
+
+    def test_list_without_subfolders_has_no_hint(self, tools):
+        tool_list, *_ = tools
+        subfolder = _get_tool(tool_list, "list_blog_posts").parameters["properties"]["subfolder"]["description"]
+        assert subfolder == "Folder inside the blog folder; omit to list all."
+
     def test_all_have_litellm_format(self, tools):
         tool_list, *_ = tools
         for t in tool_list:
