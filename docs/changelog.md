@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — OpenRouter data policy deferred (AON-01, 2026-10-09)
+
+- Roadmap: the OpenRouter data-policy check moves to the end of AON-01 as
+  deferred (it needs the owner to read the account's policies, and blocks no
+  other item). Next are tool descriptions, then the cost ledger.
+
 ### Added — Usage measurement in `analyze_costs.py` (AON-01, 2026-10-08)
 
 - Three reports over the conversation archive, native JARVIS sessions only
