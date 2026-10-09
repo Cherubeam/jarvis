@@ -46,9 +46,10 @@ Each step names its milestone below; this list only sets the order.
    ([how to run](metrics.md#current-cost-benchmarks)); run
    `scripts/backfill_billed_usage.py` first. Each turn now logs the model that
    answered. **Conclusions wait for weeks of real use**: the archive holds 5
-   billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. **Next:** the
-   OpenRouter data policy (Marco's account), then the cost ledger and tool
-   descriptions.
+   billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. **Next:**
+   tool descriptions, then the cost ledger. The OpenRouter data policy is
+   deferred (2026-10-09, no time to read the policies now); it blocks nothing
+   else.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
@@ -456,9 +457,9 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [ ] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever) *(S)*
 - [x] Atomic conversation saves (write-temp-then-rename via `frontmatter.write_atomic`) in `memory.py`, both importers, the billed-usage backfill and the card renderer *(S)* ✅ 2026-10-02
 - [x] Count native sessions per week and per front end (`environment.client`) from the archive (`paths.conversations_dir`), excluding imports (`metadata.import_source`) — the usage measure from ADR-040: `analyze_costs.py --by sessions` *(S)* ✅ 2026-10-08
-- [ ] Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider *(S)*
 - [x] Read-only monthly spend report from the billed-usage fields, sharing parsing code with the TOK caching baseline (`analyze_costs.py --by spend` / `--by caching`). Run `scripts/backfill_billed_usage.py` first: the last turn of a session stays estimated at exit (see TOK) *(S)* ✅ 2026-10-08
 - [x] Delete the duplicate tool-assembly copy in `apps/cli/main.py` (`_assemble_agent_tools`, `_instantiate_agent`, `_make_agent_vault_tools`); not fully dead: slash commands still used it, now they call `apps/cli/session_factory.py` like `main()` does; `tests/unit/test_cli_agents.py` repointed *(S)* ✅ 2026-10-08
+- [ ] *Deferred 2026-10-09:* Check and document the OpenRouter account data policy (data collection, zero retention, provider allowlist); Auto Router turns let OpenRouter pick the provider. Needs Marco to read the account's policies; blocks no other item *(S)*
 
 *Token impact: neutral-to-negative (budget cap + better tool descriptions reduce waste).*
 
