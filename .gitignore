@@ -26,6 +26,7 @@ data/conversations/
 data/outcomes/
 data/pattern-cards/
 data/prompt-history/
+data/ledger/
 data/rag/
 data/.cli_history
 data/.gui_token

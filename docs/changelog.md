@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Spend limits and a cost ledger (AON-01, 2026-10-10)
+
+- **Per-turn limit** (`budget.max_turn_usd`, default $1.00): both tool loops
+  add up the cost of their rounds and stop before the next model call once
+  the turn has cost that much. The turn ends with "Stopped: this turn reached
+  about $X of the $1.00 per-turn limit"; tool calls made so far are kept.
+  Before, only the round cap (`max_iterations`, up to 15) bounded a turn,
+  which on Opus with a large context could reach several dollars.
+- **Monthly limit** (`budget.monthly_usd`, default $20): one notice per
+  session at 80%. Above the limit the CLI asks once per session whether to
+  continue, and a refused turn makes no model call (human oversight, EU AI
+  Act Art. 14). The GUI shows the notice and continues; a GUI approval card
+  for budgets is a backlog item.
+- **Ledger:** one JSON line per turn (all its model calls) in
+  `budget.ledger_dir/YYYY-MM.jsonl`: time, session, model, tokens, cost,
+  billed or estimated (record-keeping, Art. 12). The content evaluator and
+  the history summarizer call the model outside the turn, so their spend
+  never showed up in a turn's cost; they now write their own lines. A JSONL
+  file per month instead of the SQLite table the roadmap named: nothing
+  queries it yet.
+- Streamed costs are estimates that run about 36% low until OpenRouter's
+  record arrives, so both limits count them at 1.5×.
+- The GUI settings page has a Budget section.
+- Deferred with a trigger: the deterministic stop condition per loop (tests
+  pass, score reached) waits for the first unattended loop (AON-02 job).
+
 ## [0.35.0] - 2026-10-10
 
 ### Changed — Tool descriptions say where paths start (AON-01, 2026-10-09)

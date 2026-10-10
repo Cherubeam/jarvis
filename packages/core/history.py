@@ -214,6 +214,9 @@ def summarize_history(
             ],
             model=model_id,
         )
+        ledger = getattr(client, "ledger", None)
+        if ledger is not None:
+            ledger.record_response(response, purpose="summarize", model=model_id)
         summary_text = response.choices[0].message.content
     except Exception:
         logger.warning("History summarization failed; returning original history", exc_info=True)  # pragma: no mutate

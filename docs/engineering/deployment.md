@@ -292,6 +292,12 @@ contain sensitive data. The folder is the `paths.conversations_dir` setting (an 
 `config/local.yaml` moves it out of the repo); the import, backfill and analysis scripts in
 `scripts/` default to the same `paths.*` settings.
 
+### Spend ledger
+
+`budget.ledger_dir` (default `data/ledger`, gitignored) holds one JSONL file per month with
+every turn's cost; the spend limits read it. Set an absolute path in `config/local.yaml` to keep
+it in your data home. How the limits work: [architecture.md](architecture.md#spend-limits-and-the-cost-ledger).
+
 ### Context files
 
 The context files live in `paths.context_dir` under the names in `paths.context_files`; the

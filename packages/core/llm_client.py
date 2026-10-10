@@ -6,11 +6,14 @@ Supports multiple providers via LiteLLM's routing conventions.
 import re
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import litellm
 
 from packages.core.model_resolver import get_api_key, infer_provider
+
+if TYPE_CHECKING:
+    from packages.core.cost_ledger import CostLedger
 
 
 def _apply_cache_control(messages: list[dict[str, Any]], model: str) -> list[dict[str, Any]]:
@@ -219,6 +222,8 @@ class LLMClient:
         self.api_keys = api_keys
         self.default_model = default_model
         self.extra_body = extra_body or {}
+        # Spend ledger shared by every caller of this client (set by the session factory)
+        self.ledger: CostLedger | None = None
 
     def set_model(self, model_id: str) -> None:
         """Switch the default model mid-session."""

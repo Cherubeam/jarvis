@@ -283,6 +283,26 @@ class RoutingSettings(BaseModel):
     )
 
 
+class BudgetSettings(BaseModel):
+    """Spend limits and the cost ledger (AON-01)."""
+
+    enabled: bool = Field(default=True, description="Write the cost ledger and apply the limits below.")
+    max_turn_usd: float = Field(
+        default=1.0,
+        ge=0,
+        description="A turn's tool loop stops before its next model call once it has cost this much (0 = off).",
+    )
+    monthly_usd: float = Field(
+        default=20.0,
+        ge=0,
+        description="Warn at 80% of this month's spend; above it the CLI asks before each turn (0 = off).",
+    )
+    ledger_dir: str = Field(
+        default="data/ledger",
+        description="Directory for the monthly spend ledger (one JSONL file per month).",
+    )
+
+
 class SummarizationSettings(BaseModel):
     """History summarization — compress old turns to limit token use."""
 
@@ -574,6 +594,7 @@ class Settings(BaseSettings):
     rag: RagSettings = Field(default_factory=RagSettings)
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
+    budget: BudgetSettings = Field(default_factory=BudgetSettings)
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)

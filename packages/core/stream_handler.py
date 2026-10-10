@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import Any, cast
 
+from packages.core.cost_ledger import weighted_cost
 from packages.core.events import (
     Event,
     TextChunk,
@@ -33,6 +34,8 @@ from packages.core.pricing import ModelPricing, calculate_cost_from_litellm, get
 from packages.telemetry.metrics import MetricsTracker, ResponseMetrics
 
 _MAX_AGENTIC_ITERATIONS = 5
+# Share of budget.monthly_usd at which the first warning appears
+BUDGET_WARN_SHARE = 0.8
 _MIN_USEFUL_TOKENS = 256
 
 # Sent with the forced text-only answer once the tool loop runs out. Without it,
@@ -112,6 +115,17 @@ class StreamHandler:
         self.streaming = streaming
         self.on_before_tool_exec: Callable[[], None] | None = None
         self.on_after_tool_exec: Callable[[], None] | None = None
+        # Spend limits (AON-01); 0 turns a limit off. The ledger itself lives on the client
+        # (client.ledger) so side calls such as evaluations record into the same file.
+        self.max_turn_usd: float = 0.0
+        self.monthly_usd: float = 0.0
+        # Over the monthly limit: asked once per session (CLI). None → warn and continue (GUI).
+        self.on_budget_exceeded: Callable[[float, float], bool] | None = None
+        # How a budget notice reaches the user; None → emitted as text into the answer (GUI)
+        self.on_budget_notice: Callable[[str], None] | None = None
+        self._budget_acknowledged = False
+        self._budget_warned = False
+        self._turn_budget_stop: float | None = None  # weighted turn cost when the ceiling stopped the loop
         # Per-call agentic state — initialized at the top of stream() and
         # mutated by the agentic-loop helpers via getattr/setattr patterns.
         self._streaming_response: StreamingResponse | None = None
@@ -186,6 +200,62 @@ class StreamHandler:
             return calculate_cost_from_litellm(raw_response)
         return 0.0
 
+    def _turn_over_budget(self, usage: TokenUsage) -> bool:
+        """True (and remembered for the stop message) once the turn's tool rounds cost max_turn_usd."""
+        if not self.max_turn_usd:
+            return False
+        source = "billed" if usage.reported_cost is not None else "estimated"
+        spent = weighted_cost(self._calculate_cost(usage), source)
+        if spent < self.max_turn_usd:
+            return False
+        self._turn_budget_stop = spent
+        return True
+
+    def _budget_notice(self, text: str) -> None:
+        if self.on_budget_notice is not None:
+            self.on_budget_notice(text)
+        else:
+            self._emit(TextChunk(text=f"{text}\n\n", instance_id=self.instance_id))
+
+    def _check_monthly_budget(self) -> StreamResult | None:
+        """Warn at 80% of budget.monthly_usd; above it ask once (CLI) or warn (GUI). A result = not sent."""
+        ledger = getattr(self.client, "ledger", None)
+        if ledger is None or not self.monthly_usd or self._budget_acknowledged:
+            return None
+        spent = ledger.month_spend()
+        if spent >= self.monthly_usd:
+            if self.on_budget_exceeded is None:
+                if not self._budget_warned:
+                    self._budget_warned = True
+                    self._budget_notice(
+                        f"Monthly budget: ${spent:.2f} of ${self.monthly_usd:.2f} used (budget.monthly_usd)."
+                    )
+                return None
+            if self.on_budget_exceeded(spent, self.monthly_usd):
+                self._budget_acknowledged = True
+                return None
+            text = f"Not sent: this month's spend (${spent:.2f}) is over the ${self.monthly_usd:.2f} budget."
+            return StreamResult(text=text, usage=TokenUsage(), cost_usd=0.0, metrics=ResponseMetrics())
+        if spent >= BUDGET_WARN_SHARE * self.monthly_usd and not self._budget_warned:
+            self._budget_warned = True
+            self._budget_notice(f"Monthly budget: ${spent:.2f} of ${self.monthly_usd:.2f} used.")
+        return None
+
+    def _record_turn(self, result: StreamResult) -> None:
+        """One ledger line per turn: all its model calls, tool rounds included."""
+        ledger = getattr(self.client, "ledger", None)
+        if ledger is None or (not result.usage.total_tokens and not result.cost_usd):
+            return
+        ledger.record(
+            purpose="turn",
+            model=result.metrics.model or self.model_id,
+            prompt_tokens=result.usage.prompt_tokens,
+            completion_tokens=result.usage.completion_tokens,
+            cache_read_tokens=result.usage.cache_read_tokens,
+            cost_usd=result.cost_usd,
+            billed=result.usage.reported_cost is not None,
+        )
+
     def _try_with_credit_fallback(self, api_call: Callable[..., Any]) -> Any:
         """Catch InsufficientCreditsError, reduce max_tokens, and retry once."""
         from packages.core.llm_client import InsufficientCreditsError, PromptTokenLimitError
@@ -219,6 +289,25 @@ class StreamHandler:
         max_iterations: int | None = None,
         temperature: float | None = None,
     ) -> StreamResult:
+        """Run one turn within the spend limits and record it in the cost ledger.
+
+        See ``_stream_turn`` for the arguments and the turn itself.
+        """
+        refused = self._check_monthly_budget()
+        if refused is not None:
+            return refused
+        result = self._stream_turn(messages, print_chunks, tool_registry, max_iterations, temperature)
+        self._record_turn(result)
+        return result
+
+    def _stream_turn(
+        self,
+        messages: list[dict[str, Any]],
+        print_chunks: bool = False,
+        tool_registry: Any = None,
+        max_iterations: int | None = None,
+        temperature: float | None = None,
+    ) -> StreamResult:
         """Stream an LLM response, tracking metrics and cost.
 
         When tool_registry is provided and non-empty, runs an agentic loop
@@ -242,6 +331,7 @@ class StreamHandler:
 
         tools_format = None
         self._terminal_tool_fired = False
+        self._turn_budget_stop = None
         self._streaming_response = None
         final_text = None  # Set by non-streaming agentic loop
         final_usage = None
@@ -267,8 +357,10 @@ class StreamHandler:
                     temperature=temperature,
                 )
 
-        if self._terminal_tool_fired:
-            # Terminal tool fired — skip streaming, return accumulated results
+        # The loop helpers set this; cast so mypy doesn't keep the None narrowed from the reset above
+        budget_stop = cast(float | None, self._turn_budget_stop)
+        if self._terminal_tool_fired or budget_stop is not None:
+            # Terminal tool fired or the turn hit its spend limit — no further model call
             usage = getattr(self, "_intermediate_usage", TokenUsage())
             tool_messages = getattr(self, "_tool_messages", [])
             self._intermediate_usage = None
@@ -296,8 +388,15 @@ class StreamHandler:
                 )
             )
 
+            text = ""
+            if budget_stop is not None:
+                text = (
+                    f"Stopped: this turn reached about ${budget_stop:.2f} of the "
+                    f"${self.max_turn_usd:.2f} per-turn limit (budget.max_turn_usd). Ask again to continue."
+                )
+                self._emit(TextChunk(text=text, instance_id=self.instance_id))
             return StreamResult(
-                text="",
+                text=text,
                 usage=usage,
                 cost_usd=cost_usd,
                 metrics=response_metrics,
@@ -430,6 +529,9 @@ class StreamHandler:
             # Check if any executed tool is terminal (e.g. delegation)
             if any((t := tool_registry.get(call.function.name)) and t.terminal for call in tool_result.tool_calls):
                 self._terminal_tool_fired = True
+                break
+
+            if self._turn_over_budget(accumulated_usage):
                 break
 
         else:
@@ -683,6 +785,9 @@ class StreamHandler:
             # Check if any executed tool is terminal
             if any((t := tool_registry.get(call.function.name)) and t.terminal for call in tool_calls):
                 self._terminal_tool_fired = True
+                break
+
+            if self._turn_over_budget(accumulated_usage):
                 break
 
         else:
