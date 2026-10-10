@@ -641,6 +641,7 @@ jarvis/
 │   │   ├── history.py              # History trimming (old tool results + tool-call args) + summarization
 │   │   ├── billed_usage.py         # OpenRouter billing records for streamed calls
 │   │   ├── pricing.py              # Cost tracking
+│   │   ├── cost_ledger.py          # Monthly spend ledger (JSONL) behind the budget limits
 │   │   ├── stream_handler.py       # Streaming + agentic loop + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
 │   │   ├── settings.py             # Typed config (pydantic-settings, ADR-032)
@@ -799,6 +800,27 @@ See `docs/engineering/multi-agent-architecture.md` for the full multi-agent arch
 ### History Summarization
 
 Opt-in via `summarization.enabled` (threshold and number of kept messages in the `summarization:` section of [`config/default.yaml`](../../config/default.yaml)). `summarize_history()` in `packages/core/history.py` compresses old conversation turns with the `fast` preset once history exceeds the token threshold, keeping the most recent messages intact. A `[JARVIS_SUMMARY]` marker avoids re-summarizing every turn. The setting is hot-applied in the GUI (`HOT_APPLY_PATHS`).
+
+### Spend Limits and the Cost Ledger
+
+Settings in the `budget:` section of [`config/default.yaml`](../../config/default.yaml) (AON-01).
+`StreamHandler.stream()` wraps each turn:
+
+- **Monthly limit** (`budget.monthly_usd`): before the turn, `CostLedger.month_spend()` sums this
+  month's ledger. At 80% the user gets one notice per session; above 100% the CLI asks once per
+  session whether to continue (refused turns make no model call); the GUI shows a notice and
+  continues (a GUI approval card for budgets is a backlog item).
+- **Per-turn limit** (`budget.max_turn_usd`): both tool loops add up the cost of their rounds and
+  stop before the next model call once it is reached. The turn returns a stop message; tool calls
+  and results so far are kept.
+- **Ledger**: after the turn, one JSON line with the turn's total (tool rounds included) goes to
+  `budget.ledger_dir/YYYY-MM.jsonl`. The content evaluator and the history summarizer make model
+  calls outside the turn; they record their own lines (`purpose: evaluate | summarize`) through
+  `LLMClient.ledger`.
+
+Streamed costs are LiteLLM estimates (~36% below the bill until OpenRouter's record arrives), so
+both limits count estimates at 1.5× (`ESTIMATE_MARGIN` in `packages/core/cost_ledger.py`). Ledger
+lines keep the cost as logged; the conversation log is the record that gets billed numbers.
 
 ---
 

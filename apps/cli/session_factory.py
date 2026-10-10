@@ -26,6 +26,7 @@ from packages.agents.jarvis.agent import JarvisAgent
 from packages.agents.prompt_includes import format_issue, read_canonical_include, validate_agent_includes
 from packages.agents.registry import AgentMeta, discover_agents
 from packages.core.context_builder import build_system_prompt_with_metadata, parse_frontmatter
+from packages.core.cost_ledger import CostLedger
 from packages.core.filesystem_access import load_filesystem_guard
 from packages.core.llm_client import LLMClient
 from packages.core.memory import ConversationLogger, generate_conversation_id, hash_content
@@ -566,6 +567,10 @@ def build_session(
         max_tokens=settings.models.default_max_tokens,
         streaming=settings.models.streaming,
     )
+    if settings.budget.enabled:
+        client.ledger = CostLedger(jarvis_dir / settings.budget.ledger_dir, lambda: logger.conversation_id)
+        stream_handler.max_turn_usd = settings.budget.max_turn_usd
+        stream_handler.monthly_usd = settings.budget.monthly_usd
 
     return SessionComponents(
         settings=settings,

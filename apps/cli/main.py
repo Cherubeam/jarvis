@@ -267,6 +267,18 @@ def _pinned_model_label(agent: Any) -> str | None:
     return f"{rest.split('/')[-1]} via {provider}" if rest else model
 
 
+def _confirm_over_budget(spent: float, limit: float) -> bool:
+    """Over budget.monthly_usd: ask once per session before sending (human oversight, Art. 14)."""
+    from prompt_toolkit import prompt as pt_prompt
+
+    print_system(f"\nThis month's spend is ${spent:.2f}, over the ${limit:.2f} budget (budget.monthly_usd).")
+    try:
+        answer = pt_prompt("Continue this session anyway? (y/yes to continue): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return answer in ("y", "yes")
+
+
 def _other_specialists(agent_registry: dict[str, Any], agent_name: str) -> list[dict[str, Any]]:
     """Name and description of every registered agent except ``agent_name``."""
     return [
@@ -562,6 +574,9 @@ def main(argv: list[str] | None = None) -> None:
     except RuntimeError as e:
         print_error(f"Error: {e}")
         sys.exit(1)
+
+    components.stream_handler.on_budget_exceeded = _confirm_over_budget
+    components.stream_handler.on_budget_notice = lambda text: print_system(f"\n{text}\n")
 
     jarvis_dir = components.jarvis_dir
     model_id = components.model_id

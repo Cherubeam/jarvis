@@ -99,6 +99,14 @@ summarization:
   token_threshold: 40000            # Approx tokens before summarization triggers
   keep_recent: 10                   # Number of recent messages to preserve intact
 
+# Spend limits and the cost ledger (AON-01). Streamed costs are estimates that run ~36% low,
+# so the limits count them at 1.5x. Point ledger_dir at your data home in local.yaml.
+budget:
+  enabled: true
+  max_turn_usd: 1.00     # tool loop stops before its next model call past this (0 = off)
+  monthly_usd: 20.00     # warn at 80%; above it the CLI asks before each turn, the GUI warns (0 = off)
+  ledger_dir: "data/ledger"
+
 # CLI display settings
 cli:
   colors: true

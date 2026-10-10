@@ -63,6 +63,12 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['token_threshold'], label: 'token_threshold' },
     { path: ['keep_recent'], label: 'keep_recent' },
   ],
+  budget: [
+    { path: ['enabled'], label: 'enabled' },
+    { path: ['max_turn_usd'], label: 'max_turn_usd' },
+    { path: ['monthly_usd'], label: 'monthly_usd' },
+    { path: ['ledger_dir'], label: 'ledger_dir' },
+  ],
   readwise: [
     { path: ['enabled'], label: 'enabled' },
     { path: ['cache_ttl_seconds'], label: 'cache_ttl_seconds' },
@@ -79,6 +85,7 @@ export const SECTION_SUBTITLES: Partial<Record<SectionKey, string>> = {
   rag: 'Conversation recall via ChromaDB + embeddings.',
   routing: 'Intelligent model routing by query complexity.',
   summarization: 'History compression once token threshold exceeds.',
+  budget: 'Spend limits and the cost ledger. Estimates count at 1.5x.',
   obsidian: 'Obsidian vault integration — paths, daily notes, writing targets.',
   mcp: 'Model Context Protocol server connections.',
   filesystem: 'Per-path access rules enforced by FilesystemGuard.',

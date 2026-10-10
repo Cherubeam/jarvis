@@ -83,6 +83,10 @@ def make_content_evaluator_tool(
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+            # Not part of the turn's usage: recorded on its own so the spend is visible
+            ledger = getattr(llm_client, "ledger", None)
+            if ledger is not None:
+                ledger.record_response(response, purpose="evaluate", model=model or llm_client.default_model)
             choice = response.choices[0]
             if choice.message.content:
                 return str(choice.message.content)

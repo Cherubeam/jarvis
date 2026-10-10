@@ -47,8 +47,8 @@ Each step names its milestone below; this list only sets the order.
    `scripts/backfill_billed_usage.py` first. Each turn now logs the model that
    answered. **Conclusions wait for weeks of real use**: the archive holds 5
    billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. Tool
-   descriptions rewritten (2026-10-09). **Next:** the cost ledger. The
-   OpenRouter data policy is
+   descriptions rewritten (2026-10-09). Cost ledger and spend limits
+   (2026-10-10). AON-01 is done except the OpenRouter data policy, which is
    deferred (2026-10-09, no time to read the policies now); it blocks nothing
    else.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
@@ -452,7 +452,9 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] **WebSocket origin allowlist + token auth** — one ASGI middleware gates every `/api/*` route, `/ws/chat`, and `/docs`; derived-value cookie for browsers, `Authorization: Bearer` for scripts ([ADR-035](decisions.md#adr-035-gui-authentication--derived-value-cookie--origin-allowlist)). Also fixed two approval-hijack holes in `confirmation.py` and closed the `app.py`/`state.py`/`chat_ws.py` mutation blind spot (115 unkilled mutants → 84 new tests) *(S)* ✅ 2026-09-05
 - [x] **Vault-write oversight fixes** (found during the 2026-09 model refresh, not originally planned): the GUI approval card now shows the real diff and path (it showed nothing); changed links are listed above every vault diff; writes and previews are refused when the note changed on disk since the agent read it (Art. 14(4)(c), OWASP LLM05/LLM06) *(S)* ✅ 2026-09-25
 - [x] ~~Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py`~~ — closed by deletion: the developer agent and its pytest runner were retired ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)) ✅ 2026-09-30
-- [ ] Persisted SQLite cost ledger + per-loop caps in `StreamHandler`/`LLMClient`: each loop gets a **deterministic stop condition** (tests pass / score threshold) + turn cap + dollar ceiling — a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. Ledger also counts cache-keepalive spend (see AON-04) so keepalives self-terminate *(S)*
+- [x] Cost ledger + per-loop caps: per-turn dollar ceiling in both tool loops (`budget.max_turn_usd`, default $1), monthly limit (`budget.monthly_usd`, default $20: warning at 80%, CLI asks above it, GUI warns), ledger of one line per turn plus evaluator/summarizer calls; turn caps already existed (`max_iterations`). A **JSONL file per month instead of SQLite**: nothing queries it yet (P1). Keepalive spend (AON-04) lands in the same ledger once keepalives exist ([architecture](../engineering/architecture.md#spend-limits-and-the-cost-ledger)) *(S)* ✅ 2026-10-10
+- [ ] *Trigger-gated:* **deterministic stop condition** per loop (tests pass / score threshold): a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. No unattended loop exists since the developer agent was retired (ADR-039); build with the first scheduled job (AON-02) *(S)*
+- [ ] *Backlog:* GUI approval card for the monthly budget (the GUI warns and continues today). Build when the GUI is used regularly *(S)*
 - [x] Fix the confirmation deadlock: the turn runs as a task so `chat_ws.py` receives approvals and cancels mid-turn; an unanswered approval is rejected after 10 minutes. Reproduced first with WebSocket tests (`test_chat_ws_approvals.py`: approval mid-turn, two writes in one turn, cancel mid-turn), which failed before the fix *(M)* ✅ 2026-10-04
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
 - [x] Rewrite tool descriptions across `packages/core/tools/*` (cheapest quality lever): the vault and blog tools name their real folders and say which tool's paths feed which; evaluator and suggest-improvements say what they take. Measured with a probe of real tool calls (failed first reads 5/5 → 0/5); the other tools were reviewed and left as they are, no failure seen *(S)* ✅ 2026-10-09
