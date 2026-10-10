@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-10-10
+
 ### Changed — Tool descriptions say where paths start (AON-01, 2026-10-09)
 
 - **The problem:** the vault and blog tools mix two path bases. `read_note`,
