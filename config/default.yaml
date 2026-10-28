@@ -150,6 +150,14 @@ readwise:
   enabled: false              # Set to true in local.yaml
   cache_ttl_seconds: 300      # Cache CLI results for 5 minutes
 
+# Personal Intelligence — career direction map and suite health over HTTP (HUB-04, ADR-042).
+# The Bearer token comes from PI_API_TOKEN or token_file, never from this file.
+personal_intelligence:
+  enabled: false              # Set to true in local.yaml
+  url: http://127.0.0.1:8200
+  token_file: ~/Library/Application Support/PersonalIntelligence/api_token
+  timeout_seconds: 10.0
+
 # Outcome tracking — closed loop on advice JARVIS gives
 # When enabled, JARVIS auto-captures concrete recommendations via the
 # track_recommendation tool. Run /outcomes to score items past their revisit

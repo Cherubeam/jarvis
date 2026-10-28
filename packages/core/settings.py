@@ -506,6 +506,26 @@ class ReadwiseSettings(BaseModel):
     )
 
 
+class PersonalIntelligenceSettings(BaseModel):
+    """Personal Intelligence app over HTTP — career direction map and suite health (HUB-04, ADR-042).
+
+    The Bearer token is never a setting: it is read from ``PI_API_TOKEN`` or the
+    file named by ``token_file`` at call time, so ``GET /api/settings`` never
+    hands it to a browser (same reasoning as ``GuiSettings``).
+    """
+
+    enabled: bool = Field(default=False, description="Give JARVIS the Personal Intelligence tools.")
+    url: str = Field(
+        default="http://127.0.0.1:8200",
+        description="Base URL of the Personal Intelligence API.",
+    )
+    token_file: str = Field(
+        default="~/Library/Application Support/PersonalIntelligence/api_token",
+        description="File holding the API's Bearer token (mode 0600); PI_API_TOKEN overrides it. `~` is expanded.",
+    )
+    timeout_seconds: float = Field(default=10.0, description="Timeout for each API request.")
+
+
 class PatternCardImageGenerationSettings(BaseModel):
     """API-based image generation settings for the pattern card generator.
 
@@ -599,6 +619,7 @@ class Settings(BaseSettings):
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
     readwise: ReadwiseSettings = Field(default_factory=ReadwiseSettings)
+    personal_intelligence: PersonalIntelligenceSettings = Field(default_factory=PersonalIntelligenceSettings)
     pattern_cards: PatternCardsSettings = Field(default_factory=PatternCardsSettings)
     gui: GuiSettings = Field(default_factory=GuiSettings)
 
