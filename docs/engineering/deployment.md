@@ -239,11 +239,18 @@ mcp:
       shared: true          # every agent gets the tools automatically
       command: uv
       args: ["--directory", "/path/to/cortex", "run", "cortex-mcp"]
+      env: {CORTEX_MCP_CONVERSATIONS: "1"}   # conversation recall (HUB-02)
 ```
 
 Tools arrive as `mcp_cortex__search_knowledge` and `mcp_cortex__index_status`, plus
-`mcp_cortex__search_conversations` and `mcp_cortex__read_context` if opted in on the Cortex side
-(its README says how). When the service is down, `read_context` still works; the others return an actionable error and agents fall back to `search_notes`.
+`mcp_cortex__search_conversations` and `mcp_cortex__read_context` if opted in on the Cortex side.
+`search_conversations` needs `CORTEX_MCP_CONVERSATIONS=1` in the server's `env` (Cortex v0.9.0, suite
+threat model TM-17), so Claude Code, registered at user scope without the flag, doesn't get the
+archive; `read_context` has its own switch (Cortex's README says how). The flag isn't a secret, so it
+may sit in `env`, unlike the token below. With `shared: true` every JARVIS agent still gets the
+archive; narrowing that to the agents that need it is JARVIS's part of TM-17, tied to TM-12 (threat
+model Q4). When the service is down, `read_context` still works; the others return an actionable
+error and agents fall back to `search_notes`.
 
 Cortex's HTTP API needs a bearer token on every route (suite threat model TM-01). JARVIS needs no
 setting for it: `cortex-mcp` reads the same token as the service (`$CORTEX_API_TOKEN`, else
