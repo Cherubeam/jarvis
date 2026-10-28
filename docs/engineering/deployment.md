@@ -244,6 +244,12 @@ mcp:
 Tools arrive as `mcp_cortex__search_knowledge` and `mcp_cortex__index_status`. When the service is
 down, the tools return an actionable error and agents fall back to `search_notes`.
 
+Cortex's HTTP API needs a bearer token on every route (suite threat model TM-01). JARVIS needs no
+setting for it: `cortex-mcp` reads the same token as the service (`$CORTEX_API_TOKEN`, else
+`~/Library/Application Support/Cortex/api_token`). Don't put the token in the server's `env` here:
+`GET /api/settings` returns that block (threat model T2.3, TM-07). If the tools report that Cortex
+refused the token, one of the two processes has `$CORTEX_API_TOKEN` set and the other doesn't.
+
 ### Troubleshooting MCP
 
 - If a server fails to connect at startup, JARVIS logs a warning and continues — other servers and
