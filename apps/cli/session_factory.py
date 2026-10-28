@@ -434,6 +434,12 @@ def build_session(
         except Exception as e:
             print_system(f"[Tools] Readwise tools failed: {e}")
 
+    if settings.personal_intelligence.enabled:
+        from packages.core.tools.personal_intelligence_tools import make_personal_intelligence_tools
+
+        tool_groups["personal_intelligence"] = make_personal_intelligence_tools(settings.personal_intelligence)
+        print_system("[Tools] Personal Intelligence tools loaded.")
+
     if vault_config is not None:
         patterns_dir = settings.obsidian.writing.patterns.target_dir
         if patterns_dir:
@@ -507,7 +513,12 @@ def build_session(
         agent_name = meta.name
     else:
         available_agents = [{"name": meta.name, "description": meta.description} for meta in agent_registry.values()]
-        jarvis_tools = list(shared_tools) + tool_groups.get("web_tools", []) + tool_groups.get("readwise_tools", [])
+        jarvis_tools = (
+            list(shared_tools)
+            + tool_groups.get("web_tools", [])
+            + tool_groups.get("readwise_tools", [])
+            + tool_groups.get("personal_intelligence", [])
+        )
         active_agent = JarvisAgent(
             llm_client=client,
             context_dir=context_dir,
