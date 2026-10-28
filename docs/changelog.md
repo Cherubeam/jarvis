@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Cortex requires a token (2026-10-28)
+
+- Cortex's HTTP API now authenticates every request (suite threat model
+  TM-01). The `cortex-mcp` server JARVIS starts reads the token itself, so
+  JARVIS needs no code or config change. The deployment guide says where the
+  token lives and why it stays out of `mcp.servers.cortex.env`.
+
 ### Added — Personal Intelligence over HTTP (HUB-04, 2026-10-28)
 
 - **`career_direction_map`** answers "what's new on my career topic?" from
