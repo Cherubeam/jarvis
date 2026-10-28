@@ -665,6 +665,7 @@ jarvis/
 │   │   │   ├── web_fetch.py, web_search.py
 │   │   │   ├── blog_tools.py, text_edits.py, content_evaluator.py, suggest_improvements.py
 │   │   │   ├── card_generator_tools.py, card_search.py
+│   │   │   ├── personal_intelligence_tools.py  # career_direction_map, suite_health (HUB-04)
 │   │   │   └── readwise_tools.py
 │   │   └── importers/              # Conversation importers
 │   │       ├── common.py           # Shared importer utilities
@@ -687,6 +688,7 @@ jarvis/
 │   ├── integrations/               # External service integrations
 │   │   ├── things3/                # Things 3 task sync via the export Shortcut (ADR-037)
 │   │   ├── readwise/client.py      # Readwise / Reader client (/reading)
+│   │   ├── personal_intelligence/client.py  # Personal Intelligence API over HTTP (ADR-042)
 │   │   ├── mcp/                    # MCP client integration
 │   │   │   ├── client.py           # Connection lifecycle + async/sync bridge
 │   │   │   └── bridge.py           # MCP Tool → ToolDefinition conversion

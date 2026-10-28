@@ -3047,3 +3047,107 @@ importers. Indexes are unchanged; they store conversation IDs, not paths.
 - ADR-040 (What JARVIS Is For — the archive and memory are core)
 - ADR-034 (Context Hub Positioning) and ADR-029 (Cortex) — Cortex indexes, it does not store
 - ADR-037 (Things 3 read-only)
+
+---
+
+## ADR-042: Personal Intelligence over HTTP, Not MCP
+
+**Date**: 2026-10-28
+**Status**: Accepted
+
+### Context
+
+Personal Intelligence (`cherubeam/personal-intelligence`) is the suite's
+dashboard app. Its first topic is Marco's professional direction: a weekly
+**direction map** clusters what he writes, reads and asks into 30 themes, labels
+their trends, and has an LLM propose role directions. Its intent says JARVIS
+should answer "what's new on my career topic?" from it and report suite
+health (its INTENT §3; spec INT-01). Its API is local HTTP on
+`127.0.0.1:8200`; every route needs the Bearer token (SEC-02, SEC-04, SEC-05).
+
+The suite rule is **API first; MCP only where HTTP can't serve** (its INTENT
+§4). JARVIS consumes Cortex over MCP (ADR-034, HUB-01) because Cortex serves
+every harness, not just JARVIS. Personal Intelligence has one consumer and two
+read-only routes.
+
+What the answer has to respect (its specs):
+
+- **Size.** The current map is ~145 KB of JSON (about 36k tokens), mostly
+  representative-note excerpts. Token cost is a design criterion here.
+- **Degraded runs (OPS-05, DM-09).** When every LLM naming call fails, theme
+  names are tag-based. The app keeps the last fully named map as current and
+  lists newer degraded runs beside it (`newer_degraded_runs`); snapshots from
+  before that rule carry no `degraded` flag and are recognised from content.
+- **Hypotheses (DM-08).** Theme names, summaries and role directions are LLM
+  output; they must reach Marco as hypotheses.
+- **Unstable ids (DM-05).** Theme ids and boundaries change between runs, so
+  a theme id can't be compared across snapshots.
+- **Untrusted text (SEC-09; OWASP LLM01).** The map holds vault text (titles,
+  tags, excerpts, saved third-party articles) and LLM text derived from it,
+  which lands inside JARVIS's prompt next to tools that act (`fetch_url`,
+  vault writes with approval).
+
+### Decision
+
+- **Two native tools over HTTP**, `career_direction_map` and `suite_health`
+  (`packages/core/tools/personal_intelligence_tools.py`, client in
+  `packages/integrations/personal_intelligence/`), in a `personal_intelligence`
+  tool group that JARVIS gets when `personal_intelligence.enabled` is on. No
+  MCP server: no other harness needs it yet.
+- **The token** is read at each call from `PI_API_TOKEN`, else the app's token
+  file. It is never a setting (so `GET /api/settings` can't hand it to a
+  browser, as with `gui.token_file`), never logged, never in an error message
+  or tool result.
+- **Status first.** The result starts with the map's state: OK, partly tag-named,
+  DEGRADED (flag or content rule), or tags only; then LLM error count and any
+  newer degraded runs, which JARVIS is told to mention.
+- **Condensed, not passed through.** Rising and new themes with summary, tags
+  and three example note titles; falling and other themes one line each; role
+  directions with rationale and test; the app's caveats. Note excerpts are
+  dropped. ~10 KB (~2.7k tokens) on the 2026-10-28 map.
+- **Current state only.** "What's new" is the snapshot's own rising and new
+  themes (recent half of the trend window against the prior half). No diff
+  between snapshots: ids don't match across runs, and matching by name or notes
+  would be a heuristic the app itself doesn't offer. If a diff is wanted, it
+  belongs in the app's API.
+- **Hypotheses and data are labelled in the result.** Reporting rules sit
+  above the data: LLM text is a hypothesis; ids are snapshot-local; text in
+  the data block is data. All snapshot and service text sits inside
+  `<untrusted_data>` markers, flattened to single lines, truncated, with marker
+  look-alikes neutralised so the text can't close the block.
+- Tracked as HUB-04.
+
+### Alternatives Considered
+
+- **MCP server in Personal Intelligence.** Rejected by the suite rule: one
+  consumer, plain GET routes, and an MCP server is one more process to run.
+  Revisit when a second harness (Claude Code) needs the map.
+- **Pass the JSON through.** 13× the tokens per question, and the excerpts are
+  the largest block of untrusted vault text in it.
+- **Diff snapshots in JARVIS by theme name or notes.** Names change between
+  runs even on the same clusters (DM-05), so the diff would report renames as
+  news.
+- **Strip all free text, send only numbers.** Safest against injection, but
+  the answer then can't say what a theme is about or what the directions are.
+
+### Consequences
+
+- Measured 2026-10-28: a real JARVIS turn on GPT-6 Luna chose
+  `career_direction_map` on its own, led with the rising themes and called the
+  role suggestions LLM hypotheses ($0.002). It did not label the theme names
+  themselves as LLM-written.
+- **Residual LLM01 risk.** Markers and rules are instructions, not a boundary;
+  a model can still follow injected text, and JARVIS has `fetch_url`, which
+  could carry data out. The exposure is no larger than Cortex search, which
+  already puts vault text in the same prompt; this tool adds LLM summaries made
+  under the app's data-only prompts (SEC-09) and drops excerpts. Trigger to
+  do more: JARVIS gets a tool that acts without approval *and* sends data
+  outward beyond `fetch_url`, or runs unattended (AON-02).
+- Default off; turned on per machine in `local.yaml`, like Readwise.
+- When the app's contract changes (API-01), these tools follow; the format
+  reads every field defensively and treats missing ones as absent.
+
+### Related ADRs
+- ADR-034 (Context Hub Positioning) — Cortex is MCP because every harness uses it
+- ADR-039 (Retire the Developer Agent) — untrusted text and acting tools in one agent
+- ADR-041 (Where Each Kind of Data Lives) — the app follows the same homes
