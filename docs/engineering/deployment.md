@@ -225,8 +225,9 @@ only); `env`, `cwd` (stdio only). The schema with descriptions is `MCPServerSett
 ### Example: Cortex vault search
 
 Semantic search over the Obsidian vault comes from the Cortex MCP server (`cherubeam/cortex`,
-`HUB-01`, ADR-034). Run the Cortex service (`uv run cortex` in the Cortex repo) and declare it as a
-shared server:
+`HUB-01`, ADR-034). The Cortex service runs as a LaunchAgent: install it once with
+`scripts/launchd/install.sh` in the Cortex repo (it starts at login and restarts after a crash;
+`scripts/launchd/uninstall.sh` removes it). Then declare it as a shared server:
 
 ```yaml
 mcp:
@@ -250,6 +251,29 @@ down, the tools return an actionable error and agents fall back to `search_notes
 - If a tool call fails at runtime, the error is returned to the LLM as tool output so it can adapt.
 - stdio servers need the command on your `PATH` (e.g. `npx` requires Node.js).
 - To verify which tools loaded, check the `[MCP]` line in the startup output.
+
+---
+
+## Personal Intelligence
+
+JARVIS reads the Personal Intelligence app (`cherubeam/personal-intelligence`) over its HTTP API:
+`career_direction_map` answers "what's new on my career topic?" and `suite_health` reports whether
+the suite's services and the weekly refresh are running (HUB-04; why HTTP and how the answer is
+framed: [ADR-042](../product/decisions.md#adr-042-personal-intelligence-over-http-not-mcp)). The app
+runs as a LaunchAgent on `127.0.0.1:8200` (its own README says how to install it).
+
+Turn it on in `config/local.yaml`:
+
+```yaml
+personal_intelligence:
+  enabled: true
+```
+
+The other keys (`url`, `token_file`, `timeout_seconds`) are in
+[`config/default.yaml`](../../config/default.yaml). The Bearer token is read at every call from
+`PI_API_TOKEN`, else from `token_file` (the app creates it at mode `0600`). It never goes into the
+config, the logs or a tool result. If the app is down or rejects the token, the tools return an
+error string and JARVIS says so.
 
 ---
 

@@ -527,7 +527,7 @@ Do this only when AON-01…04 feel boring.
 
 ## HUB — Context Hub (Cortex/Memory via MCP)
 
-**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 conversation recall ✅ 2026-10-06 (context-file read tools open); allocated 2026-08-19
+**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 conversation recall ✅ 2026-10-06 (context-file read tools open); HUB-04 Personal Intelligence ✅ 2026-10-28; allocated 2026-08-19
 **Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
 
 **Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
@@ -576,6 +576,16 @@ Put each kind of data in one home ([ADR-041](decisions.md#adr-041-where-each-kin
 - [x] Keep raw exports in the data home (`paths.imports_dir`); skip login history and account data. Done for Claude exports via the memory importer *(S)* ✅ 2026-10-05
 - [x] Map Claude projects to vault notes by ID instead of keeping project copies: `claude-project: <uuid>` in the note's frontmatter (7 project notes, 2026-10-05); the memory importer proposes project facts to that note *(S)* ✅ 2026-10-05
 - [x] Claude Code session importer (`scripts/import_claude_code.py`): one turn per typed prompt, tool calls as one-line summaries, tool results as size stubs except subagent reports (kept verbatim), subagent transcripts counted but not imported; desktop titles matched by `cliSessionId` or by cwd and start time (≤ 2 s) for the seven entries without one. Transcripts are kept 365 days since 2026-10-04 (`cleanupPeriodDays`) *(M)* ✅ 2026-10-05
+
+### HUB-04 — Personal Intelligence over HTTP
+
+**Status**: ✅ Complete 2026-10-28 · **Effort**: S · **Risk**: Low
+
+JARVIS reads the Personal Intelligence app's API ([ADR-042](decisions.md#adr-042-personal-intelligence-over-http-not-mcp); the app's spec INT-01).
+
+- [x] `career_direction_map`: the current direction map, status first (degraded maps named), LLM text labelled as hypotheses, theme ids snapshot-local, snapshot text fenced as untrusted data (OWASP LLM01); ~2.7k tokens instead of ~36k *(S)* ✅ 2026-10-28
+- [x] `suite_health`: one line per service from the app's `/api/services` *(S)* ✅ 2026-10-28
+- [ ] Turn it on in `local.yaml` (`personal_intelligence.enabled: true`), Marco's call
 
 ### Source policy — index, don't proxy (2026-08-20)
 

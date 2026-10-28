@@ -49,7 +49,7 @@ Each shared tool is registered only when its feature is enabled.
 | `recall_outcomes` | `packages/core/tools/outcome_recall.py` | `outcomes.enabled` and `rag.enabled` | Search scored past recommendations |
 | Shared MCP tools, e.g. `mcp_cortex__search_knowledge` | MCP servers with `shared: true` ([setup](deployment.md#connecting-mcp-servers)) | `mcp.enabled` | Vault semantic search via Cortex (HUB-01), conversation recall via `mcp_cortex__search_conversations` (HUB-02, when enabled in Cortex), or any other shared server |
 
-**JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools` and `readwise_tools` groups (`jarvis_tools` in `build_session()`).
+**JARVIS only**: `delegate_to_agent` (`packages/core/tools/delegate.py`) plus the `web_tools`, `readwise_tools` and `personal_intelligence` groups (`jarvis_tools` in `build_session()`).
 
 **Interactive specialist sessions only (CLI)**: `hand_back_to_jarvis` (same file), added by `_run_agent_session` so a specialist returns out-of-scope requests to JARVIS instead of improvising them ([ADR-038](../product/decisions.md#adr-038-specialist-hand-back--jarvis-stays-the-only-router)).
 
@@ -61,6 +61,7 @@ Each shared tool is registered only when its feature is enabled.
 | `card_generator` | pattern_card_generator | `packages/core/tools/card_generator_tools.py` |
 | `card_search` | tactics_coach | `packages/core/tools/card_search.py` |
 | `content_evaluator` | content_reviewer | `packages/core/tools/content_evaluator.py` |
+| `personal_intelligence` | jarvis | `packages/core/tools/personal_intelligence_tools.py` (`career_direction_map`, `suite_health`; needs `personal_intelligence.enabled`) |
 | `readwise_tools` | reading_assistant, jarvis | `packages/core/tools/readwise_tools.py` |
 | `suggest_improvements` | content_reviewer | `packages/core/tools/suggest_improvements.py` |
 | `web_tools` | reading_assistant, researcher, jarvis | `packages/core/tools/web_fetch.py` (`fetch_url`), `web_search.py` (`web_search`) |

@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Personal Intelligence over HTTP (HUB-04, 2026-10-28)
+
+- **`career_direction_map`** answers "what's new on my career topic?" from
+  the Personal Intelligence app (`GET /api/topics/career/direction-map`), and
+  **`suite_health`** reports its services and weekly refresh
+  (`GET /api/services`). Plain HTTP with the app's Bearer token, not MCP
+  ([ADR-042](product/decisions.md#adr-042-personal-intelligence-over-http-not-mcp)).
+  Off by default: `personal_intelligence.enabled` in `local.yaml`.
+- The token is read per call from `PI_API_TOKEN` or the app's token file and
+  never logged or returned.
+- The map's status comes first: degraded runs (tag-based names, LLM errors)
+  are named, and so are newer degraded runs the app kept out of the current map.
+  Theme names, summaries and role directions are labelled LLM hypotheses (human
+  oversight, EU AI Act Art. 14); theme ids are marked snapshot-local, so
+  "what's new" is the snapshot's rising and new themes, not a diff.
+- Snapshot text is fenced as untrusted data: flattened, truncated, and unable
+  to close its own fence (prompt injection, OWASP LLM01). Note excerpts are
+  dropped: ~10 KB (~2.7k tokens) instead of ~145 KB.
+- Live check 2026-10-28: a JARVIS turn on GPT-6 Luna chose the tool on its
+  own and reported the rising themes with role directions as hypotheses
+  ($0.002).
+
+### Fixed — Cortex setup points to its LaunchAgent installer (2026-10-28)
+
+- `docs/engineering/deployment.md` said to start Cortex by hand
+  (`uv run cortex`); it now points to `scripts/launchd/install.sh` in the
+  Cortex repo.
+
 ### Added — Spend limits and a cost ledger (AON-01, 2026-10-10)
 
 - **Per-turn limit** (`budget.max_turn_usd`, default $1.00): both tool loops
