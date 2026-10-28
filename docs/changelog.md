@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Conversation recall needs an opt-in flag (TM-17, 2026-11-08)
+
+- Since Cortex v0.9.0, `search_conversations` is offered only to MCP clients that
+  start `cortex-mcp` with `CORTEX_MCP_CONVERSATIONS=1` (suite threat model TM-17,
+  OWASP LLM02, ASI03). JARVIS keeps recall by setting it in `env` on its `cortex`
+  server entry in `local.yaml` (set 2026-11-08); the deployment guide shows how.
+  Claude Code, registered at user scope without the flag, no longer sees the
+  conversation archive. Every JARVIS agent still gets it through `shared: true`;
+  narrowing that stays open with TM-12.
+
 ## [0.37.1] - 2026-10-31
 
 No code changes: docs for Cortex's `read_context` (Cortex v0.8.0), and stale docs corrected.
