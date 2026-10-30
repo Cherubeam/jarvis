@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Things export no longer hangs (2026-10-30)
+
+- `shortcuts run` reads input from stdin and hung when it inherited an open
+  pipe, so the export hit its 10 s timeout and JARVIS kept an old task list
+  (seen at GUI start and in the briefing job). stdin is now closed: three runs
+  that timed out at 20 s became 1.2-1.4 s.
+
+### Added — Morning briefing job, started by hand (AON-02, 2026-10-30)
+
+- `jarvis run-job morning-briefing` gathers Things tasks, the latest daily
+  note, recommendations due for review, the career direction map and the
+  newest Reader items, then writes a short briefing to `briefing.dir`.
+- A fixed pipeline, not an agent: one model call with no tools, so
+  instructions planted in a reading item have nothing to act on (OWASP LLM01).
+  Source text is fenced as untrusted data, and LLM-written career themes are
+  called hypotheses (human oversight, EU AI Act Art. 14).
+- A source that fails costs only its section, which says "not available".
+  Nothing can be asked in a job, so over `budget.monthly_usd` it makes no
+  model call. Spend goes to the cost ledger as `purpose: job` (record-keeping,
+  Art. 12).
+- First live run on GPT-6 Luna: $0.0020 billed, ~7,100 prompt tokens. Task
+  dates, career shares and the role direction matched their sources.
+- The shared turn runner isn't needed for this job; the roadmap now says so.
+
 ### Changed — Why AON-02 gets built (2026-10-30)
 
 - ADR-040 amended: a learning goal no longer needs a write-up to count as a

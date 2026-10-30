@@ -328,6 +328,13 @@ contain sensitive data. The folder is the `paths.conversations_dir` setting (an 
 every turn's cost; the spend limits read it. Set an absolute path in `config/local.yaml` to keep
 it in your data home. How the limits work: [architecture.md](architecture.md#spend-limits-and-the-cost-ledger).
 
+### Morning briefing
+
+`uv run jarvis run-job morning-briefing` writes today's briefing to `briefing.dir` (default
+`data/briefings`, gitignored); set an absolute path in `config/local.yaml` to keep it in your data
+home. It needs the `readwise` command for the Reading section, and Personal Intelligence for Career;
+without them those sections say "not available".
+
 ### Context files
 
 The context files live in `paths.context_dir` under the names in `paths.context_files`; the

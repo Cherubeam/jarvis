@@ -642,6 +642,7 @@ jarvis/
 │   │   ├── billed_usage.py         # OpenRouter billing records for streamed calls
 │   │   ├── pricing.py              # Cost tracking
 │   │   ├── cost_ledger.py          # Monthly spend ledger (JSONL) behind the budget limits
+│   │   ├── briefing.py             # Morning briefing: model rules, fencing, saved file
 │   │   ├── stream_handler.py       # Streaming + agentic loop + metrics + cost + event emission
 │   │   ├── events.py               # Typed event dataclasses (WEB — event decoupling)
 │   │   ├── settings.py             # Typed config (pydantic-settings, ADR-032)
@@ -802,6 +803,16 @@ See `docs/engineering/multi-agent-architecture.md` for the full multi-agent arch
 ### History Summarization
 
 Opt-in via `summarization.enabled` (threshold and number of kept messages in the `summarization:` section of [`config/default.yaml`](../../config/default.yaml)). `summarize_history()` in `packages/core/history.py` compresses old conversation turns with the `fast` preset once history exceeds the token threshold, keeping the most recent messages intact. A `[JARVIS_SUMMARY]` marker avoids re-summarizing every turn. The setting is hot-applied in the GUI (`HOT_APPLY_PATHS`).
+
+### Unattended Jobs
+
+`jarvis run-job <name>` (`apps/cli/jobs.py`) runs a job with no front end attached. The first job,
+`morning-briefing`, is a fixed pipeline, not an agent: code gathers the sources, then one model
+call with no tools writes the text. Source text is fenced as untrusted data, and with no tools,
+instructions planted in it have nothing to act on (OWASP LLM01). A source that fails costs its own
+section, which then says "not available". Nothing can be asked, so over `budget.monthly_usd` the job
+makes no model call. Spend lands in the ledger with `purpose: job`. Output: one file per day in
+`briefing.dir`.
 
 ### Spend Limits and the Cost Ledger
 

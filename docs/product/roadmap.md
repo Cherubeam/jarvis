@@ -59,8 +59,9 @@ Each step names its milestone below; this list only sets the order.
    2026-10-06, released in v0.33.0): Claude Code and JARVIS search the archive
    through one index.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
-4. **AON-02** — the shared turn runner, then front ends and jobs. Built for
-   daily use and for learning; each step explains what, how and why
+4. **AON-02** — first the morning briefing in the GUI, then front ends and
+   jobs; the shared turn runner when a job needs tools. Built for daily use and
+   for learning; each step explains what, how and why
    ([ADR-040, amendment](decisions.md#amendment-2026-10-30--write-ups-dont-decide-what-gets-built)).
 
 Write-ups are optional per topic; Marco decides which to write.
@@ -472,10 +473,13 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 One core, many front ends, one safe scheduled job. Reasons: daily use and learning (ADR-040, amended 2026-10-30).
 
-- [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. It absorbs the delegation transitions: delegate, specialist hand-back (ADR-038, CLI-only today) and the spawn-and-consume mode below. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
+- [ ] *Not needed for the briefing (a fixed pipeline, no tool loop; 2026-10-30): build when a job needs tools.* Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. It absorbs the delegation transitions: delegate, specialist hand-back (ADR-038, CLI-only today) and the spawn-and-consume mode below. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
 - [ ] Session-per-conversation replacing the global GuiSession (`apps/gui/server/app.py`, `state.py`) *(M)*
 - [ ] `PolicyConfirmationHandler` with a whitelist + persisted approval inbox (headless-safe) *(M)*
 - [ ] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*
+  - [x] Job started by hand: `jarvis run-job morning-briefing` gathers tasks, daily note, due recommendations, career map and reading, then one model call with no tools writes the briefing ✅ 2026-10-30
+  - [ ] Briefing card on the GUI home screen
+  - [ ] LaunchAgent at 07:30 (PATH must include the `readwise` command)
 - [ ] Read-only **verifier subagent** with fresh context that checks the briefing's output before it's sent (the missing piece from the loop-engineering taxonomy; first consumer of a spawn-and-consume-summary delegation mode — note `delegate.py` is terminal-handoff-only today) *(S)*
 - [ ] Telegram bot via long polling as a thin `TurnRunner` client; Tailscale Serve for the GUI. **Content policy**: notifications and approval pings via Telegram; anything vault-derived stays on the Tailscale-only GUI (bot chats are not E2E-encrypted) *(M)*
 

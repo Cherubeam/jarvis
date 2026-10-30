@@ -51,6 +51,14 @@ class ReadwiseClient:
             args.extend(["--category-in", category])
         return self._run(args)
 
+    def list_documents(self, location: str, limit: int = 10) -> str:
+        """Newest Reader documents in a location. Returns JSON string."""
+        cli_loc = _LOCATION_MAP.get(location.lower(), location)
+        fields = "title,site_name,summary,reading_time,listening_time,url"
+        return self._run(
+            ["reader-list-documents", "--location", cli_loc, "--limit", str(limit), "--response-fields", fields]
+        )
+
     def search_highlights(self, query: str) -> str:
         """Search across all Readwise highlights. Returns JSON string."""
         return self._run(["readwise-search-highlights", "--vector-search-term", query])
