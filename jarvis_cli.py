@@ -27,6 +27,11 @@ if _project_root not in sys.path:
 
 def main() -> None:
     """Entry point that imports and runs the actual CLI."""
+    if sys.argv[1:2] == ["run-job"]:
+        from apps.cli.jobs import main as jobs_main
+
+        raise SystemExit(jobs_main(sys.argv[2:]))
+
     from apps.cli.main import main as cli_main
 
     cli_main()

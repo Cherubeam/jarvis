@@ -303,6 +303,14 @@ class BudgetSettings(BaseModel):
     )
 
 
+class BriefingSettings(BaseModel):
+    """Morning briefing job (AON-02)."""
+
+    dir: str = Field(default="data/briefings", description="Directory for saved briefings, one file per day.")
+    model: str = Field(default="fast", description="Preset or model id that writes the briefing.")
+    reading_items: int = Field(default=10, ge=1, description="Newest items fetched from each Reader list.")
+
+
 class SummarizationSettings(BaseModel):
     """History summarization — compress old turns to limit token use."""
 
@@ -615,6 +623,7 @@ class Settings(BaseSettings):
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     summarization: SummarizationSettings = Field(default_factory=SummarizationSettings)
     budget: BudgetSettings = Field(default_factory=BudgetSettings)
+    briefing: BriefingSettings = Field(default_factory=BriefingSettings)
     obsidian: ObsidianSettings = Field(default_factory=ObsidianSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     filesystem: FilesystemSettings = Field(default_factory=FilesystemSettings)
