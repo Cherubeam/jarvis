@@ -479,7 +479,7 @@ One core, many front ends, one safe scheduled job. Reasons: daily use and learni
 - [x] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*
   - [x] Job started by hand: `jarvis run-job morning-briefing` gathers tasks, yesterday's daily note, due recommendations, career map and reading, then one model call with no tools writes the briefing ✅ 2026-10-30
   - [x] Briefing card on the GUI home screen, Briefing section in settings ✅ 2026-10-30
-  - [ ] LaunchAgent at 07:30 (PATH must include the `readwise` command)
+  - [x] LaunchAgent at 07:30 (`scripts/launchd/install.sh`) ✅ 2026-10-30
 - [ ] Read-only **verifier subagent** with fresh context that checks the briefing's output before it's sent (the missing piece from the loop-engineering taxonomy; first consumer of a spawn-and-consume-summary delegation mode — note `delegate.py` is terminal-handoff-only today) *(S)*
 - [ ] Telegram bot via long polling as a thin `TurnRunner` client; Tailscale Serve for the GUI. **Content policy**: notifications and approval pings via Telegram; anything vault-derived stays on the Tailscale-only GUI (bot chats are not E2E-encrypted) *(M)*
 
