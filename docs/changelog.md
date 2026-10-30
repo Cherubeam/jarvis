@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Why AON-02 gets built (2026-10-30)
+
+- ADR-040 amended: a learning goal no longer needs a write-up to count as a
+  reason, in line with write-ups being optional (P6). AON-02 is built for daily
+  use and for learning, with each step explained as it's built.
+
 ## [0.36.0] - 2026-10-30
 
 ### Changed — AON-01 closed (2026-10-30)
