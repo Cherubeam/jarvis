@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-10-30
+
+### Changed — AON-01 closed (2026-10-30)
+
+- Roadmap: AON-01 (Harden) is complete. Three items stay open on purpose: the
+  OpenRouter data policy (deferred), the deterministic stop condition (waits
+  for the first unattended job) and a GUI budget card (backlog).
+
 ### Changed — Cortex requires a token (2026-10-28)
 
 - Cortex's HTTP API now authenticates every request (suite threat model
