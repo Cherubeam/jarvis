@@ -335,6 +335,19 @@ it in your data home. How the limits work: [architecture.md](architecture.md#spe
 home. It needs the `readwise` command for the Reading section, and Personal Intelligence for Career;
 without them those sections say "not available".
 
+To run it every morning at 07:30 (macOS):
+
+```bash
+scripts/launchd/install.sh
+```
+
+The install script resolves `uv` and `readwise` at install time, so rerun it after a Node upgrade
+moves `readwise`. A run missed while the Mac sleeps starts when it wakes; a Mac that is off skips the
+day, and the GUI keeps the last briefing with its date. The job runs from this checkout, whichever
+branch is checked out. Output goes to `~/Library/Logs/JARVIS/morning-briefing.log`. To run it now,
+use `launchctl kickstart gui/$(id -u)/com.marcobraun.jarvis.morning-briefing`; to remove it,
+`scripts/launchd/uninstall.sh`.
+
 ### Context files
 
 The context files live in `paths.context_dir` under the names in `paths.context_files`; the
