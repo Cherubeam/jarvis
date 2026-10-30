@@ -44,6 +44,7 @@ class TestRunExport:
         assert cmd[:3] == ["shortcuts", "run", SHORTCUT_NAME]
         assert cmd[cmd.index("--output-type") + 1] == "public.json"
         assert run.call_args.kwargs["timeout"] == 10
+        assert run.call_args.kwargs["stdin"] == subprocess.DEVNULL  # an open stdin hangs `shortcuts run`
 
     def test_missing_key_becomes_empty_list(self, on_mac):
         with patch(f"{MOD}.subprocess.run", side_effect=_fake_run({"inbox": []})):

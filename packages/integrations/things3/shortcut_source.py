@@ -41,7 +41,10 @@ def run_export(shortcut_name: str = SHORTCUT_NAME, timeout: float = TIMEOUT_SECO
         out = Path(tmp) / "export.json"
         cmd = ["shortcuts", "run", shortcut_name, "--output-type", "public.json", "--output-path", str(out)]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+            # stdin closed: `shortcuts run` reads input from it and hangs if it's an open pipe
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout, check=False, stdin=subprocess.DEVNULL
+            )
         except subprocess.TimeoutExpired as e:
             raise ThingsUnavailableError(f"the '{shortcut_name}' Shortcut didn't finish within {timeout:g}s") from e
         if proc.returncode != 0:
