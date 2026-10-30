@@ -2840,7 +2840,7 @@ knows he can't compete with those products, and that isn't the point.
    jobs, phone access, always-on agents) when the build teaches something or
    gets JARVIS used daily. P1 still applies: each such feature names its
    trigger, and a learning goal counts as a trigger only when it names what is
-   being learned and the milestone ships a write-up (P6).
+   being learned. (Amended 2026-10-30: the write-up condition is gone, see below.)
 3. **The conversation archive is core.** The existing importers (ChatGPT,
    Claude conversations, Claude memories and projects — CTX, see
    `docs/engineering/architecture.md`) are part of JARVIS's purpose, not a side
@@ -2852,6 +2852,14 @@ knows he can't compete with those products, and that isn't the point.
 5. **Usage is a success measure.** Native JARVIS sessions per week are counted
    and reviewed. Low use steers priorities toward work that brings Marco back
    to JARVIS; it is not a reason to shrink the scope.
+
+### Amendment (2026-10-30) — write-ups don't decide what gets built
+
+§2 made a write-up a condition for a learning goal to count. Write-ups became optional on
+2026-10-05 (practice P6), because not every topic is worth a post, so the condition is dropped.
+AON-02 is built for two reasons, both named by Marco: daily use, and learning how the work is
+done. During the build the assistant explains what is being built, how and why. A write-up on
+it is likely but stays his call.
 
 ### Alternatives Considered
 

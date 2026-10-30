@@ -59,8 +59,9 @@ Each step names its milestone below; this list only sets the order.
    2026-10-06, released in v0.33.0): Claude Code and JARVIS search the archive
    through one index.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
-4. **AON-02** — the shared turn runner, then front ends and jobs. Learning and
-   daily use count as reasons (ADR-040), with a named learning goal.
+4. **AON-02** — the shared turn runner, then front ends and jobs. Built for
+   daily use and for learning; each step explains what, how and why
+   ([ADR-040, amendment](decisions.md#amendment-2026-10-30--write-ups-dont-decide-what-gets-built)).
 
 Write-ups are optional per topic; Marco decides which to write.
 
@@ -469,7 +470,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 **Status**: 📋 Planned · **Effort**: L · **Risk**: Medium
 
-One core, many front ends, one safe scheduled job.
+One core, many front ends, one safe scheduled job. Reasons: daily use and learning (ADR-040, amended 2026-10-30).
 
 - [ ] Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. It absorbs the delegation transitions: delegate, specialist hand-back (ADR-038, CLI-only today) and the spawn-and-consume mode below. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
 - [ ] Session-per-conversation replacing the global GuiSession (`apps/gui/server/app.py`, `state.py`) *(M)*
