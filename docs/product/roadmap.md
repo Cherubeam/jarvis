@@ -34,13 +34,13 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
-## Current focus (2026-10-08)
+## Current focus (2026-10-30)
 
 Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
 [ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
 Each step names its milestone below; this list only sets the order.
 
-1. **Finish AON-01.** Done: GUI auth, vault oversight, atomic saves, GUI
+1. **AON-01 done (2026-10-30, v0.36.0).** Done: GUI auth, vault oversight, atomic saves, GUI
    approvals reach the running turn (2026-10-04). Measurement tooling built
    (2026-10-08): `scripts/analyze_costs.py --by sessions|spend|caching`
    ([how to run](metrics.md#current-cost-benchmarks)); run
@@ -48,9 +48,8 @@ Each step names its milestone below; this list only sets the order.
    answered. **Conclusions wait for weeks of real use**: the archive holds 5
    billed turns, all GPT-6 Luna, and no billed Anthropic turn yet. Tool
    descriptions rewritten (2026-10-09). Cost ledger and spend limits
-   (2026-10-10). AON-01 is done except the OpenRouter data policy, which is
-   deferred (2026-10-09, no time to read the policies now); it blocks nothing
-   else.
+   (2026-10-10). The OpenRouter data policy stays deferred (2026-10-09, no
+   time to read the policies now); it blocks nothing else.
 2. **Daily use: the conversation archive.** Done (HUB-03): data home, indexes
    local, context files and memory in the vault with dates and sources, Claude
    import refreshed, Claude Code transcripts kept 365 days (all 90 sessions
@@ -445,7 +444,7 @@ stable and will not be renumbered as the plan evolves.
 
 ### AON-01 — Harden (safety rails & shared core)
 
-**Status**: 🔄 In progress · **Effort**: M · **Risk**: Low
+**Status**: ✅ Complete 2026-10-30 (v0.36.0), with the open items below deferred or trigger-gated · **Effort**: M · **Risk**: Low
 
 Make the existing system safe to leave running and cheap to extend. Each item is one feature branch / PR (`feat/aon-01-<slug>`).
 
