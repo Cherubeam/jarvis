@@ -69,6 +69,11 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['monthly_usd'], label: 'monthly_usd' },
     { path: ['ledger_dir'], label: 'ledger_dir' },
   ],
+  briefing: [
+    { path: ['dir'], label: 'dir' },
+    { path: ['model'], label: 'model' },
+    { path: ['reading_items'], label: 'reading_items' },
+  ],
   readwise: [
     { path: ['enabled'], label: 'enabled' },
     { path: ['cache_ttl_seconds'], label: 'cache_ttl_seconds' },
@@ -86,6 +91,7 @@ export const SECTION_SUBTITLES: Partial<Record<SectionKey, string>> = {
   routing: 'Intelligent model routing by query complexity.',
   summarization: 'History compression once token threshold exceeds.',
   budget: 'Spend limits and the cost ledger. Estimates count at 1.5x.',
+  briefing: 'Morning briefing job. Run it with jarvis run-job morning-briefing.',
   obsidian: 'Obsidian vault integration — paths, daily notes, writing targets.',
   mcp: 'Model Context Protocol server connections.',
   filesystem: 'Per-path access rules enforced by FilesystemGuard.',

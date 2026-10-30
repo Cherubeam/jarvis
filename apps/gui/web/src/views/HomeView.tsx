@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
+import { BriefingCard } from '../components/home/BriefingCard'
 import { CostCard } from '../components/home/CostCard'
 import { GreetingHeader } from '../components/home/GreetingHeader'
 import { QuickStart } from '../components/home/QuickStart'
@@ -131,6 +132,8 @@ export function HomeView({
               greeting={data.greeting}
               dayLabel={data.today.day_label}
             />
+
+            <BriefingCard theme={theme} briefing={data.briefing} today={data.today.date} />
 
             <div
               style={{

@@ -714,12 +714,16 @@ def _diff_dict(current: dict[str, Any], defaults: dict[str, Any]) -> dict[str, A
 # mid-session doesn't register the ``track_recommendation`` tool (that
 # happens at ``build_session()`` time), so the user-facing change needs a
 # restart even though the /api/outcomes view reads the flag per request.
+#
+# ``briefing.*`` is hot: ``GET /api/home`` reads ``briefing.dir`` per request, and
+# ``jarvis run-job`` is its own process that loads the config on every run.
 
 
 HOT_APPLY_PATHS: frozenset[str] = frozenset(
     {
         "summarization",
         "paths.prompt_history_dir",
+        "briefing",
     }
 )
 

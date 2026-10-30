@@ -683,7 +683,7 @@ The GUI binds to `127.0.0.1:8123` and requires authentication since `AON-01`: ev
 | `GET /api/conversations/facets` | `routes/conversations.py` | Unique agents + tools for filter chips | 0.17.0 |
 | `GET /api/conversations/{id}` | `routes/conversations.py` | Full detail + preview | 0.17.0 |
 | `DELETE /api/conversations/{id}` | `routes/conversations.py` | Hard-delete JSON file + index cache + ChromaDB chunks; 409 when id is the active session | unreleased |
-| `GET /api/home` | `routes/home.py` | Composite Dashboard payload (greeting + tasks + cost-week + resume + recent + quick-start) | 0.17.0 |
+| `GET /api/home` | `routes/home.py` | Composite Dashboard payload (greeting + briefing + tasks + cost-week + resume + recent + quick-start) | 0.17.0 |
 | `GET /api/outcomes/pending` | `routes/outcomes.py` | Pending outcomes past their `revisit_at` date; `[]` when disabled | 0.19.0 |
 | `POST /api/outcomes/{file_id}/review` | `routes/outcomes.py` | Body `{verdict, quality, note}`. 403 when disabled | 0.19.0 |
 | `GET /api/settings` | `routes/settings.py` | `settings`, `defaults`, `overrides`, `local_yaml_has_managed_header` | 0.20.0 |

@@ -13,6 +13,7 @@ export type SectionKey =
   | 'routing'
   | 'summarization'
   | 'budget'
+  | 'briefing'
   | 'obsidian'
   | 'mcp'
   | 'filesystem'
@@ -32,6 +33,7 @@ export const SECTIONS: Section[] = [
   { key: 'routing', label: 'Routing' },
   { key: 'summarization', label: 'Summarization' },
   { key: 'budget', label: 'Budget' },
+  { key: 'briefing', label: 'Briefing' },
   { key: 'obsidian', label: 'Obsidian' },
   { key: 'mcp', label: 'MCP' },
   { key: 'filesystem', label: 'Filesystem' },

@@ -51,20 +51,18 @@ def _gather_tasks(settings: Settings, root: Path) -> Section:
 
 
 def _gather_daily_note(settings: Settings, day: date) -> Section:
-    section = Section("daily_note", "Latest daily note")
+    """Yesterday's note, for the review. At 07:30 today's rarely exists; no note is no gap."""
+    section = Section("daily_note", "Yesterday's daily note")
     vault = load_vault_config(settings.obsidian, filesystem_guard=load_filesystem_guard(settings.filesystem))
     if vault is None:
         section.problem = "no vault configured"
         return section
-    for candidate in (day, day - timedelta(days=1)):
-        try:
-            text = read_note(get_daily_note_path(vault, candidate.isoformat()), vault)
-        except FileNotFoundError:
-            continue
-        section.title = f"Daily note of {candidate.isoformat()}"
-        section.text = text
+    yesterday = (day - timedelta(days=1)).isoformat()
+    try:
+        section.text = read_note(get_daily_note_path(vault, yesterday), vault)
+    except FileNotFoundError:
         return section
-    section.problem = "no daily note for today or yesterday"
+    section.title = f"Daily note of {yesterday}"
     return section
 
 
@@ -147,7 +145,7 @@ def gather_sections(settings: Settings, root: Path, day: date) -> list[Section]:
     return [
         _safely(lambda: _gather_focus(settings, root), "focus", "Current focus"),
         _safely(lambda: _gather_tasks(settings, root), "tasks", "Things tasks"),
-        _safely(lambda: _gather_daily_note(settings, day), "daily_note", "Latest daily note"),
+        _safely(lambda: _gather_daily_note(settings, day), "daily_note", "Yesterday's daily note"),
         _safely(lambda: _gather_outcomes(settings, root, day), "outcomes", "Recommendations due for review"),
         _safely(lambda: _gather_career(settings), "career", "Career direction map"),
         _safely(lambda: _gather_reading(settings), "reading", "Reading list"),

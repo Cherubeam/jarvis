@@ -812,7 +812,9 @@ call with no tools writes the text. Source text is fenced as untrusted data, and
 instructions planted in it have nothing to act on (OWASP LLM01). A source that fails costs its own
 section, which then says "not available". Nothing can be asked, so over `budget.monthly_usd` the job
 makes no model call. Spend lands in the ledger with `purpose: job`. Output: one file per day in
-`briefing.dir`.
+`briefing.dir`, shown on the GUI home screen. It reviews yesterday's daily note; with no note, the
+review is left out silently. The GUI's markdown renderer only makes `http(s)` links clickable and
+escapes quotes, because briefing text can quote untrusted sources (OWASP LLM05).
 
 ### Spend Limits and the Cost Ledger
 

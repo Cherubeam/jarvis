@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
 
 from apps.gui.server.home.cost_week import cost_week_rollup
 from apps.gui.server.home.task_links import link_tasks_to_conversations
+from packages.core.briefing import latest_briefing
 
 # fetch_tasks is imported at module level so tests can patch this symbol. It
 # shells out to the macOS `shortcuts` CLI only when called, so this import is
@@ -74,6 +76,16 @@ def _flatten_tasks(by_list: dict[str, Any]) -> list[dict[str, Any]]:
     return flat
 
 
+def _load_briefing(session: Any) -> dict[str, Any] | None:
+    """The newest briefing. A damaged file costs the card, never the Home view."""
+    components = session.components
+    try:
+        return latest_briefing(Path(components.jarvis_dir) / components.settings.briefing.dir)
+    except Exception as e:
+        logger.warning("home: briefing not readable: %s", e)
+        return None
+
+
 @router.get("/home")
 async def get_home(request: Request) -> dict[str, Any]:
     """Composite endpoint for the Dashboard / Home view."""
@@ -112,6 +124,7 @@ async def get_home(request: Request) -> dict[str, Any]:
     return {
         "greeting": _greeting(now),
         "today": {"date": today_dt.isoformat(), "day_label": _day_label(today_dt)},
+        "briefing": _load_briefing(session),
         "tasks": tasks,
         "cost_week": week,
         "resume": resume,

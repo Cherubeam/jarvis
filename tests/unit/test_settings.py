@@ -613,6 +613,7 @@ class TestClassifyChanges:
             {
                 "summarization",
                 "paths.prompt_history_dir",
+                "briefing",
             }
         )
         assert expected == HOT_APPLY_PATHS
