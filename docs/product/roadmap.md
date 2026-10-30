@@ -454,7 +454,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 - [x] **Vault-write oversight fixes** (found during the 2026-09 model refresh, not originally planned): the GUI approval card now shows the real diff and path (it showed nothing); changed links are listed above every vault diff; writes and previews are refused when the note changed on disk since the agent read it (Art. 14(4)(c), OWASP LLM05/LLM06) *(S)* ✅ 2026-09-25
 - [x] ~~Confirmation gate on the pytest runner in `packages/core/tools/test_tools.py`~~ — closed by deletion: the developer agent and its pytest runner were retired ([ADR-039](decisions.md#adr-039-retire-the-developer-agent)) ✅ 2026-09-30
 - [x] Cost ledger + per-loop caps: per-turn dollar ceiling in both tool loops (`budget.max_turn_usd`, default $1), monthly limit (`budget.monthly_usd`, default $20: warning at 80%, CLI asks above it, GUI warns), ledger of one line per turn plus evaluator/summarizer calls; turn caps already existed (`max_iterations`). A **JSONL file per month instead of SQLite**: nothing queries it yet (P1). Keepalive spend (AON-04) lands in the same ledger once keepalives exist ([architecture](../engineering/architecture.md#spend-limits-and-the-cost-ledger)) *(S)* ✅ 2026-10-10
-- [ ] *Trigger-gated:* **deterministic stop condition** per loop (tests pass / score threshold): a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. No unattended loop exists since the developer agent was retired (ADR-039); build with the first scheduled job (AON-02) *(S)*
+- [ ] *Trigger-gated:* **deterministic stop condition** per loop (tests pass / score threshold): a dollar-only ceiling lets a stuck loop burn its budget on garbage iterations. No unattended loop exists since the developer agent was retired (ADR-039); the morning briefing doesn't need it (one model call, no loop); build with the first job that loops (AON-02) *(S)*
 - [ ] *Backlog:* GUI approval card for the monthly budget (the GUI warns and continues today). Build when the GUI is used regularly *(S)*
 - [x] Fix the confirmation deadlock: the turn runs as a task so `chat_ws.py` receives approvals and cancels mid-turn; an unanswered approval is rejected after 10 minutes. Reproduced first with WebSocket tests (`test_chat_ws_approvals.py`: approval mid-turn, two writes in one turn, cancel mid-turn), which failed before the fix *(M)* ✅ 2026-10-04
 - [x] Reset `WebConfirmationHandler` state per approval, not per turn, so a second vault write in the same turn asks again instead of replaying the first decision; a discarded handler (tab closed, turn ended, cancel) rejects later writes without asking *(S)* ✅ 2026-10-04
@@ -476,14 +476,14 @@ One core, many front ends, one safe scheduled job. Reasons: daily use and learni
 - [ ] *Not needed for the briefing (a fixed pipeline, no tool loop; 2026-10-30): build when a job needs tools.* Extract a shared `TurnRunner` + headless session factory into `packages/core` (de-duplicate `apps/cli/main.py` ↔ `apps/gui/server/bridge.py` and StreamHandler's twin loops) — the refactor everything else rides on. It absorbs the delegation transitions: delegate, specialist hand-back (ADR-038, CLI-only today) and the spawn-and-consume mode below. TurnRunner **pins the tool set + prompt-prefix ordering per session** (any mid-session tool-list change invalidates the cached prefix — this is where cache savings are won or lost) *(L)*
 - [ ] Session-per-conversation replacing the global GuiSession (`apps/gui/server/app.py`, `state.py`) *(M)*
 - [ ] `PolicyConfirmationHandler` with a whitelist + persisted approval inbox (headless-safe) *(M)*
-- [ ] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*
+- [x] `jarvis run-job` CLI + launchd LaunchAgent; first job = read-only morning briefing; refresh tasks.md per run *(M)*
   - [x] Job started by hand: `jarvis run-job morning-briefing` gathers tasks, yesterday's daily note, due recommendations, career map and reading, then one model call with no tools writes the briefing ✅ 2026-10-30
   - [x] Briefing card on the GUI home screen, Briefing section in settings ✅ 2026-10-30
   - [ ] LaunchAgent at 07:30 (PATH must include the `readwise` command)
 - [ ] Read-only **verifier subagent** with fresh context that checks the briefing's output before it's sent (the missing piece from the loop-engineering taxonomy; first consumer of a spawn-and-consume-summary delegation mode — note `delegate.py` is terminal-handoff-only today) *(S)*
 - [ ] Telegram bot via long polling as a thin `TurnRunner` client; Tailscale Serve for the GUI. **Content policy**: notifications and approval pings via Telegram; anything vault-derived stays on the Tailscale-only GUI (bot chats are not E2E-encrypted) *(M)*
 
-*Token impact: +$2–6/month for a daily briefing; bounded by the AON-01 ledger.*
+*Token impact: about $0.05/month for the daily briefing as built (no tools, one fast-model call, ~$0.0016 per run); bounded by the AON-01 ledger.*
 
 ### AON-03 — Guard (evals that guard the loop)
 
