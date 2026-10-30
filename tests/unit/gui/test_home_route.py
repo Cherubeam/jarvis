@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from apps.gui.server.history.index import ConversationIndex
 from apps.gui.server.routes.home import router as home_router
-from packages.core.settings import Things3Settings
+from packages.core.settings import BriefingSettings, Things3Settings
 from packages.integrations.things3.task_sync import Task
 
 
@@ -33,16 +33,17 @@ def _write(path, messages=None, cost=0.01, tokens=100):
     path.write_text(json.dumps(data), encoding="utf-8")
 
 
-def _fake_session(things3_enabled=True):
-    """Stand-in for GuiSession — the route reads session.components.settings.things3."""
+def _fake_session(things3_enabled=True, jarvis_dir="/nonexistent"):
+    """Stand-in for GuiSession — the route reads things3 and briefing off session.components.settings."""
     settings = SimpleNamespace(
         things3=Things3Settings(
             enabled=things3_enabled,
             cache_ttl_seconds=300,
             lists_to_include=["Today", "Upcoming"],
-        )
+        ),
+        briefing=BriefingSettings(dir="briefings"),
     )
-    components = SimpleNamespace(config={}, settings=settings)
+    components = SimpleNamespace(config={}, settings=settings, jarvis_dir=jarvis_dir)
     return SimpleNamespace(components=components)
 
 
@@ -77,6 +78,7 @@ def test_shape_and_status(client_with_tasks):
     assert set(j.keys()) == {
         "greeting",
         "today",
+        "briefing",
         "tasks",
         "cost_week",
         "resume",
@@ -131,6 +133,42 @@ def test_things3_disabled_returns_empty_tasks(tmp_path):
     assert r.status_code == 200
     j = r.json()
     assert j["tasks"] == []
+
+
+def _home_with_briefing(tmp_path):
+    index = ConversationIndex(tmp_path / "conversations")
+    asyncio.run(index.refresh())
+    app = FastAPI()
+    app.state.conversation_index = index
+    app.state.gui_session = _fake_session(things3_enabled=False, jarvis_dir=str(tmp_path))
+    app.include_router(home_router)
+    return TestClient(app).get("/api/home").json()
+
+
+def test_no_briefing_is_null(tmp_path):
+    assert _home_with_briefing(tmp_path)["briefing"] is None
+
+
+def test_briefing_is_the_newest_file(tmp_path):
+    directory = tmp_path / "briefings"
+    directory.mkdir()
+    (directory / "2026-10-29.md").write_text("old", encoding="utf-8")
+    (directory / "2026-10-30.md").write_text("---\ncost_usd: 0.002\n---\n## Today\n- new\n", encoding="utf-8")
+
+    briefing = _home_with_briefing(tmp_path)["briefing"]
+
+    assert (briefing["date"], briefing["text"], briefing["cost_usd"]) == ("2026-10-30", "## Today\n- new", 0.002)
+
+
+def test_damaged_briefing_costs_only_the_card(tmp_path):
+    directory = tmp_path / "briefings"
+    directory.mkdir()
+    (directory / "2026-10-30.md").write_text("---\nkey: [unclosed\n---\ntext\n", encoding="utf-8")
+
+    home = _home_with_briefing(tmp_path)
+
+    assert home["briefing"] is None
+    assert home["tasks"] == []
 
 
 def test_empty_index_returns_null_resume_and_seven_zero_days(tmp_path):

@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Morning briefing on the GUI home screen (AON-02, 2026-10-30)
+
+- The home screen shows the newest briefing above the tasks: when it was
+  written, what it cost, and which sources were missing. If the job didn't run,
+  it keeps the last one and says which day it is from.
+- New Briefing section in GUI settings. `briefing.*` applies without a restart.
+
+### Changed — The briefing reviews yesterday's daily note (2026-10-30)
+
+- At 07:30 today's note rarely exists, so the job now reads yesterday's and
+  opens with a short Yesterday section. With no note, the section is left out
+  silently instead of saying "not available".
+- Reading items are now markdown links, so they are clickable in the GUI.
+
+### Fixed — Model text can no longer run code in the GUI (2026-10-30)
+
+- The chat and briefing markdown renderer built links without checking them:
+  a `javascript:` URL or a quote in a link quoted from an untrusted source
+  could run in the page (OWASP LLM05 improper output handling). Only `http(s)`
+  links are clickable now, quotes are escaped, and links open in a new tab.
+
 ### Fixed — Things export no longer hangs (2026-10-30)
 
 - `shortcuts run` reads input from stdin and hung when it inherited an open

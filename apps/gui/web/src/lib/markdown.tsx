@@ -6,7 +6,11 @@ import { useMemo } from 'react'
 import { JARVIS_FONTS, type Theme } from './tokens'
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 function renderInline(text: string, theme: Theme): string {
@@ -18,9 +22,11 @@ function renderInline(text: string, theme: Theme): string {
   )
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   s = s.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
-  s = s.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    `<a href="$2" style="color:${theme.assistant};text-decoration:underline;text-underline-offset:2px">$1</a>`,
+  // Model text can quote untrusted sources: only web links, so a javascript: URL stays plain text
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) =>
+    /^https?:\/\//i.test(href)
+      ? `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:${theme.assistant};text-decoration:underline;text-underline-offset:2px">${label}</a>`
+      : label,
   )
   return s
 }

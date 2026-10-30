@@ -389,7 +389,7 @@ Deliberate. `build_session()` captures settings values into `LLMClient`, tool cl
 Closed PR-8b's deliberate punt that returned `restart_required: true` unconditionally. Saves now report which specific fields took effect live and which still need a JARVIS restart.
 
 - **`packages.core.settings.classify_changes(current, new)`** — pure function that diffs two `Settings.model_dump()` shapes and splits changed leaf paths into `hot_applied_fields` and `restart_required_fields`.
-- **`packages.core.settings.HOT_APPLY_PATHS`** — curated frozenset of dotted prefixes that are truly hot. Currently `{"summarization", "paths.prompt_history_dir"}`. `summarization.*` is read every turn in `apps/gui/server/bridge.py`; `paths.prompt_history_dir` is read in every `/api/agents/*/prompt*` call. Whitelist-not-metadata: marking fields "hot" via pydantic `Field` metadata would drift the moment a new `build_session()` closure captures them; a curated whitelist + grep-first comment rule in `settings.py` forces deliberate review. Additions require a comment trail verifying the field isn't captured into a closure.
+- **`packages.core.settings.HOT_APPLY_PATHS`** — curated frozenset of dotted prefixes that are truly hot. Currently `{"summarization", "paths.prompt_history_dir", "briefing"}`. `summarization.*` is read every turn in `apps/gui/server/bridge.py`; `paths.prompt_history_dir` is read in every `/api/agents/*/prompt*` call; `briefing.dir` is read in every `/api/home`, and `jarvis run-job` loads the config itself. Whitelist-not-metadata: marking fields "hot" via pydantic `Field` metadata would drift the moment a new `build_session()` closure captures them; a curated whitelist + grep-first comment rule in `settings.py` forces deliberate review. Additions require a comment trail verifying the field isn't captured into a closure.
 - **`outcomes.*` is deliberately cold** despite per-request reads at `/api/outcomes/*` — toggling `outcomes.enabled` true mid-session doesn't register the `track_recommendation` tool (that happens at startup), so the user-visible change still needs a restart.
 - **`PUT /api/settings` rebinds `session.components.settings`** to the validated new instance after a successful write (preserving runtime-injected `jarvis_dir`). Without the rebind, even hot-whitelisted fields would still need a restart — the rebind is what makes "hot-apply" real.
 - **Response shape** gains `hot_applied_fields: list[str]` and `restart_required_fields: list[str]` alongside the existing `restart_required: bool`.
@@ -470,8 +470,8 @@ The tweak is persisted in `localStorage` under `jarvis-gui-tweaks-v1` with the r
 
 ## Dashboard / Home (WEB-03)
 
-The left-rail **Home** slot renders the Dashboard — greeting, Things 3
-"On your plate", cost-this-week sparkline, resume card, recent
+The left-rail **Home** slot renders the Dashboard — greeting, morning
+briefing, Things 3 "On your plate", cost-this-week sparkline, resume card, recent
 conversations grid, quick-start commands. Matches design v1 Home.
 
 ### Endpoint
@@ -482,6 +482,8 @@ conversations grid, quick-start commands. Matches design v1 Home.
 {
   "greeting": "Good afternoon",
   "today":    { "date": "2026-04-20", "day_label": "Monday, April 20" },
+  "briefing": { "date": "2026-04-20", "text": "...", "generated_at": "...",
+                "cost_usd": 0.002, "missing_sources": [...] } | null,
   "tasks":    [ { "title": "...", "project": "...", "when_date": "...",
                   "priority": "high|medium|low", "list": "today|upcoming|inbox",
                   "linked_conversation_ids": [...] } ],
@@ -495,6 +497,9 @@ conversations grid, quick-start commands. Matches design v1 Home.
 
 ### Implementation notes
 
+- **Morning briefing** is the newest file in `briefing.dir`, not only
+  today's. If the job didn't run, the card still shows the last briefing and
+  says which day it is from. A damaged file costs the card, not Home.
 - **Priority** comes from the Things 3 **list key**, not a field on the
   Task dataclass. `today` → high, `upcoming` → medium, `inbox` → low.
 - **Task-conversation linking** is a dumb substring match: longest

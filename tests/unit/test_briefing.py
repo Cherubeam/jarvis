@@ -9,7 +9,14 @@ import pytest
 
 from apps.cli import jobs
 from packages.core import frontmatter
-from packages.core.briefing import SECTION_CHARS, Section, briefing_path, build_messages, save_briefing
+from packages.core.briefing import (
+    SECTION_CHARS,
+    Section,
+    briefing_path,
+    build_messages,
+    latest_briefing,
+    save_briefing,
+)
 from packages.core.cost_ledger import CostLedger
 from packages.core.settings import Settings
 
@@ -65,6 +72,41 @@ class TestBuildMessages:
         text = _user_text([Section("focus", "Focus", text="x" * (SECTION_CHARS + 50))])
         assert text.count("x") == SECTION_CHARS
 
+    def test_section_with_nothing_to_report_is_left_out(self):
+        text = _user_text([Section("daily_note", "Yesterday's daily note")])
+
+        assert "daily note" not in text
+        assert "Not available" not in text
+
+
+@pytest.mark.unit
+class TestLatestBriefing:
+    def test_no_directory(self, tmp_path):
+        assert latest_briefing(tmp_path / "missing") is None
+
+    def test_newest_file_with_its_metadata(self, tmp_path):
+        save_briefing(tmp_path, date(2026, 10, 29), "old", [], model="m", cost_usd=0.1)
+        sections = [Section("reading", "R", problem="down")]
+        save_briefing(tmp_path, DAY, "## Today\n- new\n", sections, model="m", cost_usd=0.002)
+
+        result = latest_briefing(tmp_path)
+
+        assert result is not None
+        assert (result["date"], result["text"]) == ("2026-10-30", "## Today\n- new")
+        assert (result["cost_usd"], result["missing_sources"]) == (0.002, ["reading"])
+        assert result["generated_at"].startswith("20")
+
+    def test_file_without_metadata(self, tmp_path):
+        (tmp_path / "2026-10-30.md").write_text("hand written", encoding="utf-8")
+
+        assert latest_briefing(tmp_path) == {
+            "date": "2026-10-30",
+            "text": "hand written",
+            "generated_at": None,
+            "cost_usd": None,
+            "missing_sources": [],
+        }
+
 
 @pytest.mark.unit
 class TestSaveBriefing:
@@ -90,6 +132,32 @@ class TestGather:
 
         assert section.problem == "RuntimeError while reading it"
         assert (section.key, section.title) == ("career", "Career")
+
+    def _daily_note(self, read_note: Mock, vault: object = "vault") -> tuple[Section, Mock]:
+        path_of = Mock(return_value="note-path")
+        with (
+            patch.object(jobs, "load_vault_config", return_value=vault),
+            patch.object(jobs, "load_filesystem_guard"),
+            patch.object(jobs, "get_daily_note_path", path_of),
+            patch.object(jobs, "read_note", read_note),
+        ):
+            return jobs._gather_daily_note(_settings(), DAY), path_of
+
+    def test_daily_note_is_yesterdays(self):
+        section, path_of = self._daily_note(Mock(return_value="did things"))
+
+        path_of.assert_called_once_with("vault", "2026-10-29")
+        assert (section.title, section.text, section.problem) == ("Daily note of 2026-10-29", "did things", "")
+
+    def test_missing_daily_note_is_silent(self):
+        section, _ = self._daily_note(Mock(side_effect=FileNotFoundError))
+
+        assert (section.text, section.problem) == ("", "")
+
+    def test_daily_note_without_vault(self):
+        section, _ = self._daily_note(Mock(), vault=None)
+
+        assert section.problem == "no vault configured"
 
     def test_tasks_marked_stale_when_export_fails(self, tmp_path):
         settings = _settings()

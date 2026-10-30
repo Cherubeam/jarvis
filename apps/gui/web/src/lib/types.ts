@@ -231,9 +231,18 @@ export type QuickStartEntry = {
   agent: string
 }
 
+export type Briefing = {
+  date: string
+  text: string
+  generated_at: string | null
+  cost_usd: number | null
+  missing_sources: string[]
+}
+
 export type HomeData = {
   greeting: string
   today: { date: string; day_label: string }
+  briefing: Briefing | null
   tasks: HomeTask[]
   cost_week: {
     days: CostWeekDay[]
