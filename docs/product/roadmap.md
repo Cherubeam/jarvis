@@ -34,7 +34,7 @@ kept intact); the crosswalk below and in ADR-033 keeps them resolvable.
 
 ---
 
-## Current focus (2026-10-30)
+## Current focus (2026-10-31)
 
 Order of work after the September review ([dossier](../research/jarvis-deep-research-dossier.html),
 [ADR-040](decisions.md#adr-040-what-jarvis-is-for--an-owned-daily-assistant-and-a-place-to-learn)).
@@ -469,7 +469,7 @@ Make the existing system safe to leave running and cheap to extend. Each item is
 
 ### AON-02 — Unify (session refactor + first loop + Telegram)
 
-**Status**: 📋 Planned · **Effort**: L · **Risk**: Medium
+**Status**: 🔄 In progress — first scheduled job shipped in v0.37.0 · **Effort**: L · **Risk**: Medium
 
 One core, many front ends, one safe scheduled job. Reasons: daily use and learning (ADR-040, amended 2026-10-30).
 
@@ -531,7 +531,7 @@ Do this only when AON-01…04 feel boring.
 
 ## HUB — Context Hub (Cortex/Memory via MCP)
 
-**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 conversation recall ✅ 2026-10-06 (context-file read tools open); HUB-04 Personal Intelligence ✅ 2026-10-28; allocated 2026-08-19
+**Status**: 🔄 In progress — HUB-01 ✅ 2026-09-05; HUB-03 ✅ 2026-10-05; HUB-02 conversation recall ✅ 2026-10-06, context files ✅ 2026-10-31 (memory facts and access story open); HUB-04 Personal Intelligence ✅ 2026-10-28; allocated 2026-08-19
 **Motivation**: [ADR-034](decisions.md#adr-034-context-hub-positioning--rent-coding-harnesses-own-the-context) — harnesses are commodities, the context is the moat. JARVIS's vault index (Cortex, [ADR-029](decisions.md#adr-029-cortex--shared-knowledge-layer-for-the-cherubeam-ecosystem)), context files, and typed memory should be reachable from **every** agent tool (Claude Code, Codex, OpenCode, Cowork) instead of copy-pasted between them.
 
 **Goal**: One canonical personal-context store, exposed as an MCP server, consumed by JARVIS and external harnesses alike. Ends the copy-paste problem; realizes ADR-029's "MCP-ready" clause.
@@ -549,7 +549,7 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 
 ### HUB-02 — Context & memory surface
 
-**Status**: 📋 Planned · **Effort**: M · **Risk**: Medium
+**Status**: 🔄 In progress — conversation recall and context files done; memory facts wait for AON-03 · **Effort**: M · **Risk**: Medium
 
 Extend the server beyond search to JARVIS's curated context.
 

@@ -3,7 +3,7 @@
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64.svg)](https://github.com/astral-sh/ruff)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-94A3B8?logo=openrouter&logoColor=fff)](#)
-![Version 0.37.0](https://img.shields.io/badge/version-0.37.0-green.svg)
+![Version 0.37.1](https://img.shields.io/badge/version-0.37.1-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 > A personal AI assistant built from first principles to solve the vendor lock-in problem in conversational AI.
@@ -82,6 +82,8 @@ Jarvis follows a straightforward architecture that prioritizes clarity and maint
 - **Safe Vault Edits**: Every write shows a diff for approval, lists changed links above it, and is refused if the note changed on disk since the agent read it ([details](docs/engineering/obsidian-integration.md#data-flow-summary))
 - **Web Fetch & Search Tools**: URL fetching with content extraction (httpx + trafilatura) and DuckDuckGo search
 - **Conversation Recall**: Meaning-based search over past JARVIS, Claude, Claude Code and ChatGPT conversations via Cortex's `search_conversations` (opt-in in Cortex, HUB-02); new conversations are searchable seconds after they are saved
+- **Morning Briefing**: A short daily briefing on the GUI home screen from tasks, yesterday's daily note, due recommendations, career map and reading, written by one model call with no tools ([details](docs/engineering/deployment.md#morning-briefing))
+- **Shared Context Files**: Other AI tools and JARVIS specialists can read your curated context files through Cortex's `read_context` (opt-in in Cortex, HUB-02)
 - **Vault Semantic Search**: Meaning-based search over the Obsidian vault via the Cortex MCP server (opt-in, HUB-01)
 - **Enhanced CLI UX**: Rich terminal formatting, markdown rendering, prompt_toolkit with paste support and input history
 - **Persistent Personal Context**: Define who you are, your preferences, and current focus areas in simple markdown files

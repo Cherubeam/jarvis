@@ -714,7 +714,8 @@ jarvis/
 │
 ├── scripts/                        # Importers (import_*.py), model_benchmark.py, benchmark_report.py,
 │                                   #   analyze_costs.py, analyze_context.py, backfill_billed_usage.py,
-│                                   #   link_skills.sh (symlink private skills), one-off migrations
+│                                   #   link_skills.sh (symlink private skills), one-off migrations,
+│                                   #   launchd/ (morning briefing schedule)
 ├── tests/                          # Test suite (layout: tests/README.md)
 ├── docs/                           # Documentation (product/, engineering/, research/, design/)
 ├── jarvis_cli.py, jarvis_gui.py    # Script entry points
