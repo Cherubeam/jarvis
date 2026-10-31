@@ -553,7 +553,8 @@ Expose the existing Cortex API (`cherubeam/cortex`) as an MCP server (stdio/loca
 
 Extend the server beyond search to JARVIS's curated context.
 
-- [ ] Read tools for context files (`profile.md`, `preferences.md`, `current_focus.md`) and typed memory facts (the `AON-03` extraction output, post-quarantine only)
+- [x] Read tool for context files: Cortex `read_context`, opt-in via its `context_files` setting; JARVIS specialists reach them through the shared server too ✅ 2026-10-31
+- [ ] Read tool for typed memory facts (the `AON-03` extraction output, post-quarantine only)
 - [x] Conversation-recall search (scoped, opt-in — most private data class) ✅ 2026-10-06. Cortex indexes the archive in its own `conversations` collection (cortex #1); its file watcher keeps it current, renames included (cortex #2). Opt-in tool `search_conversations` (query, date range, origins, ≤ 20 results), all four origins (native, Claude, Claude Code, ChatGPT), client-work projects excluded by `exclude_projects`. One index: JARVIS's conversation indexer, searcher and `recall_conversations` are removed; JARVIS uses `mcp_cortex__search_conversations` through the shared MCP server. Open: Claude.ai conversations carry no project, so client work held there is indexed (owner's call); the MCP result is ~2,300 tokens for 5 results vs the old 6,000-char cap; the tool description's "today" is fixed when the MCP server starts, so a day-old session shows yesterday's date (cortex)
 - [ ] Access story before anything non-local: stdio-only default stands; any network transport is a deliberate, authenticated opt-in
 
