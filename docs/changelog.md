@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.1] - 2026-10-31
+
+No code changes: docs for Cortex's `read_context` (Cortex v0.8.0), and stale docs corrected.
+
+### Fixed — Stale docs (2026-10-31)
+
+- Roadmap status of AON-02 and HUB-02, the Cortex tool lists, the scripts tree,
+  and the README feature list now match what shipped.
+
 ### Changed — Specialists can read context files through Cortex (HUB-02, 2026-10-31)
 
 - Cortex's new opt-in `read_context` tool arrives through the shared MCP server.

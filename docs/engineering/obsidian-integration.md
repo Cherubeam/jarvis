@@ -157,6 +157,7 @@ This section is the reference for vault safety behaviour; other docs link here.
 | `read_daily_note` | Read today's or a specified date's daily note |
 | `mcp_cortex__search_knowledge` | Meaning-based search via the Cortex MCP server (optional) |
 | `mcp_cortex__search_conversations` | Meaning-based search across past AI conversations via Cortex (optional, HUB-02) |
+| `mcp_cortex__read_context` | Read a curated context file in full via Cortex (optional, HUB-02) |
 
 ### Scoped Write Tools (per agent, declared in `meta.yaml`)
 
