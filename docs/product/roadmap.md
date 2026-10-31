@@ -59,7 +59,7 @@ Each step names its milestone below; this list only sets the order.
    2026-10-06, released in v0.33.0): Claude Code and JARVIS search the archive
    through one index.
 3. **TOK caching steps 2–4**, if the baseline shows cacheable spend.
-4. **AON-02** — first the morning briefing in the GUI, then front ends and
+4. **AON-02** — the morning briefing shipped in v0.37.0 (2026-10-31); next, front ends and
    jobs; the shared turn runner when a job needs tools. Built for daily use and
    for learning; each step explains what, how and why
    ([ADR-040, amendment](decisions.md#amendment-2026-10-30--write-ups-dont-decide-what-gets-built)).

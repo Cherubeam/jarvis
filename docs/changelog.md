@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-10-31
+
 ### Added — Morning briefing runs on its own at 07:30 (AON-02, 2026-10-30)
 
 - `scripts/launchd/install.sh` installs a LaunchAgent that runs the job daily.
   A run missed during sleep starts on wake. Paths are resolved at install
   time, so nothing machine-specific is committed.
 - First launchd run: all sources available, task list exported fresh, $0.0016.
+  First run started by the clock (2026-10-31, 07:30): exit 0, nothing missing,
+  $0.0014.
 
 ### Added — Morning briefing on the GUI home screen (AON-02, 2026-10-30)
 
