@@ -243,7 +243,7 @@ mcp:
 
 Tools arrive as `mcp_cortex__search_knowledge` and `mcp_cortex__index_status`, plus
 `mcp_cortex__search_conversations` and `mcp_cortex__read_context` if opted in on the Cortex side
-(its README says how). When the service is down, `read_context` still works; the tools return an actionable error and agents fall back to `search_notes`.
+(its README says how). When the service is down, `read_context` still works; the others return an actionable error and agents fall back to `search_notes`.
 
 Cortex's HTTP API needs a bearer token on every route (suite threat model TM-01). JARVIS needs no
 setting for it: `cortex-mcp` reads the same token as the service (`$CORTEX_API_TOKEN`, else
