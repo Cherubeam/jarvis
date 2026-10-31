@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Specialists can read context files through Cortex (HUB-02, 2026-10-31)
+
+- Cortex's new opt-in `read_context` tool arrives through the shared MCP server.
+  Only the main agent has context files in its prompt, so this gives specialists
+  access for the first time. No JARVIS code changed.
+
 ## [0.37.0] - 2026-10-31
 
 ### Added — Morning briefing runs on its own at 07:30 (AON-02, 2026-10-30)
