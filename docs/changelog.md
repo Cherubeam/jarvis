@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Agent instructions live in `AGENTS.md` only (2026-11-16)
+
+- `.claude/CLAUDE.md` removed. Claude Code reads `AGENTS.md` itself since
+  v2.1.277, and a `CLAUDE.md` in the repo makes it skip `AGENTS.md`. The
+  pointer's branch rule is already in `AGENTS.md`. Its plan-review rule, which
+  only Claude Code can follow, moved unchanged to `.claude/rules/plan-review.md`.
+  Cross-project practice P9.
+
 ### Changed — Conversation recall needs an opt-in flag (TM-17, 2026-11-08)
 
 - Since Cortex v0.9.0, `search_conversations` is offered only to MCP clients that
