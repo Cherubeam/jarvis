@@ -815,7 +815,8 @@ section, which then says "not available". Nothing can be asked, so over `budget.
 makes no model call. Spend lands in the ledger with `purpose: job`. Output: one file per day in
 `briefing.dir`, shown on the GUI home screen. A LaunchAgent starts it daily
 (`scripts/launchd/install.sh`, [deployment](deployment.md#morning-briefing)). It reviews yesterday's daily note; with no note, the
-review is left out silently. The GUI's markdown renderer only makes `http(s)` links clickable and
+review is left out silently. The decision journal works the same way: code works out what is due
+today (`format_journal_due`, ADR-043), and with nothing due the section is left out. The GUI's markdown renderer only makes `http(s)` links clickable and
 escapes quotes, because briefing text can quote untrusted sources (OWASP LLM05).
 
 ### Spend Limits and the Cost Ledger

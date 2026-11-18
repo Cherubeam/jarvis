@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — The morning briefing says what is due in the decision journal (2026-11-18)
+
+- The briefing reads Personal Intelligence's decision journal and names what
+  is due: a review date within `briefing.journal_days_ahead` days (default 7)
+  or passed, a test past its end without a result, and the app's "needs
+  attention" reasons. Code compares the dates with today; the model only
+  words the lines. With nothing due, the briefing has no such section.
+  personal-intelligence INT-02, [ADR-043](product/decisions.md#adr-043-the-morning-briefing-says-what-is-due-in-the-decision-journal).
+- Titles, dates and reasons only, fenced as untrusted data (OWASP LLM01); the
+  briefing stays one model call with no tools.
+- `PersonalIntelligenceClient.decision_journal()`; `journal_days_ahead` in the
+  Briefing settings section of the GUI.
+
 ### Changed — Agent instructions live in `AGENTS.md` only (2026-11-16)
 
 - `.claude/CLAUDE.md` removed. Claude Code reads `AGENTS.md` itself since

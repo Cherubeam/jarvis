@@ -3159,3 +3159,81 @@ What the answer has to respect (its specs):
 - ADR-034 (Context Hub Positioning) — Cortex is MCP because every harness uses it
 - ADR-039 (Retire the Developer Agent) — untrusted text and acting tools in one agent
 - ADR-041 (Where Each Kind of Data Lives) — the app follows the same homes
+
+---
+
+## ADR-043: The Morning Briefing Says What Is Due in the Decision Journal
+
+**Date**: 2026-11-18
+**Status**: Accepted
+
+### Context
+
+Personal Intelligence builds a **decision journal** from Marco's hypothesis
+notes: each open hypothesis has a review date and a test with a start, an end
+and a result (its specs DJ-02, DJ-10). The journal is a page he has to visit,
+so a date can pass unseen. He decided on 2026-11-17 that the dates should come
+to him through the morning briefing (its INTENT §7 question 11; spec INT-02).
+
+What the briefing has to respect:
+
+- **A weekly snapshot.** The journal is rebuilt on Sundays. Its own day counts
+  and its "needs attention" list are as of that build, up to a week old.
+- **No warning before a date.** The app flags a review date only after it has
+  passed (DJ-10). The briefing is where "coming up" is first needed.
+- **Untrusted text (SEC-09; OWASP LLM01).** Note titles and the app's problem
+  lines quote vault text.
+- **Unattended.** The briefing is a fixed pipeline: one model call, no tools
+  (AON-02).
+
+### Decision
+
+- **One more source in the fixed pipeline**, read from
+  `GET /api/topics/career/decision-journal` with the same client and token
+  rules as ADR-042. No new tool, no agent.
+- **Code decides what is due, not the model.** `format_journal_due` compares
+  the journal's dates with today and writes the day counts: a review date
+  within `briefing.journal_days_ahead` days (default 7), today, or passed; a
+  test whose end has passed without a result; and the app's "needs attention"
+  reasons. A date counts as passed from the day after it, as in the app. The
+  app's own "has passed" lines are dropped in favour of today's count, so
+  nothing is named twice.
+- **Nothing due, nothing said.** The section is left out of the prompt and of
+  the briefing. With no journal yet (404) or the app switched off, the same.
+  If the app can't be reached, the section says "not available", like every
+  other source, because then a date could be missed.
+- **Titles, dates and reasons only.** Each line is flattened, truncated and
+  fenced as untrusted data. The test's text, the evidence links and related
+  notes stay in the app.
+- **A missing property export is said.** If the journal came without review
+  dates (Cortex older than 0.10.0), one line says dates can't be checked.
+
+### Alternatives Considered
+
+- **Let the model work out what is due from the whole journal.** Date
+  arithmetic by a fast model is unreliable, and it would send every
+  hypothesis's test text each morning to say, on most days, nothing.
+- **Trust the snapshot's "needs attention" list alone.** Up to a week late,
+  and it never warns before a date.
+- **A warning threshold in the app (DJ-10's "coming up").** The app renders
+  for a visit, the briefing for a day; the threshold belongs to the reader
+  that runs daily. The app can adopt one later without changing this.
+- **A tool for chat (`decision_journal`), the reading part of DJ-09.** Not
+  needed for the briefing. The client method and formatter built here are
+  what such a tool would start from. Trigger: Marco asks JARVIS about a
+  hypothesis in chat and it can't answer.
+
+### Consequences
+
+- From merge on, hypothesis titles and due reasons go to the briefing's model
+  on days when something is due. Vault text of this kind (the daily note,
+  tasks) already goes there.
+- A note changed after the last journal build is reported in its old state
+  until the next build; the section's first line carries the build date.
+- A passed review date is repeated every morning until the note changes and
+  the journal is rebuilt. Wanted: that is the reminder.
+- Not confirmed: that Marco reads the briefing most days. The second way is
+  a link to the dashboard in his weekly note template.
+
+### Related ADRs
+- ADR-042 (Personal Intelligence over HTTP, Not MCP) — client, token and fencing rules
