@@ -340,8 +340,10 @@ it in your data home. How the limits work: [architecture.md](architecture.md#spe
 
 `uv run jarvis run-job morning-briefing` writes today's briefing to `briefing.dir` (default
 `data/briefings`, gitignored); set an absolute path in `config/local.yaml` to keep it in your data
-home. It needs the `readwise` command for the Reading section, and Personal Intelligence for Career;
-without them those sections say "not available".
+home. It needs the `readwise` command for the Reading section, and Personal Intelligence for Career and
+the decision journal; without them those sections say "not available". The journal section appears
+only when something is due; `briefing.journal_days_ahead` sets how many days before a review date
+it starts.
 
 To run it every morning at 07:30 (macOS):
 
