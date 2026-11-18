@@ -18,6 +18,7 @@ Rules from the app's specs that the output carries to the model:
 """
 
 import re
+from datetime import date
 from typing import Any
 
 from packages.core.settings import PersonalIntelligenceSettings
@@ -33,6 +34,9 @@ _RATIONALE_CHARS = 600
 _TITLE_CHARS = 80
 _EXAMPLE_NOTES = 3
 _LEADING_TRENDS = ("new", "rising")
+_PROBLEM_CHARS = 200
+_JOURNAL_ENTRIES = 20
+_ENTRY_REASONS = 6
 
 _REPORTING_RULES = (
     "How to report this to Marco:\n"
@@ -191,6 +195,84 @@ def format_direction_map(snapshot: dict[str, Any]) -> str:
             "",
             '<untrusted_data source="personal-intelligence direction map">',
             *data,
+            "</untrusted_data>",
+        ]
+    )
+
+
+def _iso_date(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(value) if isinstance(value, str) else None
+    except ValueError:
+        return None
+
+
+def _days(count: int) -> str:
+    return "1 day" if count == 1 else f"{count} days"
+
+
+def _dated_reasons(entry: dict[str, Any], today: date, days_ahead: int) -> list[str]:
+    """What the dates of one open hypothesis say on *today*: the journal is a weekly snapshot,
+    so its own day counts and "needs attention" list can be up to a week behind (DJ-10)."""
+    reasons: list[str] = []
+    review = _iso_date((entry.get("review") or {}).get("date"))
+    if review is not None:
+        left = (review - today).days
+        if left < 0:
+            reasons.append(f"review date {review.isoformat()} has passed ({_days(-left)} ago)")
+        elif left == 0:
+            reasons.append(f"review date {review.isoformat()} is today")
+        elif left <= days_ahead:
+            reasons.append(f"review date {review.isoformat()} is in {_days(left)}")
+    test = entry.get("test") or {}
+    start, end = _iso_date(test.get("start")), _iso_date(test.get("end"))
+    if not test.get("result") and start is not None and start <= today and end is not None and end < today:
+        reasons.append(f"test ended {end.isoformat()} without a test-result ({_days((today - end).days)} ago)")
+    return reasons
+
+
+def format_journal_due(snapshot: dict[str, Any], today: date, days_ahead: int) -> str:
+    """What is due in the decision journal on *today*, or "" when nothing is (INT-02).
+
+    Due means: a review date within *days_ahead* days or passed, a test whose end has passed
+    without a result, and whatever the app lists under "needs attention" (DJ-02, DJ-10).
+    Dates are compared with *today* here; the app's own "has passed" lines are replaced by
+    these, so nothing is named twice.
+    """
+    due: dict[str, tuple[str, list[str]]] = {}
+
+    def reasons_for(item: dict[str, Any]) -> list[str]:
+        key = str(item.get("path") or item.get("title") or len(due))
+        return due.setdefault(key, (_clean(item.get("title") or item.get("path"), _TITLE_CHARS), []))[1]
+
+    for entry in snapshot.get("active") or []:
+        if isinstance(entry, dict):
+            dated = _dated_reasons(entry, today, days_ahead)
+            if dated:
+                reasons_for(entry).extend(dated)
+    for item in snapshot.get("needs_attention") or []:
+        if not isinstance(item, dict):
+            continue
+        for problem in item.get("problems") or []:
+            text = _clean(problem, _PROBLEM_CHARS)
+            if text and not text.startswith(("review date ", "test ended ")):
+                reasons_for(item).append(text)
+
+    lines = [f"- {title}: {'; '.join(reasons[:_ENTRY_REASONS])}" for title, reasons in due.values() if reasons]
+    if snapshot.get("properties_exported") is False:
+        lines.append(
+            "- The journal came without review dates and test states (Cortex did not export note "
+            "properties), so dates can't be checked."
+        )
+    if not lines:
+        return ""
+    built = _clean(str(snapshot.get("generated_at") or "unknown")[:10], 10)
+    return "\n".join(
+        [
+            f"Decision journal on {today.isoformat()}: {len(lines)} due (journal built {built}; "
+            "a note changed since then still shows its old state).",
+            '<untrusted_data source="personal-intelligence decision journal">',
+            *lines[:_JOURNAL_ENTRIES],
             "</untrusted_data>",
         ]
     )

@@ -24,7 +24,7 @@ from packages.core.llm_client import LLMClient, reported_cost
 from packages.core.model_resolver import collect_api_keys, resolve_model
 from packages.core.pricing import calculate_cost_from_litellm
 from packages.core.settings import Settings, load_config
-from packages.core.tools.personal_intelligence_tools import format_direction_map
+from packages.core.tools.personal_intelligence_tools import format_direction_map, format_journal_due
 from packages.integrations.obsidian.vault import get_daily_note_path, load_vault_config, read_note
 from packages.integrations.personal_intelligence.client import PersonalIntelligenceClient
 from packages.integrations.readwise.client import ReadwiseClient, is_cli_available, parse_json_output
@@ -91,6 +91,18 @@ def _gather_career(settings: Settings) -> Section:
     return section
 
 
+def _gather_journal(settings: Settings, day: date) -> Section:
+    """What is due in the decision journal (personal-intelligence INT-02). Nothing due is no section."""
+    section = Section("journal", "Decision journal: what is due", fenced=True)
+    pi = settings.personal_intelligence
+    if not pi.enabled:
+        return section  # the career section already says the app is off
+    snapshot = PersonalIntelligenceClient(pi.url, pi.token_file, pi.timeout_seconds).decision_journal()
+    if snapshot is not None:
+        section.text = format_journal_due(snapshot, day, settings.briefing.journal_days_ahead)
+    return section
+
+
 def _gather_reading(settings: Settings) -> Section:
     section = Section("reading", "Reading list (newest from Shortlist and Later)")
     if not is_cli_available():
@@ -147,6 +159,7 @@ def gather_sections(settings: Settings, root: Path, day: date) -> list[Section]:
         _safely(lambda: _gather_tasks(settings, root), "tasks", "Things tasks"),
         _safely(lambda: _gather_daily_note(settings, day), "daily_note", "Yesterday's daily note"),
         _safely(lambda: _gather_outcomes(settings, root, day), "outcomes", "Recommendations due for review"),
+        _safely(lambda: _gather_journal(settings, day), "journal", "Decision journal: what is due"),
         _safely(lambda: _gather_career(settings), "career", "Career direction map"),
         _safely(lambda: _gather_reading(settings), "reading", "Reading list"),
     ]

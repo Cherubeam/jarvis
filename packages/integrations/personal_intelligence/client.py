@@ -1,7 +1,7 @@
 """
 HTTP client for the Personal Intelligence app (HUB-04, ADR-042).
 
-Reads two routes of its API (personal-intelligence SPECS API-01) with the
+Reads three routes of its API (personal-intelligence SPECS API-01) with the
 Bearer token (SEC-04/SEC-05). The token is read from ``PI_API_TOKEN`` or the
 token file on every call and never logged, printed or put into an error
 message.
@@ -15,6 +15,7 @@ import httpx
 
 TOKEN_ENV = "PI_API_TOKEN"
 DIRECTION_MAP_PATH = "/api/topics/career/direction-map"
+DECISION_JOURNAL_PATH = "/api/topics/career/decision-journal"
 SERVICES_PATH = "/api/services"
 
 
@@ -60,6 +61,10 @@ class PersonalIntelligenceClient:
     def direction_map(self) -> dict[str, Any] | None:
         """The current career direction map, or None if the app has none yet (404)."""
         return self._get(DIRECTION_MAP_PATH, none_on_404=True)
+
+    def decision_journal(self) -> dict[str, Any] | None:
+        """The current decision journal, or None if the app has none yet (404)."""
+        return self._get(DECISION_JOURNAL_PATH, none_on_404=True)
 
     def services(self) -> dict[str, Any]:
         """The suite health list (``{"services": [...]}``)."""
