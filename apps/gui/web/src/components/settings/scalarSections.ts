@@ -73,6 +73,7 @@ export const SCALAR_SECTIONS: Partial<Record<SectionKey, FieldSpec[]>> = {
     { path: ['dir'], label: 'dir' },
     { path: ['model'], label: 'model' },
     { path: ['reading_items'], label: 'reading_items' },
+    { path: ['journal_days_ahead'], label: 'journal_days_ahead' },
   ],
   readwise: [
     { path: ['enabled'], label: 'enabled' },

@@ -112,6 +112,7 @@ briefing:
   dir: "data/briefings"   # point at your data home in local.yaml
   model: "fast"
   reading_items: 10       # newest items fetched from Reader's Shortlist and Later
+  journal_days_ahead: 7   # a decision-journal review date is named this many days ahead
 
 # CLI display settings
 cli:

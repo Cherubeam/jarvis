@@ -309,6 +309,9 @@ class BriefingSettings(BaseModel):
     dir: str = Field(default="data/briefings", description="Directory for saved briefings, one file per day.")
     model: str = Field(default="fast", description="Preset or model id that writes the briefing.")
     reading_items: int = Field(default=10, ge=1, description="Newest items fetched from each Reader list.")
+    journal_days_ahead: int = Field(
+        default=7, ge=0, description="A decision-journal review date is named this many days before it is due."
+    )
 
 
 class SummarizationSettings(BaseModel):
