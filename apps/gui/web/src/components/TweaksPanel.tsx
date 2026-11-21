@@ -143,7 +143,7 @@ export function TweaksPanel({
           seg('toolStyle', [
             { v: 'card', l: 'unfold' },
             { v: 'inline', l: 'line' },
-            { v: 'dim', l: 'dim line' },
+            { v: 'dim', l: 'dim' },
           ]),
         )}
         {row('stats', seg('showStats', [{ v: true, l: 'show' }, { v: false, l: 'hide' }]))}

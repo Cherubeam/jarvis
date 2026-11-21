@@ -5,7 +5,7 @@ shipped. They are the eight chronological GUI sub-phases (labelled "GUI Phase
 1–8" in changelog history — see [ADR-033](../product/decisions.md#adr-033-initiative--milestone-naming-scheme)).
 The GUI provides:
 
-- **`WEB-01` — Chat shell** (FastAPI + WebSocket + React; CLI parity: streaming, tool cards, vault-write approval diffs, command palette, Tweaks panel with light/dark + accent swap)
+- **`WEB-01` — Chat shell** (FastAPI + WebSocket + React; CLI parity: streaming, tool cards, vault-write approval diffs, command palette, Tweaks panel with light/dark, accent and answer typeface)
 - **`WEB-02` — Conversations browser** (live Sidebar + two-pane History view with per-conversation hard-delete and one-click resume)
 - **`WEB-03` — Dashboard / Home** (greeting, Things 3 tasks, cost-this-week, resume, recent, quick-start)
 - **`WEB-04` — Sidebar Timeline mode** (togglable day-axis variant)
@@ -205,21 +205,21 @@ Open http://localhost:5173 for hot-reloading UI with a live backend.
 
 ## Agents view (WEB-05)
 
-The left-rail **Agents** slot — previously stubbed — now renders the Agents overview grid and an Agent Detail page. Matches the v6 prototype's Agents Overview and the Overview tab of Agent Detail.
+The **Agents** view renders the Agents overview grid and an Agent Detail page. Matches the v6 prototype's Agents Overview and the Overview tab of Agent Detail.
 
-### Overview grid
+### Overview
 
-`apps/gui/web/src/views/AgentsView.tsx`. A single 1040px column with:
+`apps/gui/web/src/views/AgentsView.tsx`. A directory in the Journal row layout (it was a card grid until 2026-11):
 
 - `Agents` title + "N registered · packages/agents/" subtitle.
-- `ORCHESTRATOR` section with JARVIS as a featured full-width card.
-- Six category sections (`WRITING`, `KNOWLEDGE`, `PLANNING`, `ANALYSIS`, `GENERATION`, `ENGINEERING`), each a 3-column grid of compact cards. Agents whose id isn't in any category fall into an `OTHER` section so new agents aren't silently hidden — see `groupByCategory()` in `lib/agentCategories.ts`.
+- An Orchestrator section with JARVIS as its entry.
+- Six category sections (Writing, Knowledge, Planning, Analysis, Generation, Engineering), each a list of entries. Agents whose id isn't in any category fall into an `OTHER` section so new agents aren't silently hidden — see `groupByCategory()` in `lib/agentCategories.ts`.
 
-Each card shows speaker-labeled title, mono command, description, tool count, and relative last-used (`today` / `yesterday` / `Nd ago` / `Nw ago` / `Nmo ago` / `unused`). `last_used` is derived client-side from `/api/conversations?limit=500` in a single fetch — avoids changing the wire shape of the list endpoint.
+Each entry shows speaker-labeled title, description, mono command, tool count, and relative last-used (`today` / `yesterday` / `Nd ago` / `Nw ago` / `Nmo ago` / `unused`). `last_used` is derived client-side from `/api/conversations?limit=500` in a single fetch — avoids changing the wire shape of the list endpoint.
 
 ### Detail page
 
-`apps/gui/web/src/views/AgentDetailView.tsx`. Reached by clicking a card; routed via App-lifted `selectedAgentId` + a new `'agent'` sub-view key (not persisted, excluded from `loadView()`'s allowlist). LeftRail receives `view === 'agent' ? 'agents' : view` so the Agents rail button stays highlighted on detail.
+`apps/gui/web/src/views/AgentDetailView.tsx`. Reached by clicking an entry; routed via App-lifted `selectedAgentId` + a new `'agent'` sub-view key (not persisted, excluded from `loadView()`'s allowlist). `TopNav` receives `view === 'agent' ? 'agents' : view` so the Agents link stays marked on detail.
 
 Layout:
 
@@ -426,7 +426,7 @@ Lifts the previously CLI-only `/daily-summary` and `/outcomes` slash-commands in
 
 ### Frontend
 
-`OutcomesView.tsx` — left-rail entry between Agents and History (uses the existing `check` icon). Inline `OutcomeCard` per pending item with verdict segmented control (`happened` / `didnt` / `partial`) + 1–5 quality buttons + note textarea. On save, the row is removed from local state instead of refetching — same pattern as WEB-06's `promptRefreshToken` scoping.
+`OutcomesView.tsx` — navigation entry between Agents and History. Inline `OutcomeCard` per pending item with verdict segmented control (`happened` / `didnt` / `partial`) + 1–5 quality buttons + note textarea. On save, the row is removed from local state instead of refetching — same pattern as WEB-06's `promptRefreshToken` scoping.
 
 ### Known limitations (WEB-07)
 
@@ -470,7 +470,7 @@ The tweak is persisted in `localStorage` under `jarvis-gui-tweaks-v1` with the r
 
 ## Dashboard / Home (WEB-03)
 
-The left-rail **Home** slot renders the Dashboard — greeting, morning
+The **Home** view renders the Dashboard — greeting, morning
 briefing, Things 3 "On your plate", cost-this-week sparkline, resume card, recent
 conversations grid, quick-start commands. Matches design v1 Home.
 
@@ -627,17 +627,32 @@ flag for delegation, just the tool invocation. If
   and write `paths.tasks_file` (`sync_tasks_to_file`). Low risk,
   last-writer-wins.
 
-## Visual identity rules (non-negotiable)
+## Visual identity rules
 
-- **Speakers Title Case, system affordances lowercase.** `You`, `JARVIS`,
-  `Writer`, `OKR Architect` (acronym-aware via `speakerLabel()`); `tool`,
-  `approve`, `recall`, `→` stay lowercase.
-- **No chat bubbles.** CLI-transcript rows: 96px speaker-label gutter +
-  2px colored left border per row.
-- **Stats line format exact**: `[1,234 tokens | $0.0045 | TTFT: 250ms |
-  Total: 1500ms]`.
-- **Costs are never hidden.** Cost color brightens to `costHigh` above
-  $0.05 (status bar) / $0.01 (per-turn line).
-- **Dark-first.** Cyan accent used sparingly; everything else grayscale.
-- **Mono-forward typography.** JetBrains Mono for paths, tool names, stats,
-  agent labels. Sans only for prose.
+The "Journal" look (2026-11) replaced the terminal-transcript look of
+WEB-01…08. Values and their reasons: [docs/design/tokens.md](../design/tokens.md).
+The rules a change to the frontend has to keep:
+
+- **No chat bubbles, no cards.** A turn is a row: gutter, reading column,
+  margin (`Row.tsx`, `.jr-row` in `index.html`). No coloured left borders, no
+  stat tiles, no pills.
+- **Typeface says who wrote it.** The assistant's answers are set in
+  `theme.read` (serif; mono via the "answers" tweak). What you typed, and all
+  metadata, is mono.
+- **Labels.** JARVIS gets no label; a specialist is named in the gutter in
+  Title Case (acronym-aware via `speakerLabel()`). Your own turn shows its
+  time there, or `you` when replayed. System affordances stay lowercase.
+- **Costs are never hidden.** Every answer carries tokens, cost and timing as
+  a margin note (`StatsLine.tsx`); the status line carries the session total.
+  A cost gets a colour (`costHigh`) only above $0.05 (status line) / $0.01
+  (per answer). The CLI keeps its bracketed one-line format.
+- **Dark-first, one accent.** Everything else is grey unless the colour means
+  something (error, expensive, added, removed).
+- **Navigation is words.** `TopNav.tsx` is a line of text links; there is no
+  icon rail.
+
+Tweaks are stored in `localStorage` under `jarvis-gui-tweaks-v2` (v1 values
+are ignored, not migrated).
+
+To look at a change without touching a running instance on port 8123, start
+the `jarvis-gui-preview` configuration in `.claude/launch.json` (port 8125).
