@@ -195,7 +195,7 @@ export function ConvDetailPane({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontFamily: JARVIS_FONTS.sans,
+                fontFamily: JARVIS_FONTS.serif,
                 fontSize: 20,
                 fontWeight: 600,
                 color: theme.textPrimary,

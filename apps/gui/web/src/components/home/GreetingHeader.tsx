@@ -13,7 +13,7 @@ export function GreetingHeader({
     <div style={{ marginBottom: 36 }}>
       <div
         style={{
-          fontFamily: JARVIS_FONTS.sans,
+          fontFamily: JARVIS_FONTS.serif,
           fontSize: 28,
           fontWeight: 600,
           color: theme.textPrimary,

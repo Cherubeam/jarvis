@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 
+/** The next line of the page. No box: a rule above, the same gutter and column
+ *  as the stream, and you write where the conversation left off. */
 export function Composer({
   theme,
   accent,
@@ -49,62 +51,29 @@ export function Composer({
     ev.target.style.height = Math.min(ev.target.scrollHeight, 200) + 'px'
   }
 
+  const canSend = Boolean(v.trim()) && !disabled
+
   return (
-    <div
-      style={{
-        padding: '12px 24px 16px',
-        borderTop: `1px solid ${theme.border}`,
-        background: theme.surface0,
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '96px 1fr',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.user,
-            fontWeight: 700,
-            paddingTop: 10,
-          }}
+    <div className="jr-pane" style={{ flexShrink: 0, background: theme.surface0 }}>
+      <div className="jr-row" style={{ paddingTop: 0, paddingBottom: 10 }}>
+        <label
+          htmlFor="jarvis-composer"
+          className="jr-gutter"
+          style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textDisabled }}
         >
-          You:
-        </div>
+          now
+        </label>
         <div
           style={{
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 10,
-            padding: '8px 10px',
+            borderTop: `1px solid ${theme.borderStrong}`,
+            paddingTop: 10,
             display: 'flex',
             alignItems: 'flex-end',
-            gap: 8,
+            gap: 10,
           }}
-          onFocusCapture={(ev) => (ev.currentTarget.style.borderColor = accent)}
-          onBlurCapture={(ev) => (ev.currentTarget.style.borderColor = theme.border)}
         >
-          <button
-            onClick={onOpenPalette}
-            title="Commands (/ or ⌘K)"
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: 6,
-              color: theme.textDisabled,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 13,
-            }}
-          >
-            /
-          </button>
           <textarea
+            id="jarvis-composer"
             ref={taRef}
             value={v}
             onChange={autosize}
@@ -118,29 +87,44 @@ export function Composer({
             style={{
               all: 'unset',
               flex: 1,
+              minWidth: 0,
               minHeight: 24,
               maxHeight: 200,
-              fontFamily: JARVIS_FONTS.sans,
-              fontSize: 15,
-              lineHeight: 1.55,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 14,
+              lineHeight: 1.6,
               color: theme.textPrimary,
               resize: 'none',
               padding: '4px 0',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere',
             }}
           />
           <button
-            onClick={submit}
-            disabled={!v.trim() || disabled}
+            onClick={onOpenPalette}
+            title="Commands (/ or ⌘K)"
             style={{
               all: 'unset',
-              cursor: v.trim() && !disabled ? 'pointer' : 'default',
-              padding: '6px 10px',
-              borderRadius: 6,
-              background: v.trim() && !disabled ? accent : 'transparent',
-              color: v.trim() && !disabled ? theme.surface1 : theme.textDisabled,
+              cursor: 'pointer',
+              padding: '6px 4px',
+              color: theme.textSecondary,
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            / commands
+          </button>
+          <button
+            onClick={submit}
+            disabled={!canSend}
+            style={{
+              all: 'unset',
+              cursor: canSend ? 'pointer' : 'default',
+              padding: '6px 4px',
+              color: canSend ? accent : theme.textDisabled,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 12,
+              fontWeight: 600,
             }}
           >
             ⏎ send

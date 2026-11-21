@@ -140,7 +140,7 @@ export function HistoryView({
       >
         <div
           style={{
-            fontFamily: JARVIS_FONTS.sans,
+            fontFamily: JARVIS_FONTS.serif,
             fontSize: 20,
             fontWeight: 600,
             color: theme.textPrimary,

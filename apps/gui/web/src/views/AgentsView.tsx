@@ -66,7 +66,7 @@ export function AgentsView({
         <div style={{ marginBottom: 24 }}>
           <div
             style={{
-              fontFamily: JARVIS_FONTS.sans,
+              fontFamily: JARVIS_FONTS.serif,
               fontSize: 24,
               fontWeight: 600,
               color: theme.textPrimary,

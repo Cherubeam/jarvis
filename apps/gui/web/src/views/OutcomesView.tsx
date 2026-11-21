@@ -53,7 +53,7 @@ export function OutcomesView({
         <div style={{ marginBottom: 24 }}>
           <div
             style={{
-              fontFamily: JARVIS_FONTS.sans,
+              fontFamily: JARVIS_FONTS.serif,
               fontSize: 24,
               fontWeight: 600,
               color: theme.textPrimary,
@@ -170,7 +170,7 @@ function OutcomeCard({
     >
       <div
         style={{
-          fontFamily: JARVIS_FONTS.sans,
+          fontFamily: JARVIS_FONTS.serif,
           fontSize: 15,
           fontWeight: 600,
           color: theme.textPrimary,
@@ -183,7 +183,7 @@ function OutcomeCard({
       {item.why && (
         <div
           style={{
-            fontFamily: JARVIS_FONTS.sans,
+            fontFamily: JARVIS_FONTS.serif,
             fontSize: 13,
             color: theme.textSecondary,
             marginBottom: 8,
@@ -291,7 +291,7 @@ function OutcomeCard({
           boxSizing: 'border-box',
           minHeight: 72,
           padding: 10,
-          fontFamily: JARVIS_FONTS.sans,
+          fontFamily: JARVIS_FONTS.serif,
           fontSize: 13,
           color: theme.textPrimary,
           background: theme.surface0,

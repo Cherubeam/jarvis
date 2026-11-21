@@ -8,7 +8,6 @@ import { CommandPalette } from '../components/CommandPalette'
 import { Sidebar } from '../components/Sidebar'
 import { StatusBar } from '../components/StatusBar'
 import { TweaksPanel, type Tweaks } from '../components/TweaksPanel'
-import { Icon } from '../components/Icon'
 import { ApprovalEvent } from '../components/events/ApprovalEvent'
 import { DelegationEvent } from '../components/events/DelegationEvent'
 import { RagEvent } from '../components/events/RagEvent'
@@ -22,7 +21,7 @@ import type { Agent, ServerEvent, SessionMeta } from '../lib/types'
 import { connect } from '../lib/ws'
 
 type StreamEvent =
-  | { kind: 'user'; id: string; text: string }
+  | { kind: 'user'; id: string; text: string; time?: string }
   | { kind: 'text'; id: string; agent: string; markdown: string; stats?: any }
   | { kind: 'tool_call'; id: string; agent: string; tool: string; args: any; result: any; elapsed_ms: number }
   | { kind: 'delegation'; id: string; from: string; to: string; reason: string }
@@ -169,7 +168,7 @@ export function ChatView({
       return
     }
     if (ev.type === 'user') {
-      setEvents((prev) => [...prev, { kind: 'user', id: ev.id, text: ev.text }])
+      setEvents((prev) => [...prev, { kind: 'user', id: ev.id, text: ev.text, time: ev.time }])
       return
     }
     if (ev.type === 'thinking_start') {
@@ -351,89 +350,51 @@ export function ChatView({
             position: 'relative',
           }}
         >
-          {/* Session header */}
+          {/* Session line: the file this conversation is saved to, and the
+              two panels. No title — the page starts with the conversation. */}
           <div
             style={{
-              padding: '14px 28px 10px',
-              borderBottom: `1px solid ${theme.border}`,
+              padding: '6px 28px 8px',
               display: 'flex',
+              flexWrap: 'wrap',
               alignItems: 'center',
-              gap: 14,
+              gap: '2px 18px',
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 12,
+              color: theme.stats,
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontFamily: JARVIS_FONTS.sans,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: theme.textPrimary,
-                  letterSpacing: -0.1,
-                }}
-              >
-                Personal Assistant
-              </div>
-              <div
-                style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  color: theme.textDisabled,
-                  marginTop: 2,
-                }}
-              >
-                {session?.conversation_path || '…'}
-              </div>
-            </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              {session?.conversation_path || '…'}
+            </span>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 18 }}>
               <button
                 onClick={() => setEditMode((m) => !m)}
                 title="Tweaks"
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: `1px solid ${theme.border}`,
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  color: theme.textSecondary,
-                }}
+                style={{ all: 'unset', cursor: 'pointer', color: theme.textSecondary }}
               >
                 tweaks
               </button>
               <button
                 onClick={() => setPaletteOpen(true)}
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: `1px solid ${theme.border}`,
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  color: theme.textSecondary,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
+                style={{ all: 'unset', cursor: 'pointer', color: theme.textSecondary }}
               >
-                <Icon name="slash" size={11} color={accent} />
-                commands
-                <span style={{ color: theme.textDisabled, marginLeft: 4 }}>⌘K</span>
+                commands ⌘K
               </button>
-            </div>
+            </span>
           </div>
 
           {/* Stream */}
           <div
             ref={streamRef}
-            style={{ flex: 1, overflowY: 'auto', paddingTop: 8, paddingBottom: 24 }}
+            className="jr-pane"
+            style={{ flex: 1, overflowY: 'auto', paddingTop: 20, paddingBottom: 24 }}
           >
             {events.map((e) => {
               const dense = tweaks.density === 'compact'
               switch (e.kind) {
                 case 'user':
-                  return <UserEvent key={e.id} e={{ text: e.text }} theme={theme} dense={dense} />
+                  return <UserEvent key={e.id} e={{ text: e.text, time: e.time }} theme={theme} dense={dense} />
                 case 'text':
                   return (
                     <TextEvent

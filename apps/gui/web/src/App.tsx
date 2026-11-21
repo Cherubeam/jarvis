@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { LeftRail, type ViewKey } from './components/LeftRail'
+import { TopNav, type ViewKey } from './components/TopNav'
 import { AgentDetailView } from './views/AgentDetailView'
 import { AgentsView } from './views/AgentsView'
 import { ChatView } from './views/ChatView'
@@ -18,7 +18,9 @@ import {
 } from './lib/tokens'
 import type { Agent, SessionMeta } from './lib/types'
 
-const TWEAKS_STORAGE_KEY = 'jarvis-gui-tweaks-v1'
+// v2: the Journal look replaced the accent keys and the type switch, so v1
+// values no longer fit; stored v1 tweaks are ignored, not migrated.
+const TWEAKS_STORAGE_KEY = 'jarvis-gui-tweaks-v2'
 const VIEW_STORAGE_KEY = 'jarvis-gui-view-v1'
 
 function loadTweaks(): Tweaks {
@@ -79,7 +81,7 @@ export default function App() {
     setSelectedAgentId(id)
     setView('agent')
   }, [])
-  // Clicking the Agents rail button while on detail should return to the grid.
+  // Clicking the Agents nav link while on detail should return to the grid.
   const setViewWithAgentReset = useCallback((v: ViewKey) => {
     if (v === 'agents') setSelectedAgentId(null)
     setView(v)
@@ -106,7 +108,11 @@ export default function App() {
 
   const baseTheme: Theme = tweaks.mode === 'light' ? JARVIS_LIGHT : JARVIS_DARK
   const accent = ACCENT_HUES[tweaks.accent][tweaks.mode === 'light' ? 'light' : 'dark']
-  const theme: Theme = { ...baseTheme, assistant: accent }
+  const theme: Theme = {
+    ...baseTheme,
+    assistant: accent,
+    read: tweaks.reading === 'mono' ? JARVIS_FONTS.mono : JARVIS_FONTS.serif,
+  }
 
   return (
     <div
@@ -115,17 +121,18 @@ export default function App() {
         inset: 0,
         background: theme.surface0,
         color: theme.textPrimary,
-        fontFamily: tweaks.typeBias === 'mono' ? JARVIS_FONTS.mono : JARVIS_FONTS.sans,
+        fontFamily: JARVIS_FONTS.mono,
         display: 'flex',
+        flexDirection: 'column',
         overflow: 'hidden',
       }}
     >
-      <LeftRail
+      <TopNav
         theme={theme}
-        accent={accent}
         view={view === 'agent' ? 'agents' : view}
         setView={setViewWithAgentReset}
       />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
       {view === 'chat' && (
         <ChatView
           theme={theme}
@@ -199,6 +206,7 @@ export default function App() {
         />
       )}
       {view === 'settings' && <SettingsView theme={theme} accent={accent} />}
+      </div>
     </div>
   )
 }

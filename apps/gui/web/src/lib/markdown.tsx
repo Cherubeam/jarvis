@@ -18,7 +18,7 @@ function renderInline(text: string, theme: Theme): string {
   s = s.replace(
     /`([^`]+)`/g,
     (_m, c) =>
-      `<code style="font-family:${JARVIS_FONTS.mono};background:${theme.surface2};color:${theme.assistant};padding:1px 6px;border-radius:4px;font-size:0.92em">${c}</code>`,
+      `<code style="font-family:${JARVIS_FONTS.mono};background:${theme.surface2};color:${theme.textPrimary};padding:1px 5px;border-radius:3px;font-size:0.82em">${c}</code>`,
   )
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   s = s.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
@@ -47,16 +47,16 @@ export function Markdown({ text, theme }: { text: string; theme: Theme }) {
         }
         i++
         out.push(
-          `<pre style="margin:12px 0;padding:12px 14px;background:${theme.surface2};border:1px solid ${theme.border};border-radius:8px;overflow-x:auto"><code style="font-family:${JARVIS_FONTS.mono};font-size:13px;line-height:1.55;color:${theme.textPrimary}">${buf.join('\n')}</code></pre>`,
+          `<pre style="margin:12px 0;padding:12px 14px;background:${theme.surface2};border-radius:4px;overflow-x:auto"><code style="font-family:${JARVIS_FONTS.mono};font-size:13px;line-height:1.55;color:${theme.textPrimary}">${buf.join('\n')}</code></pre>`,
         )
         continue
       }
       const h = line.match(/^(#{1,6})\s+(.+)$/)
       if (h) {
         const lvl = h[1].length
-        const size = [22, 19, 17, 16, 15, 14][lvl - 1]
+        const size = ['1.3em', '1.15em', '1.05em', '1em', '1em', '1em'][lvl - 1]
         out.push(
-          `<div style="font-size:${size}px;font-weight:700;margin:14px 0 6px;color:${theme.textPrimary}">${renderInline(h[2], theme)}</div>`,
+          `<div style="font-size:${size};font-weight:600;line-height:1.3;margin:14px 0 6px;color:${theme.textPrimary}">${renderInline(h[2], theme)}</div>`,
         )
         i++
         continue
@@ -92,7 +92,7 @@ export function Markdown({ text, theme }: { text: string; theme: Theme }) {
         para.push(lines[i])
         i++
       }
-      out.push(`<p style="margin:6px 0;line-height:1.65">${renderInline(para.join(' '), theme)}</p>`)
+      out.push(`<p style="margin:6px 0;line-height:1.6">${renderInline(para.join(' '), theme)}</p>`)
     }
     return out.join('')
   }, [text, theme])

@@ -2,49 +2,47 @@ import type { ReactNode } from 'react'
 
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 
+/** One entry in the stream, laid out like a journal page: a gutter on the left
+ *  (the time of a turn, or who is speaking), the reading column, and an optional
+ *  margin note on the right. The grid lives in index.html (`.jr-row`). */
 export function Row({
   theme,
-  accent,
   label,
   labelColor,
-  mono,
   dense,
+  margin,
   children,
 }: {
   theme: Theme
-  accent?: string
   label: string
   labelColor?: string
-  mono?: boolean
   dense?: boolean
+  margin?: ReactNode
   children: ReactNode
 }) {
   return (
-    <div
-      style={{
-        padding: dense ? '10px 24px' : '14px 28px',
-        borderLeft: `2px solid ${accent || 'transparent'}`,
-        display: 'grid',
-        gridTemplateColumns: '96px 1fr',
-        gap: 16,
-        alignItems: 'baseline',
-      }}
-    >
+    <div className={dense ? 'jr-row dense' : 'jr-row'}>
       <div
+        className="jr-gutter"
         style={{
-          fontFamily: mono ? JARVIS_FONTS.mono : JARVIS_FONTS.sans,
+          fontFamily: JARVIS_FONTS.mono,
           fontSize: 12,
-          color: labelColor || theme.textSecondary,
-          fontWeight: 700,
-          letterSpacing: 0.3,
-          paddingTop: 2,
+          color: labelColor || theme.textDisabled,
         }}
       >
         {label}
       </div>
-      <div style={{ color: theme.textPrimary, fontSize: 15, lineHeight: 1.65, minWidth: 0 }}>
+      <div style={{ color: theme.textPrimary, fontSize: 14, lineHeight: 1.6, minWidth: 0 }}>
         {children}
       </div>
+      {margin ? (
+        <div
+          className="jr-margin"
+          style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.stats, minWidth: 0 }}
+        >
+          {margin}
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -1,8 +1,8 @@
-import { Fragment } from 'react'
-
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 import type { SessionMeta } from '../lib/types'
 
+/** One quiet line at the bottom: who answers, which model, what the session
+ *  has cost so far. */
 export function StatusBar({
   theme,
   agent,
@@ -19,51 +19,31 @@ export function StatusBar({
   return (
     <div
       style={{
-        height: 28,
         flexShrink: 0,
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
-        padding: '0 16px',
-        gap: 14,
-        background: theme.surface1,
-        borderTop: `1px solid ${theme.border}`,
+        padding: '6px 28px 8px',
+        gap: '2px 18px',
         fontFamily: JARVIS_FONTS.mono,
-        fontSize: 11,
-        color: theme.textSecondary,
+        fontSize: 12,
+        color: theme.stats,
       }}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: theme.user,
-            boxShadow: `0 0 6px ${theme.user}`,
-          }}
-        />
-        <span style={{ color: theme.assistant, fontWeight: 600 }}>{agent}</span>
-      </span>
+      <span>{agent}</span>
       {session && (
-        <Fragment>
-          <span>·</span>
-          <span>
-            {session.model_short}{' '}
-            <span style={{ color: theme.textDisabled }}>via {session.provider}</span>
-          </span>
-        </Fragment>
+        <span>
+          {session.model_short} via {session.provider}
+        </span>
       )}
       {showStats ? (
-        <Fragment>
-          <span style={{ marginLeft: 'auto' }}>session:</span>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', flexWrap: 'wrap', gap: '2px 18px' }}>
           <span>{totals.messages} msgs</span>
-          <span>·</span>
           <span>{totals.tokens.toLocaleString()} tokens</span>
-          <span>·</span>
           <span style={{ color: totals.cost > 0.05 ? theme.costHigh : theme.cost }}>
             ${totals.cost.toFixed(4)}
           </span>
-        </Fragment>
+        </span>
       ) : (
         session && <span style={{ marginLeft: 'auto' }}>started {session.started_at}</span>
       )}

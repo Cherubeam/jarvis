@@ -89,7 +89,7 @@ export function PanelHeader({
     <div style={{ marginBottom: 18 }}>
       <div
         style={{
-          fontFamily: JARVIS_FONTS.sans,
+          fontFamily: JARVIS_FONTS.serif,
           fontSize: 18,
           fontWeight: 600,
           color: theme.textPrimary,

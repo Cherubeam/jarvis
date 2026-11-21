@@ -8,7 +8,8 @@ export type Tweaks = {
   density: 'comfortable' | 'compact'
   toolStyle: 'card' | 'inline' | 'dim'
   showStats: boolean
-  typeBias: 'mono' | 'sans'
+  /** Typeface of the assistant's answers. */
+  reading: 'serif' | 'mono'
   accent: AccentKey
 }
 
@@ -19,8 +20,8 @@ export const DEFAULT_TWEAKS: Tweaks = {
   density: 'comfortable',
   toolStyle: 'card',
   showStats: true,
-  typeBias: 'mono',
-  accent: 'cyan',
+  reading: 'serif',
+  accent: 'blue',
 }
 
 export function TweaksPanel({
@@ -90,8 +91,8 @@ export function TweaksPanel({
         zIndex: 20,
         background: theme.surface1,
         border: `1px solid ${theme.borderStrong}`,
-        borderRadius: 12,
-        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        borderRadius: 6,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
         overflow: 'hidden',
       }}
     >
@@ -106,17 +107,16 @@ export function TweaksPanel({
         <div
           style={{
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textDisabled,
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
+            fontSize: 12,
+            color: theme.textSecondary,
           }}
         >
           Tweaks
         </div>
         <button
           onClick={onClose}
-          style={{ all: 'unset', cursor: 'pointer', marginLeft: 'auto', color: theme.textDisabled }}
+          aria-label="Close tweaks"
+          style={{ all: 'unset', cursor: 'pointer', marginLeft: 'auto', color: theme.textSecondary }}
         >
           <Icon name="close" size={12} />
         </button>
@@ -141,17 +141,17 @@ export function TweaksPanel({
         {row(
           'tool style',
           seg('toolStyle', [
-            { v: 'card', l: 'card' },
-            { v: 'inline', l: 'inline' },
-            { v: 'dim', l: 'dim log' },
+            { v: 'card', l: 'unfold' },
+            { v: 'inline', l: 'line' },
+            { v: 'dim', l: 'dim line' },
           ]),
         )}
         {row('stats', seg('showStats', [{ v: true, l: 'show' }, { v: false, l: 'hide' }]))}
         {row(
-          'type',
-          seg('typeBias', [
-            { v: 'mono', l: 'mono-fwd' },
-            { v: 'sans', l: 'sans-fwd' },
+          'answers',
+          seg('reading', [
+            { v: 'serif', l: 'serif' },
+            { v: 'mono', l: 'mono' },
           ]),
         )}
         {row(
@@ -163,13 +163,14 @@ export function TweaksPanel({
                   key={k}
                   onClick={() => setTweak('accent', k)}
                   title={k}
+                  aria-label={`Accent ${k}`}
                   style={{
                     all: 'unset',
                     cursor: 'pointer',
                     width: 22,
                     height: 22,
                     borderRadius: '50%',
-                    background: v.dark,
+                    background: theme.surface0 === '#FFFFFF' ? v.light : v.dark,
                     outline: tweaks.accent === k ? `2px solid ${theme.textPrimary}` : 'none',
                     outlineOffset: 2,
                   }}
