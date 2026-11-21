@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `rose`; "answers: serif | mono" replaces the mono/sans switch. Stored
   tweaks from before are ignored (new storage key).
 - Per-agent pastel hues are dropped; every agent uses the accent.
+- Home, History, Settings and Outcomes follow the same rows: the History
+  list shows each conversation's date in the gutter and its agent, message
+  count and cost in the margin; the detail pane's stat tiles are a short
+  list; filters are text links. Settings shows a field's description under
+  its label instead of in a "?" tooltip.
+- Keyboard focus is visible again on buttons: the focus ring is forced, since
+  an inline `all: unset` on most buttons had removed it.
 - No font files are bundled: the serif stack uses faces that ship with macOS
   and iOS. Tokens and rules: [design/tokens.md](design/tokens.md),
   [engineering/gui.md](engineering/gui.md#visual-identity-rules).

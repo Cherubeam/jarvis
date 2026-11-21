@@ -394,7 +394,7 @@ per ADR-033. Each landed on its own feature branch, merged via
 - [x] UI voice & tone guide — [`docs/design/voice-and-tone.md`](../design/voice-and-tone.md)
 - [x] Design tokens (colors, typography, spacing) — [`docs/design/tokens.md`](../design/tokens.md)
 - [x] Component inventory — [`docs/design/components.md`](../design/components.md)
-- [ ] "Journal" look (2026-11): restyle of the existing views, no new view or route. Tokens, navigation and the chat stream are done on `feat/gui-journal-look`; Home, History, Agents, Outcomes and Settings are in progress. Rules: [`docs/design/tokens.md`](../design/tokens.md)
+- [ ] "Journal" look (2026-11): restyle of the existing views, no new view or route. Tokens, navigation, the chat stream, Home, History, Outcomes and Settings are done on `feat/gui-journal-look`; the Agents views are in progress. Rules: [`docs/design/tokens.md`](../design/tokens.md)
 
 ### Event Decoupling (prerequisite)
 
