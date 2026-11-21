@@ -1,6 +1,8 @@
 // SettingsShell — sticky save/discard footer + post-save banner + 409 overwrite dialog.
 
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import { JARVIS_FONTS, JARVIS_MEASURE, type Theme } from '../../lib/tokens'
+
+import { primaryButtonStyle, secondaryButtonStyle } from './SettingField'
 
 export type SaveStatus =
   | { kind: 'idle' }
@@ -36,7 +38,6 @@ function savedMessage(status: Extract<SaveStatus, { kind: 'saved' }>): string {
 
 export function SettingsFooter({
   theme,
-  accent,
   isDirty,
   status,
   onSave,
@@ -51,81 +52,72 @@ export function SettingsFooter({
 }) {
   const saving = status.kind === 'saving'
   const canSave = isDirty && !saving
+  const canDiscard = isDirty && !saving
   return (
     <div
       style={{
         position: 'sticky',
         bottom: 0,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '12px 28px',
+        padding: '14px 40px',
         background: theme.surface0,
         borderTop: `1px solid ${theme.border}`,
       }}
     >
       <div
         style={{
-          flex: 1,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color:
-            status.kind === 'error'
-              ? theme.error
-              : status.kind === 'saved'
-                ? accent
-                : theme.textSecondary,
+          maxWidth: JARVIS_MEASURE.column,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '8px 10px',
         }}
       >
-        {status.kind === 'idle' && isDirty && 'unsaved changes'}
-        {status.kind === 'saving' && 'saving…'}
-        {status.kind === 'saved' && savedMessage(status)}
-        {status.kind === 'error' && `error: ${status.message}`}
-        {status.kind === 'needs_overwrite' && 'config/local.yaml was hand-edited — confirm to overwrite'}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!canSave}
+          style={primaryButtonStyle(theme, canSave)}
+        >
+          {saving ? 'saving…' : 'save'}
+        </button>
+        <button
+          type="button"
+          onClick={onDiscard}
+          disabled={!canDiscard}
+          style={secondaryButtonStyle(theme, canDiscard)}
+        >
+          discard
+        </button>
+        <div
+          role="status"
+          style={{
+            flex: '1 1 200px',
+            minWidth: 0,
+            marginLeft: 6,
+            fontFamily: JARVIS_FONTS.mono,
+            fontSize: 12,
+            lineHeight: 1.5,
+            color:
+              status.kind === 'error'
+                ? theme.error
+                : status.kind === 'saved'
+                  ? theme.textPrimary
+                  : theme.textSecondary,
+          }}
+        >
+          {status.kind === 'idle' && isDirty && 'unsaved changes'}
+          {status.kind === 'saving' && 'saving…'}
+          {status.kind === 'saved' && savedMessage(status)}
+          {status.kind === 'error' && `error: ${status.message}`}
+          {status.kind === 'needs_overwrite' && 'config/local.yaml was hand-edited — confirm to overwrite'}
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={onDiscard}
-        disabled={!isDirty || saving}
-        style={{
-          all: 'unset',
-          cursor: isDirty && !saving ? 'pointer' : 'not-allowed',
-          padding: '7px 14px',
-          borderRadius: 4,
-          border: `1px solid ${theme.border}`,
-          color: isDirty && !saving ? theme.textSecondary : theme.textDisabled,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-        }}
-      >
-        discard
-      </button>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={!canSave}
-        style={{
-          all: 'unset',
-          cursor: canSave ? 'pointer' : 'not-allowed',
-          padding: '7px 16px',
-          borderRadius: 4,
-          background: canSave ? accent : theme.surface2,
-          color: canSave ? theme.surface0 : theme.textDisabled,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 0.3,
-        }}
-      >
-        {saving ? 'saving…' : 'save'}
-      </button>
     </div>
   )
 }
 
 export function OverwriteDialog({
   theme,
-  accent,
   localYamlPath,
   onConfirm,
   onCancel,
@@ -140,6 +132,7 @@ export function OverwriteDialog({
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="settings-overwrite-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -153,34 +146,39 @@ export function OverwriteDialog({
       <div
         style={{
           background: theme.surface1,
-          border: `1px solid ${theme.border}`,
-          borderRadius: 8,
+          border: `1px solid ${theme.borderStrong}`,
+          borderRadius: 6,
           padding: 24,
           maxWidth: 520,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
         }}
       >
-        <div
+        <h2
+          id="settings-overwrite-title"
           style={{
+            margin: '0 0 10px',
             fontFamily: JARVIS_FONTS.serif,
-            fontSize: 16,
+            fontSize: 20,
             fontWeight: 600,
+            lineHeight: 1.3,
             color: theme.textPrimary,
-            marginBottom: 10,
           }}
         >
           Overwrite hand-edited file?
-        </div>
+        </h2>
         <div
           style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
+            fontFamily: theme.read,
+            fontSize: 15,
             color: theme.textSecondary,
             lineHeight: 1.55,
-            marginBottom: 18,
+            marginBottom: 20,
           }}
         >
-          <code>{localYamlPath}</code> doesn't start with the JARVIS Settings
+          <code style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 13, wordBreak: 'break-word' }}>
+            {localYamlPath}
+          </code>{' '}
+          doesn't start with the JARVIS Settings
           managed header. Saving will rewrite it — only the customised fields
           visible in this GUI will be preserved. Any hand-added comments or
           fields outside the Settings schema will be lost.
@@ -188,39 +186,11 @@ export function OverwriteDialog({
             If you have work-in-progress YAML here, back it up before continuing.
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '8px 16px',
-              borderRadius: 4,
-              border: `1px solid ${theme.border}`,
-              color: theme.textSecondary,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-            }}
-          >
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 10 }}>
+          <button type="button" onClick={onCancel} style={secondaryButtonStyle(theme)}>
             cancel
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '8px 16px',
-              borderRadius: 4,
-              background: accent,
-              color: theme.surface0,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: 0.3,
-            }}
-          >
+          <button type="button" onClick={onConfirm} style={primaryButtonStyle(theme)}>
             overwrite
           </button>
         </div>

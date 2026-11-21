@@ -2,17 +2,16 @@
 // Phase 2: replaces the FAKE_CONVERSATIONS placeholder with a live fetch
 // from /api/conversations.
 // Phase 4: adds a togglable timeline variant (mode='timeline') that reshapes
-// the same list as a vertical day-axis with token-sized cards. List-variant
-// markup is unchanged.
+// the same list as a vertical day-axis with token-sized entries.
+// Journal look: no cards and no agent hues; the open conversation is marked by
+// its background alone.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import { hueFor } from '../lib/agentHues'
 import { parseLocalDate } from '../lib/dateBucket'
 import { speakerLabel } from '../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 import type { ConversationListResponse, ConversationSummary, SessionMeta } from '../lib/types'
-import { Icon } from './Icon'
 
 const LIMIT = 20
 
@@ -20,7 +19,6 @@ export type SidebarMode = 'list' | 'timeline'
 
 export function Sidebar({
   theme,
-  accent,
   visible,
   mode,
   session,
@@ -95,36 +93,36 @@ export function Sidebar({
           Conversations
         </div>
         {/* Search input is inert — will be wired in a later phase. */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: theme.surface2,
-            borderRadius: 4,
-            padding: '6px 10px',
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          <Icon name="search" size={12} color={theme.textDisabled} />
+        <div style={{ position: 'relative' }}>
           <input
             placeholder="Search or ask recall…"
+            aria-label="Search or ask recall"
             style={{
-              all: 'unset',
-              flex: 1,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12.5,
+              boxSizing: 'border-box',
+              display: 'block',
+              width: '100%',
+              minHeight: 36,
+              margin: 0,
+              padding: '0 40px 0 10px',
+              border: `1px solid ${theme.border}`,
+              borderRadius: 4,
+              background: theme.surface2,
               color: theme.textPrimary,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 13,
             }}
           />
           <span
+            aria-hidden="true"
             style={{
+              position: 'absolute',
+              top: 0,
+              right: 10,
+              lineHeight: '36px',
+              pointerEvents: 'none',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 10,
+              fontSize: 12,
               color: theme.textDisabled,
-              padding: '1px 5px',
-              border: `1px solid ${theme.border}`,
-              borderRadius: 3,
             }}
           >
             ⌘K
@@ -175,7 +173,7 @@ export function Sidebar({
             style={{
               padding: '12px 10px',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
+              fontSize: 12,
               color: theme.error,
             }}
           >
@@ -190,7 +188,7 @@ export function Sidebar({
               style={{
                 padding: '12px 10px',
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
+                fontSize: 12,
                 color: theme.textDisabled,
               }}
             >
@@ -200,12 +198,12 @@ export function Sidebar({
         {!loading && !error && items.length > 0 && mode === 'list' &&
           items.map((c) => {
             const active = c.id === activeFileId
-            const hue = hueFor(c.agents[0], accent)
             return (
               <button
                 key={c.id}
                 onClick={() => !disabled && onOpen(c.id)}
                 disabled={disabled}
+                aria-current={active ? 'true' : undefined}
                 title={disabled ? 'Wait for the current turn to finish' : undefined}
                 style={{
                   all: 'unset',
@@ -223,46 +221,42 @@ export function Sidebar({
                 <div
                   style={{
                     fontFamily: JARVIS_FONTS.mono,
-                    fontSize: 10.5,
+                    fontSize: 12,
                     color: theme.textDisabled,
                     marginBottom: 2,
                   }}
                 >
                   {c.date}
                 </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: theme.textPrimary,
-                    lineHeight: 1.35,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {c.title}
-                </div>
+                <div style={titleStyle(c.title, theme)}>{c.title}</div>
                 <div
                   style={{
                     fontFamily: JARVIS_FONTS.mono,
-                    fontSize: 10.5,
-                    color: theme.textSecondary,
+                    fontSize: 12,
+                    color: theme.stats,
                     marginTop: 3,
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
+                    alignItems: 'baseline',
+                    gap: 6,
+                    minWidth: 0,
                   }}
                 >
                   {c.agents.length > 0 && (
-                    <span style={{ color: hue }}>{speakerLabel(c.agents[0])}</span>
+                    <span
+                      style={{
+                        color: theme.textSecondary,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                      }}
+                    >
+                      {speakerLabel(c.agents[0])}
+                    </span>
                   )}
-                  {c.agents.length > 0 && (
-                    <span style={{ color: theme.textDisabled }}>·</span>
-                  )}
-                  <span>{c.messages} msg</span>
-                  <span style={{ marginLeft: 'auto', color: theme.cost }}>
-                    ${c.cost.toFixed(4)}
-                  </span>
+                  {c.agents.length > 0 && <span>·</span>}
+                  <span style={{ flexShrink: 0 }}>{c.messages} msg</span>
+                  <span style={{ marginLeft: 'auto', flexShrink: 0 }}>${c.cost.toFixed(4)}</span>
                 </div>
               </button>
             )
@@ -272,7 +266,6 @@ export function Sidebar({
             items={items}
             activeFileId={activeFileId}
             theme={theme}
-            accent={accent}
             onOpen={onOpen}
             disabled={disabled}
           />
@@ -285,9 +278,10 @@ export function Sidebar({
             padding: '10px 16px',
             borderTop: `1px solid ${theme.border}`,
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 10.5,
+            fontSize: 12,
             color: theme.textDisabled,
             lineHeight: 1.6,
+            overflowWrap: 'anywhere',
           }}
         >
           {session.vault && (
@@ -302,6 +296,22 @@ export function Sidebar({
       )}
     </aside>
   )
+}
+
+// A conversation title on one line. It is text to read, so it takes the reading
+// face; a slash command is something you typed and stays in mono.
+function titleStyle(title: string, theme: Theme): CSSProperties {
+  const typed = title.startsWith('/') || theme.read !== JARVIS_FONTS.serif
+  return {
+    fontFamily: typed ? JARVIS_FONTS.mono : theme.read,
+    fontSize: typed ? 13 : 15,
+    lineHeight: 1.35,
+    color: theme.textPrimary,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    width: '100%',
+  }
 }
 
 // -- Timeline variant ------------------------------------------------------
@@ -351,14 +361,12 @@ function TimelineRows({
   items,
   activeFileId,
   theme,
-  accent,
   onOpen,
   disabled = false,
 }: {
   items: ConversationSummary[]
   activeFileId: string | undefined
   theme: Theme
-  accent: string
   onOpen: (id: string) => void
   disabled?: boolean
 }) {
@@ -368,57 +376,45 @@ function TimelineRows({
     <div>
       {rows.map(({ conv, isFirstOfDay, dayCost, weekday, dayNum }) => {
         const active = conv.id === activeFileId
-        const hue = hueFor(conv.agents[0], accent)
-        const cardH = heightFor(conv.tokens)
+        const rowH = heightFor(conv.tokens)
         return (
           <div
             key={conv.id}
             style={{
               display: 'grid',
-              gridTemplateColumns: '40px 1fr',
+              gridTemplateColumns: '52px minmax(0, 1fr)',
               columnGap: 10,
               alignItems: 'stretch',
-              padding: '3px 0',
             }}
           >
+            {/* The day, once per day: weekday, date, what the day cost. */}
             <div
               style={{
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 10,
-                lineHeight: 1.25,
+                fontSize: 12,
+                lineHeight: 1.3,
                 textAlign: 'right',
-                paddingTop: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
+                paddingTop: 8,
+                paddingBottom: 6,
                 minWidth: 0,
               }}
             >
               {isFirstOfDay && (
                 <>
-                  <div style={{ color: theme.textSecondary }}>{weekday}</div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: theme.textPrimary,
-                      lineHeight: 1.1,
-                    }}
-                  >
+                  <div style={{ color: theme.textDisabled }}>{weekday}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
                     {dayNum}
                   </div>
-                  <div style={{ color: theme.cost, fontSize: 9.5, marginTop: 2 }}>
-                    ${dayCost.toFixed(3)}
-                  </div>
+                  <div style={{ color: theme.stats }}>${dayCost.toFixed(3)}</div>
                 </>
               )}
             </div>
 
+            {/* The axis is a single rule; an entry is text on it, not a card. */}
             <div
               style={{
-                position: 'relative',
                 borderLeft: `1px solid ${theme.border}`,
-                paddingLeft: 10,
+                padding: '2px 0 2px 6px',
                 display: 'flex',
                 alignItems: 'center',
                 minWidth: 0,
@@ -427,18 +423,17 @@ function TimelineRows({
               <button
                 onClick={() => !disabled && onOpen(conv.id)}
                 disabled={disabled}
+                aria-current={active ? 'true' : undefined}
                 title={disabled ? 'Wait for the current turn to finish' : undefined}
                 style={{
                   all: 'unset',
                   cursor: disabled ? 'not-allowed' : 'pointer',
                   boxSizing: 'border-box',
                   width: '100%',
-                  height: cardH,
-                  background: active ? theme.surface2 : theme.surface1,
-                  border: `1px solid ${active ? hue : theme.border}`,
-                  borderLeft: `${active ? 3 : 2}px solid ${hue}`,
-                  borderRadius: 5,
-                  padding: '6px 9px',
+                  minHeight: rowH,
+                  background: active ? theme.surface3 : 'transparent',
+                  borderRadius: 4,
+                  padding: '6px 8px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
@@ -448,26 +443,14 @@ function TimelineRows({
                   opacity: disabled ? 0.5 : 1,
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: theme.textPrimary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    lineHeight: 1.3,
-                    width: '100%',
-                  }}
-                >
-                  {conv.title}
-                </div>
+                <div style={titleStyle(conv.title, theme)}>{conv.title}</div>
                 <div
                   style={{
                     fontFamily: JARVIS_FONTS.mono,
-                    fontSize: 10,
-                    color: theme.textSecondary,
+                    fontSize: 12,
+                    color: theme.stats,
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'baseline',
                     gap: 6,
                     minWidth: 0,
                     width: '100%',
@@ -476,7 +459,7 @@ function TimelineRows({
                   {conv.agents.length > 0 && (
                     <span
                       style={{
-                        color: hue,
+                        color: theme.textSecondary,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -488,13 +471,9 @@ function TimelineRows({
                     </span>
                   )}
                   {conv.agents.length > 1 && (
-                    <span style={{ color: theme.textDisabled, flexShrink: 0 }}>
-                      +{conv.agents.length - 1}
-                    </span>
+                    <span style={{ flexShrink: 0 }}>+{conv.agents.length - 1}</span>
                   )}
-                  <span style={{ marginLeft: 'auto', color: theme.textDisabled, flexShrink: 0 }}>
-                    {conv.messages} msg
-                  </span>
+                  <span style={{ marginLeft: 'auto', flexShrink: 0 }}>{conv.messages} msg</span>
                 </div>
               </button>
             </div>

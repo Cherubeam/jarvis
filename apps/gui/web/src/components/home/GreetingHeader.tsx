@@ -1,5 +1,6 @@
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 
+/** The page title: the greeting in the reading face, the date under it. */
 export function GreetingHeader({
   theme,
   greeting,
@@ -10,26 +11,26 @@ export function GreetingHeader({
   dayLabel: string
 }) {
   return (
-    <div style={{ marginBottom: 36 }}>
-      <div
+    <div style={{ paddingBottom: 8 }}>
+      <h1
         style={{
+          margin: 0,
           fontFamily: JARVIS_FONTS.serif,
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 600,
           color: theme.textPrimary,
-          letterSpacing: -0.4,
           lineHeight: 1.2,
         }}
       >
         {greeting}.
-      </div>
+      </h1>
       <div
         style={{
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
+          fontSize: 13,
+          lineHeight: 1.5,
           color: theme.textSecondary,
-          marginTop: 6,
-          letterSpacing: 0.2,
+          marginTop: 8,
         }}
       >
         {dayLabel}

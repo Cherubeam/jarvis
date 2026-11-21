@@ -1,8 +1,9 @@
-import { hueFor } from '../../lib/agentHues'
 import { speakerLabel } from '../../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { ConversationSummary } from '../../lib/types'
 
+/** Earlier conversations as a plain list: the title in the reading face, then
+ *  date, agent and cost. Each line is one button. */
 export function RecentCards({
   theme,
   accent,
@@ -21,9 +22,8 @@ export function RecentCards({
       <div
         style={{
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
+          fontSize: 13,
           color: theme.textDisabled,
-          padding: '6px 0',
         }}
       >
         no other conversations yet
@@ -31,73 +31,78 @@ export function RecentCards({
     )
   }
 
+  const serif = theme.read === JARVIS_FONTS.serif
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {items.map((c) => {
-          const agentHue = c.agents.length > 0 ? hueFor(c.agents[0], accent) : accent
-          return (
+      <ul
+        style={{
+          listStyle: 'none',
+          margin: 0,
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        {items.map((c) => (
+          <li key={c.id}>
             <button
-              key={c.id}
               onClick={() => onOpenHistory(c.id)}
               style={{
-                all: 'unset',
+                background: 'none',
+                border: 0,
+                padding: 0,
+                margin: 0,
                 cursor: 'pointer',
-                boxSizing: 'border-box',
-                background: theme.surface1,
-                border: `1px solid ${theme.border}`,
-                borderLeft: `2px solid ${agentHue}`,
-                borderRadius: 6,
-                padding: '12px 14px',
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                fontFamily: theme.read,
+                fontSize: serif ? 17 : 14,
+                lineHeight: 1.5,
+                color: theme.textPrimary,
               }}
             >
-              <div
+              <span
                 style={{
-                  fontSize: 13,
-                  color: theme.textPrimary,
-                  lineHeight: 1.35,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  marginBottom: 4,
+                  textDecoration: 'underline',
+                  textDecorationColor: theme.borderStrong,
+                  textUnderlineOffset: 3,
                 }}
               >
                 {c.title}
-              </div>
-              <div
+              </span>
+              <span
                 style={{
                   fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 10.5,
+                  fontSize: 12,
                   color: theme.textSecondary,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
+                  marginLeft: 10,
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <span>{c.date}</span>
-                {c.agents.length > 0 && (
-                  <>
-                    <span>·</span>
-                    <span style={{ color: agentHue }}>{speakerLabel(c.agents[0])}</span>
-                  </>
-                )}
-                <span style={{ marginLeft: 'auto', color: theme.cost }}>
-                  ${c.cost.toFixed(4)}
-                </span>
-              </div>
+                {c.date}
+                {c.agents.length > 0 && <> · {speakerLabel(c.agents[0])}</>}
+                {' · '}${c.cost.toFixed(4)}
+              </span>
             </button>
-          )
-        })}
-      </div>
+          </li>
+        ))}
+      </ul>
       <button
         onClick={onOpenAll}
         style={{
-          all: 'unset',
+          background: 'none',
+          border: 0,
+          padding: 0,
+          margin: '12px 0 0',
           cursor: 'pointer',
-          marginTop: 10,
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: accent,
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
         }}
       >
         all conversations →

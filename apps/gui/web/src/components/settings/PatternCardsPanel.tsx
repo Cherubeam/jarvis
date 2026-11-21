@@ -1,9 +1,10 @@
 // PatternCardsPanel — output_dir + nested image_generation.
 
 import type { JsonSchemaNode, SettingsValidationError } from '../../lib/types'
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import type { Theme } from '../../lib/tokens'
 
 import { fieldErrorAt, getAt, schemaAt, setAt, type Path } from './helpers'
+import { SubSectionHeader } from './ScalarPanel'
 import { SettingField } from './SettingField'
 
 type FieldSpec = { path: Path; label: string }
@@ -65,22 +66,7 @@ export function PatternCardsPanel({
     <div>
       {ROOT_FIELDS.map(renderRow)}
 
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSecondary,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8,
-          marginTop: 18,
-          marginBottom: 10,
-          paddingBottom: 6,
-          borderBottom: `1px solid ${theme.border}`,
-        }}
-      >
-        image generation
-      </div>
+      <SubSectionHeader theme={theme}>image generation</SubSectionHeader>
       {IMG_FIELDS.map(renderRow)}
     </div>
   )

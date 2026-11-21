@@ -1,4 +1,4 @@
-// SectionCardError — red banner for @model_validator failures that don't
+// SectionCardError — tinted notice for @model_validator failures that don't
 // attach to a single field (e.g. MCP stdio server missing `command`).
 
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
@@ -15,10 +15,9 @@ export function SectionCardError({
   return (
     <div
       style={{
-        borderLeft: `3px solid ${theme.error}`,
-        background: theme.surface1,
+        background: theme.delBg,
         padding: '8px 12px',
-        marginBottom: 12,
+        marginBottom: 14,
         borderRadius: 4,
       }}
     >
@@ -27,9 +26,9 @@ export function SectionCardError({
           key={i}
           style={{
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.error,
-            lineHeight: 1.45,
+            fontSize: 13,
+            color: theme.del,
+            lineHeight: 1.5,
           }}
         >
           {err.msg}

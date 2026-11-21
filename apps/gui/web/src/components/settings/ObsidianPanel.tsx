@@ -1,7 +1,7 @@
 // ObsidianPanel — exposes the nested daily_notes + writing sub-models.
 
 import type { JsonSchemaNode, SettingsValidationError } from '../../lib/types'
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import type { Theme } from '../../lib/tokens'
 
 import {
   fieldErrorAt,
@@ -10,6 +10,7 @@ import {
   setAt,
   type Path,
 } from './helpers'
+import { SubSectionHeader } from './ScalarPanel'
 import { SettingField } from './SettingField'
 
 type FieldSpec = { path: Path; label: string }
@@ -79,32 +80,11 @@ export function ObsidianPanel({
     <div>
       {ROOT_FIELDS.map(renderRow)}
 
-      <SubSectionHeader theme={theme} text="daily notes" />
+      <SubSectionHeader theme={theme}>daily notes</SubSectionHeader>
       {DAILY_FIELDS.map(renderRow)}
 
-      <SubSectionHeader theme={theme} text="writing targets" />
+      <SubSectionHeader theme={theme}>writing targets</SubSectionHeader>
       {WRITING_FIELDS.map(renderRow)}
-    </div>
-  )
-}
-
-function SubSectionHeader({ theme, text }: { theme: Theme; text: string }) {
-  return (
-    <div
-      style={{
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 11,
-        fontWeight: 600,
-        color: theme.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginTop: 18,
-        marginBottom: 10,
-        paddingBottom: 6,
-        borderBottom: `1px solid ${theme.border}`,
-      }}
-    >
-      {text}
     </div>
   )
 }

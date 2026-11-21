@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Icon } from './Icon'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
 import type { Agent } from '../lib/types'
 
+/** The list of agents and their commands, opened with / or ⌘K. A plain panel in
+ *  the typed face: a line to filter, then one row per command. */
 export function CommandPalette({
   theme,
   open,
@@ -50,21 +51,26 @@ export function CommandPalette({
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         justifyContent: 'center',
-        paddingTop: '12vh',
+        alignItems: 'flex-start',
+        padding: '12vh 16px 0',
       }}
     >
       <div
+        role="dialog"
+        aria-label="Commands"
         onClick={(ev) => ev.stopPropagation()}
         style={{
           width: 560,
+          maxWidth: '100%',
           maxHeight: '60vh',
           background: theme.surface1,
           border: `1px solid ${theme.borderStrong}`,
-          borderRadius: 12,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          borderRadius: 6,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          fontFamily: JARVIS_FONTS.mono,
         }}
       >
         <div
@@ -72,32 +78,31 @@ export function CommandPalette({
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            padding: '14px 18px',
+            padding: '12px 16px',
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <Icon name="slash" size={14} color={theme.assistant} />
           <input
             ref={inputRef}
             value={q}
             onChange={(ev) => setQ(ev.target.value)}
             placeholder="type a command or agent name…"
+            aria-label="type a command or agent name"
             style={{
               all: 'unset',
               flex: 1,
+              minWidth: 0,
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 15,
+              fontSize: 14,
+              lineHeight: 1.6,
               color: theme.textPrimary,
             }}
           />
           <span
             style={{
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 10,
+              fontSize: 12,
               color: theme.textDisabled,
-              padding: '2px 6px',
-              border: `1px solid ${theme.border}`,
-              borderRadius: 3,
             }}
           >
             esc
@@ -107,10 +112,9 @@ export function CommandPalette({
           {items.length === 0 && (
             <div
               style={{
-                padding: '28px 20px',
-                textAlign: 'center',
+                padding: '24px 16px',
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 12,
+                fontSize: 13,
                 color: theme.textDisabled,
               }}
             >
@@ -121,39 +125,43 @@ export function CommandPalette({
           {items.map((a, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => onPick(a)}
-              onMouseEnter={(ev) => (ev.currentTarget.style.background = theme.surface2)}
+              onMouseEnter={(ev) => (ev.currentTarget.style.background = theme.surface3)}
               onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+              onFocus={(ev) => (ev.currentTarget.style.background = theme.surface3)}
+              onBlur={(ev) => (ev.currentTarget.style.background = 'transparent')}
               style={{
-                all: 'unset',
+                appearance: 'none',
+                margin: 0,
+                border: 0,
+                background: 'transparent',
+                font: 'inherit',
+                textAlign: 'left',
                 cursor: 'pointer',
                 display: 'grid',
-                gridTemplateColumns: '180px 1fr auto',
+                gridTemplateColumns: 'minmax(0, 180px) minmax(0, 1fr) auto',
                 gap: 16,
-                alignItems: 'center',
-                padding: '10px 18px',
+                alignItems: 'baseline',
+                padding: '9px 16px',
                 width: '100%',
                 boxSizing: 'border-box',
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 13,
+                lineHeight: 1.5,
               }}
             >
               <span
                 style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 13,
-                  color: a.command ? theme.assistant : theme.tool,
+                  color: theme.textPrimary,
                   fontWeight: 600,
+                  overflowWrap: 'anywhere',
                 }}
               >
                 {a.command || a.name}
               </span>
-              <span style={{ fontSize: 13, color: theme.textPrimary }}>{a.description}</span>
-              <span
-                style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 10.5,
-                  color: theme.textDisabled,
-                }}
-              >
+              <span style={{ color: theme.textSecondary }}>{a.description}</span>
+              <span style={{ fontSize: 12, color: theme.textDisabled }}>
                 {a.tools.length ? `${a.tools.length} tools` : ''}
               </span>
             </button>

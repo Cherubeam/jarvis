@@ -1,8 +1,9 @@
-import { hueFor } from '../../lib/agentHues'
 import { speakerLabel } from '../../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { ConversationSummary } from '../../lib/types'
 
+/** The last conversation as three lines: its title, its numbers, and the link
+ *  that picks it up again. The whole block is one button. */
 export function ResumeCard({
   theme,
   accent,
@@ -18,13 +19,8 @@ export function ResumeCard({
     return (
       <div
         style={{
-          background: theme.surface1,
-          border: `1px solid ${theme.border}`,
-          borderLeft: `3px solid ${theme.border}`,
-          borderRadius: 8,
-          padding: '18px 20px',
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
+          fontSize: 13,
           color: theme.textDisabled,
         }}
       >
@@ -33,79 +29,67 @@ export function ResumeCard({
     )
   }
 
-  const agentHue = resume.agents.length > 0 ? hueFor(resume.agents[0], accent) : accent
+  const serif = theme.read === JARVIS_FONTS.serif
   return (
     <button
       onClick={onResume}
       style={{
-        all: 'unset',
+        background: 'none',
+        border: 0,
+        padding: 0,
+        margin: 0,
         cursor: 'pointer',
-        boxSizing: 'border-box',
         display: 'block',
         width: '100%',
-        background: theme.surface1,
-        border: `1px solid ${theme.border}`,
-        borderLeft: `3px solid ${accent}`,
-        borderRadius: 8,
-        padding: '18px 20px',
+        textAlign: 'left',
+        fontFamily: JARVIS_FONTS.mono,
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: theme.textSecondary,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              color: theme.textPrimary,
-              lineHeight: 1.3,
-              marginBottom: 6,
-            }}
-          >
-            {resume.title}
-          </div>
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.textSecondary,
-              display: 'flex',
-              gap: 8,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span>{resume.date}</span>
+      <span
+        style={{
+          display: 'block',
+          fontFamily: theme.read,
+          fontSize: serif ? 17.5 : 14,
+          color: theme.textPrimary,
+          lineHeight: 1.5,
+        }}
+      >
+        {resume.title}
+      </span>
+      <span style={{ display: 'flex', gap: '0 8px', flexWrap: 'wrap', marginTop: 2 }}>
+        <span>{resume.date}</span>
+        <span>·</span>
+        <span>{resume.messages} messages</span>
+        <span>·</span>
+        <span>{resume.tokens.toLocaleString()} tokens</span>
+        <span>·</span>
+        <span>${resume.cost.toFixed(4)}</span>
+        {resume.agents.length > 0 && (
+          <>
             <span>·</span>
-            <span>{resume.messages} messages</span>
-            <span>·</span>
-            <span>{resume.tokens.toLocaleString()} tokens</span>
-            <span>·</span>
-            <span style={{ color: theme.cost }}>${resume.cost.toFixed(4)}</span>
-            {resume.agents.length > 0 && (
-              <>
-                <span>·</span>
-                <span style={{ color: agentHue }}>{speakerLabel(resume.agents[0])}</span>
-                {resume.agents.length > 1 && (
-                  <span style={{ color: theme.textDisabled }}>+{resume.agents.length - 1}</span>
-                )}
-              </>
+            <span>{speakerLabel(resume.agents[0])}</span>
+            {resume.agents.length > 1 && (
+              <span style={{ color: theme.textDisabled }}>+{resume.agents.length - 1}</span>
             )}
-          </div>
-        </div>
-        <span
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: accent,
-            fontWeight: 700,
-            padding: '6px 10px',
-            border: `1px solid ${accent}60`,
-            borderRadius: 4,
-            flexShrink: 0,
-          }}
-        >
-          resume →
-        </span>
-      </div>
+          </>
+        )}
+      </span>
+      <span
+        style={{
+          display: 'inline-block',
+          marginTop: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          color: accent,
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
+        }}
+      >
+        resume →
+      </span>
     </button>
   )
 }

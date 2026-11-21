@@ -1,8 +1,9 @@
-// ConvFilters — search + sort + date + agent chips + tool chips.
-// Ported from JARVIS GUI.html 3108-3214.
+// ConvFilters — search + sort + date + agent + tool filters. Each filter is a
+// journal row: its name in the gutter, the choices as plain text links, the
+// chosen one underlined.
 
-import { Icon } from '../Icon'
-import { hueFor } from '../../lib/agentHues'
+import type { CSSProperties } from 'react'
+
 import { speakerLabel } from '../../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { DatePreset, FacetEntry, SortMode } from '../../lib/types'
@@ -57,40 +58,39 @@ export function ConvFilters({
 }) {
   const sectionLabel = (label: string) => (
     <div
-      style={{
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 9.5,
-        letterSpacing: 1.3,
-        color: theme.textDisabled,
-        textTransform: 'uppercase',
-        marginBottom: 6,
-        marginTop: 14,
-      }}
+      className="jr-gutter"
+      style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textDisabled }}
     >
       {label}
     </div>
   )
 
-  const chip = (
-    active: boolean,
-    onClick: () => void,
-    label: string,
-    color?: string,
-  ) => (
+  const links: CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: '2px 14px',
+    minWidth: 0,
+  }
+
+  const chip = (active: boolean, onClick: () => void, label: string) => (
     <button
       key={label}
       onClick={onClick}
+      aria-pressed={active}
       style={{
         all: 'unset',
         cursor: 'pointer',
-        padding: '4px 10px',
-        borderRadius: 4,
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 11,
-        border: `1px solid ${active ? color || accent : theme.border}`,
-        background: active ? `${color || accent}22` : 'transparent',
-        color: active ? color || accent : theme.textSecondary,
+        padding: '2px 0',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
+        fontFamily: JARVIS_FONTS.mono,
+        fontSize: 13,
+        color: active ? theme.textPrimary : theme.textSecondary,
+        textDecoration: active ? 'underline' : 'none',
+        textUnderlineOffset: 4,
       }}
     >
       {label}
@@ -99,133 +99,111 @@ export function ConvFilters({
 
   return (
     <div
+      className="jr-pane"
       style={{
-        padding: '14px 16px 10px',
+        padding: '10px 0 8px',
         borderBottom: `1px solid ${theme.border}`,
         flexShrink: 0,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '7px 10px',
-          borderRadius: 6,
-          border: `1px solid ${theme.border}`,
-          background: theme.surface0,
-        }}
-      >
-        <Icon name="search" size={13} color={theme.textDisabled} />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="search title…"
-          style={{
-            all: 'unset',
-            flex: 1,
-            minWidth: 0,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.textPrimary,
-          }}
-        />
-        {query && (
-          <button
-            onClick={() => setQuery('')}
+      <div className="jr-row dense">
+        <div className="jr-gutter" />
+        <div style={{ position: 'relative', minWidth: 0 }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="search title…"
+            aria-label="search title"
             style={{
-              all: 'unset',
-              cursor: 'pointer',
-              color: theme.textDisabled,
+              boxSizing: 'border-box',
+              display: 'block',
+              width: '100%',
+              minHeight: 36,
+              margin: 0,
+              padding: '0 34px 0 10px',
+              border: `1px solid ${theme.border}`,
+              borderRadius: 4,
+              background: theme.surface2,
+              color: theme.textPrimary,
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
+              fontSize: 13,
             }}
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 9.5,
-            letterSpacing: 1.3,
-            color: theme.textDisabled,
-            textTransform: 'uppercase',
-          }}
-        >
-          Sort
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {SORT_MODES.map((s) => (
+          />
+          {query && (
             <button
-              key={s.id}
-              onClick={() => setSortMode(s.id)}
+              onClick={() => setQuery('')}
+              aria-label="clear search"
               style={{
                 all: 'unset',
                 cursor: 'pointer',
-                padding: '3px 8px',
-                borderRadius: 3,
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 34,
+                height: '100%',
+                textAlign: 'center',
+                lineHeight: '36px',
+                color: theme.textSecondary,
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 10.5,
-                background: sortMode === s.id ? theme.surface2 : 'transparent',
-                color: sortMode === s.id ? theme.textPrimary : theme.textSecondary,
+                fontSize: 13,
               }}
             >
-              {s.label}
+              ✕
             </button>
-          ))}
+          )}
         </div>
-        {activeFilterCount > 0 && (
-          <button
-            onClick={clearFilters}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              marginLeft: 'auto',
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 10.5,
-              color: accent,
-            }}
-          >
-            clear ({activeFilterCount})
-          </button>
-        )}
       </div>
 
-      {sectionLabel('Date')}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {DATE_PRESETS.map((p) =>
-          chip(datePreset === p.id, () => setDatePreset(p.id), p.label),
-        )}
+      <div className="jr-row dense">
+        {sectionLabel('Sort')}
+        <div style={links}>
+          {SORT_MODES.map((s) => chip(sortMode === s.id, () => setSortMode(s.id), s.label))}
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearFilters}
+              style={{
+                all: 'unset',
+                cursor: 'pointer',
+                marginLeft: 'auto',
+                padding: '2px 0',
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 13,
+                color: accent,
+              }}
+            >
+              clear ({activeFilterCount})
+            </button>
+          )}
+        </div>
       </div>
 
-      {sectionLabel('Agent')}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {chip(agentFilter === 'all', () => setAgentFilter('all'), 'All')}
-        {agents.map((a) => {
-          const hue = hueFor(a.id, accent)
-          return chip(
-            agentFilter === a.id,
-            () => setAgentFilter(a.id),
-            speakerLabel(a.id),
-            hue,
-          )
-        })}
+      <div className="jr-row dense">
+        {sectionLabel('Date')}
+        <div style={links}>
+          {DATE_PRESETS.map((p) =>
+            chip(datePreset === p.id, () => setDatePreset(p.id), p.label),
+          )}
+        </div>
+      </div>
+
+      <div className="jr-row dense">
+        {sectionLabel('Agent')}
+        <div style={links}>
+          {chip(agentFilter === 'all', () => setAgentFilter('all'), 'All')}
+          {agents.map((a) =>
+            chip(agentFilter === a.id, () => setAgentFilter(a.id), speakerLabel(a.id)),
+          )}
+        </div>
       </div>
 
       {tools.length > 0 && (
-        <>
+        <div className="jr-row dense">
           {sectionLabel('Tool')}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <div style={links}>
             {chip(toolFilter === 'all', () => setToolFilter('all'), 'All')}
-            {tools.map((t) =>
-              chip(toolFilter === t.id, () => setToolFilter(t.id), t.id, theme.tool),
-            )}
+            {tools.map((t) => chip(toolFilter === t.id, () => setToolFilter(t.id), t.id))}
           </div>
-        </>
+        </div>
       )}
     </div>
   )
