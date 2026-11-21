@@ -1,9 +1,11 @@
-// AgentVersionsPanel — list of snapshots with preview + restore.
+// AgentVersionsPanel — list of snapshots with preview + restore. The list and
+// the preview sit side by side across the full width and stack when it is narrow.
 
 import { useEffect, useState } from 'react'
 
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import type { Theme } from '../../lib/tokens'
 import type { PromptSnapshot, PromptSnapshotDetail } from '../../lib/types'
+import { JournalRow, noteStyle, previewStyle, secondaryButton, textButton } from './journal'
 
 export function AgentVersionsPanel({
   theme,
@@ -75,100 +77,62 @@ export function AgentVersionsPanel({
 
   if (loading) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        loading…
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>loading…</div>
+      </JournalRow>
     )
   }
 
   if (rows.length === 0) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        no snapshots yet · save an edit to start a history
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>
+          no snapshots yet · save an edit to start a history
+        </div>
+      </JournalRow>
     )
   }
 
   return (
-    <div style={{ marginTop: 24, display: 'flex', gap: 18, alignItems: 'flex-start' }}>
-      <div style={{ flex: '0 0 320px' }}>
-        {error && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.error,
-              marginBottom: 10,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        <div
-          style={{
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 6,
-            overflow: 'hidden',
-          }}
-        >
+    <JournalRow theme={theme} wide style={{ paddingTop: 18 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px 28px', alignItems: 'flex-start' }}>
+        <div style={{ flex: '0 1 300px', minWidth: 0 }}>
+          {error && <div style={{ ...noteStyle(theme.error), marginBottom: 10 }}>{error}</div>}
           {rows.map((r, i) => {
             const active = selected?.id === r.id
             return (
               <div
                 key={r.id}
                 style={{
-                  padding: '10px 12px',
+                  ...noteStyle(theme.textSecondary),
+                  padding: '8px 0',
                   borderTop: i === 0 ? 'none' : `1px solid ${theme.border}`,
-                  background: active ? theme.surface2 : 'transparent',
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                  cursor: 'pointer',
                 }}
-                onClick={() => loadSnapshot(r.id)}
               >
-                <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                  <span style={{ color: theme.textPrimary }}>{formatTs(r.timestamp)}</span>
-                  <span style={{ color: kindColor(r.kind, theme, hue) }}>[{r.kind}]</span>
-                  <span style={{ flex: 1 }} />
-                  <span style={{ color: theme.textDisabled }}>{r.bytes}b</span>
-                </div>
-                {r.note && <div style={{ color: theme.textSecondary }}>{r.note}</div>}
-                {active && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        restore(r.id)
-                      }}
+                <button
+                  onClick={() => loadSnapshot(r.id)}
+                  aria-current={active ? 'true' : undefined}
+                  style={{ ...textButton(theme.textSecondary), display: 'block', width: '100%' }}
+                >
+                  <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0 8px', alignItems: 'baseline' }}>
+                    <span
                       style={{
-                        all: 'unset',
-                        cursor: 'pointer',
-                        padding: '4px 10px',
-                        borderRadius: 3,
-                        background: hue,
-                        color: theme.surface0,
-                        fontSize: 10,
-                        fontWeight: 700,
+                        color: active ? hue : theme.textPrimary,
+                        textDecoration: active ? 'underline' : 'none',
+                        textUnderlineOffset: 4,
                       }}
                     >
+                      {formatTs(r.timestamp)}
+                    </span>
+                    <span>[{r.kind}]</span>
+                    <span style={{ flex: 1 }} />
+                    <span style={{ color: theme.textDisabled }}>{r.bytes}b</span>
+                  </span>
+                  {r.note && <span style={{ display: 'block', marginTop: 2 }}>{r.note}</span>}
+                </button>
+                {active && (
+                  <div style={{ marginTop: 8 }}>
+                    <button onClick={() => restore(r.id)} style={secondaryButton(theme, true)}>
                       restore
                     </button>
                   </div>
@@ -177,58 +141,18 @@ export function AgentVersionsPanel({
             )
           })}
         </div>
+        <div style={{ flex: '1 1 360px', minWidth: 0, paddingTop: 8 }}>
+          {selectedLoading && <div style={noteStyle(theme.textDisabled)}>loading snapshot…</div>}
+          {!selectedLoading && selected && (
+            <pre style={previewStyle(theme, 520)}>{selected.content}</pre>
+          )}
+          {!selectedLoading && !selected && (
+            <div style={noteStyle(theme.textDisabled)}>click a snapshot to preview</div>
+          )}
+        </div>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {selectedLoading && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
-            }}
-          >
-            loading snapshot…
-          </div>
-        )}
-        {!selectedLoading && selected && (
-          <pre
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textPrimary,
-              background: theme.surface2,
-              border: `1px solid ${theme.border}`,
-              borderRadius: 6,
-              padding: 14,
-              margin: 0,
-              whiteSpace: 'pre-wrap',
-              maxHeight: 520,
-              overflow: 'auto',
-            }}
-          >
-            {selected.content}
-          </pre>
-        )}
-        {!selectedLoading && !selected && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
-            }}
-          >
-            click a snapshot to preview
-          </div>
-        )}
-      </div>
-    </div>
+    </JournalRow>
   )
-}
-
-function kindColor(kind: PromptSnapshot['kind'], theme: Theme, hue: string): string {
-  if (kind === 'pre_first_save') return theme.textDisabled
-  if (kind === 'pre_restore') return theme.error
-  return hue
 }
 
 function formatTs(ts: string): string {

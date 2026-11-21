@@ -1,6 +1,5 @@
-// Per-agent 14-day cost sparkline. Visual feel mirrors home/CostCard.tsx but
-// uses the agent's hue instead of theme.cost — signals "this agent's spend"
-// rather than "overall cost".
+// Per-agent 14-day cost sparkline: one bar per day in a single colour, a
+// hairline for a day without spend, and the date range and total under it.
 
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 
@@ -17,17 +16,10 @@ export function Cost14dSparkline({
 }) {
   const max = Math.max(...days.map((d) => d.cost), 0.0001)
   return (
-    <div
-      style={{
-        background: theme.surface1,
-        border: `1px solid ${theme.border}`,
-        borderRadius: 6,
-        padding: '16px 18px',
-      }}
-    >
+    <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 60 }}>
         {days.map((d) => {
-          const h = d.cost === 0 ? 2 : Math.max(4, Math.round((d.cost / max) * 56))
+          const h = d.cost === 0 ? 1 : Math.max(4, Math.round((d.cost / max) * 56))
           return (
             <div
               key={d.date}
@@ -35,9 +27,7 @@ export function Cost14dSparkline({
               style={{
                 flex: 1,
                 height: h,
-                background: d.cost === 0 ? theme.border : hue,
-                opacity: d.cost === 0 ? 0.3 : 0.75,
-                borderRadius: 1,
+                background: d.cost === 0 ? theme.borderStrong : hue,
               }}
             />
           )
@@ -46,10 +36,12 @@ export function Cost14dSparkline({
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
+          gap: '0 12px',
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 10,
-          color: theme.textDisabled,
+          fontSize: 12,
+          color: theme.stats,
           marginTop: 8,
         }}
       >

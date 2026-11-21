@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   count and cost in the margin; the detail pane's stat tiles are a short
   list; filters are text links. Settings shows a field's description under
   its label instead of in a "?" tooltip.
+- The Agents overview is a directory instead of a card grid: per category a
+  heading, then one entry per agent with its description, command, tool
+  count and last use. Only the agent's name is the link. Agent Detail keeps
+  its tabs and editors without card chrome; in the Versions and Includes
+  lists only a missing file or an error is red.
 - Keyboard focus is visible again on buttons: the focus ring is forced, since
   an inline `all: unset` on most buttons had removed it.
 - No font files are bundled: the serif stack uses faces that ship with macOS

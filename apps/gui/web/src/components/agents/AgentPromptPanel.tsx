@@ -3,12 +3,20 @@
 
 import { useEffect, useState } from 'react'
 
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import type { Theme } from '../../lib/tokens'
 import type { PromptResponse, PromptSaveResult } from '../../lib/types'
+import {
+  JournalRow,
+  fieldStyle,
+  noteStyle,
+  previewStyle,
+  primaryButton,
+  readStyle,
+  secondaryButton,
+} from './journal'
 
 export function AgentPromptPanel({
   theme,
-  hue,
   agentId,
   onSaved,
 }: {
@@ -74,124 +82,63 @@ export function AgentPromptPanel({
 
   if (error && !data) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.error,
-          marginTop: 28,
-        }}
-      >
-        failed to load prompt: {error}
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.error)}>failed to load prompt: {error}</div>
+      </JournalRow>
     )
   }
   if (!data) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        loading…
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>loading…</div>
+      </JournalRow>
     )
   }
 
   if (readOnly) {
     return (
-      <div style={{ marginTop: 28 }}>
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.textSecondary,
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 6,
-            padding: 14,
-            marginBottom: 16,
-            lineHeight: 1.6,
-          }}
-        >
-          {data.explanation}
-        </div>
-        <pre
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.textPrimary,
-            background: theme.surface2,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 6,
-            padding: 14,
-            margin: 0,
-            whiteSpace: 'pre-wrap',
-            maxHeight: 480,
-            overflow: 'auto',
-          }}
-        >
-          {data.content}
-        </pre>
-      </div>
+      <>
+        <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+          <p style={{ margin: 0, ...readStyle(theme, 16), color: theme.textSecondary }}>
+            {data.explanation}
+          </p>
+        </JournalRow>
+        <JournalRow theme={theme} wide>
+          <pre style={previewStyle(theme, 480)}>{data.content}</pre>
+        </JournalRow>
+      </>
     )
   }
 
+  const canSave = dirty && status !== 'saving'
+
   return (
-    <div style={{ marginTop: 24 }}>
+    <JournalRow theme={theme} wide style={{ paddingTop: 18 }}>
       <div
         style={{
+          ...noteStyle(theme.textSecondary),
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: 10,
           marginBottom: 10,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
         }}
       >
-        <span data-testid="prompt-path" style={{ color: theme.textDisabled }}>
+        <span
+          data-testid="prompt-path"
+          style={{ color: theme.textDisabled, overflowWrap: 'anywhere' }}
+        >
           {data.path}
         </span>
         <span style={{ flex: 1 }} />
-        {status === 'saved' && <span style={{ color: hue }}>saved ✓</span>}
+        {status === 'saved' && <span>saved ✓</span>}
         {status === 'error' && <span style={{ color: theme.error }}>error: {error}</span>}
         {dirty && (
-          <button
-            onClick={revert}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '6px 12px',
-              borderRadius: 4,
-              border: `1px solid ${theme.border}`,
-              color: theme.textSecondary,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-            }}
-          >
+          <button onClick={revert} style={secondaryButton(theme)}>
             revert
           </button>
         )}
-        <button
-          onClick={save}
-          disabled={!dirty || status === 'saving'}
-          style={{
-            all: 'unset',
-            cursor: dirty && status !== 'saving' ? 'pointer' : 'not-allowed',
-            padding: '6px 14px',
-            borderRadius: 4,
-            background: dirty ? hue : theme.surface2,
-            color: dirty ? theme.surface0 : theme.textDisabled,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: 0.3,
-          }}
-        >
+        <button onClick={save} disabled={!canSave} style={primaryButton(theme, canSave)}>
           {status === 'saving' ? 'saving…' : 'save'}
         </button>
       </div>
@@ -200,31 +147,12 @@ export function AgentPromptPanel({
         onChange={(e) => setContent(e.target.value)}
         spellCheck={false}
         rows={28}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 13,
-          lineHeight: 1.55,
-          padding: 14,
-          color: theme.textPrimary,
-          background: theme.surface1,
-          border: `1px solid ${dirty ? hue : theme.border}`,
-          borderRadius: 6,
-          resize: 'vertical',
-          outline: 'none',
-        }}
+        aria-label="System prompt"
+        style={fieldStyle(theme, dirty)}
       />
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 10,
-          color: theme.textDisabled,
-          marginTop: 8,
-        }}
-      >
+      <div style={{ ...noteStyle(theme.textDisabled), fontSize: 12, marginTop: 8 }}>
         changes take effect on the next session · {content.length.toLocaleString()} chars
       </div>
-    </div>
+    </JournalRow>
   )
 }
