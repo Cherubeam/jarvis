@@ -3,12 +3,12 @@
 
 import { useEffect, useState } from 'react'
 
-import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
+import type { Theme } from '../../lib/tokens'
 import type { PromptResolved } from '../../lib/types'
+import { JournalRow, noteStyle, previewStyle, secondaryButton } from './journal'
 
 export function AgentContextPanel({
   theme,
-  hue,
   agentId,
   refreshToken,
 }: {
@@ -46,85 +46,41 @@ export function AgentContextPanel({
 
   if (error) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.error,
-          marginTop: 28,
-        }}
-      >
-        failed to load resolved prompt: {error}
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.error)}>failed to load resolved prompt: {error}</div>
+      </JournalRow>
     )
   }
   if (resolved == null) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        loading…
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>loading…</div>
+      </JournalRow>
     )
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <JournalRow theme={theme} wide style={{ paddingTop: 18 }}>
       <div
         style={{
+          ...noteStyle(theme.textSecondary),
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: 10,
-          marginBottom: 10,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
+          marginBottom: 12,
         }}
       >
         <span style={{ color: theme.textDisabled }}>
           placeholders expanded · {resolved.length.toLocaleString()} chars
         </span>
         <span style={{ flex: 1 }} />
-        {copied && <span style={{ color: hue }}>copied ✓</span>}
-        <button
-          onClick={copy}
-          style={{
-            all: 'unset',
-            cursor: 'pointer',
-            padding: '6px 12px',
-            borderRadius: 4,
-            border: `1px solid ${theme.border}`,
-            color: theme.textSecondary,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-          }}
-        >
+        {copied && <span>copied ✓</span>}
+        <button onClick={copy} style={secondaryButton(theme)}>
           copy
         </button>
       </div>
-      <pre
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          lineHeight: 1.55,
-          color: theme.textPrimary,
-          background: theme.surface2,
-          border: `1px solid ${theme.border}`,
-          borderRadius: 6,
-          padding: 14,
-          margin: 0,
-          whiteSpace: 'pre-wrap',
-          maxHeight: 600,
-          overflow: 'auto',
-        }}
-      >
-        {resolved}
-      </pre>
-    </div>
+      <pre style={previewStyle(theme, 600)}>{resolved}</pre>
+    </JournalRow>
   )
 }

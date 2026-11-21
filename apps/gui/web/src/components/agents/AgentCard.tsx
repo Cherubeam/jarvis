@@ -1,93 +1,57 @@
-// Cards used in the Agents overview grid — featured (JARVIS) + compact (delegates).
-// Ported from JARVIS GUI v6 line 1752.
+// One entry of the agent directory: the name (the link to the agent's page)
+// followed by its description, the command on a second line, and tool count
+// and last use as a margin note. The file keeps its name; it is no longer a card.
 
-import { hueFor } from '../../lib/agentHues'
 import { speakerLabel } from '../../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { Agent } from '../../lib/types'
+import { JournalRow, noteStyle, readStyle, textButton } from './journal'
 
 export function AgentCard({
   theme,
-  accent,
   agent,
   lastUsedLabel,
-  featured = false,
   onClick,
 }: {
   theme: Theme
   accent: string
   agent: Agent
   lastUsedLabel: string
+  /** Kept for callers; the orchestrator is an entry like every other. */
   featured?: boolean
   onClick: () => void
 }) {
-  const hue = hueFor(agent.name, accent)
   const toolsCount = agent.tools.length
   return (
-    <button
-      onClick={onClick}
-      style={{
-        all: 'unset',
-        cursor: 'pointer',
-        boxSizing: 'border-box',
-        display: 'block',
-        width: '100%',
-        background: featured ? theme.surface2 : theme.surface1,
-        border: `1px solid ${featured ? hue : theme.border}`,
-        borderLeft: `${featured ? 4 : 3}px solid ${hue}`,
-        borderRadius: 7,
-        padding: featured ? '18px 20px' : '14px 16px',
-      }}
+    <JournalRow
+      theme={theme}
+      style={{ paddingTop: 8, paddingBottom: 8 }}
+      margin={
+        <>
+          {toolsCount} tool{toolsCount === 1 ? '' : 's'} · {lastUsedLabel}
+        </>
+      }
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-        <div
+      <p style={{ margin: 0, ...readStyle(theme, 18), color: theme.textPrimary }}>
+        <button
+          onClick={onClick}
           style={{
-            fontSize: featured ? 18 : 14,
+            ...textButton(theme.textPrimary),
+            fontFamily: JARVIS_FONTS.serif,
+            fontSize: 18,
             fontWeight: 600,
-            color: theme.textPrimary,
-            letterSpacing: -0.1,
+            textDecoration: 'underline',
+            textDecorationThickness: 1,
+            textUnderlineOffset: 3,
           }}
         >
           {speakerLabel(agent.name)}
-        </div>
-        {agent.command && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: featured ? 12 : 11,
-              color: hue,
-            }}
-          >
-            {agent.command}
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          fontSize: featured ? 13 : 12,
-          color: theme.textSecondary,
-          lineHeight: 1.45,
-          marginBottom: featured ? 12 : 8,
-        }}
-      >
+        </button>{' '}
         {agent.description}
-      </div>
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 10,
-          color: theme.textDisabled,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <span>
-          {toolsCount} tool{toolsCount === 1 ? '' : 's'}
-        </span>
-        <span>·</span>
-        <span>{lastUsedLabel}</span>
-      </div>
-    </button>
+      </p>
+      {agent.command && (
+        <div style={{ ...noteStyle(theme.textSecondary), marginTop: 2 }}>{agent.command}</div>
+      )}
+    </JournalRow>
   )
 }

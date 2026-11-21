@@ -215,6 +215,8 @@ The **Agents** view renders the Agents overview grid and an Agent Detail page. M
 - An Orchestrator section with JARVIS as its entry.
 - Six category sections (Writing, Knowledge, Planning, Analysis, Generation, Engineering), each a list of entries. Agents whose id isn't in any category fall into an `OTHER` section so new agents aren't silently hidden — see `groupByCategory()` in `lib/agentCategories.ts`.
 
+The row, section heading, and the button, field and preview styles shared by the Agents overview and the detail panels live in `components/agents/journal.tsx`.
+
 Each entry shows speaker-labeled title, description, mono command, tool count, and relative last-used (`today` / `yesterday` / `Nd ago` / `Nw ago` / `Nmo ago` / `unused`). `last_used` is derived client-side from `/api/conversations?limit=500` in a single fetch — avoids changing the wire shape of the list endpoint.
 
 ### Detail page

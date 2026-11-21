@@ -1,10 +1,11 @@
-// AgentsView — grid of all registered agents, grouped by category.
-// Ported from JARVIS GUI v6 line 1739 (AgentsOverview).
+// AgentsView — the directory of all registered agents, grouped by category:
+// a heading per category, one row per agent.
 
 import { useEffect, useMemo, useState } from 'react'
 
 import { AgentCard } from '../components/agents/AgentCard'
 import { CategorySection } from '../components/agents/CategorySection'
+import { JournalRow, noteStyle } from '../components/agents/journal'
 import { groupByCategory } from '../lib/agentCategories'
 import { relativeDate } from '../lib/agentsRelativeDate'
 import { JARVIS_FONTS, type Theme } from '../lib/tokens'
@@ -24,7 +25,7 @@ export function AgentsView({
   onOpenAgent: (id: string) => void
 }) {
   // last_used per agent is derived from /api/conversations.
-  // Re-fetched on refreshToken bumps (turn_finished) so cards update live.
+  // Re-fetched on refreshToken bumps (turn_finished) so the entries update live.
   const [lastUsed, setLastUsed] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -61,31 +62,26 @@ export function AgentsView({
   }, [agents])
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', minWidth: 0, background: theme.surface0 }}>
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '40px 48px 64px' }}>
-        <div style={{ marginBottom: 24 }}>
-          <div
+    <div
+      className="jr-pane"
+      style={{ flex: 1, overflow: 'auto', minWidth: 0, background: theme.surface0 }}
+    >
+      <div style={{ padding: '26px 0 64px' }}>
+        <JournalRow theme={theme} margin={<>{agents.length} registered</>}>
+          <h1
             style={{
+              margin: 0,
               fontFamily: JARVIS_FONTS.serif,
-              fontSize: 24,
+              fontSize: 32,
               fontWeight: 600,
+              lineHeight: 1.2,
               color: theme.textPrimary,
-              letterSpacing: -0.3,
             }}
           >
             Agents
-          </div>
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.textSecondary,
-              marginTop: 4,
-            }}
-          >
-            {agents.length} registered · packages/agents/
-          </div>
-        </div>
+          </h1>
+          <div style={{ ...noteStyle(theme.textSecondary), marginTop: 8 }}>packages/agents/</div>
+        </JournalRow>
 
         {jarvis && (
           <CategorySection theme={theme} label="Orchestrator" featured>
@@ -120,15 +116,9 @@ export function AgentsView({
         ))}
 
         {agents.length === 0 && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
-            }}
-          >
-            loading agents…
-          </div>
+          <JournalRow theme={theme}>
+            <div style={noteStyle(theme.textDisabled)}>loading agents…</div>
+          </JournalRow>
         )}
       </div>
     </div>

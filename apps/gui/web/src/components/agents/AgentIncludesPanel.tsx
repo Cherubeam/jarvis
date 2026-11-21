@@ -1,5 +1,6 @@
 // AgentIncludesPanel — edit prompt-include files (Phase 6 follow-up).
-// Two-pane: left list of declared includes; right editor + last-5 snapshots.
+// Two-pane: left list of declared includes; right editor + last-5 snapshots
+// (the panes stack when the page is narrow).
 // Shared-file edits require an explicit confirm modal because they propagate
 // to every agent that resolves the same filename to _shared/prompts/.
 
@@ -13,6 +14,15 @@ import type {
   IncludeStatus,
   PromptSnapshot,
 } from '../../lib/types'
+import {
+  JournalRow,
+  fieldStyle,
+  noteStyle,
+  primaryButton,
+  readStyle,
+  secondaryButton,
+  textButton,
+} from './journal'
 
 export function AgentIncludesPanel({
   theme,
@@ -58,139 +68,103 @@ export function AgentIncludesPanel({
 
   if (listLoading) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        loading…
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>loading…</div>
+      </JournalRow>
     )
   }
 
   if (listError) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.error,
-          marginTop: 28,
-        }}
-      >
-        failed to load includes: {listError}
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.error)}>failed to load includes: {listError}</div>
+      </JournalRow>
     )
   }
 
   if (rows.length === 0) {
     return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-          marginTop: 28,
-        }}
-      >
-        no prompt_includes declared in meta.yaml
-      </div>
+      <JournalRow theme={theme} style={{ paddingTop: 18 }}>
+        <div style={noteStyle(theme.textDisabled)}>no prompt_includes declared in meta.yaml</div>
+      </JournalRow>
     )
   }
 
   return (
-    <div style={{ marginTop: 24, display: 'flex', gap: 18, alignItems: 'flex-start' }}>
-      <div style={{ flex: '0 0 280px' }}>
-        <div
-          style={{
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 6,
-            overflow: 'hidden',
-          }}
-        >
+    <JournalRow theme={theme} wide style={{ paddingTop: 18 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px 28px', alignItems: 'flex-start' }}>
+        <div style={{ flex: '0 1 220px', minWidth: 0 }}>
           {rows.map((r, i) => {
             const active = r.placeholder === activePlaceholder
             return (
               <div
                 key={r.placeholder}
-                onClick={() => setActivePlaceholder(r.placeholder)}
-                data-testid={`include-row-${r.placeholder}`}
-                style={{
-                  padding: '10px 12px',
-                  borderTop: i === 0 ? 'none' : `1px solid ${theme.border}`,
-                  background: active ? theme.surface2 : 'transparent',
-                  borderLeft: active ? `2px solid ${hue}` : '2px solid transparent',
-                  cursor: 'pointer',
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                }}
+                style={{ borderTop: i === 0 ? 'none' : `1px solid ${theme.border}` }}
               >
-                <div style={{ color: theme.textPrimary, fontWeight: 600 }}>{r.placeholder}</div>
-                <div style={{ color: theme.textSecondary, marginTop: 2 }}>{r.filename}.md</div>
-                <div style={{ marginTop: 6 }}>
-                  <StatusBadge theme={theme} hue={hue} status={r.status} />
-                </div>
+                <button
+                  onClick={() => setActivePlaceholder(r.placeholder)}
+                  data-testid={`include-row-${r.placeholder}`}
+                  aria-current={active ? 'true' : undefined}
+                  style={{
+                    ...textButton(theme.textSecondary),
+                    ...noteStyle(theme.textSecondary),
+                    display: 'block',
+                    width: '100%',
+                    padding: '8px 0',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      fontWeight: 600,
+                      color: active ? hue : theme.textPrimary,
+                      textDecoration: active ? 'underline' : 'none',
+                      textUnderlineOffset: 4,
+                    }}
+                  >
+                    {r.placeholder}
+                  </span>
+                  <span style={{ display: 'block' }}>{r.filename}.md</span>
+                  <span style={{ display: 'block' }}>
+                    <StatusBadge theme={theme} status={r.status} />
+                  </span>
+                </button>
               </div>
             )
           })}
         </div>
+        <div style={{ flex: '1 1 400px', minWidth: 0 }}>
+          {activePlaceholder && (
+            <IncludeEditor
+              key={activePlaceholder}
+              theme={theme}
+              agentId={agentId}
+              placeholder={activePlaceholder}
+              onChanged={onChanged}
+            />
+          )}
+        </div>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {activePlaceholder && (
-          <IncludeEditor
-            key={activePlaceholder}
-            theme={theme}
-            hue={hue}
-            agentId={agentId}
-            placeholder={activePlaceholder}
-            onChanged={onChanged}
-          />
-        )}
-      </div>
-    </div>
+    </JournalRow>
   )
 }
 
-function StatusBadge({
-  theme,
-  hue,
-  status,
-}: {
-  theme: Theme
-  hue: string
-  status: IncludeStatus
-}) {
-  const { label, color } = labelFor(status, theme, hue)
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        padding: '1px 6px',
-        borderRadius: 3,
-        fontSize: 10,
-        color,
-        border: `1px solid ${color}`,
-        letterSpacing: 0.3,
-      }}
-    >
-      {label}
-    </span>
-  )
+/** Where an include resolves to, as plain text. Only a missing file is flagged. */
+function StatusBadge({ theme, status }: { theme: Theme; status: IncludeStatus }) {
+  const { label, color } = labelFor(status, theme)
+  return <span style={{ fontSize: 12, color }}>{label}</span>
 }
 
-function labelFor(status: IncludeStatus, theme: Theme, hue: string): { label: string; color: string } {
+function labelFor(status: IncludeStatus, theme: Theme): { label: string; color: string } {
   switch (status) {
     case 'found_local':
-      return { label: 'local', color: hue }
+      return { label: 'local', color: theme.textDisabled }
     case 'found_shared':
-      return { label: 'shared', color: '#5eead4' } // cyan-ish, distinct from agent hue
+      return { label: 'shared', color: theme.textDisabled }
     case 'found_local_example':
     case 'found_shared_example':
-      return { label: 'example', color: theme.textSecondary }
+      return { label: 'example', color: theme.textDisabled }
     case 'missing':
       return { label: 'missing', color: theme.error }
   }
@@ -198,13 +172,11 @@ function labelFor(status: IncludeStatus, theme: Theme, hue: string): { label: st
 
 function IncludeEditor({
   theme,
-  hue,
   agentId,
   placeholder,
   onChanged,
 }: {
   theme: Theme
-  hue: string
   agentId: string
   placeholder: string
   onChanged: () => void
@@ -321,85 +293,51 @@ function IncludeEditor({
   const last5 = useMemo(() => snapshots.slice(0, 5), [snapshots])
 
   if (!data && !error) {
-    return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.textDisabled,
-        }}
-      >
-        loading include…
-      </div>
-    )
+    return <div style={noteStyle(theme.textDisabled)}>loading include…</div>
   }
   if (!data) {
-    return (
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
-          color: theme.error,
-        }}
-      >
-        failed to load: {error}
-      </div>
-    )
+    return <div style={noteStyle(theme.error)}>failed to load: {error}</div>
   }
+
+  const canSave = dirty && status !== 'saving'
 
   return (
     <div>
       {/* Header — path + status + affects_agents hint */}
       <div
         style={{
+          ...noteStyle(theme.textSecondary),
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: 10,
-          marginBottom: 6,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
+          marginBottom: 10,
         }}
       >
-        <span data-testid="include-path" style={{ color: theme.textDisabled }}>
+        <span
+          data-testid="include-path"
+          style={{ color: theme.textDisabled, overflowWrap: 'anywhere' }}
+        >
           {data.path ?? '(unresolved)'}
         </span>
         <span style={{ flex: 1 }} />
-        {status === 'saved' && <span style={{ color: hue }}>saved ✓</span>}
+        {status === 'saved' && <span>saved ✓</span>}
         {status === 'error' && <span style={{ color: theme.error }}>error: {error}</span>}
         {dirty && !isExampleOrMissing && (
-          <button
-            onClick={() => setContent(original)}
-            style={revertBtnStyle(theme)}
-          >
+          <button onClick={() => setContent(original)} style={secondaryButton(theme)}>
             revert
           </button>
         )}
         {!isExampleOrMissing && (
-          <button
-            onClick={onSaveClick}
-            disabled={!dirty || status === 'saving'}
-            style={saveBtnStyle(theme, hue, dirty, status === 'saving')}
-          >
+          <button onClick={onSaveClick} disabled={!canSave} style={primaryButton(theme, canSave)}>
             {status === 'saving' ? 'saving…' : 'save'}
           </button>
         )}
       </div>
 
-      {/* Shared-file warning bar */}
+      {/* Shared-file warning */}
       {isShared && data.affects_agents.length > 0 && (
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textSecondary,
-            background: theme.surface2,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-            padding: '6px 10px',
-            marginBottom: 10,
-          }}
-        >
+        <div style={{ ...noteStyle(theme.textPrimary), marginBottom: 10 }}>
           editing this shared file also affects: {data.affects_agents.join(', ')}
         </div>
       )}
@@ -408,25 +346,20 @@ function IncludeEditor({
       {isExampleOrMissing && (
         <div
           style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textSecondary,
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-            padding: '10px 12px',
-            marginBottom: 10,
+            ...noteStyle(theme.textSecondary),
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
             gap: 12,
+            marginBottom: 10,
           }}
         >
-          <span style={{ flex: 1 }}>
+          <span style={{ flex: '1 1 260px' }}>
             {data.status === 'missing'
               ? 'no file backs this include — promote to create a local override.'
               : 'this resolves to a starter template — promote to make a local copy you can edit.'}
           </span>
-          <button onClick={promote} style={promoteBtnStyle(theme, hue)}>
+          <button onClick={promote} style={primaryButton(theme)}>
             promote to local
           </button>
         </div>
@@ -438,43 +371,19 @@ function IncludeEditor({
         onChange={(e) => setContent(e.target.value)}
         spellCheck={false}
         rows={22}
+        aria-label={`${data.filename}.md`}
         style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 13,
-          lineHeight: 1.55,
-          padding: 14,
+          ...fieldStyle(theme, dirty && !isExampleOrMissing),
           color: isExampleOrMissing ? theme.textDisabled : theme.textPrimary,
-          background: theme.surface1,
-          border: `1px solid ${dirty && !isExampleOrMissing ? hue : theme.border}`,
-          borderRadius: 6,
-          resize: 'vertical',
-          outline: 'none',
         }}
       />
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 10,
-          color: theme.textDisabled,
-          marginTop: 6,
-        }}
-      >
+      <div style={{ ...noteStyle(theme.textDisabled), fontSize: 12, marginTop: 8 }}>
         changes take effect on the next session · {content.length.toLocaleString()} chars
       </div>
 
-      {/* Snapshots strip */}
-      <div style={{ marginTop: 18 }}>
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 10,
-            color: theme.textSecondary,
-            marginBottom: 6,
-            letterSpacing: 0.3,
-          }}
-        >
+      {/* Snapshots */}
+      <div style={{ marginTop: 22 }}>
+        <div style={{ ...noteStyle(theme.textSecondary), marginBottom: 6 }}>
           recent snapshots
           {isShared && data.affects_agents.length > 0 && (
             <span style={{ color: theme.textDisabled }}>
@@ -483,53 +392,28 @@ function IncludeEditor({
           )}
         </div>
         {last5.length === 0 ? (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.textDisabled,
-            }}
-          >
+          <div style={noteStyle(theme.textDisabled)}>
             no snapshots yet · save an edit to start a history
           </div>
         ) : (
-          <div
-            style={{
-              background: theme.surface1,
-              border: `1px solid ${theme.border}`,
-              borderRadius: 4,
-              overflow: 'hidden',
-            }}
-          >
-            {last5.map((s, i) => (
+          <div>
+            {last5.map((s) => (
               <div
                 key={s.id}
                 style={{
-                  padding: '6px 10px',
-                  borderTop: i === 0 ? 'none' : `1px solid ${theme.border}`,
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
+                  ...noteStyle(theme.textSecondary),
+                  padding: '4px 0',
                   display: 'flex',
-                  gap: 10,
+                  flexWrap: 'wrap',
+                  gap: '4px 10px',
                   alignItems: 'center',
                 }}
               >
                 <span style={{ color: theme.textPrimary }}>{formatTs(s.timestamp)}</span>
-                <span style={{ color: kindColor(s.kind, theme, hue) }}>[{s.kind}]</span>
+                <span>[{s.kind}]</span>
                 <span style={{ color: theme.textDisabled }}>{s.bytes}b</span>
                 <span style={{ flex: 1 }} />
-                <button
-                  onClick={() => restore(s.id)}
-                  style={{
-                    all: 'unset',
-                    cursor: 'pointer',
-                    padding: '3px 9px',
-                    borderRadius: 3,
-                    border: `1px solid ${theme.border}`,
-                    color: theme.textSecondary,
-                    fontSize: 10,
-                  }}
-                >
+                <button onClick={() => restore(s.id)} style={secondaryButton(theme, true)}>
                   restore
                 </button>
               </div>
@@ -542,7 +426,6 @@ function IncludeEditor({
       {confirming && (
         <ConfirmModal
           theme={theme}
-          hue={hue}
           affects={data.affects_agents}
           filename={`${data.filename}.md`}
           onCancel={() => setConfirming(false)}
@@ -555,14 +438,12 @@ function IncludeEditor({
 
 function ConfirmModal({
   theme,
-  hue,
   affects,
   filename,
   onCancel,
   onConfirm,
 }: {
   theme: Theme
-  hue: string
   affects: string[]
   filename: string
   onCancel: () => void
@@ -578,93 +459,56 @@ function ConfirmModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 16,
         zIndex: 1000,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         data-testid="shared-confirm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shared-confirm-title"
         style={{
           background: theme.surface1,
-          border: `1px solid ${theme.border}`,
+          border: `1px solid ${theme.borderStrong}`,
           borderRadius: 6,
-          padding: '20px 22px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
+          padding: '22px 24px',
           maxWidth: 480,
-          fontFamily: JARVIS_FONTS.mono,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary, marginBottom: 8 }}>
+        <h2
+          id="shared-confirm-title"
+          style={{
+            margin: '0 0 8px',
+            fontFamily: JARVIS_FONTS.serif,
+            fontSize: 18,
+            fontWeight: 600,
+            lineHeight: 1.3,
+            color: theme.textPrimary,
+          }}
+        >
           edit shared file?
-        </div>
-        <div style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 1.55, marginBottom: 14 }}>
-          <code style={{ color: theme.textPrimary }}>{filename}</code> is shared. This save also
-          affects: <strong style={{ color: theme.textPrimary }}>{affects.join(', ')}</strong>.
-        </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={revertBtnStyle(theme)}>
+        </h2>
+        <p style={{ margin: '0 0 18px', ...readStyle(theme, 16), color: theme.textSecondary }}>
+          <code style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 13, color: theme.textPrimary }}>
+            {filename}
+          </code>{' '}
+          is shared. This save also affects:{' '}
+          <strong style={{ color: theme.textPrimary }}>{affects.join(', ')}</strong>.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={secondaryButton(theme)}>
             cancel
           </button>
-          <button onClick={onConfirm} style={saveBtnStyle(theme, hue, true, false)}>
+          <button onClick={onConfirm} style={primaryButton(theme)}>
             edit shared file
           </button>
         </div>
       </div>
     </div>
   )
-}
-
-function revertBtnStyle(theme: Theme): React.CSSProperties {
-  return {
-    all: 'unset',
-    cursor: 'pointer',
-    padding: '6px 12px',
-    borderRadius: 4,
-    border: `1px solid ${theme.border}`,
-    color: theme.textSecondary,
-    fontFamily: JARVIS_FONTS.mono,
-    fontSize: 11,
-  }
-}
-
-function saveBtnStyle(
-  theme: Theme,
-  hue: string,
-  dirty: boolean,
-  saving: boolean,
-): React.CSSProperties {
-  return {
-    all: 'unset',
-    cursor: dirty && !saving ? 'pointer' : 'not-allowed',
-    padding: '6px 14px',
-    borderRadius: 4,
-    background: dirty ? hue : theme.surface2,
-    color: dirty ? theme.surface0 : theme.textDisabled,
-    fontFamily: JARVIS_FONTS.mono,
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: 0.3,
-  }
-}
-
-function promoteBtnStyle(theme: Theme, hue: string): React.CSSProperties {
-  return {
-    all: 'unset',
-    cursor: 'pointer',
-    padding: '5px 12px',
-    borderRadius: 4,
-    background: hue,
-    color: theme.surface0,
-    fontFamily: JARVIS_FONTS.mono,
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: 0.3,
-  }
-}
-
-function kindColor(kind: PromptSnapshot['kind'], theme: Theme, hue: string): string {
-  if (kind === 'pre_first_save') return theme.textDisabled
-  if (kind === 'pre_restore') return theme.error
-  return hue
 }
 
 function formatTs(ts: string): string {
