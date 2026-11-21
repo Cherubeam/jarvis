@@ -131,25 +131,28 @@ export function HistoryView({
     >
       <div
         style={{
-          padding: '20px 28px 14px',
+          flexShrink: 0,
+          padding: '20px 28px 16px',
           borderBottom: `1px solid ${theme.border}`,
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'baseline',
-          gap: 14,
+          gap: '4px 18px',
         }}
       >
-        <div
+        <h1
           style={{
+            margin: 0,
             fontFamily: JARVIS_FONTS.serif,
-            fontSize: 20,
+            fontSize: 32,
             fontWeight: 600,
+            lineHeight: 1.2,
             color: theme.textPrimary,
-            letterSpacing: -0.2,
           }}
         >
           History
-        </div>
-        <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 11, color: theme.textSecondary }}>
+        </h1>
+        <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textSecondary }}>
           {loading ? (
             <span style={{ color: theme.textDisabled }}>loading…</span>
           ) : error ? (
@@ -157,11 +160,11 @@ export function HistoryView({
           ) : (
             <>
               {filtered.length} of {facets.total}
-              <span style={{ color: theme.textDisabled }}>
+              <span style={{ color: theme.stats }}>
                 {' '}
                 · {totalMessages} msg · {totalTokens.toLocaleString()} tok ·{' '}
               </span>
-              <span style={{ color: theme.cost }}>${totalCost.toFixed(4)}</span>
+              <span>${totalCost.toFixed(4)}</span>
             </>
           )}
         </div>
@@ -169,7 +172,7 @@ export function HistoryView({
           style={{
             marginLeft: 'auto',
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 10.5,
+            fontSize: 12,
             color: theme.textDisabled,
           }}
         >
@@ -177,6 +180,7 @@ export function HistoryView({
         </div>
       </div>
 
+      {/* Two panes on one surface, told apart by a single rule. */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <div
           style={{
@@ -185,7 +189,6 @@ export function HistoryView({
             display: 'flex',
             flexDirection: 'column',
             borderRight: `1px solid ${theme.border}`,
-            background: theme.surface1,
           }}
         >
           <ConvFilters

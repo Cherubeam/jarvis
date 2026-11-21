@@ -1,5 +1,9 @@
 // OutcomesView — list pending outcome recommendations and score them.
 // Backed by /api/outcomes/pending + POST /api/outcomes/{file_id}/review.
+//
+// Laid out like the chat stream (`.jr-row` in index.html): short labels in the
+// gutter, the recommendation and its review form in the reading column, the
+// dates as a margin note. Items are separated by a rule, not boxed.
 
 import { useEffect, useState } from 'react'
 
@@ -18,6 +22,19 @@ const VERDICT_LABELS: Record<OutcomeVerdict, string> = {
 }
 
 const VERDICTS: OutcomeVerdict[] = ['happened', 'didnt', 'partial']
+
+/** Reset for a real <button> that keeps the global focus ring (`all: unset`
+ *  as an inline style would switch it off). */
+const buttonReset: React.CSSProperties = {
+  appearance: 'none',
+  margin: 0,
+  padding: 0,
+  border: 0,
+  background: 'transparent',
+  font: 'inherit',
+  color: 'inherit',
+  cursor: 'pointer',
+}
 
 export function OutcomesView({
   theme,
@@ -48,26 +65,31 @@ export function OutcomesView({
   }
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', minWidth: 0, background: theme.surface0 }}>
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 48px 64px' }}>
-        <div style={{ marginBottom: 24 }}>
-          <div
+    <div
+      className="jr-pane"
+      style={{ flex: 1, overflow: 'auto', minWidth: 0, background: theme.surface0, paddingBottom: 64 }}
+    >
+      <div className="jr-row" style={{ paddingTop: 36, paddingBottom: 18 }}>
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0 }}>
+          <h1
             style={{
+              margin: 0,
               fontFamily: JARVIS_FONTS.serif,
-              fontSize: 24,
+              fontSize: 30,
               fontWeight: 600,
+              lineHeight: 1.2,
               color: theme.textPrimary,
-              letterSpacing: -0.3,
             }}
           >
             Outcomes
-          </div>
+          </h1>
           <div
             style={{
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
+              fontSize: 13,
               color: theme.textSecondary,
-              marginTop: 4,
+              marginTop: 8,
             }}
           >
             {items === null
@@ -75,44 +97,52 @@ export function OutcomesView({
               : `${items.length} item(s) due for review · data/outcomes/`}
           </div>
         </div>
+      </div>
 
-        {loadError && (
+      {loadError && (
+        <div className="jr-row">
+          <div className="jr-gutter" />
           <div
             style={{
+              minWidth: 0,
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
+              fontSize: 13,
               color: theme.error,
-              marginBottom: 12,
             }}
           >
             failed to load: {loadError}
           </div>
-        )}
+        </div>
+      )}
 
-        {items !== null && items.length === 0 && !loadError && (
+      {items !== null && items.length === 0 && !loadError && (
+        <div className="jr-row">
+          <div className="jr-gutter" />
           <div
             style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
-              padding: '40px 0',
-              textAlign: 'center',
+              minWidth: 0,
+              borderTop: `1px solid ${theme.border}`,
+              paddingTop: 18,
+              fontFamily: theme.read,
+              fontSize: 16,
+              lineHeight: 1.5,
+              color: theme.textSecondary,
             }}
           >
             No items due for review.
           </div>
-        )}
+        </div>
+      )}
 
-        {items?.map((item) => (
-          <OutcomeCard
-            key={item.file_id}
-            theme={theme}
-            accent={accent}
-            item={item}
-            onReviewed={onReviewed}
-          />
-        ))}
-      </div>
+      {items?.map((item) => (
+        <OutcomeCard
+          key={item.file_id}
+          theme={theme}
+          accent={accent}
+          item={item}
+          onReviewed={onReviewed}
+        />
+      ))}
     </div>
   )
 }
@@ -158,180 +188,201 @@ function OutcomeCard({
     }
   }
 
+  const gutterLabel: React.CSSProperties = {
+    fontFamily: JARVIS_FONTS.mono,
+    fontSize: 12,
+    color: theme.textDisabled,
+  }
+
   return (
-    <div
-      style={{
-        border: `1px solid ${theme.border}`,
-        borderRadius: 8,
-        background: theme.surface1,
-        padding: '18px 20px',
-        marginBottom: 14,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.serif,
-          fontSize: 15,
-          fontWeight: 600,
-          color: theme.textPrimary,
-          letterSpacing: -0.1,
-          marginBottom: 4,
-        }}
-      >
-        {item.what || '(no title)'}
-      </div>
-      {item.why && (
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.serif,
-            fontSize: 13,
-            color: theme.textSecondary,
-            marginBottom: 8,
-            lineHeight: 1.4,
-          }}
-        >
-          {item.why}
-        </div>
-      )}
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textDisabled,
-          marginBottom: 12,
-        }}
-      >
-        {item.created_at && <span>created {item.created_at.slice(0, 10)}</span>}
-        {item.created_at && <span style={{ margin: '0 6px' }}>·</span>}
-        <span>revisit {item.revisit_at}</span>
-      </div>
-      {item.success_looks_like && (
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textSecondary,
-            marginBottom: 14,
-            paddingLeft: 8,
-            borderLeft: `2px solid ${theme.border}`,
-          }}
-        >
-          success: {item.success_looks_like}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {VERDICTS.map((v) => {
-          const active = verdict === v
-          return (
-            <button
-              key={v}
-              onClick={() => setVerdict(v)}
-              style={{
-                all: 'unset',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
-                border: active ? `1px solid ${accent}` : `1px solid ${theme.border}`,
-                background: active ? theme.surface2 : 'transparent',
-                color: active ? accent : theme.textSecondary,
-              }}
-            >
-              {VERDICT_LABELS[v]}
-            </button>
-          )
-        })}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div
-          style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textDisabled,
-            minWidth: 70,
-          }}
-        >
-          quality:
-        </div>
-        {[1, 2, 3, 4, 5].map((n) => {
-          const active = n <= quality
-          return (
-            <button
-              key={n}
-              onClick={() => setQuality(n)}
-              title={`${n} star${n > 1 ? 's' : ''}`}
-              style={{
-                all: 'unset',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: 4,
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 12,
-                color: active ? accent : theme.textDisabled,
-                border: `1px solid ${active ? accent : theme.border}`,
-                minWidth: 14,
-                textAlign: 'center',
-              }}
-            >
-              {n}
-            </button>
-          )
-        })}
-      </div>
-
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Retrospective note — what actually happened, why…"
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          minHeight: 72,
-          padding: 10,
-          fontFamily: JARVIS_FONTS.serif,
-          fontSize: 13,
-          color: theme.textPrimary,
-          background: theme.surface0,
-          border: `1px solid ${theme.border}`,
-          borderRadius: 6,
-          resize: 'vertical',
-          marginBottom: 12,
-        }}
-      />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button
-          disabled={!canSave}
-          onClick={save}
-          style={{
-            all: 'unset',
-            cursor: canSave ? 'pointer' : 'not-allowed',
-            padding: '7px 14px',
-            borderRadius: 6,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: canSave ? theme.surface0 : theme.textDisabled,
-            background: canSave ? accent : theme.surface2,
-            border: `1px solid ${canSave ? accent : theme.border}`,
-          }}
-        >
-          {status.kind === 'saving' ? 'saving…' : 'save review'}
-        </button>
-        {status.kind === 'error' && (
-          <span
+    <article style={{ marginBottom: 22 }}>
+      <div className="jr-row">
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0, borderTop: `1px solid ${theme.border}`, paddingTop: 18 }}>
+          <h2
             style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.error,
+              margin: 0,
+              fontFamily: JARVIS_FONTS.serif,
+              fontSize: 20,
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: theme.textPrimary,
             }}
           >
-            {status.message}
-          </span>
-        )}
+            {item.what || '(no title)'}
+          </h2>
+          {item.why && (
+            <div
+              style={{
+                fontFamily: theme.read,
+                fontSize: 16,
+                color: theme.textSecondary,
+                marginTop: 6,
+                lineHeight: 1.5,
+              }}
+            >
+              {item.why}
+            </div>
+          )}
+        </div>
+        <div
+          className="jr-margin"
+          style={{
+            minWidth: 0,
+            paddingTop: 18,
+            fontFamily: JARVIS_FONTS.mono,
+            fontSize: 12,
+            lineHeight: 1.6,
+            color: theme.stats,
+          }}
+        >
+          {item.created_at && <div>created {item.created_at.slice(0, 10)}</div>}
+          <div>revisit {item.revisit_at}</div>
+        </div>
       </div>
-    </div>
+
+      {item.success_looks_like && (
+        <div className="jr-row dense">
+          <div className="jr-gutter" style={gutterLabel}>
+            success:
+          </div>
+          <div
+            style={{
+              minWidth: 0,
+              fontFamily: theme.read,
+              fontSize: 15,
+              lineHeight: 1.5,
+              color: theme.textSecondary,
+            }}
+          >
+            {item.success_looks_like}
+          </div>
+        </div>
+      )}
+
+      <div className="jr-row dense">
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: '4px 20px' }}>
+          {VERDICTS.map((v) => {
+            const active = verdict === v
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVerdict(v)}
+                aria-pressed={active}
+                style={{
+                  ...buttonReset,
+                  padding: '6px 0',
+                  fontFamily: JARVIS_FONTS.mono,
+                  fontSize: 13,
+                  color: active ? theme.textPrimary : theme.textSecondary,
+                  textDecoration: active ? 'underline' : 'none',
+                  textUnderlineOffset: 4,
+                }}
+              >
+                {VERDICT_LABELS[v]}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="jr-row dense">
+        <div className="jr-gutter" style={gutterLabel}>
+          quality:
+        </div>
+        <div style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 4 }}>
+          {[1, 2, 3, 4, 5].map((n) => {
+            const active = n <= quality
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setQuality(n)}
+                title={`${n} star${n > 1 ? 's' : ''}`}
+                aria-pressed={n === quality}
+                style={{
+                  ...buttonReset,
+                  padding: '5px 12px',
+                  borderRadius: 4,
+                  fontFamily: JARVIS_FONTS.mono,
+                  fontSize: 13,
+                  color: active ? theme.textPrimary : theme.textSecondary,
+                  background: active ? theme.surface3 : 'transparent',
+                  textAlign: 'center',
+                }}
+              >
+                {n}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="jr-row dense">
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0 }}>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Retrospective note — what actually happened, why…"
+            aria-label="Retrospective note"
+            style={{
+              display: 'block',
+              width: '100%',
+              boxSizing: 'border-box',
+              minHeight: 76,
+              padding: '8px 12px',
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: theme.textPrimary,
+              background: theme.surface2,
+              border: `1px solid ${theme.border}`,
+              borderRadius: 4,
+              resize: 'vertical',
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="jr-row dense">
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={save}
+            style={{
+              ...buttonReset,
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              padding: '9px 18px',
+              borderRadius: 4,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 13,
+              fontWeight: 600,
+              color: canSave ? theme.surface0 : theme.textDisabled,
+              background: canSave ? theme.textPrimary : theme.surface3,
+            }}
+          >
+            {status.kind === 'saving' ? 'saving…' : 'save review'}
+          </button>
+          {status.kind === 'error' && (
+            <span
+              style={{
+                minWidth: 0,
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 12,
+                color: theme.error,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {status.message}
+            </span>
+          )}
+        </div>
+      </div>
+    </article>
   )
 }

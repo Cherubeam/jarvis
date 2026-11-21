@@ -1,4 +1,5 @@
-// SettingsView — 2-pane settings editor. Left nav + right panel + sticky footer.
+// SettingsView — 2-pane settings editor. A list of sections on the left, one
+// rule, then the form as a single reading-width column with a sticky footer.
 //
 // Fetches GET /api/settings + /api/settings/schema; holds an `original` snapshot
 // and a `working` copy of the settings dict. Panels edit `working` through
@@ -23,7 +24,7 @@ import {
 import { SettingsNav } from '../components/settings/SettingsNav'
 import { SCALAR_SECTIONS, SECTION_SUBTITLES } from '../components/settings/scalarSections'
 import { SECTIONS, type SectionKey } from '../components/settings/sections'
-import { JARVIS_FONTS, type Theme } from '../lib/tokens'
+import { JARVIS_FONTS, JARVIS_MEASURE, type Theme } from '../lib/tokens'
 import type {
   JsonSchemaNode,
   PutSettingsResult,
@@ -161,8 +162,9 @@ export function SettingsView({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            padding: 28,
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
+            fontSize: 13,
             color: theme.error,
           }}
         >
@@ -177,8 +179,9 @@ export function SettingsView({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            padding: 28,
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
+            fontSize: 13,
             color: theme.textDisabled,
           }}
         >
@@ -208,23 +211,25 @@ export function SettingsView({
               style={{
                 flex: 1,
                 overflow: 'auto',
-                padding: '28px 32px 40px',
+                padding: '28px 40px 48px',
               }}
             >
-              <PanelHeader
-                theme={theme}
-                title={SECTIONS.find((s) => s.key === active)?.label ?? active}
-                subtitle={SECTION_SUBTITLES[active]}
-              />
-              {renderActivePanel({
-                active,
-                theme,
-                accent,
-                working,
-                schema,
-                errors,
-                setWorking,
-              })}
+              <div style={{ maxWidth: JARVIS_MEASURE.column }}>
+                <PanelHeader
+                  theme={theme}
+                  title={SECTIONS.find((s) => s.key === active)?.label ?? active}
+                  subtitle={SECTION_SUBTITLES[active]}
+                />
+                {renderActivePanel({
+                  active,
+                  theme,
+                  accent,
+                  working,
+                  schema,
+                  errors,
+                  setWorking,
+                })}
+              </div>
             </div>
             <SettingsFooter
               theme={theme}

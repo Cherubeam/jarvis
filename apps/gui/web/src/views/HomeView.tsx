@@ -1,9 +1,11 @@
-// HomeView — Dashboard reachable from the left-rail's Home slot.
-// Layout: 920px centered column, sections: greeting · tasks+cost row ·
-// resume · recent · quick-start. Ported from JARVIS GUI.html 1475-1737.
+// HomeView — the page behind the Home link, laid out as a journal page:
+// greeting (weekly cost in the margin) · morning briefing · tasks · resume ·
+// recent · quick-start. Each section is one row of the journal grid
+// (`.jr-row` in index.html): gutter, reading column, margin note.
 
 import { useEffect, useMemo, useState } from 'react'
 
+import { Row } from '../components/events/Row'
 import { BriefingCard } from '../components/home/BriefingCard'
 import { CostCard } from '../components/home/CostCard'
 import { GreetingHeader } from '../components/home/GreetingHeader'
@@ -74,26 +76,26 @@ export function HomeView({
   }, [data, session])
 
   const sectionHeader = (label: string) => (
-    <div
+    <h2
       style={{
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 10,
-        letterSpacing: 1.4,
-        color: theme.textDisabled,
-        textTransform: 'uppercase',
-        marginBottom: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
+        margin: '0 0 10px',
+        fontFamily: JARVIS_FONTS.serif,
+        fontSize: 18,
+        fontWeight: 600,
+        lineHeight: 1.3,
+        color: theme.textPrimary,
       }}
     >
-      <span>{label}</span>
-      <span style={{ flex: 1, height: 1, background: theme.border }} />
-    </div>
+      {label}
+    </h2>
   )
+
+  // Whitespace, not a box, sets one section off from the next.
+  const sectionGap = { paddingTop: 16 }
 
   return (
     <div
+      className="jr-pane"
       style={{
         flex: 1,
         overflow: 'auto',
@@ -101,90 +103,97 @@ export function HomeView({
         background: theme.surface0,
       }}
     >
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '40px 48px 64px' }}>
+      <div style={{ paddingTop: 26, paddingBottom: 64 }}>
         {loading && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
-            }}
-          >
-            loading…
-          </div>
+          <Row theme={theme} label="">
+            <div
+              style={{
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 13,
+                color: theme.textDisabled,
+              }}
+            >
+              loading…
+            </div>
+          </Row>
         )}
         {error && (
-          <div
-            style={{
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.error,
-              marginBottom: 20,
-            }}
-          >
-            failed to load home: {error}
-          </div>
+          <Row theme={theme} label="">
+            <div
+              style={{
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 13,
+                color: theme.error,
+              }}
+            >
+              failed to load home: {error}
+            </div>
+          </Row>
         )}
         {data && (
           <>
-            <GreetingHeader
+            <Row
               theme={theme}
-              greeting={data.greeting}
-              dayLabel={data.today.day_label}
-            />
+              label=""
+              margin={
+                <CostCard
+                  theme={theme}
+                  days={data.cost_week.days}
+                  total={data.cost_week.total}
+                  conversationCount={data.cost_week.conversation_count}
+                />
+              }
+            >
+              <GreetingHeader
+                theme={theme}
+                greeting={data.greeting}
+                dayLabel={data.today.day_label}
+              />
+            </Row>
 
             <BriefingCard theme={theme} briefing={data.briefing} today={data.today.date} />
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1.6fr 1fr',
-                gap: 20,
-                marginBottom: 32,
-              }}
-            >
-              <TasksPanel theme={theme} tasks={data.tasks} onOpenHistory={onOpenHistory} />
-              <CostCard
-                theme={theme}
-                days={data.cost_week.days}
-                total={data.cost_week.total}
-                conversationCount={data.cost_week.conversation_count}
-              />
-            </div>
+            <TasksPanel theme={theme} tasks={data.tasks} onOpenHistory={onOpenHistory} />
 
-            <div style={{ marginBottom: 28 }}>
-              {sectionHeader('Continue where you left off')}
-              <ResumeCard
-                theme={theme}
-                accent={accent}
-                resume={resume}
-                onResume={() => {
-                  if (resume) onResume(resume.id)
-                  else onStartChat(null)
-                }}
-              />
-            </div>
+            <Row theme={theme} label="">
+              <div style={sectionGap}>
+                {sectionHeader('Continue where you left off')}
+                <ResumeCard
+                  theme={theme}
+                  accent={accent}
+                  resume={resume}
+                  onResume={() => {
+                    if (resume) onResume(resume.id)
+                    else onStartChat(null)
+                  }}
+                />
+              </div>
+            </Row>
 
-            <div style={{ marginBottom: 28 }}>
-              {sectionHeader('Recent conversations')}
-              <RecentCards
-                theme={theme}
-                accent={accent}
-                items={recent}
-                onOpenHistory={onOpenHistory}
-                onOpenAll={onOpenHistoryRoot}
-              />
-            </div>
+            <Row theme={theme} label="">
+              <div style={sectionGap}>
+                {sectionHeader('Recent conversations')}
+                <RecentCards
+                  theme={theme}
+                  accent={accent}
+                  items={recent}
+                  onOpenHistory={onOpenHistory}
+                  onOpenAll={onOpenHistoryRoot}
+                />
+              </div>
+            </Row>
 
-            <div>
-              {sectionHeader('Quick start')}
-              <QuickStart
-                theme={theme}
-                accent={accent}
-                items={data.quick_start}
-                onStartChat={onStartChat}
-              />
-            </div>
+            <Row theme={theme} label="">
+              <div style={sectionGap}>
+                {sectionHeader('Quick start')}
+                <QuickStart
+                  theme={theme}
+                  accent={accent}
+                  items={data.quick_start}
+                  onStartChat={onStartChat}
+                />
+              </div>
+            </Row>
           </>
         )}
       </div>

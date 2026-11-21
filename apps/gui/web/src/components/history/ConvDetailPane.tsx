@@ -1,10 +1,9 @@
-// ConvDetailPane — right pane with 5-stat strip (incl. Handoffs), Session
-// metadata, Tools chips, Preview. Resume/Export stubbed. Ported from
-// JARVIS GUI.html 3288-3479.
+// ConvDetailPane — right pane, laid out as a journal page: title and actions
+// in the reading column, the five counts (incl. Handoffs) as a margin note,
+// then Session metadata, Tools used and the Preview. Export is stubbed.
 
 import { Fragment, useEffect, useState } from 'react'
 
-import { hueFor } from '../../lib/agentHues'
 import { speakerLabel } from '../../lib/speakerLabel'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { ConversationDetail, ConversationSummary } from '../../lib/types'
@@ -107,150 +106,126 @@ export function ConvDetailPane({
 
   const c = conversation
   const primaryAgent = c.agents[0] || 'JARVIS'
-  const hue = hueFor(primaryAgent, accent)
+  const serif = theme.read === JARVIS_FONTS.serif
 
+  const note = { fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textDisabled }
+
+  // A section starts with a serif heading over a rule, in the reading column.
   const sectionHeader = (label: string) => (
-    <div
-      style={{
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 10,
-        letterSpacing: 1.4,
-        color: theme.textDisabled,
-        textTransform: 'uppercase',
-        marginTop: 22,
-        marginBottom: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ flex: 1, height: 1, background: theme.border }} />
-    </div>
-  )
-
-  const stat = (label: string, value: React.ReactNode, color?: string, isLast = false) => (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 0,
-        padding: '10px 12px',
-        borderRight: isLast ? 'none' : `1px solid ${theme.border}`,
-      }}
-    >
-      <div
+    <div className="jr-row" style={{ paddingTop: 22, paddingBottom: 4 }}>
+      <div className="jr-gutter" />
+      <h3
         style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 9.5,
-          letterSpacing: 1.3,
-          color: theme.textDisabled,
-          textTransform: 'uppercase',
-          marginBottom: 4,
+          margin: 0,
+          paddingBottom: 6,
+          borderBottom: `1px solid ${theme.border}`,
+          fontFamily: JARVIS_FONTS.serif,
+          fontSize: 18,
+          fontWeight: 600,
+          lineHeight: 1.3,
+          color: theme.textPrimary,
         }}
       >
         {label}
-      </div>
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 15,
-          fontWeight: 600,
-          color: color || theme.textPrimary,
-        }}
-      >
-        {value}
-      </div>
+      </h3>
     </div>
+  )
+
+  // One line of a section: nothing in the gutter, the content in the column.
+  const line = (children: React.ReactNode) => (
+    <div className="jr-row dense">
+      <div className="jr-gutter" />
+      <div style={{ minWidth: 0 }}>{children}</div>
+    </div>
+  )
+
+  const stat = (label: string, value: React.ReactNode) => (
+    <>
+      <dt>{label}</dt>
+      <dd style={{ margin: 0, color: theme.textSecondary }}>{value}</dd>
+    </>
   )
 
   return (
     <div
+      className="jr-pane"
       style={{
         flex: 1,
         minWidth: 0,
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
+        overflowY: 'auto',
+        paddingTop: 18,
+        paddingBottom: 48,
+        boxSizing: 'border-box',
       }}
     >
-      <div
-        style={{
-          maxWidth: 720,
-          margin: '0 auto',
-          padding: '28px 36px 48px',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 10 }}>
+      <div className="jr-row">
+        <div className="jr-gutter" />
+        <div style={{ minWidth: 0 }}>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: JARVIS_FONTS.serif,
+              fontSize: 22,
+              fontWeight: 600,
+              color: theme.textPrimary,
+              lineHeight: 1.25,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {c.title}
+          </h2>
           <div
             style={{
-              width: 4,
-              height: 40,
-              background: hue,
-              borderRadius: 2,
-              flexShrink: 0,
+              fontFamily: JARVIS_FONTS.mono,
+              fontSize: 12,
+              color: theme.textSecondary,
+              marginTop: 8,
+              display: 'flex',
+              gap: '0 8px',
+              flexWrap: 'wrap',
+              alignItems: 'baseline',
             }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontFamily: JARVIS_FONTS.serif,
-                fontSize: 20,
-                fontWeight: 600,
-                color: theme.textPrimary,
-                letterSpacing: -0.2,
-                lineHeight: 1.25,
-              }}
-            >
-              {c.title}
-            </div>
-            <div
-              style={{
-                fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
-                color: theme.textSecondary,
-                marginTop: 6,
-                display: 'flex',
-                gap: 8,
-                flexWrap: 'wrap',
-                alignItems: 'center',
-              }}
-            >
-              <span>{c.date}</span>
-              <span>·</span>
-              {c.agents.length > 0 ? (
-                <>
-                  <span style={{ color: hue }}>{speakerLabel(primaryAgent)}</span>
-                  {c.agents.slice(1).map((a) => (
-                    <Fragment key={a}>
-                      <span style={{ color: theme.textDisabled }}>+</span>
-                      <span style={{ color: hueFor(a, accent) }}>{speakerLabel(a)}</span>
-                    </Fragment>
-                  ))}
-                </>
-              ) : (
-                <span style={{ color: theme.textDisabled }}>no agent</span>
-              )}
-              <span>·</span>
-              <span>{formatDuration(c.duration_ms)}</span>
-            </div>
+          >
+            <span>{c.date}</span>
+            <span>·</span>
+            {c.agents.length > 0 ? (
+              <>
+                <span>{speakerLabel(primaryAgent)}</span>
+                {c.agents.slice(1).map((a) => (
+                  <Fragment key={a}>
+                    <span style={{ color: theme.textDisabled }}>+</span>
+                    <span>{speakerLabel(a)}</span>
+                  </Fragment>
+                ))}
+              </>
+            ) : (
+              <span style={{ color: theme.textDisabled }}>no agent</span>
+            )}
+            <span>·</span>
+            <span>{formatDuration(c.duration_ms)}</span>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 10,
+              marginTop: 16,
+            }}
+          >
             <button
               onClick={() => onResume(c.id)}
               title="Open in chat and continue from this conversation"
               style={{
                 all: 'unset',
                 cursor: 'pointer',
-                padding: '7px 14px',
-                borderRadius: 5,
-                background: accent,
+                padding: '9px 18px',
+                borderRadius: 4,
+                background: theme.textPrimary,
                 color: theme.surface0,
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 0.3,
+                fontSize: 13,
+                fontWeight: 600,
               }}
             >
               resume →
@@ -261,11 +236,11 @@ export function ConvDetailPane({
               style={{
                 all: 'unset',
                 cursor: 'not-allowed',
-                padding: '7px 12px',
-                borderRadius: 5,
+                padding: '8px 18px',
+                borderRadius: 4,
                 border: `1px solid ${theme.border}`,
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
+                fontSize: 13,
                 color: theme.textDisabled,
               }}
             >
@@ -278,11 +253,12 @@ export function ConvDetailPane({
               style={{
                 all: 'unset',
                 cursor: deleting ? 'wait' : 'pointer',
-                padding: '7px 12px',
-                borderRadius: 5,
+                marginLeft: 'auto',
+                padding: '8px 18px',
+                borderRadius: 4,
                 border: `1px solid ${theme.error}`,
                 fontFamily: JARVIS_FONTS.mono,
-                fontSize: 11,
+                fontSize: 13,
                 color: theme.error,
                 opacity: deleting ? 0.5 : 1,
               }}
@@ -290,45 +266,53 @@ export function ConvDetailPane({
               {deleting ? 'deleting…' : 'delete'}
             </button>
           </div>
+          {deleteError && (
+            <div
+              role="alert"
+              style={{
+                marginTop: 10,
+                fontFamily: JARVIS_FONTS.mono,
+                fontSize: 12,
+                color: theme.error,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              delete failed: {deleteError}
+            </div>
+          )}
         </div>
-        {deleteError && (
-          <div
+        {/* The five counts, as a margin note instead of a strip of tiles. */}
+        <div className="jr-margin" style={{ minWidth: 0 }}>
+          <dl
             style={{
-              marginTop: 10,
+              margin: 0,
+              display: 'grid',
+              gridTemplateColumns: 'max-content minmax(0, 1fr)',
+              columnGap: 12,
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.error,
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: theme.stats,
             }}
           >
-            delete failed: {deleteError}
-          </div>
-        )}
-
-        {/* 5-stat strip */}
-        <div
-          style={{
-            display: 'flex',
-            border: `1px solid ${theme.border}`,
-            borderRadius: 6,
-            background: theme.surface1,
-            marginTop: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {stat('Cost', `$${c.cost.toFixed(4)}`, theme.cost)}
-          {stat('Tokens', c.tokens.toLocaleString())}
-          {stat('Messages', c.messages)}
-          {stat('Tools', c.tool_calls)}
-          {stat('Handoffs', c.handoffs, undefined, true)}
+            {stat('Cost', `$${c.cost.toFixed(4)}`)}
+            {stat('Tokens', c.tokens.toLocaleString())}
+            {stat('Messages', c.messages)}
+            {stat('Tools', c.tool_calls)}
+            {stat('Handoffs', c.handoffs)}
+          </dl>
         </div>
+      </div>
 
-        {sectionHeader('Session')}
+      {sectionHeader('Session')}
+      {line(
         <div
           style={{
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
+            fontSize: 13,
             color: theme.textSecondary,
-            lineHeight: 1.8,
+            lineHeight: 1.7,
+            overflowWrap: 'anywhere',
           }}
         >
           <div>
@@ -340,116 +324,100 @@ export function ConvDetailPane({
           </div>
           <div>
             path ·{' '}
-            <span style={{ color: theme.assistant }}>
+            <span style={{ color: theme.textPrimary }}>
               ~/jarvis/data/conversations/{c.date.slice(0, 4)}/{c.id}.json
             </span>
           </div>
-        </div>
+        </div>,
+      )}
 
-        {sectionHeader(`Tools used · ${c.tools.length}`)}
-        {c.tools.length === 0 ? (
-          <div
+      {sectionHeader(`Tools used · ${c.tools.length}`)}
+      {line(
+        c.tools.length === 0 ? (
+          <div style={note}>no tools · pure reasoning session</div>
+        ) : (
+          <ul
             style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '2px 16px',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              color: theme.textDisabled,
+              fontSize: 13,
+              lineHeight: 1.7,
+              color: theme.textSecondary,
             }}
           >
-            no tools · pure reasoning session
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {c.tools.map((t) => (
-              <span
-                key={t}
-                style={{
-                  fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  padding: '4px 9px',
-                  borderRadius: 4,
-                  background: theme.surface2,
-                  color: theme.tool,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
+              <li key={t} style={{ overflowWrap: 'anywhere' }}>
                 {t}
-              </span>
+              </li>
             ))}
-          </div>
-        )}
+          </ul>
+        ),
+      )}
 
-        {sectionHeader('Preview')}
-        {loading && (
-          <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textDisabled }}>
-            loading…
-          </div>
+      {sectionHeader('Preview')}
+      {loading && line(<div style={note}>loading…</div>)}
+      {error &&
+        line(
+          <div style={{ ...note, color: theme.error }}>failed to load: {error}</div>,
         )}
-        {error && (
-          <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.error }}>
-            failed to load: {error}
-          </div>
-        )}
-        {!loading && !error && detail && (
-          detail.preview.length === 0 ? (
-            <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 12, color: theme.textDisabled }}>
-              no preview · hit resume to open the full session
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {detail.preview.map((m, i) => {
-                const isUser = m.role === 'user'
-                const agentHue = isUser ? theme.user : hueFor(m.role, accent)
-                return (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div
-                      style={{
-                        width: 64,
-                        flexShrink: 0,
-                        paddingTop: 2,
-                        fontFamily: JARVIS_FONTS.mono,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: agentHue,
-                        textAlign: 'right',
-                        letterSpacing: 0.2,
-                      }}
-                    >
-                      {isUser ? 'You' : speakerLabel(m.role)}
-                    </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        fontSize: 14,
-                        lineHeight: 1.55,
-                        color: theme.textPrimary,
-                      }}
-                    >
-                      {m.text}
-                    </div>
+      {!loading && !error && detail && (
+        detail.preview.length === 0 ? (
+          line(<div style={note}>no preview · hit resume to open the full session</div>)
+        ) : (
+          <>
+            {detail.preview.map((m, i) => {
+              const isUser = m.role === 'user'
+              return (
+                <div key={i} className="jr-row">
+                  <div
+                    className="jr-gutter"
+                    style={{
+                      fontFamily: JARVIS_FONTS.mono,
+                      fontSize: 12,
+                      color: isUser ? theme.textDisabled : theme.textSecondary,
+                    }}
+                  >
+                    {isUser ? 'You' : speakerLabel(m.role)}
                   </div>
-                )
-              })}
+                  {/* What you typed stays in mono; the answer is set in the reading face. */}
+                  <div
+                    style={{
+                      minWidth: 0,
+                      fontFamily: isUser ? JARVIS_FONTS.mono : theme.read,
+                      fontSize: isUser || !serif ? 14 : 17,
+                      lineHeight: 1.6,
+                      color: theme.textPrimary,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {m.text}
+                  </div>
+                </div>
+              )
+            })}
+            {line(
               <button
                 onClick={() => onResume(c.id)}
                 style={{
                   all: 'unset',
                   cursor: 'pointer',
-                  alignSelf: 'flex-start',
-                  marginTop: 4,
-                  padding: '6px 10px',
-                  borderRadius: 4,
-                  border: `1px dashed ${theme.border}`,
+                  padding: '4px 0',
                   fontFamily: JARVIS_FONTS.mono,
-                  fontSize: 11,
-                  color: theme.textSecondary,
+                  fontSize: 13,
+                  color: accent,
                 }}
               >
                 open full transcript →
-              </button>
-            </div>
-          )
-        )}
-      </div>
+              </button>,
+            )}
+          </>
+        )
+      )}
     </div>
   )
 }

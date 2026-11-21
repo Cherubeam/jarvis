@@ -10,7 +10,11 @@
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-thumb { background: #4A4A4A; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
     ::-webkit-scrollbar-track { background: transparent; }
-    *:focus-visible { outline: 2px solid #8FB0F8; outline-offset: 2px; border-radius: 3px; }
+    /* !important: most buttons reset themselves with an inline `all: unset`,
+       which would otherwise also unset the focus ring. */
+    *:focus-visible { outline: 2px solid #8FB0F8 !important; outline-offset: 2px !important; border-radius: 3px; }
+    /* Placeholders follow the field's text colour in both themes. */
+    ::placeholder { color: inherit; opacity: .65; }
     .dots span { display: inline-block; opacity: .3; animation: blink 1.2s infinite; font-family: monospace; font-size: 18px; line-height: .5; }
     .dots span:nth-child(2) { animation-delay: .2s; }
     .dots span:nth-child(3) { animation-delay: .4s; }
@@ -27,7 +31,8 @@
     .jr-pane { container-type: inline-size; }
     .jr-row {
       display: grid;
-      grid-template-columns: 72px minmax(0, 640px) minmax(0, 1fr);
+      /* The margin keeps 140px; on a mid-width pane the column gives way. */
+      grid-template-columns: 72px minmax(0, 640px) minmax(140px, 1fr);
       column-gap: 28px;
       align-items: baseline;
       max-width: 1000px;

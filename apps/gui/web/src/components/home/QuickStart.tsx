@@ -1,6 +1,7 @@
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { QuickStartEntry } from '../../lib/types'
 
+/** Ways to start a chat, as one wrapping line of links. */
 export function QuickStart({
   theme,
   accent,
@@ -13,21 +14,23 @@ export function QuickStart({
   onStartChat: (cmd: string | null) => void
 }) {
   return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: '6px 22px', flexWrap: 'wrap' }}>
       {items.map((q, i) => (
         <button
           key={i}
           onClick={() => onStartChat(q.cmd ? q.cmd + ' ' : null)}
           style={{
-            all: 'unset',
+            background: 'none',
+            border: 0,
+            padding: 0,
+            margin: 0,
             cursor: 'pointer',
-            padding: '8px 14px',
-            borderRadius: 6,
-            border: `1px solid ${theme.border}`,
-            background: theme.surface1,
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
+            fontSize: 13,
+            lineHeight: 1.5,
             color: q.cmd ? accent : theme.textPrimary,
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
           }}
         >
           {q.label}

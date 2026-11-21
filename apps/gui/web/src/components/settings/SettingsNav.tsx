@@ -1,10 +1,12 @@
-// SettingsNav — left-rail section picker with customised dots + error dots.
+// SettingsNav — the list of sections on the left: plain text links, the current
+// one underlined, with a dot for customised sections and for validation errors.
 
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { SettingsValidationError } from '../../lib/types'
 
 import { sectionHasErrors } from './helpers'
 import { SECTIONS, type SectionKey } from './sections'
+import { buttonReset } from './SettingField'
 
 export function SettingsNav({
   theme,
@@ -23,10 +25,11 @@ export function SettingsNav({
 }) {
   return (
     <nav
+      aria-label="Settings sections"
       style={{
         width: 180,
         borderRight: `1px solid ${theme.border}`,
-        padding: '16px 0',
+        padding: '28px 0 20px',
         overflowY: 'auto',
         flexShrink: 0,
         background: theme.surface0,
@@ -41,30 +44,36 @@ export function SettingsNav({
             key={section.key}
             type="button"
             onClick={() => setActive(section.key)}
+            aria-current={isActive ? 'page' : undefined}
             style={{
-              all: 'unset',
-              cursor: 'pointer',
+              ...buttonReset,
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               width: '100%',
               boxSizing: 'border-box',
-              padding: '7px 16px 7px 20px',
+              padding: '6px 20px 6px 28px',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
+              fontSize: 13,
               color: hasError
                 ? theme.error
                 : isActive
                   ? theme.textPrimary
                   : theme.textSecondary,
-              background: isActive ? theme.surface1 : 'transparent',
-              borderLeft: isActive ? `2px solid ${accent}` : '2px solid transparent',
-              fontWeight: isActive ? 600 : 400,
             }}
           >
-            <span style={{ flex: 1 }}>{section.label}</span>
+            <span
+              style={{
+                flex: 1,
+                textDecoration: isActive ? 'underline' : 'none',
+                textUnderlineOffset: 4,
+              }}
+            >
+              {section.label}
+            </span>
             {hasError ? (
               <span
+                role="img"
                 style={{
                   width: 6,
                   height: 6,
@@ -75,12 +84,12 @@ export function SettingsNav({
               />
             ) : isCustomized ? (
               <span
+                role="img"
                 style={{
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: accent,
-                  opacity: 0.75,
+                  background: theme.textSecondary,
                 }}
                 aria-label="customized"
               />

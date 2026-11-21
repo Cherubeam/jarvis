@@ -1,6 +1,7 @@
 // McpServersPanel — edits the dict[str, MCPServerSettings] at mcp.servers.
 // Supports add/delete, transport-switched field sets, and renders
-// model_validator errors (e.g. "stdio requires command") at the card header.
+// model_validator errors (e.g. "stdio requires command") under the server's name.
+// Servers are separated by a rule, not boxed.
 
 import { useState } from 'react'
 
@@ -13,8 +14,15 @@ import {
   schemaAt,
   type Path,
 } from './helpers'
+import { SubSectionHeader } from './ScalarPanel'
 import { SectionCardError } from './SectionCardError'
-import { SettingField } from './SettingField'
+import {
+  fieldErrorStyle,
+  fieldLabelStyle,
+  inputStyle,
+  secondaryButtonStyle,
+  SettingField,
+} from './SettingField'
 
 type Transport = 'stdio' | 'sse' | 'streamable_http'
 
@@ -113,22 +121,19 @@ export function McpServersPanel({
 
       <SectionCardError theme={theme} errors={mcpLevelErrors} />
 
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSecondary,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8,
-          marginTop: 18,
-          marginBottom: 10,
-          paddingBottom: 6,
-          borderBottom: `1px solid ${theme.border}`,
-        }}
-      >
-        servers ({Object.keys(servers).length})
-      </div>
+      <SubSectionHeader theme={theme} rule={false}>
+        servers{' '}
+        <span
+          style={{
+            fontFamily: JARVIS_FONTS.mono,
+            fontSize: 13,
+            fontWeight: 400,
+            color: theme.textSecondary,
+          }}
+        >
+          ({Object.keys(servers).length})
+        </span>
+      </SubSectionHeader>
 
       {Object.entries(servers).map(([name, srv]) => (
         <ServerCard
@@ -195,16 +200,16 @@ function ServerCard({
   return (
     <div
       style={{
-        border: `1px solid ${cardErrors.length > 0 ? theme.error : theme.border}`,
-        borderRadius: 6,
-        padding: 14,
-        marginBottom: 14,
-        background: theme.surface1,
+        borderTop: `1px solid ${theme.border}`,
+        paddingTop: 18,
+        marginBottom: 10,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
         <input
           type="text"
+          aria-label="server name"
+          aria-invalid={cardErrors.length > 0 || undefined}
           value={pendingName}
           onChange={(e) => setPendingName(e.target.value)}
           onBlur={() => {
@@ -214,32 +219,15 @@ function ServerCard({
             if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
           }}
           style={{
+            ...inputStyle(theme, cardErrors.length > 0),
             flex: 1,
-            padding: '5px 8px',
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 13,
+            width: 'auto',
+            minWidth: 0,
+            fontSize: 14,
             fontWeight: 600,
-            color: theme.textPrimary,
-            background: theme.surface0,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-            outline: 'none',
           }}
         />
-        <button
-          type="button"
-          onClick={onDelete}
-          style={{
-            all: 'unset',
-            cursor: 'pointer',
-            padding: '5px 10px',
-            borderRadius: 4,
-            border: `1px solid ${theme.border}`,
-            color: theme.textSecondary,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-          }}
-        >
+        <button type="button" onClick={onDelete} style={secondaryButtonStyle(theme)}>
           delete
         </button>
       </div>
@@ -367,21 +355,13 @@ function DictField({
   }
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ ...fieldLabelStyle(theme), marginBottom: 6 }}>{label}</div>
       {entries.map(([key, val], i) => (
-        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <input
             type="text"
+            aria-label={`${label} key`}
             value={key}
             onChange={(e) => update(i, e.target.value, val)}
             placeholder="key"
@@ -389,6 +369,7 @@ function DictField({
           />
           <input
             type="text"
+            aria-label={`${label} value`}
             value={val}
             onChange={(e) => update(i, key, e.target.value)}
             placeholder="value"
@@ -397,66 +378,23 @@ function DictField({
           <button
             type="button"
             onClick={() => remove(i)}
-            style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 4,
-              border: `1px solid ${theme.border}`,
-              color: theme.textSecondary,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 10,
-            }}
+            aria-label={`remove ${label} entry`}
+            style={{ ...secondaryButtonStyle(theme), padding: '8px 12px' }}
           >
             ×
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={add}
-        style={{
-          all: 'unset',
-          cursor: 'pointer',
-          padding: '5px 10px',
-          borderRadius: 4,
-          border: `1px dashed ${theme.border}`,
-          color: theme.textSecondary,
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          marginTop: 2,
-        }}
-      >
+      <button type="button" onClick={add} style={secondaryButtonStyle(theme)}>
         + add entry
       </button>
-      {error && (
-        <div
-          style={{
-            marginTop: 4,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 10,
-            color: theme.error,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div style={fieldErrorStyle(theme)}>{error}</div>}
     </div>
   )
 }
 
 function smallInput(theme: Theme): React.CSSProperties {
-  return {
-    flex: 1,
-    padding: '5px 8px',
-    fontFamily: JARVIS_FONTS.mono,
-    fontSize: 11,
-    color: theme.textPrimary,
-    background: theme.surface0,
-    border: `1px solid ${theme.border}`,
-    borderRadius: 4,
-    outline: 'none',
-  }
+  return { ...inputStyle(theme), flex: 1, width: 'auto', minWidth: 0 }
 }
 
 function AddServerForm({
@@ -475,53 +413,24 @@ function AddServerForm({
   const nameValid = name.length > 0 && !name.includes('__') && !existing.includes(name)
 
   return (
-    <div
-      style={{
-        borderTop: `1px dashed ${theme.border}`,
-        paddingTop: 16,
-        marginTop: 8,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 11,
-          color: theme.textSecondary,
-          marginBottom: 8,
-        }}
-      >
+    <div style={{ borderTop: `1px solid ${theme.border}`, marginTop: 8 }}>
+      <SubSectionHeader theme={theme} rule={false}>
         add server
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      </SubSectionHeader>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <input
           type="text"
+          aria-label="server name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="name (no __)"
-          style={{
-            flex: 1,
-            padding: '6px 10px',
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.textPrimary,
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-            outline: 'none',
-          }}
+          style={{ ...inputStyle(theme), flex: '1 1 200px', width: 'auto', minWidth: 0 }}
         />
         <select
+          aria-label="transport"
           value={transport}
           onChange={(e) => setTransport(e.target.value as Transport)}
-          style={{
-            padding: '6px 10px',
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12,
-            color: theme.textPrimary,
-            background: theme.surface1,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 4,
-          }}
+          style={{ ...inputStyle(theme), width: 'auto' }}
         >
           <option value="stdio">stdio</option>
           <option value="sse">sse</option>
@@ -534,17 +443,7 @@ function AddServerForm({
             onAdd(name, transport)
             setName('')
           }}
-          style={{
-            all: 'unset',
-            cursor: nameValid ? 'pointer' : 'not-allowed',
-            padding: '6px 14px',
-            borderRadius: 4,
-            background: nameValid ? accent : theme.surface2,
-            color: nameValid ? theme.surface0 : theme.textDisabled,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            fontWeight: 700,
-          }}
+          style={secondaryButtonStyle(theme, nameValid)}
         >
           add
         </button>

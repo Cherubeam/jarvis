@@ -86,31 +86,68 @@ export function PanelHeader({
   subtitle?: string
 }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div
+    <div
+      style={{
+        marginBottom: 24,
+        paddingBottom: 14,
+        borderBottom: `1px solid ${theme.border}`,
+      }}
+    >
+      <h1
         style={{
+          margin: 0,
           fontFamily: JARVIS_FONTS.serif,
-          fontSize: 18,
+          fontSize: 28,
           fontWeight: 600,
+          lineHeight: 1.2,
           color: theme.textPrimary,
-          letterSpacing: -0.2,
         }}
       >
         {title}
-      </div>
+      </h1>
       {subtitle && (
-        <div
+        <p
           style={{
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
+            margin: '6px 0 0',
+            fontFamily: theme.read,
+            fontSize: 16,
+            lineHeight: 1.5,
             color: theme.textSecondary,
-            marginTop: 4,
           }}
         >
           {subtitle}
-        </div>
+        </p>
       )}
     </div>
+  )
+}
+
+/** A heading for a group of fields inside a panel. `rule` draws a line under
+ *  it; leave it off when the first thing below already starts with a rule. */
+export function SubSectionHeader({
+  theme,
+  rule = true,
+  children,
+}: {
+  theme: Theme
+  rule?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <h2
+      style={{
+        margin: '30px 0 16px',
+        paddingBottom: rule ? 8 : 0,
+        borderBottom: rule ? `1px solid ${theme.border}` : 'none',
+        fontFamily: JARVIS_FONTS.serif,
+        fontSize: 18,
+        fontWeight: 600,
+        lineHeight: 1.3,
+        color: theme.textPrimary,
+      }}
+    >
+      {children}
+    </h2>
   )
 }
 
@@ -124,15 +161,14 @@ export function PanelWarning({
   return (
     <div
       style={{
-        borderLeft: `3px solid ${theme.error}`,
-        background: theme.surface1,
-        padding: '8px 12px',
-        marginBottom: 14,
+        background: theme.delBg,
+        padding: '10px 14px',
+        marginBottom: 20,
         borderRadius: 4,
-        fontFamily: JARVIS_FONTS.mono,
-        fontSize: 11,
-        color: theme.textSecondary,
-        lineHeight: 1.55,
+        fontFamily: theme.read,
+        fontSize: 15,
+        color: theme.del,
+        lineHeight: 1.5,
       }}
     >
       {text}
