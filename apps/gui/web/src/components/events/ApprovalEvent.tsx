@@ -1,8 +1,10 @@
-import { Icon } from '../Icon'
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import type { DiffLine } from '../../lib/types'
 import { Row } from './Row'
 
+/** A vault write waiting for a decision. Set off by a rule above and below
+ *  instead of a box; the file path leads, the diff follows, the two buttons
+ *  close it. Who asked and the change summary sit in the margin. */
 export function ApprovalEvent({
   e,
   theme,
@@ -17,98 +19,67 @@ export function ApprovalEvent({
   dense?: boolean
 }) {
   return (
-    <Row theme={theme} label="approve" labelColor={theme.system} mono dense={dense}>
-      <div
+    <Row
+      theme={theme}
+      label=""
+      dense={dense}
+      margin={
+        <div style={{ paddingTop: 10 }}>
+          <div>waits for you</div>
+          <div>{e.agent} · vault_write</div>
+          <div>{e.summary}</div>
+        </div>
+      }
+    >
+      <section
+        aria-label="Vault write waiting for approval"
         style={{
-          background: theme.surface2,
-          border: `1px solid ${theme.system}40`,
-          borderLeft: `3px solid ${theme.system}`,
-          borderRadius: 8,
-          overflow: 'hidden',
+          borderTop: `1px solid ${theme.textPrimary}`,
+          borderBottom: `1px solid ${theme.border}`,
+          fontFamily: JARVIS_FONTS.mono,
+          fontSize: 13,
         }}
       >
-        <div
-          style={{
-            padding: '10px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            borderBottom: `1px solid ${theme.border}`,
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 13,
-          }}
-        >
-          <Icon name="note" size={14} color={theme.system} />
-          <div style={{ color: theme.textPrimary, fontWeight: 600 }}>{e.tool}</div>
-          <div style={{ color: theme.assistant }}>{e.path}</div>
-          <div style={{ marginLeft: 'auto', color: theme.textSecondary, fontSize: 12 }}>
-            {e.summary}
-          </div>
+        <div style={{ padding: '10px 0 8px', wordBreak: 'break-word' }}>
+          <span style={{ color: theme.textSecondary }}>{e.tool} · </span>
+          {e.path}
         </div>
         {e.linkWarnings && e.linkWarnings.length > 0 && (
-          <div
-            style={{
-              padding: '8px 14px',
-              borderBottom: `1px solid ${theme.border}`,
-              background: `${theme.error}14`,
-              color: theme.error,
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12.5,
-            }}
-          >
-            <div style={{ fontWeight: 600 }}>⚠ Links changed — check these before approving:</div>
+          <div style={{ padding: '6px 10px', marginBottom: 8, background: theme.delBg, color: theme.del, fontSize: 12.5 }}>
+            <div style={{ fontWeight: 600 }}>Links changed — check these before approving:</div>
             {e.linkWarnings.map((w, i) => (
-              <div key={i}>{w}</div>
+              <div key={i} style={{ wordBreak: 'break-word' }}>
+                {w}
+              </div>
             ))}
           </div>
         )}
-        <div
-          style={{
-            maxHeight: 280,
-            overflow: 'auto',
-            fontFamily: JARVIS_FONTS.mono,
-            fontSize: 12.5,
-            lineHeight: 1.55,
-          }}
-        >
+        <div style={{ maxHeight: 280, overflow: 'auto', fontSize: 12.5, lineHeight: 1.55 }}>
           {e.diff.map((line, i) => {
-            const bg =
-              line.kind === 'add'
-                ? `${theme.user}1a`
-                : line.kind === 'del'
-                ? `${theme.error}1a`
-                : 'transparent'
-            const fg =
-              line.kind === 'add' ? theme.user : line.kind === 'del' ? theme.error : theme.textSecondary
+            const bg = line.kind === 'add' ? theme.addBg : line.kind === 'del' ? theme.delBg : 'transparent'
+            const fg = line.kind === 'add' ? theme.add : line.kind === 'del' ? theme.del : theme.textSecondary
             const glyph = line.kind === 'add' ? '+ ' : line.kind === 'del' ? '- ' : '  '
             return (
-              <div key={i} style={{ background: bg, padding: '1px 14px', color: fg }}>
-                <span style={{ opacity: 0.6, userSelect: 'none' }}>{glyph}</span>
-                {line.text || '\u00A0'}
+              <div key={i} style={{ background: bg, padding: '1px 10px', color: fg, whiteSpace: 'pre-wrap' }}>
+                <span style={{ userSelect: 'none' }}>{glyph}</span>
+                {line.text || ' '}
               </div>
             )
           })}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding: '10px 14px',
-            borderTop: `1px solid ${theme.border}`,
-          }}
-        >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, padding: '14px 0' }}>
           <button
             onClick={onApprove}
             style={{
               all: 'unset',
               cursor: 'pointer',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              padding: '6px 14px',
-              borderRadius: 6,
-              background: theme.user,
-              color: theme.surface1,
-              fontWeight: 700,
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '9px 18px',
+              borderRadius: 4,
+              background: theme.textPrimary,
+              color: theme.surface0,
             }}
           >
             Approve (⏎)
@@ -119,28 +90,17 @@ export function ApprovalEvent({
               all: 'unset',
               cursor: 'pointer',
               fontFamily: JARVIS_FONTS.mono,
-              fontSize: 12,
-              padding: '6px 14px',
-              borderRadius: 6,
-              border: `1px solid ${theme.border}`,
-              color: theme.textSecondary,
+              fontSize: 13,
+              padding: '8px 18px',
+              borderRadius: 4,
+              border: `1px solid ${theme.borderStrong}`,
+              color: theme.textPrimary,
             }}
           >
             Reject (esc)
           </button>
-          <div
-            style={{
-              marginLeft: 'auto',
-              fontFamily: JARVIS_FONTS.mono,
-              fontSize: 11,
-              color: theme.textDisabled,
-              alignSelf: 'center',
-            }}
-          >
-            {e.agent} · vault_write
-          </div>
         </div>
-      </div>
+      </section>
     </Row>
   )
 }

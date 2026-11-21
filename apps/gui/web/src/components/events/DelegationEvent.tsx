@@ -12,19 +12,11 @@ export function DelegationEvent({
   dense?: boolean
 }) {
   return (
-    <Row theme={theme} label="→" labelColor={theme.system} mono dense={dense}>
-      <div
-        style={{
-          fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12.5,
-          color: theme.system,
-          letterSpacing: 0.2,
-        }}
-      >
-        Delegating <span style={{ color: theme.textPrimary }}>{speakerLabel(e.from)}</span>
+    <Row theme={theme} label="" dense={dense}>
+      <div style={{ fontFamily: JARVIS_FONTS.mono, fontSize: 13, color: theme.textSecondary }}>
+        Delegating {speakerLabel(e.from)}
         {' → '}
-        <span style={{ color: theme.assistant, fontWeight: 600 }}>{speakerLabel(e.to)}</span>
-        <span style={{ color: theme.textSecondary }}> · {e.reason}</span>
+        <span style={{ color: theme.assistant }}>{speakerLabel(e.to)}</span> · {e.reason}
       </div>
     </Row>
   )

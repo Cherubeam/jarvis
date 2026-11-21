@@ -17,9 +17,8 @@ export function SystemEvent({
       <div
         style={{
           fontFamily: JARVIS_FONTS.mono,
-          fontSize: 12,
+          fontSize: 13,
           color: isError ? theme.error : theme.system,
-          letterSpacing: 0.2,
         }}
       >
         {e.text}

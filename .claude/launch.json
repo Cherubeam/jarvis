@@ -6,6 +6,12 @@
       "runtimeExecutable": "uv",
       "runtimeArgs": ["run", "python", "-m", "apps.gui.main", "--no-browser"],
       "port": 8123
+    },
+    {
+      "name": "jarvis-gui-preview",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "python", "-m", "apps.gui.main", "--no-browser", "--port", "8125"],
+      "port": 8125
     }
   ]
 }

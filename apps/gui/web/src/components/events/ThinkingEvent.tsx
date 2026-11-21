@@ -4,7 +4,11 @@ import { Row } from './Row'
 
 export function ThinkingEvent({ theme, agent }: { theme: Theme; agent: string }) {
   return (
-    <Row theme={theme} accent={theme.assistant} label={speakerLabel(agent)} labelColor={theme.assistant}>
+    <Row
+      theme={theme}
+      label={agent && agent !== 'JARVIS' ? speakerLabel(agent) : ''}
+      labelColor={theme.assistant}
+    >
       <div
         style={{
           display: 'inline-flex',

@@ -150,7 +150,7 @@ export function AgentDetailView({
               <div style={{ flex: 1 }}>
                 <div
                   style={{
-                    fontFamily: JARVIS_FONTS.sans,
+                    fontFamily: JARVIS_FONTS.serif,
                     fontSize: 28,
                     fontWeight: 600,
                     color: theme.textPrimary,

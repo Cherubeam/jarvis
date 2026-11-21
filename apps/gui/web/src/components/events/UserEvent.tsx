@@ -1,23 +1,24 @@
 import { JARVIS_FONTS, type Theme } from '../../lib/tokens'
 import { Row } from './Row'
 
+/** What you typed, in mono. The gutter shows when; a replayed turn has no time
+ *  on record, so it says "you" instead. */
 export function UserEvent({
   e,
   theme,
   dense,
 }: {
-  e: { text: string }
+  e: { text: string; time?: string }
   theme: Theme
   dense?: boolean
 }) {
-  const isSlash = e.text.startsWith('/')
   return (
-    <Row theme={theme} accent={theme.user} label="You" labelColor={theme.user} dense={dense}>
+    <Row theme={theme} label={e.time || 'you'} dense={dense}>
       <div
         style={{
-          fontFamily: isSlash ? JARVIS_FONTS.mono : JARVIS_FONTS.sans,
-          fontSize: isSlash ? 14 : 15,
-          color: isSlash ? theme.user : theme.textPrimary,
+          fontFamily: JARVIS_FONTS.mono,
+          fontSize: 14,
+          color: theme.textPrimary,
           whiteSpace: 'pre-wrap',
         }}
       >

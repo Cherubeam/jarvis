@@ -87,10 +87,8 @@ export function Sidebar({
         <div
           style={{
             fontFamily: JARVIS_FONTS.mono,
-            fontSize: 11,
-            color: theme.textDisabled,
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
+            fontSize: 12,
+            color: theme.textSecondary,
             marginBottom: 10,
           }}
         >
@@ -103,7 +101,7 @@ export function Sidebar({
             alignItems: 'center',
             gap: 8,
             background: theme.surface2,
-            borderRadius: 6,
+            borderRadius: 4,
             padding: '6px 10px',
             border: `1px solid ${theme.border}`,
           }}
@@ -114,7 +112,7 @@ export function Sidebar({
             style={{
               all: 'unset',
               flex: 1,
-              fontFamily: JARVIS_FONTS.sans,
+              fontFamily: JARVIS_FONTS.mono,
               fontSize: 12.5,
               color: theme.textPrimary,
             }}
@@ -216,10 +214,9 @@ export function Sidebar({
                   width: '100%',
                   boxSizing: 'border-box',
                   padding: '8px 10px',
-                  borderRadius: 6,
+                  borderRadius: 4,
                   marginBottom: 2,
-                  background: active ? theme.surface2 : 'transparent',
-                  borderLeft: active ? `2px solid ${hue}` : '2px solid transparent',
+                  background: active ? theme.surface3 : 'transparent',
                   opacity: disabled ? 0.5 : 1,
                 }}
               >
