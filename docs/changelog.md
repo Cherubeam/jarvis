@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — The GUI gets the "Journal" look (2026-11-21)
+
+- A restyle of the existing views; no view, route or behaviour was added or
+  removed. Neutral greys with one accent replace the slate and cyan palette.
+  The assistant's answers are set in a serif, what you typed and all metadata
+  in mono. Cards, coloured left borders, stat tiles and pills are gone.
+- A line of text links at the top replaces the icon rail (`TopNav.tsx`).
+- Chat rows have a gutter (the time of your turn, a specialist's name), a
+  reading column of at most 640px and a margin that carries tokens, cost and
+  timing. The per-answer stats are now stacked in that margin instead of the
+  bracketed one-line format; the CLI keeps that format.
+- Tool calls are one muted line that unfolds; a vault-write approval is set
+  off by rules instead of a box, with its diff inline.
+- Tweaks: the accent choices are `blue` (default), `steel`, `teal`, `amber`,
+  `rose`; "answers: serif | mono" replaces the mono/sans switch. Stored
+  tweaks from before are ignored (new storage key).
+- Per-agent pastel hues are dropped; every agent uses the accent.
+- No font files are bundled: the serif stack uses faces that ship with macOS
+  and iOS. Tokens and rules: [design/tokens.md](design/tokens.md),
+  [engineering/gui.md](engineering/gui.md#visual-identity-rules).
+- `.claude/launch.json` gains `jarvis-gui-preview` (port 8125) for looking at
+  a change while another instance holds 8123.
+
 ### Added — The morning briefing says what is due in the decision journal (2026-11-18)
 
 - The briefing reads Personal Intelligence's decision journal and names what
